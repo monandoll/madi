@@ -38,3 +38,16 @@ export function parseEncoderList(stdout: string): Set<string> {
   }
   return names;
 }
+
+/** h264_nvenc 프리셋 확인용 인자. 출력에 p1~p7 이 있어야 `proxyEncoderArgs` 의 `-preset p4` 가 통한다. */
+export function nvencHelpArgs(): string[] {
+  return ['-hide_banner', '-h', 'encoder=h264_nvenc'];
+}
+
+/**
+ * `ffmpeg -h encoder=h264_nvenc` 출력에 p1~p7 프리셋이 있는지.
+ * 2018년 이전 빌드(@ffmpeg-installer 폴백 등)는 slow/medium/fast 같은 옛 프리셋만 알아서 p4 를 거부한다.
+ */
+export function supportsNvencPresets(helpOutput: string): boolean {
+  return /^\s+p4\s/m.test(helpOutput);
+}

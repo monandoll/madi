@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseEncoderList, pickEncoder } from './encoder.js';
+import { parseEncoderList, pickEncoder, supportsNvencPresets } from './encoder.js';
 import { parseProbe, probeArgs } from './probe.js';
 import { proxyArgs } from './proxy.js';
 import { thumbnailArgs, thumbnailTime } from './thumbnail.js';
@@ -26,6 +26,19 @@ describe('encoder', () => {
     expect(set.has('h264_nvenc')).toBe(true);
     expect(set.has('aac')).toBe(true);
     expect(set.has('Video')).toBe(false);
+  });
+
+  it('nvenc 도움말에 p4 프리셋이 있어야 새 프리셋을 쓴다', () => {
+    const modern = [
+      '  -preset            <int>        E..V....... Set the encoding preset (from 0 to 18) (default p4)',
+      '     p4                           E..V....... fast (default)',
+    ].join('\n');
+    const legacy = [
+      '  -preset            <int>        E..V..... Set the encoding preset (from 0 to 11) (default medium)',
+      '     medium                       E..V..... hq 1 pass',
+    ].join('\n');
+    expect(supportsNvencPresets(modern)).toBe(true);
+    expect(supportsNvencPresets(legacy)).toBe(false);
   });
 });
 
