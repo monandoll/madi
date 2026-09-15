@@ -1,0 +1,49 @@
+{
+  "name": "@madi/engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "마디 엔진 — 사용자 PC에서 돌아가는 편집 서버 (트레이 전용)",
+  "productName": "madi-engine",
+  "type": "module",
+  "main": "dist/main.mjs",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/dev.ts",
+    "start": "tsx src/dev.ts",
+    "build": "node scripts/build.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.11",
+    "@hono/node-ws": "^1.3.1",
+    "@madi/ffmpeg-presets": "workspace:*",
+    "@madi/shared": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "chokidar": "^5.0.0",
+    "drizzle-orm": "^0.45.2",
+    "electron-updater": "^6.8.9",
+    "hono": "^4.13.8",
+    "nanoid": "^6.0.1",
+    "pino": "^10.3.1",
+    "ws": "^8.21.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@ffprobe-installer/ffprobe": "^2.1.2",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "26.5.1",
+    "@types/ws": "^8.18.1",
+    "drizzle-kit": "^0.31.10",
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "pino-pretty": "^13.1.3",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.1"
+  }
+}

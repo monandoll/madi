@@ -1,0 +1,50 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { openDb } from '../src/db/index.js';
+import { createLogger } from '../src/log.js';
+
+export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+export const FIXTURES = path.join(REPO_ROOT, 'fixtures');
+export const SAMPLE_5S = path.join(FIXTURES, 'sample-5s.mp4');
+export const SAMPLE_SILENT = path.join(FIXTURES, 'sample-silent-3s.mp4');
+export const MIGRATIONS = path.join(REPO_ROOT, 'apps/engine/drizzle');
+
+/** 테스트마다 새 임시 홈. */
+export function tempHome(prefix = 'madi-test-'): string {
+  return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+}
+
+export function openTestDb(home: string) {
+  fs.mkdirSync(home, { recursive: true });
+  return openDb(path.join(home, 'test.db'), MIGRATIONS);
+}
+
+export function quietLogger(home: string) {
+  process.env['MADI_QUIET'] = '1';
+  return createLogger(path.join(home, 'logs'), true);
+}
+
+export async function waitFor(pred: () => boolean | Promise<boolean>, timeoutMs = 30_000, every = 100): Promise<void> {
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until) {
+    if (await pred()) return;
+    await new Promise((r) => setTimeout(r, every));
+  }
+  throw new Error('waitFor: timeout');
+}
+
+/** 비어 있는 포트 하나. */
+export async function freePort(): Promise<number> {
+  const net = await import('node:net');
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.listen(0, '127.0.0.1', () => {
+      const addr = srv.address();
+      const port = typeof addr === 'object' && addr ? addr.port : 0;
+      srv.close(() => resolve(port));
+    });
+    srv.on('error', reject);
+  });
+}
