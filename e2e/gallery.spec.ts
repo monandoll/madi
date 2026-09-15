@@ -15,11 +15,11 @@ async function patchSettings(page: Page, body: Record<string, unknown>) {
 
 test.describe.configure({ mode: 'serial' });
 
-test('폴더가 없으면 안내 문구, 헤더엔 워크스페이스명과 AI 미연결', async ({ page }) => {
-  await patchSettings(page, { workspaceName: '수현쌤 스튜디오', watchFolders: [] });
+test('폴더가 없으면 안내 문구, 헤더엔 스튜디오 이름과 AI 미연결', async ({ page }) => {
+  await patchSettings(page, { workspaceName: '우리 스튜디오', watchFolders: [] });
   await page.goto('/');
   await expect(page).toHaveTitle('마디');
-  await expect(page.getByRole('heading', { name: '수현쌤 스튜디오' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '우리 스튜디오' })).toBeVisible();
   await expect(page.getByText('AI 연결 안 됨')).toBeVisible();
   await expect(page.getByTestId('empty')).toContainText('영상 폴더가 없어요');
   // 상태 점은 엔진 연결(ok 색)
@@ -28,6 +28,30 @@ test('폴더가 없으면 안내 문구, 헤더엔 워크스페이스명과 AI �
   for (const banned of ['인코딩', '프록시', '트랜스크립트']) {
     await expect(page.getByText(banned)).toHaveCount(0);
   }
+});
+
+test('헤더의 이름을 탭해서 스튜디오 이름을 바꾸면 저장된다', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('heading').getByRole('button').click();
+  const input = page.getByTestId('workspace-name-input');
+  await expect(input).toBeFocused();
+  await input.fill('  재활운동 연구소  ');
+  await input.press('Enter');
+  await expect(page.getByRole('heading', { name: '재활운동 연구소' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '재활운동 연구소' })).toBeVisible();
+
+  // Esc 는 취소, 빈 이름은 저장하지 않는다
+  await page.getByRole('heading').getByRole('button').click();
+  await page.getByTestId('workspace-name-input').fill('버릴 이름');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('heading', { name: '재활운동 연구소' })).toBeVisible();
+  await page.getByRole('heading').getByRole('button').click();
+  await page.getByTestId('workspace-name-input').fill('   ');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: '재활운동 연구소' })).toBeVisible();
+  const res = await page.request.get('/api/settings');
+  expect((await res.json()).settings.workspaceName).toBe('재활운동 연구소');
 });
 
 test('폴더에 영상을 넣으면 카드가 나타나고 준비가 끝나면 썸네일과 길이가 보인다', async ({ page }) => {

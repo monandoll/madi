@@ -10,6 +10,8 @@ export const copy = {
   header: {
     aiOff: 'AI 연결 안 됨',
     aiOn: 'AI 연결됨',
+    renameHint: '스튜디오 이름 바꾸기',
+    namePlaceholder: '스튜디오 이름',
   },
   tabs: {
     videos: '영상',

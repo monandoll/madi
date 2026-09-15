@@ -57,7 +57,7 @@ describe('engine e2e', () => {
     await api('/api/settings', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ workspaceName: '수현쌤 스튜디오', watchFolders: [watchDir] }),
+      body: JSON.stringify({ workspaceName: '우리 스튜디오', watchFolders: [watchDir] }),
     });
     await new Promise((r) => setTimeout(r, 300));
     fs.copyFileSync(SAMPLE_5S, path.join(watchDir, '햄스트링 패시브 스트레칭 풀버전.mp4'));
