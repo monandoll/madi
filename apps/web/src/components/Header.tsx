@@ -12,7 +12,8 @@ interface Props {
 
 /**
  * design/Mobile.dc.html 갤러리 헤더: 48px, 상태 점 · 스튜디오 이름 · AI 상태.
- * 이름을 탭하면 같은 자리에서 고친다 (Enter 저장, Esc 취소). 설정 화면이 따로 없어서 여기서.
+ * 이름을 탭하면 같은 자리에서 고친다 (Enter 저장, Esc 취소). 편집 중엔 accent 1px 밑줄만 — 그림자 없음.
+ * 설정 화면이 따로 없어서 여기서 (Orca 의 더블클릭 인라인 rename 과 같은 방식).
  */
 export function Header({ workspaceName, aiConnected, engineOk }: Props) {
   const [editing, setEditing] = useState(false);
@@ -51,7 +52,7 @@ export function Header({ workspaceName, aiConnected, engineOk }: Props) {
         <input
           ref={inputRef}
           data-testid="workspace-name-input"
-          className="min-w-0 flex-1 bg-transparent text-15 font-semibold tracking-[-0.01em] outline-none placeholder:font-normal placeholder:text-text-2"
+          className="min-w-0 flex-1 border-b border-accent bg-transparent text-15 font-semibold tracking-[-0.01em] outline-none placeholder:font-normal placeholder:text-text-2"
           value={draft}
           maxLength={40}
           placeholder={copy.header.namePlaceholder}
@@ -68,7 +69,7 @@ export function Header({ workspaceName, aiConnected, engineOk }: Props) {
             type="button"
             title={copy.header.renameHint}
             onClick={start}
-            className="block max-w-full truncate text-left text-15 font-semibold tracking-[-0.01em]"
+            className="block max-w-full truncate border-b border-transparent text-left text-15 font-semibold tracking-[-0.01em]"
           >
             {workspaceName}
           </button>

@@ -35,6 +35,8 @@ test('헤더의 이름을 탭해서 스튜디오 이름을 바꾸면 저장된�
   await page.getByRole('heading').getByRole('button').click();
   const input = page.getByTestId('workspace-name-input');
   await expect(input).toBeFocused();
+  // 편집 중 표시: accent 1px 밑줄
+  await expect(input).toHaveCSS('border-bottom-color', 'rgb(201, 106, 75)');
   await input.fill('  재활운동 연구소  ');
   await input.press('Enter');
   await expect(page.getByRole('heading', { name: '재활운동 연구소' })).toBeVisible();
