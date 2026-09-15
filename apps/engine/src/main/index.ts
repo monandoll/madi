@@ -45,7 +45,8 @@ app.whenReady().then(async () => {
   if (process.platform === 'darwin') app.dock?.hide();
   app.setLoginItemSettings({ openAtLogin: app.isPackaged });
 
-  process.env['MADI_ROOT'] = app.isPackaged ? process.resourcesPath : process.env['MADI_ROOT'];
+  // 패키징된 앱만 resources 경로를 쓴다. 개발 모드에서 undefined 를 대입하면 문자열 "undefined" 가 된다.
+  if (app.isPackaged) process.env['MADI_ROOT'] = process.resourcesPath;
   engine = await startEngine();
 
   const icon = nativeImage.createFromPath(path.join(process.resourcesPath, 'tray.png'));
