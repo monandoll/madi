@@ -5,7 +5,7 @@
 export type Encoder = 'h264_nvenc' | 'h264_videotoolbox' | 'libx264';
 
 export interface EncoderHints {
-  platform: NodeJS.Platform | string;
+  platform: string;
   /** ffmpeg -encoders 출력에 들어 있는 인코더 이름들 */
   available: ReadonlySet<string>;
 }
