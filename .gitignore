@@ -14,3 +14,7 @@ apps/engine/resources/web/
 # 테스트 산출물
 fixtures/out/
 coverage/
+
+# playwright
+playwright-report/
+test-results/

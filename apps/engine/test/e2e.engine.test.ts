@@ -97,8 +97,13 @@ describe('engine e2e', () => {
     expect(part.headers.get('content-range')).toBe(`bytes 0-99/${total}`);
     expect((await part.arrayBuffer()).byteLength).toBe(100);
 
-    const bad = await fetch(`${engine.url}/media/proxies/../../etc/passwd`);
-    expect(bad.status).toBe(404);
+    // 경로 탈출·모르는 id 는 404 (SPA fallback 이 index.html 을 주면 안 된다)
+    const traversal = await fetch(`${engine.url}/media/proxies/..%2F..%2Fetc%2Fpasswd`);
+    expect(traversal.status).toBe(404);
+    const unknown = await fetch(`${engine.url}/media/proxies/nope.mp4`);
+    expect(unknown.status).toBe(404);
+    const notMedia = await fetch(`${engine.url}/media/proxies/${v.id}.txt`);
+    expect(notMedia.status).toBe(404);
   });
 
   it('WS 로 video/job 이벤트가 왔다', async () => {

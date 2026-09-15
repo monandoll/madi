@@ -95,17 +95,22 @@ export function createApp(deps: AppDeps): Hono {
     return serveFile(c, path.join(cfg.proxiesDir, `${id}.mp4`));
   });
 
-  // 웹 빌드 정적 서빙. SPA라서 못 찾으면 index.html.
-  if (fs.existsSync(cfg.webDir)) {
-    const root = path.relative(process.cwd(), cfg.webDir) || '.';
-    app.use('/*', serveStatic({ root }));
-    app.get('*', (c) => {
-      if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/media/')) return c.notFound();
-      return c.html(fs.readFileSync(path.join(cfg.webDir, 'index.html'), 'utf8'));
-    });
-  }
-
   return app;
+}
+
+/**
+ * 웹 빌드 정적 서빙. SPA라서 못 찾으면 index.html.
+ * /ws 업그레이드보다 뒤에 걸어야 하므로 API·WS 라우트를 다 붙인 다음 호출한다.
+ */
+export function mountWeb(app: Hono, cfg: EngineConfig): boolean {
+  if (!fs.existsSync(path.join(cfg.webDir, 'index.html'))) return false;
+  const root = path.relative(process.cwd(), cfg.webDir) || '.';
+  app.use('/*', serveStatic({ root }));
+  app.get('*', (c) => {
+    if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/media/') || c.req.path === '/ws') return c.notFound();
+    return c.html(fs.readFileSync(path.join(cfg.webDir, 'index.html'), 'utf8'));
+  });
+  return true;
 }
 
 function safeId(file: string, ext: string): string | null {

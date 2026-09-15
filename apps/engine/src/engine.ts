@@ -6,7 +6,7 @@ import { EventLog } from './events.js';
 import { createLogger, type Logger } from './log.js';
 import { resolveSidecar } from './main/sidecar.js';
 import { JobQueue } from './queue/index.js';
-import { createApp } from './server/app.js';
+import { createApp, mountWeb } from './server/app.js';
 import { attachWs } from './server/ws.js';
 import { SettingsStore } from './settings.js';
 import { VideoStore } from './videos.js';
@@ -54,6 +54,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     onSettingsChanged: () => void watcher.setFolders(settings.get().watchFolders),
   });
   const ws = attachWs(app, VERSION);
+  const webMounted = mountWeb(app, cfg);
   videos.on('video.added', (video) => ws.broadcast({ type: 'video.added', video }));
   videos.on('video.updated', (video) => ws.broadcast({ type: 'video.updated', video }));
   videos.on('video.removed', (videoId) => ws.broadcast({ type: 'video.removed', videoId }));
@@ -65,7 +66,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   });
   ws.injectWebSocket(server);
   const url = `http://127.0.0.1:${cfg.port}`;
-  log.info({ url, encoder: await ffmpeg.detectEncoder(), data: cfg.dataDir }, 'engine up');
+  log.info({ url, encoder: await ffmpeg.detectEncoder(), data: cfg.dataDir, web: webMounted ? cfg.webDir : null }, 'engine up');
   events.record('engine.start', { version: VERSION });
 
   await watcher.setFolders(settings.get().watchFolders);
