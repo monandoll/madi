@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   type Encoder,
+  nvencHelpArgs,
   parseEncoderList,
   parseProbe,
   pickEncoder,
@@ -9,6 +10,7 @@ import {
   type ProbeResult,
   ProgressParser,
   proxyArgs,
+  supportsNvencPresets,
   thumbnailArgs,
   thumbnailTime,
 } from '@madi/ffmpeg-presets';
@@ -29,7 +31,13 @@ export class Ffmpeg {
     if (this.encoder) return this.encoder;
     try {
       const { stdout } = await run(this.bins.ffmpeg, ['-hide_banner', '-encoders']);
-      this.encoder = pickEncoder({ platform: process.platform, available: parseEncoderList(stdout) });
+      let encoder = pickEncoder({ platform: process.platform, available: parseEncoderList(stdout) });
+      if (encoder === 'h264_nvenc') {
+        // 오래된 ffmpeg 빌드는 nvenc 는 있어도 p4 프리셋을 모른다. 그럴 땐 소프트웨어 인코더로.
+        const help = await run(this.bins.ffmpeg, nvencHelpArgs()).catch(() => null);
+        if (!help || !supportsNvencPresets(help.stdout)) encoder = 'libx264';
+      }
+      this.encoder = encoder;
     } catch {
       this.encoder = 'libx264';
     }
