@@ -51,7 +51,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.get('/api/videos', (c) => {
-    const body: VideosResponse = { videos: videos.list().map((v) => toCard(v, deps)) };
+    const body: VideosResponse = { videos: videos.listVisible().map((v) => toCard(v, deps)) };
     return c.json(body);
   });
 

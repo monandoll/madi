@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { EventEmitter } from 'node:events';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, ne } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { Video, Proxy, titleFromFileName } from '@madi/shared';
 import type { Db } from './db/index.js';
@@ -25,8 +25,20 @@ export class VideoStore extends EventEmitter<VideoEvents> {
     super();
   }
 
+  /** 전부 (missing 포함). 감시·정리용. */
   list(): Video[] {
     return this.db.select().from(videos).orderBy(desc(videos.recordedAt)).all().map(rowToVideo);
+  }
+
+  /** 갤러리에 보이는 것. 파일이 없거나 감시 폴더 밖이면 안 보인다. */
+  listVisible(): Video[] {
+    return this.db
+      .select()
+      .from(videos)
+      .where(ne(videos.status, 'missing'))
+      .orderBy(desc(videos.recordedAt))
+      .all()
+      .map(rowToVideo);
   }
 
   get(id: string): Video | null {
@@ -62,11 +74,17 @@ export class VideoStore extends EventEmitter<VideoEvents> {
     if (existing) {
       const changed = existing.sizeBytes !== input.sizeBytes || existing.recordedAt !== input.recordedAt;
       if (existing.status === 'missing' || changed) {
+        // 돌아온 파일이 그대로면 이전 준비 상태를 살린다 (프록시·썸네일 재작업 없음)
+        const status =
+          changed || existing.durationSec == null ? 'registered' : this.isPrepared(existing.id) ? 'ready' : 'preparing';
+        // 내용이 바뀐 파일이면 옛 썸네일·프록시는 더 이상 이 파일 것이 아니다
+        if (changed) this.db.delete(proxies).where(eq(proxies.videoId, existing.id)).run();
         const updated = this.update(existing.id, {
-          status: 'registered',
+          status,
           sizeBytes: input.sizeBytes,
           recordedAt: input.recordedAt,
           error: null,
+          ...(changed ? { thumbnailPath: null, durationSec: null } : {}),
         });
         return { video: updated, created: changed };
       }
@@ -113,8 +131,9 @@ export class VideoStore extends EventEmitter<VideoEvents> {
     this.db.insert(proxies).values({ id: nanoid(), videoId, ...p, createdAt: Date.now() }).run();
   }
 
-  /** 썸네일과 프록시가 둘 다 있으면 ready. */
+  /** 썸네일과 프록시가 둘 다 있으면 ready. 그 사이 missing 이 됐으면 되살리지 않는다. */
   markReadyIfComplete(videoId: string): void {
+    if (this.get(videoId)?.status !== 'preparing') return;
     const thumb = this.thumbnailPath(videoId);
     const proxy = this.proxyOf(videoId);
     if (thumb && proxy && fs.existsSync(thumb) && fs.existsSync(proxy.path)) {

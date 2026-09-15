@@ -48,6 +48,7 @@ export function registerMediaWorkers({ cfg, queue, videos, ffmpeg, events, log }
 
   queue.register('thumbnail', async ({ job, signal }) => {
     const video = videos.mustGet(job.videoId!);
+    if (video.status === 'missing') return; // 그 사이 사라진 파일
     const output = path.join(cfg.thumbsDir, `${video.id}.jpg`);
     await ffmpeg.thumbnail({ input: video.path, output, durationSec: video.durationSec ?? 0 }, signal);
     videos.update(video.id, { thumbnailPath: output });
@@ -56,6 +57,7 @@ export function registerMediaWorkers({ cfg, queue, videos, ffmpeg, events, log }
 
   queue.register('proxy', async ({ job, signal, setProgress }) => {
     const video = videos.mustGet(job.videoId!);
+    if (video.status === 'missing') return;
     const output = path.join(cfg.proxiesDir, `${video.id}.mp4`);
     const started = Date.now();
     try {
