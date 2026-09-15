@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+
+</head>
+<body>
+
+<x-dc>
+<helmet>
+<style>/**
+ * Minified by jsDelivr using clean-css v5.3.3.
+ * Original file: /gh/orioncactus/pretendard@1.3.9/dist/web/variable/pretendardvariable.css
+ *
+ * Do NOT use SRI with dynamically generated files! More information: https://www.jsdelivr.com/using-sri-with-dynamic-files
+ */
+@font-face{font-family:'Pretendard Variable';font-weight:45 920;font-style:normal;font-display:swap;src:url("../apps/web/public/fonts/PretendardVariable.woff2") format('woff2-variations')}
+/*# sourceMappingURL=/sm/cb46c7e49fc38cbd97a389d4dc69706f7471d0646edc67e9dc7defe084c0b8bf.map */</style>
+<style>
+  html, body { margin:0; padding:0; background:#F1EBE3; }
+  body { font-family:"Pretendard Variable", "Pretendard", system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#C96A4B; text-decoration:none; }
+  a:hover { color:#A9543A; }
+  ::selection { background:#EADFD4; }
+</style>
+</helmet>
+<div style="min-height:100vh; box-sizing:border-box; background:#F1EBE3; color:#2B2622; padding:28px; display:flex; flex-wrap:wrap; gap:28px; align-items:flex-start;">
+
+  <div style="display:flex; flex-direction:column; gap:8px;">
+    <div style="font-size:12px; color:#8A7F76;">갤러리 · 375</div>
+    <div style="width:375px; height:812px; background:#F7F3EE; border:1px solid #E8E0D8; border-radius:12px; overflow:hidden; display:flex; flex-direction:column;">
+      <div style="height:48px; flex:none; display:flex; align-items:center; gap:8px; padding:0 14px; background:#FFFFFF; border-bottom:1px solid #E8E0D8;">
+        <div style="width:7px; height:7px; border-radius:999px; background:#7A9E7E;"></div>
+        <div style="flex:1; font-size:15px; font-weight:600; letter-spacing:-0.01em;">수현쌤 스튜디오</div>
+        <div style="font-size:12px; color:#8A7F76;">AI 연결 안 됨</div>
+      </div>
+      <div style="flex:none; display:flex; gap:4px; padding:10px 14px 8px;">
+        <div style="font-size:13px; font-weight:600; padding:6px 12px; border-radius:999px; background:#F5E7DF; color:#C96A4B;">영상</div>
+        <div style="font-size:13px; color:#8A7F76; padding:6px 12px;">결과물</div>
+        <div style="font-size:13px; color:#8A7F76; padding:6px 12px;">진행 중</div>
+      </div>
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:0 14px 20px; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <sc-for list="{{ videos }}" as="v" hint-placeholder-count="12">
+          <div>
+            <div style="position:relative; aspect-ratio:16/9; border-radius:8px; overflow:hidden; background:#DCD4CA;">
+              <div style="position:absolute; left:0; right:0; bottom:0; height:34%; background:#CEC5BA;"></div>
+              <div style="position:absolute; left:50%; bottom:18%; transform:translateX(-50%); width:38%; height:30%; border-radius:6px; background:#C2B9AE;"></div>
+              <sc-if value="{{ v.hasStatus }}" hint-placeholder-val="{{ true }}">
+                <div style="position:absolute; top:5px; left:6px; font-size:10px; font-weight:500; color:#2B2622; background:#F7F3EE; padding:2px 5px; border-radius:999px;">{{ v.status }}</div>
+              </sc-if>
+              <div style="position:absolute; bottom:5px; right:6px; font-size:10px; font-weight:500; color:#FFFFFF; background:#2B2622; padding:1px 4px; border-radius:3px;">{{ v.duration }}</div>
+            </div>
+            <div style="padding:5px 1px 0; display:flex; flex-direction:column; gap:2px;">
+              <div style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ v.title }}</div>
+              <div style="font-size:11px; color:#8A7F76;">{{ v.date }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:8px;">
+    <div style="font-size:12px; color:#8A7F76;">영상 상세 · 채팅 위, 프리뷰 접힘</div>
+    <div style="width:375px; height:812px; background:#FFFFFF; border:1px solid #E8E0D8; border-radius:12px; overflow:hidden; display:flex; flex-direction:column;">
+      <div style="height:48px; flex:none; display:flex; align-items:center; gap:10px; padding:0 14px; border-bottom:1px solid #E8E0D8;">
+        <div style="font-size:13px; color:#6E635B;">←</div>
+        <div style="flex:1; min-width:0; font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">햄스트링 패시브 스트레칭 풀버전</div>
+      </div>
+
+      <div style="flex:none; display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #E8E0D8;">
+        <div style="position:relative; width:64px; flex:none; aspect-ratio:16/9; border-radius:6px; overflow:hidden; background:#DCD4CA;">
+          <div style="position:absolute; left:0; right:0; bottom:0; height:34%; background:#CEC5BA;"></div>
+          <div style="position:absolute; left:50%; bottom:16%; transform:translateX(-50%); width:38%; height:30%; border-radius:4px; background:#C2B9AE;"></div>
+        </div>
+        <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;">
+          <div style="font-size:12px; color:#8A7F76;">18:24 · 9월 14일 · 결과물 3개</div>
+          <div style="font-size:13px; color:#6E635B;">프리뷰 펼치기</div>
+        </div>
+        <div style="font-size:13px; color:#8A7F76;">▾</div>
+      </div>
+
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:8px;">
+        <div style="max-width:80%; align-self:flex-start; background:#F7F3EE; border-radius:12px 12px 12px 4px; padding:8px 11px; font-size:13px; line-height:1.55;">이 영상 18분이네요. 무엇을 해드릴까요?</div>
+        <div style="max-width:80%; align-self:flex-end; background:#F1EAE2; border-radius:12px 12px 4px 12px; padding:8px 11px; font-size:13px; line-height:1.55;">본운동에서 숏폼 3개 뽑아줘</div>
+        <div style="max-width:80%; align-self:flex-start; background:#F7F3EE; border-radius:12px 12px 12px 4px; padding:8px 11px; font-size:13px; line-height:1.55;">햄스트링 본운동 구간에서 3개 만들었어요.</div>
+
+        <div style="align-self:flex-start; width:100%; border:1px solid #E8E0D8; border-radius:12px; overflow:hidden; display:flex; flex-direction:column;">
+          <sc-for list="{{ clips }}" as="c" hint-placeholder-count="3">
+            <div style="display:flex; gap:10px; padding:9px 10px; align-items:center; border-top:1px solid {{ c.sep }};">
+              <div style="position:relative; width:42px; flex:none; aspect-ratio:9/16; border-radius:5px; overflow:hidden; background:#DCD4CA;">
+                <div style="position:absolute; left:0; right:0; bottom:0; height:32%; background:#CEC5BA;"></div>
+                <div style="position:absolute; left:50%; bottom:14%; transform:translateX(-50%); width:44%; height:32%; border-radius:4px; background:#C2B9AE;"></div>
+              </div>
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px;">
+                <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.title }}</div>
+                <div style="font-size:11px; color:#8A7F76;">{{ c.meta }}</div>
+                <div style="display:flex; gap:10px; font-size:12px; color:#6E635B;">
+                  <div>다운로드</div><div>수정 요청</div><div>자세히</div>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="align-self:flex-start; width:100%; box-sizing:border-box; border:1px solid #E8E0D8; border-radius:12px; padding:11px 12px; display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <div style="font-size:13px; font-weight:500;">자막 만드는 중</div>
+            <div style="font-size:11px; color:#8A7F76;">약 2분</div>
+          </div>
+          <div style="height:4px; border-radius:999px; background:#EFE7DE; position:relative;">
+            <div style="position:absolute; left:0; top:0; bottom:0; width:45%; border-radius:999px; background:#C96A4B;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none; border-top:1px solid #E8E0D8; padding:10px 12px 12px; display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; gap:6px; overflow-x:auto;">
+          <div style="font-size:12px; padding:6px 11px; border-radius:999px; border:1px solid #E8E0D8; white-space:nowrap;">숏폼 뽑아줘</div>
+          <div style="font-size:12px; padding:6px 11px; border-radius:999px; border:1px solid #E8E0D8; white-space:nowrap;">자막 넣어줘</div>
+          <div style="font-size:12px; padding:6px 11px; border-radius:999px; border:1px solid #E8E0D8; white-space:nowrap;">쉬는 구간 잘라줘</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="flex:1; height:44px; border-radius:999px; background:#F7F3EE; display:flex; align-items:center; padding:0 16px; font-size:14px; color:#8A7F76;">말로 요청하세요</div>
+          <div style="width:44px; height:44px; flex:none; border-radius:999px; background:#C96A4B; color:#FFFFFF; display:flex; align-items:center; justify-content:center;">
+            <svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:8px;">
+    <div style="font-size:12px; color:#8A7F76;">결과물 자세히 · 전체 화면</div>
+    <div style="width:375px; height:812px; background:#FFFFFF; border:1px solid #E8E0D8; border-radius:12px; overflow:hidden; display:flex; flex-direction:column;">
+      <div style="height:48px; flex:none; display:flex; align-items:center; gap:10px; padding:0 14px; border-bottom:1px solid #E8E0D8;">
+        <div style="font-size:13px; color:#6E635B;">← 뒤로</div>
+        <div style="flex:1; min-width:0; font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">햄스트링 숏폼 1</div>
+        <div style="font-size:12px; color:#8A7F76;">0:48</div>
+      </div>
+
+      <div style="flex:none; padding:12px 14px 10px; display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; justify-content:center;">
+          <div style="position:relative; width:186px; aspect-ratio:9/16; border-radius:8px; overflow:hidden; background:#DCD4CA;">
+            <div style="position:absolute; left:0; right:0; bottom:0; height:30%; background:#CEC5BA;"></div>
+            <div style="position:absolute; left:50%; bottom:14%; transform:translateX(-50%); width:46%; height:34%; border-radius:6px; background:#C2B9AE;"></div>
+            <div style="position:absolute; left:10px; right:10px; bottom:14%; display:flex; justify-content:center;">
+              <div style="font-size:12px; font-weight:600; color:#2B2622; background:#E8C33F; padding:2px 5px; border-radius:4px; text-align:center; line-height:1.4;">허리를 굽히지 말고 골반부터 접으세요</div>
+            </div>
+          </div>
+        </div>
+        <div style="height:4px; border-radius:999px; background:#EFE7DE; position:relative;">
+          <div style="position:absolute; left:0; top:0; bottom:0; width:46%; border-radius:999px; background:#C96A4B;"></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:32px; height:32px; flex:none; border-radius:999px; border:1px solid #E8E0D8; display:flex; align-items:center; justify-content:center;">
+            <svg width="11" height="11" sc-camel-view-box="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+          </div>
+          <div style="font-size:12px; color:#8A7F76;">0:19 / 0:48</div>
+        </div>
+      </div>
+
+      <div style="flex:1; min-height:0; overflow-y:auto; border-top:1px solid #E8E0D8;">
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+          <div style="display:flex; gap:10px; align-items:baseline; padding:11px 14px; border-bottom:1px solid #F1EAE2; background:{{ r.bg }};">
+            <div style="font-size:11px; color:#8A7F76; flex:none; width:30px;">{{ r.at }}</div>
+            <div style="flex:1; min-width:0; font-size:13px; line-height:1.5; text-wrap:pretty; color:{{ r.fg }}; text-decoration:{{ r.deco }};">{{ r.text }}</div>
+            <sc-if value="{{ r.showCutMeta }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:11px; color:#8A7F76; flex:none;">{{ r.cutMeta }}</div>
+            </sc-if>
+            <sc-if value="{{ r.showAction }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12px; font-weight:500; color:#C96A4B; flex:none;">{{ r.action }}</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex:none; border-top:1px solid #E8E0D8; padding:10px 14px 12px; display:flex; gap:8px;">
+        <div style="flex:1; height:44px; border-radius:8px; background:#C96A4B; color:#FFFFFF; font-size:14px; font-weight:600; display:flex; align-items:center; justify-content:center;">다운로드</div>
+        <div style="flex:1; height:44px; border-radius:8px; border:1px solid #E8E0D8; font-size:14px; display:flex; align-items:center; justify-content:center;">수정 요청</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{}">
+const VIDEOS = [
+  ["햄스트링 패시브 스트레칭 풀버전", "9월 14일", "18:24", "자막 준비됨"],
+  ["어깨 가동성 루틴 3분", "9월 14일", "3:12", "숏폼 3개"],
+  ["거북목 교정 2편 재촬영", "9월 13일", "12:47", "분석 중"],
+  ["골반 전방경사 셀프체크", "9월 12일", "15:03", "자막 준비됨"],
+  ["종아리 근막이완 도구 없이", "9월 12일", "7:38", ""],
+  ["라운드숄더 벽 스트레칭", "9월 11일", "2:41", "숏폼 2개"],
+  ["무릎 통증 전 준비운동", "9월 11일", "11:19", "자막 준비됨"],
+  ["허리 디스크 회복기 1주차", "9월 10일", "20:56", ""],
+  ["고관절 외회전 가동 루틴", "9월 10일", "6:04", "숏폼 4개"],
+  ["발목 염좌 후 밸런스 훈련", "9월 9일", "9:33", ""],
+  ["의자에서 하는 목 이완 1분", "9월 9일", "1:12", "숏폼 1개"],
+  ["흉추 회전 매트 루틴", "9월 8일", "13:48", "분석 중"]
+];
+
+const ROWS = [
+  { at: "0:09", text: "매트에 앉아서 한쪽 무릎을 세웁니다" },
+  { at: "0:14", text: "발끝을 몸쪽으로 당기는 게 중요해요" },
+  { at: "0:17", text: "(자세 잡는 동안 조용함)", cut: 2 },
+  { at: "0:19", text: "허리를 굽히지 말고 골반부터 접으세요", sel: true },
+  { at: "0:24", text: "여기서 숨을 내쉬면서 10초 버팁니다" },
+  { at: "0:29", text: "아 이거 다시 말할게요", cut: 4 },
+  { at: "0:31", text: "통증이 아니라 당기는 느낌까지만" },
+  { at: "0:36", text: "반대쪽도 똑같이 10초씩 세 번" }
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      videos: VIDEOS.map(([title, date, duration, status]) => ({
+        title, date, duration, status, hasStatus: !!status
+      })),
+      clips: [
+        { title: "숏폼 1 · 한쪽 다리 편", meta: "0:48 · 9:16", sep: "transparent" },
+        { title: "숏폼 2 · 수건 활용", meta: "1:12 · 9:16", sep: "#F1EAE2" },
+        { title: "숏폼 3 · 흔한 실수", meta: "0:57 · 9:16", sep: "#F1EAE2" }
+      ],
+      rows: ROWS.map(r => ({
+        at: r.at,
+        text: r.text,
+        fg: r.cut ? "#A79C93" : "#2B2622",
+        deco: r.cut ? "line-through" : "none",
+        bg: r.sel ? "#F5E7DF" : "transparent",
+        showCutMeta: !!r.cut,
+        cutMeta: r.cut + "초 잘림",
+        showAction: !!r.sel,
+        action: "고쳐줘"
+      }))
+    };
+  }
+}
+
+</script>
+
+
+</body></html>
