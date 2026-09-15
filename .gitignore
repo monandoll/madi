@@ -1,0 +1,16 @@
+node_modules/
+dist/
+release/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# 엔진 런타임 데이터 (개발 중 로컬)
+.madi/
+apps/engine/resources/web/
+
+# 테스트 산출물
+fixtures/out/
+coverage/
