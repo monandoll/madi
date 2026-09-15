@@ -1,0 +1,29 @@
+{
+  "name": "madi",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "운동·재활 크리에이터를 위한 AI 영상 편집 도구",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @madi/engine --filter @madi/web dev",
+    "dev:web": "pnpm --filter @madi/web dev",
+    "dev:engine": "pnpm --filter @madi/engine dev",
+    "build": "pnpm --filter @madi/web build && pnpm --filter @madi/engine build",
+    "test": "pnpm -r --workspace-concurrency=1 test",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "pnpm --filter @madi/engine db:migrate",
+    "db:studio": "pnpm --filter @madi/engine db:studio",
+    "e2e": "pnpm e2e:engine && pnpm e2e:web",
+    "e2e:engine": "pnpm --filter @madi/engine exec vitest run test/e2e.engine.test.ts",
+    "e2e:web": "playwright test",
+    "e2e:web:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "typescript": "^5.9.3"
+  }
+}

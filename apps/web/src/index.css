@@ -1,0 +1,71 @@
+@import 'tailwindcss';
+
+/* CLAUDE.md 디자인 토큰. 값은 design/Mobile.dc.html 과 같다. */
+@theme {
+  --color-bg: #f7f3ee;
+  --color-surface: #ffffff;
+  --color-line: #e8e0d8;
+  --color-line-soft: #f1eae2;
+  --color-text: #2b2622;
+  --color-text-2: #8a7f76;
+  --color-text-3: #6e635b;
+  --color-accent: #c96a4b;
+  --color-accent-hover: #a9543a;
+  --color-accent-soft: #f5e7df;
+  --color-ok: #7a9e7e;
+  --color-busy: #d9a441;
+  --color-error: #b85c5c;
+  --color-subtitle: #e8c33f;
+  --color-thumb: #dcd4ca;
+  --color-thumb-2: #cec5ba;
+  --color-thumb-3: #c2b9ae;
+  --color-track: #efe7de;
+
+  --font-sans: 'Pretendard Variable', Pretendard, system-ui, -apple-system, sans-serif;
+
+  --text-11: 11px;
+  --text-12: 12px;
+  --text-13: 13px;
+  --text-14: 14px;
+  --text-15: 15px;
+  --text-20: 20px;
+
+  --radius-thumb: 8px;
+  --radius-panel: 12px;
+  --radius-pill: 999px;
+
+  --shadow-*: initial;
+}
+
+@font-face {
+  font-family: 'Pretendard Variable';
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/PretendardVariable.woff2') format('woff2-variations');
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--color-accent-hover);
+}
+::selection {
+  background: #eadfd4;
+}
