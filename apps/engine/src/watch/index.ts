@@ -28,10 +28,14 @@ export class FolderWatcher {
 
   async setFolders(folders: string[]): Promise<void> {
     const next = folders.filter((f) => fs.existsSync(f)).map((f) => path.resolve(f));
+    this.deps.log.debug({ next, prev: this.folders, hasWatcher: !!this.watcher }, 'setFolders');
     if (sameList(next, this.folders) && this.watcher) return;
     await this.stop();
     this.folders = next;
-    if (next.length === 0) return;
+    if (next.length === 0) {
+      this.reconcile();
+      return;
+    }
 
     this.watcher = chokidar.watch(next, {
       ignoreInitial: false,
@@ -39,12 +43,16 @@ export class FolderWatcher {
       ignored: (p, stats) => (stats?.isFile() ?? false) && !isVideoFile(path.basename(p)),
       awaitWriteFinish: { stabilityThreshold: this.deps.stabilityMs ?? 2000, pollInterval: 200 },
     });
-    this.watcher.on('add', (p, stats) => this.onAdd(p, stats));
-    this.watcher.on('change', (p, stats) => this.onAdd(p, stats));
-    this.watcher.on('unlink', (p) => this.onUnlink(p));
-    this.watcher.on('error', (err) => this.deps.log.error({ err }, 'watcher error'));
+    // 닫힌 watcher 의 늦은 이벤트(awaitWriteFinish 타이머 등)는 버린다.
+    const w = this.watcher;
+    const live = () => this.watcher === w;
+    w.on('add', (p, stats) => live() && this.onAdd(p, stats));
+    w.on('change', (p, stats) => live() && this.onAdd(p, stats));
+    w.on('unlink', (p) => live() && this.onUnlink(p));
+    w.on('error', (err) => this.deps.log.error({ err }, 'watcher error'));
     await new Promise<void>((resolve) => this.watcher!.once('ready', () => resolve()));
-    this.reconcileMissing();
+    this.deps.log.debug('watcher ready');
+    this.reconcile();
     this.deps.log.info({ folders: next }, 'watching');
   }
 
@@ -56,6 +64,8 @@ export class FolderWatcher {
   /** 테스트/재기동용: 즉시 한 파일을 등록 절차에 태운다. */
   onAdd(p: string, stats?: fs.Stats): void {
     if (!isVideoFile(path.basename(p)) || path.basename(p).startsWith('.')) return;
+    if (!this.isWatched(p)) return;
+    this.deps.log.debug({ p }, 'onAdd');
     const st = stats ?? safeStat(p);
     if (!st || st.size === 0) return;
     const { video, created } = this.deps.videos.register({
@@ -82,12 +92,31 @@ export class FolderWatcher {
     }
   }
 
-  /** DB엔 있는데 디스크에 없는 파일 → missing. */
-  private reconcileMissing(): void {
+  /**
+   * DB엔 있는데 디스크에 없거나, 지금 감시 폴더 밖에 있는 영상 → missing (갤러리에서 빠짐).
+   * 폴더를 다시 넣으면 초기 스캔이 다시 등록하고, 프록시·썸네일이 남아 있으면 그대로 ready.
+   */
+  private reconcile(): void {
+    let n = 0;
     for (const v of this.deps.videos.list()) {
-      if (v.status !== 'missing' && !fs.existsSync(v.path)) this.deps.videos.markMissing(v.id);
+      if (v.status === 'missing') continue;
+      if (!fs.existsSync(v.path) || !this.isWatched(v.path)) {
+        this.deps.videos.markMissing(v.id);
+        n++;
+      }
     }
+    this.deps.log.debug({ folders: this.folders, marked: n }, 'reconcile');
   }
+
+  private isWatched(p: string): boolean {
+    const target = normalize(p);
+    return this.folders.some((f) => target.startsWith(normalize(f) + path.sep));
+  }
+}
+
+function normalize(p: string): string {
+  const abs = path.resolve(p);
+  return process.platform === 'win32' ? abs.toLowerCase() : abs;
 }
 
 function safeStat(p: string): fs.Stats | null {

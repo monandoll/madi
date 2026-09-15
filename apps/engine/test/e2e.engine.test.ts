@@ -34,6 +34,7 @@ beforeAll(async () => {
 afterAll(async () => {
   ws?.close();
   await engine?.stop();
+  if (process.env['MADI_E2E_KEEP_LOG']) fs.copyFileSync(path.join(home, 'logs', 'engine.log'), process.env['MADI_E2E_KEEP_LOG']);
   fs.rmSync(home, { recursive: true, force: true });
 });
 
@@ -113,13 +114,14 @@ describe('engine e2e', () => {
     expect(wsEvents.some((e) => e.type === 'job.updated' && e.job.type === 'proxy' && e.job.status === 'done')).toBe(true);
   });
 
-  it('파일이 사라지면 missing, 다시 오면 ready 로 돌아온다', async () => {
+  it('파일이 사라지면 갤러리에서 빠지고, 다시 오면 ready 로 돌아온다', async () => {
     const target = path.join(watchDir, '거북목 교정.mp4');
     fs.rmSync(target);
     await waitFor(async () => {
       const { videos } = VideosResponse.parse(await api('/api/videos'));
-      return videos.find((v) => v.title === '거북목 교정')?.status === 'missing';
+      return !videos.some((v) => v.title === '거북목 교정');
     });
+    expect(engine.videos.list().find((v) => v.title === '거북목 교정')?.status).toBe('missing');
     fs.copyFileSync(SAMPLE_SILENT, target);
     await waitFor(async () => {
       const { videos } = VideosResponse.parse(await api('/api/videos'));
@@ -127,6 +129,22 @@ describe('engine e2e', () => {
     }, 60_000);
     const { videos } = VideosResponse.parse(await api('/api/videos'));
     expect(videos.filter((v) => v.title === '거북목 교정')).toHaveLength(1);
+  });
+
+  it('감시 폴더를 바꾸면 이전 폴더 영상은 갤러리에서 빠지고, 되돌리면 다시 만들지 않고 돌아온다', async () => {
+    const other = path.join(home, 'other');
+    fs.mkdirSync(other);
+    const jobsBefore = engine.queue.list().length;
+    await api('/api/settings', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ watchFolders: [other] }) });
+    await waitFor(async () => VideosResponse.parse(await api('/api/videos')).videos.length === 0);
+
+    await api('/api/settings', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ watchFolders: [watchDir] }) });
+    await waitFor(async () => {
+      const { videos } = VideosResponse.parse(await api('/api/videos'));
+      return videos.length === 2 && videos.every((v) => v.status === 'ready');
+    });
+    await engine.queue.idle();
+    expect(engine.queue.list().length).toBe(jobsBefore);
   });
 
   it('영상이 아닌 파일은 무시하고, 깨진 영상은 failed 로 표시한다', async () => {
