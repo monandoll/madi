@@ -10,6 +10,7 @@ release/
 # 엔진 런타임 데이터 (개발 중 로컬)
 .madi/
 apps/engine/resources/web/
+apps/engine/resources/drizzle/
 
 # 테스트 산출물
 fixtures/out/
