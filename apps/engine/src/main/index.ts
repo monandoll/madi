@@ -1,0 +1,66 @@
+/**
+ * Electron 진입. 창 없음, 트레이만.
+ * 엔진을 띄우고 브라우저로 열 수 있는 메뉴를 준다.
+ */
+import path from 'node:path';
+import { app, dialog, Menu, nativeImage, shell, Tray } from 'electron';
+import { ENGINE_PORT } from '@madi/shared';
+import { type Engine, startEngine } from '../engine.js';
+
+let tray: Tray | null = null;
+let engine: Engine | null = null;
+
+const single = app.requestSingleInstanceLock();
+if (!single) app.quit();
+
+app.on('window-all-closed', () => {
+  /* 창이 없으니 종료하지 않는다 */
+});
+
+function buildMenu(): Menu {
+  const s = engine?.settings.get();
+  const folders = s?.watchFolders ?? [];
+  return Menu.buildFromTemplate([
+    { label: '마디 열기', click: () => void shell.openExternal(engine?.url ?? `http://127.0.0.1:${ENGINE_PORT}`) },
+    { type: 'separator' },
+    {
+      label: folders.length ? `영상 폴더: ${folders.map((f) => path.basename(f)).join(', ')}` : '영상 폴더 정하기…',
+      click: () => void pickFolder(),
+    },
+    { type: 'separator' },
+    { label: '종료', role: 'quit' },
+  ]);
+}
+
+async function pickFolder(): Promise<void> {
+  if (!engine) return;
+  const res = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] });
+  if (res.canceled || !res.filePaths[0]) return;
+  engine.settings.patch({ watchFolders: [res.filePaths[0]] });
+  await engine.watcher.setFolders([res.filePaths[0]]);
+  tray?.setContextMenu(buildMenu());
+}
+
+app.whenReady().then(async () => {
+  if (process.platform === 'darwin') app.dock?.hide();
+  app.setLoginItemSettings({ openAtLogin: app.isPackaged });
+
+  process.env['MADI_ROOT'] = app.isPackaged ? process.resourcesPath : process.env['MADI_ROOT'];
+  engine = await startEngine();
+
+  const icon = nativeImage.createFromPath(path.join(process.resourcesPath, 'tray.png'));
+  tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
+  tray.setToolTip('마디');
+  tray.setContextMenu(buildMenu());
+  tray.on('click', () => tray?.popUpContextMenu());
+
+  if (app.isPackaged) {
+    const { autoUpdater } = await import('electron-updater');
+    autoUpdater.logger = null;
+    void autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  }
+});
+
+app.on('before-quit', () => {
+  void engine?.stop();
+});
