@@ -32,6 +32,12 @@ jobs:
         run: |
           if gh release view "$TAG" --json isDraft > /dev/null 2>&1; then
             echo "release $TAG exists"
+            # GitHub 웹에서 "Publish release" 로 만든 릴리스는 이미 공개 상태 → electron-builder(releaseType: draft) 가
+            # "existing type not compatible" 로 업로드를 건너뛴다. 빌드 동안만 draft 로 돌려 두고 publish 잡이 다시 푼다.
+            if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = "false" ]; then
+              gh release edit "$TAG" --draft
+              echo "release $TAG → draft (빌드 동안)"
+            fi
           else
             gh release create "$TAG" --draft --verify-tag --title "마디 $TAG" \
               --notes "설치: https://monandoll.github.io/madi/ (PC 에서 열고 설치 버튼)"
@@ -51,12 +57,15 @@ jobs:
           - os: windows-latest
             label: windows x64
             platform: win32-x64
+            arch: x64
           - os: macos-14
             label: macOS arm64
             platform: darwin-arm64
+            arch: arm64
           - os: macos-15-intel
             label: macOS x64
             platform: darwin-x64
+            arch: x64
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -89,15 +98,17 @@ jobs:
       - name: Build web + engine
         run: pnpm build
 
+      # 이 러너의 아키텍처만. 설정의 arch 목록을 그대로 두면 러너마다 두 아키텍처를 다 만들어
+      # 사이드카 없는 빌드가 생기고, pkg 임시 파일(dev.madi.engine.pkg)을 서로 지워 ENOENT 로 죽는다.
       - name: Package (upload to draft Release on tag)
         if: startsWith(github.ref, 'refs/tags/v')
-        run: pnpm --filter @madi/engine package:publish
+        run: pnpm --filter @madi/engine exec electron-builder --publish always --${{ matrix.arch }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Package (artifact only)
         if: "!startsWith(github.ref, 'refs/tags/v')"
-        run: pnpm --filter @madi/engine package
+        run: pnpm --filter @madi/engine exec electron-builder --publish never --${{ matrix.arch }}
 
       - uses: actions/upload-artifact@v4
         with:
