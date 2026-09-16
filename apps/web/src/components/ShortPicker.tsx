@@ -5,6 +5,7 @@ import { CheckIcon } from './Icons.js';
 
 interface Props {
   proxyUrl: string | null;
+  posterUrl: string | null;
   durationSec: number;
   hasAudio: boolean;
   onCancel(): void;
@@ -15,7 +16,7 @@ interface Props {
  * 수동 숏폼 구간 고르기. 프리뷰 + 시작/끝 슬라이더 두 개.
  * 타임라인 편집기는 아니다 — 구간 하나만.
  */
-export function ShortPicker({ proxyUrl, durationSec, hasAudio, onCancel, onMake }: Props) {
+export function ShortPicker({ proxyUrl, posterUrl, durationSec, hasAudio, onCancel, onMake }: Props) {
   const total = Math.max(1, durationSec);
   const [start, setStart] = useState(0);
   const [end, setEnd] = useState(Math.min(total, 30));
@@ -32,7 +33,7 @@ export function ShortPicker({ proxyUrl, durationSec, hasAudio, onCancel, onMake 
     <div className="flex flex-col gap-3 rounded-panel border border-line bg-surface p-3.5" data-testid="short-picker">
       <div className="text-14 font-semibold">{copy.detail.shortPicker.title}</div>
       {proxyUrl && (
-        <video ref={video} src={proxyUrl} className="w-full rounded-thumb bg-thumb" style={{ aspectRatio: '16/9' }} muted playsInline preload="metadata" />
+        <video ref={video} src={proxyUrl} poster={posterUrl ?? undefined} className="w-full rounded-thumb bg-thumb" style={{ aspectRatio: '16/9' }} muted playsInline preload="metadata" />
       )}
       <Slider label={copy.detail.shortPicker.start} value={start} max={total} onChange={(v) => setStart(Math.min(v, end - 1))} testId="short-start" />
       <Slider

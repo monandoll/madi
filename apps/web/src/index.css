@@ -59,12 +59,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-a {
-  color: var(--color-accent);
-  text-decoration: none;
-}
-a:hover {
-  color: var(--color-accent-hover);
+/* base 레이어에 둬야 유틸리티(text-white 등)가 이긴다 */
+@layer base {
+  a {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--color-accent-hover);
+  }
 }
 ::selection {
   background: #eadfd4;

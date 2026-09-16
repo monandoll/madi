@@ -57,7 +57,16 @@ export function OutputDetail({ id }: { id: string }) {
       <div className="mx-auto flex w-full max-w-[560px] flex-none flex-col gap-2.5 px-3.5 pt-3 pb-2.5">
         <div className="flex justify-center">
           <div className="relative overflow-hidden rounded-thumb bg-thumb" style={{ width: vertical ? 186 : '100%', aspectRatio: vertical ? '9/16' : '16/9' }}>
-            <video ref={videoRef} src={output.url} playsInline className="absolute inset-0 h-full w-full object-cover" data-testid="output-video" onClick={toggle} />
+            <video
+              ref={videoRef}
+              src={output.url}
+              poster={output.thumbnailUrl ?? undefined}
+              playsInline
+              preload="metadata"
+              className="absolute inset-0 h-full w-full object-cover"
+              data-testid="output-video"
+              onClick={toggle}
+            />
             {current && edit.subtitles && (
               <div className="pointer-events-none absolute inset-x-2.5 flex justify-center" style={{ bottom: '14%' }}>
                 <span className="rounded-[4px] bg-subtitle px-[5px] py-0.5 text-center text-12 leading-[1.4] font-semibold text-text">{current.text}</span>

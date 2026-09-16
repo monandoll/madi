@@ -65,7 +65,7 @@ export function VideoDetail({ id }: { id: string }) {
         </button>
         {open && video.proxyUrl && (
           <div className="px-3.5 pb-3">
-            <video src={video.proxyUrl} controls playsInline className="w-full rounded-thumb bg-thumb" style={{ aspectRatio: '16/9' }} data-testid="preview-video" />
+            <video src={video.proxyUrl} poster={video.thumbnailUrl ?? undefined} controls playsInline className="w-full rounded-thumb bg-thumb" style={{ aspectRatio: '16/9' }} data-testid="preview-video" />
           </div>
         )}
       </div>
@@ -80,6 +80,7 @@ export function VideoDetail({ id }: { id: string }) {
         {picking && (
           <ShortPicker
             proxyUrl={video.proxyUrl}
+            posterUrl={video.thumbnailUrl}
             durationSec={video.durationSec ?? 0}
             hasAudio={hasAudio}
             onCancel={() => setPicking(false)}
