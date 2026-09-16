@@ -53,6 +53,10 @@ export class AgentRunner {
 
   constructor(private readonly d: RunnerDeps) {}
 
+  get style(): StyleProfile {
+    return this.d.style;
+  }
+
   isBusy(videoId: string): boolean {
     return this.runs.has(videoId);
   }

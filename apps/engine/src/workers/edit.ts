@@ -9,6 +9,7 @@ import type { Library } from '../library.js';
 import type { Logger } from '../log.js';
 import type { JobQueue } from '../queue/index.js';
 import type { VideoStore } from '../videos.js';
+import type { StyleProfile } from '../agent/style.js';
 import type { Ffmpeg } from './ffmpeg.js';
 import { run } from './spawn.js';
 import type { Whisper } from './whisper.js';
@@ -22,6 +23,8 @@ export interface EditWorkerDeps {
   ffmpeg: Ffmpeg;
   ffmpegBin: string;
   whisper: () => Promise<Whisper>;
+  /** 무음 기준(초)은 완성본에서 배운 값을 따른다 */
+  style: StyleProfile;
   events: EventLog;
   log: Logger;
 }
@@ -82,7 +85,7 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
     const video = videos.mustGet(job.videoId!);
     try {
       if (video.hasAudio === false) throw new Error('no audio');
-      const { stderr } = await run(d.ffmpegBin, silenceDetectArgs(video.path), { signal });
+      const { stderr } = await run(d.ffmpegBin, silenceDetectArgs(video.path, { minSec: d.style.params().silenceMinSec }), { signal });
       const silences = parseSilences(stderr, video.durationSec ?? 0);
       const cuts = silencesToCuts(silences, video.durationSec ?? 0);
       const payload = job.payload as { type: 'silence'; videoId: string; editId?: string };

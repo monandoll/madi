@@ -25,6 +25,8 @@ import { AgentRunner } from './agent/runner.js';
 import { StyleProfile } from './agent/style.js';
 import { AgentTools } from './agent/tools.js';
 import { writeMcpConfig } from './agent/mcp-config.js';
+import { ReferenceStore } from './style/references.js';
+import { StyleService } from './style/service.js';
 
 const require = createRequire(import.meta.url);
 const VERSION: string = (require('../package.json') as { version: string }).version;
@@ -52,6 +54,8 @@ export interface Engine {
   watcher: FolderWatcher;
   agent: AgentRunner;
   style: StyleProfile;
+  styleService: StyleService;
+  refs: ReferenceStore;
   url: string;
   /** Electron 이 시스템 폴더 선택창을 붙인다. */
   setFolderPicker(fn: (() => Promise<string | null>) | undefined): void;
@@ -77,25 +81,19 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   const ffmpegBin = resolveSidecar('ffmpeg', cfg.binDir);
   const whisperBin = resolveSidecar('whisper', cfg.binDir);
   const model = resolveWhisperModel(cfg.modelsDir);
-  registerEditWorkers({
-    cfg,
-    queue,
-    videos,
-    library,
-    ffmpeg,
-    ffmpegBin,
-    events,
-    log,
-    whisper: async () => {
-      await ensureWhisperModel(model, (r) => log.debug({ r }, 'model download'));
-      return new Whisper({ ffmpeg: ffmpegBin, whisper: whisperBin }, model.path);
-    },
-  });
-  const watcher = new FolderWatcher({ videos, queue, events, log });
-
-  const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
+  const whisper = async () => {
+    await ensureWhisperModel(model, (r) => log.debug({ r }, 'model download'));
+    return new Whisper({ ffmpeg: ffmpegBin, whisper: whisperBin }, model.path);
+  };
   const style = new StyleProfile(cfg.styleDir);
   style.ensure();
+  registerEditWorkers({ cfg, queue, videos, library, ffmpeg, ffmpegBin, events, log, whisper, style });
+  const watcher = new FolderWatcher({ videos, queue, events, log });
+  const refs = new ReferenceStore(db);
+  const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, whisper, events, log });
+  styleService.registerWorker();
+
+  const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
   const url = `http://127.0.0.1:${cfg.port}`;
   const agentTools = new AgentTools({ cfg, library, videos, queue, ffmpegBin, style, events, log });
   const agent = new AgentRunner({
@@ -120,10 +118,12 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     tunnel,
     agent,
     agentTools,
+    styleService,
     version: VERSION,
     onSettingsChanged: () => {
       void watcher.setFolders(settings.get().watchFolders);
       tunnel.apply(settings.get().tunnelToken);
+      styleService.refresh();
       const p = settings.get().ai.provider;
       if (p !== 'none') void detectCli(p, { fresh: true });
     },
@@ -139,6 +139,8 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   library.on('message.added', (message) => ws.broadcast({ type: 'message.added', message }));
   library.on('message.updated', (message) => ws.broadcast({ type: 'message.updated', message }));
   library.on('output.added', (output) => ws.broadcast({ type: 'output.added', output }));
+  refs.on('reference.updated', (reference) => ws.broadcast({ type: 'reference.updated', reference }));
+  styleService.on('style.updated', () => ws.broadcast({ type: 'style.updated' }));
 
   const server: ServerType = await new Promise((resolve, reject) => {
     const s = serve({ fetch: app.fetch, port: cfg.port, hostname: '127.0.0.1' }, () => resolve(s));
@@ -150,6 +152,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
 
   await watcher.setFolders(settings.get().watchFolders);
   tunnel.apply(settings.get().tunnelToken);
+  styleService.refresh();
   queue.tick();
   // AI 도구 설치 여부는 미리 봐 둔다 (--version 이 몇 초 걸릴 수 있다)
   if (settings.get().ai.provider !== 'none') void detectCli(settings.get().ai.provider as 'claude' | 'codex');
@@ -165,6 +168,8 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     watcher,
     agent,
     style,
+    styleService,
+    refs,
     url,
     setFolderPicker(fn) {
       deps.pickFolder = fn;
