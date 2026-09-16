@@ -4,7 +4,7 @@ import { type EngineConfig, loadConfig } from './config.js';
 import { openDb } from './db/index.js';
 import { EventLog } from './events.js';
 import { createLogger, type Logger } from './log.js';
-import { resolveSidecar } from './main/sidecar.js';
+import { ensureWhisperModel, resolveSidecar, resolveWhisperModel } from './main/sidecar.js';
 import { JobQueue } from './queue/index.js';
 import { createApp, mountWeb } from './server/app.js';
 import { attachWs } from './server/ws.js';
@@ -13,6 +13,9 @@ import { VideoStore } from './videos.js';
 import { FolderWatcher } from './watch/index.js';
 import { Ffmpeg } from './workers/ffmpeg.js';
 import { registerMediaWorkers } from './workers/index.js';
+import { registerEditWorkers } from './workers/edit.js';
+import { Whisper } from './workers/whisper.js';
+import { Library } from './library.js';
 
 const require = createRequire(import.meta.url);
 const VERSION: string = (require('../package.json') as { version: string }).version;
@@ -23,6 +26,7 @@ export interface Engine {
   settings: SettingsStore;
   videos: VideoStore;
   queue: JobQueue;
+  library: Library;
   watcher: FolderWatcher;
   url: string;
   /** Electron 이 시스템 폴더 선택창을 붙인다. */
@@ -40,11 +44,29 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   const events = new EventLog(db);
   const videos = new VideoStore(db);
   const queue = new JobQueue(db, log);
+  const library = new Library(db);
   const ffmpeg = new Ffmpeg({
     ffmpeg: resolveSidecar('ffmpeg', cfg.binDir),
     ffprobe: resolveSidecar('ffprobe', cfg.binDir),
   });
   registerMediaWorkers({ cfg, queue, videos, ffmpeg, events, log });
+  const ffmpegBin = resolveSidecar('ffmpeg', cfg.binDir);
+  const whisperBin = resolveSidecar('whisper', cfg.binDir);
+  const model = resolveWhisperModel(cfg.modelsDir);
+  registerEditWorkers({
+    cfg,
+    queue,
+    videos,
+    library,
+    ffmpeg,
+    ffmpegBin,
+    events,
+    log,
+    whisper: async () => {
+      await ensureWhisperModel(model, (r) => log.debug({ r }, 'model download'));
+      return new Whisper({ ffmpeg: ffmpegBin, whisper: whisperBin }, model.path);
+    },
+  });
   const watcher = new FolderWatcher({ videos, queue, events, log });
 
   const deps = {
@@ -52,6 +74,8 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     videos,
     queue,
     settings,
+    library,
+    events,
     version: VERSION,
     onSettingsChanged: () => void watcher.setFolders(settings.get().watchFolders),
     pickFolder: undefined as (() => Promise<string | null>) | undefined,
@@ -63,6 +87,9 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   videos.on('video.updated', (video) => ws.broadcast({ type: 'video.updated', video }));
   videos.on('video.removed', (videoId) => ws.broadcast({ type: 'video.removed', videoId }));
   queue.on('job.updated', (job) => ws.broadcast({ type: 'job.updated', job }));
+  library.on('message.added', (message) => ws.broadcast({ type: 'message.added', message }));
+  library.on('message.updated', (message) => ws.broadcast({ type: 'message.updated', message }));
+  library.on('output.added', (output) => ws.broadcast({ type: 'output.added', output }));
 
   const server: ServerType = await new Promise((resolve, reject) => {
     const s = serve({ fetch: app.fetch, port: cfg.port, hostname: '127.0.0.1' }, () => resolve(s));
@@ -82,6 +109,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     settings,
     videos,
     queue,
+    library,
     watcher,
     url,
     setFolderPicker(fn) {

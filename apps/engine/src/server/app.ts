@@ -3,22 +3,30 @@ import path from 'node:path';
 import { Hono } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
 import {
+  ActionRequest,
+  type ActionResponse,
   type FoldersResponse,
   type HealthResponse,
+  type Output,
+  type OutputCard,
+  type OutputDetailResponse,
+  type OutputsResponse,
   type PickFolderResponse,
+  type VideoDetailResponse,
   type Job,
   type JobsResponse,
   SettingsPatch,
   type SettingsResponse,
   type Video,
   type VideoCard,
-  type VideoResponse,
   type VideosResponse,
 } from '@madi/shared';
 import type { EngineConfig } from '../config.js';
 import type { JobQueue } from '../queue/index.js';
 import type { SettingsStore } from '../settings.js';
 import type { VideoStore } from '../videos.js';
+import type { Library } from '../library.js';
+import { ActionError, greetIfEmpty, runAction } from '../actions.js';
 import { describeFolder, suggestFolders } from '../folders.js';
 import { serveFile } from './media.js';
 
@@ -27,13 +35,15 @@ export interface AppDeps {
   videos: VideoStore;
   queue: JobQueue;
   settings: SettingsStore;
+  library: Library;
+  events: import('../events.js').EventLog;
   version: string;
   onSettingsChanged?: () => void;
   /** 시스템 폴더 선택창. Electron 이 붙여 준다. 없으면 브라우저만 뜬 상태. */
   pickFolder?: (() => Promise<string | null>) | undefined;
 }
 
-export function toCard(v: Video, deps: Pick<AppDeps, 'videos' | 'queue'>): VideoCard {
+export function toCard(v: Video, deps: Pick<AppDeps, 'videos' | 'queue' | 'library'>): VideoCard {
   const proxy = deps.videos.proxyOf(v.id);
   const thumb = deps.videos.thumbnailPath(v.id);
   const active = deps.queue.activeForVideo(v.id);
@@ -41,8 +51,18 @@ export function toCard(v: Video, deps: Pick<AppDeps, 'videos' | 'queue'>): Video
     ...v,
     thumbnailUrl: thumb && fs.existsSync(thumb) ? `/media/thumbs/${v.id}.jpg?v=${v.updatedAt}` : null,
     proxyUrl: proxy && fs.existsSync(proxy.path) ? `/media/proxies/${v.id}.mp4` : null,
-    outputCount: 0,
+    outputCount: deps.library.outputCount(v.id),
     activeJob: active ? { type: active.type, progress: active.progress } : null,
+  };
+}
+
+export function toOutputCard(o: Output, cfg: EngineConfig): OutputCard {
+  const thumb = path.join(cfg.outputsDir, `${o.id}.jpg`);
+  return {
+    ...o,
+    url: `/media/outputs/${o.id}.mp4`,
+    downloadUrl: `/media/outputs/${o.id}.mp4?download=1`,
+    thumbnailUrl: fs.existsSync(thumb) ? `/media/outputs/${o.id}.jpg` : null,
   };
 }
 
@@ -63,7 +83,48 @@ export function createApp(deps: AppDeps): Hono {
   app.get('/api/videos/:id', (c) => {
     const v = videos.get(c.req.param('id'));
     if (!v) return c.json({ error: { code: 'not_found', message: 'video not found' } }, 404);
-    const body: VideoResponse = { video: toCard(v, deps) };
+    if (v.status === 'ready') greetIfEmpty(deps.library, v);
+    const body: VideoDetailResponse = {
+      video: toCard(v, deps),
+      transcript: deps.library.transcriptOf(v.id),
+      outputs: deps.library.outputsOf(v.id).map((o) => toOutputCard(o, cfg)),
+      messages: deps.library.messagesOf(v.id),
+      jobs: queue.list(['queued', 'running']).filter((j) => j.videoId === v.id),
+    };
+    return c.json(body);
+  });
+
+  app.post('/api/videos/:id/actions', async (c) => {
+    const v = videos.get(c.req.param('id'));
+    if (!v) return c.json({ error: { code: 'not_found', message: 'video not found' } }, 404);
+    const parsed = ActionRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    try {
+      const body: ActionResponse = runAction({ queue, videos, library: deps.library, events: deps.events }, v, parsed.data);
+      return c.json(body);
+    } catch (err) {
+      if (err instanceof ActionError) return c.json({ error: { code: err.code, message: err.code } }, 409);
+      throw err;
+    }
+  });
+
+  app.get('/api/outputs', (c) => {
+    const body: OutputsResponse = { outputs: deps.library.allOutputs().map((o) => toOutputCard(o, cfg)) };
+    return c.json(body);
+  });
+
+  app.get('/api/outputs/:id', (c) => {
+    const o = deps.library.output(c.req.param('id'));
+    if (!o) return c.json({ error: { code: 'not_found', message: 'output not found' } }, 404);
+    const edit = deps.library.edit(o.editId);
+    const v = videos.get(o.videoId);
+    if (!edit || !v) return c.json({ error: { code: 'not_found', message: 'output not found' } }, 404);
+    const body: OutputDetailResponse = {
+      output: toOutputCard(o, cfg),
+      edit,
+      transcript: (edit.transcriptId && deps.library.transcript(edit.transcriptId)) || deps.library.transcriptOf(v.id),
+      video: toCard(v, deps),
+    };
     return c.json(body);
   });
 
@@ -104,6 +165,22 @@ export function createApp(deps: AppDeps): Hono {
     const id = safeId(c.req.param('file'), '.jpg');
     if (!id) return c.notFound();
     return serveFile(c, path.join(cfg.thumbsDir, `${id}.jpg`));
+  });
+
+  app.on(['GET', 'HEAD'], '/media/outputs/:file', (c) => {
+    const file = c.req.param('file');
+    const mp4 = safeId(file, '.mp4');
+    const jpg = safeId(file, '.jpg');
+    if (jpg) return serveFile(c, path.join(cfg.outputsDir, `${jpg}.jpg`));
+    if (!mp4) return c.notFound();
+    const o = deps.library.output(mp4);
+    if (!o) return c.notFound();
+    const res = serveFile(c, o.path);
+    if (c.req.query('download') === '1' && res.status === 200) {
+      const name = encodeURIComponent(`${o.title}.mp4`);
+      res.headers.set('Content-Disposition', `attachment; filename*=UTF-8''${name}`);
+    }
+    return res;
   });
 
   app.on(['GET', 'HEAD'], '/media/proxies/:file', (c) => {
