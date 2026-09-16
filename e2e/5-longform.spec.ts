@@ -1,6 +1,6 @@
 /**
  * 6단계 브라우저 e2e: 긴 영상 상세에 챕터·숏폼 버튼이 더 보이고, 챕터 나누기 → 챕터 카드 → "숏폼으로" → 결과물.
- * 긴 영상은 ffmpeg 로 만든다 (4장면 × 50초). AI 는 꺼 둔다.
+ * 긴 영상은 ffmpeg 로 만든다 (4장면 × 50초, 소리 없음). AI 는 꺼 둔다.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,17 +24,14 @@ test('긴 영상: 버튼 6개, 챕터 나누기 → 챕터 4개 카드 → 숏�
   fs.mkdirSync(VIDEOS, { recursive: true });
   const file = path.join(VIDEOS, '햄스트링 풀버전.mp4');
   if (!fs.existsSync(file)) {
+    // 소리 없는 영상: whisper 가 있는 환경(CI)에서 톤 오디오에 자막을 지어내 챕터가 흔들리지 않게. 소리 있는 경로는 엔진 e2e 가 본다.
     const scenes = 4;
     const sec = 50;
     const colors = ['red', 'green', 'blue', 'yellow'];
     const inputs: string[] = [];
-    const filter: string[] = [];
-    for (let i = 0; i < scenes; i++) {
-      inputs.push('-f', 'lavfi', '-i', `color=c=${colors[i]}:s=320x180:r=24:d=${sec}`, '-f', 'lavfi', '-i', `sine=frequency=${300 + i * 120}:sample_rate=44100:d=${sec}`);
-      filter.push(`[${i * 2 + 1}:a]volume='if(lt(t,1)+gt(t,${sec - 1}),0,1)':eval=frame[a${i}]`);
-    }
-    filter.push(`${Array.from({ length: scenes }, (_, i) => `[${i * 2}:v]`).join('')}concat=n=${scenes}:v=1:a=0[v]`, `${Array.from({ length: scenes }, (_, i) => `[a${i}]`).join('')}concat=n=${scenes}:v=0:a=1[a]`);
-    execFileSync(process.env['MADI_FFMPEG'] ?? ffmpegBin(), ['-hide_banner', '-y', ...inputs, '-filter_complex', filter.join(';'), '-map', '[v]', '-map', '[a]', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', file], { stdio: 'ignore', cwd: ROOT });
+    for (let i = 0; i < scenes; i++) inputs.push('-f', 'lavfi', '-i', `color=c=${colors[i]}:s=320x180:r=24:d=${sec}`);
+    const filter = `${Array.from({ length: scenes }, (_, i) => `[${i}:v]`).join('')}concat=n=${scenes}:v=1:a=0[v]`;
+    execFileSync(process.env['MADI_FFMPEG'] ?? ffmpegBin(), ['-hide_banner', '-y', ...inputs, '-filter_complex', filter, '-map', '[v]', '-an', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', file], { stdio: 'ignore', cwd: ROOT });
   }
   await page.request.patch('/api/settings', { data: { watchFolders: [VIDEOS], setupDone: true, ai: { provider: 'none' }, referenceFolders: [] } });
   await page.goto('/');
@@ -46,10 +43,10 @@ test('긴 영상: 버튼 6개, 챕터 나누기 → 챕터 4개 카드 → 숏�
   await expect(bar.getByRole('button')).toHaveCount(6);
   await bar.locator('[data-action="chapters"]').click();
   await expect(page.getByTestId('bubble-user').last()).toHaveText('챕터로 나눠줘');
-  await expect(page.getByTestId('progress-card')).toContainText('챕터 나누는 중');
+  await expect(page.getByTestId('progress-card')).toContainText('장면을 보고 챕터 나누는 중');
   const chapters = page.getByTestId('chapters-card');
   await expect(chapters).toBeVisible({ timeout: 180_000 });
-  // 장면 4개 → 챕터 4개. whisper 가 있는 환경(CI)에서 톤 오디오에 지어낸 자막은 말한 시간이 적어 무시된다.
+  // 장면 4개 → 챕터 4개
   await expect(chapters.getByTestId('chapter-row')).toHaveCount(4);
   await expect(chapters).toContainText('챕터 4개');
   await expect(page.getByTestId('bubble-assistant').last()).toContainText('챕터 4개로 나눴어요');
