@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  macOS 서명(hardened runtime)용 권한. 앱과 안의 모든 실행 파일(ffmpeg · whisper-cli · cloudflared · yt-dlp · better-sqlite3)에 같이 붙는다.
+  - allow-jit / allow-unsigned-executable-memory: Electron(V8) 이 필요.
+  - disable-library-validation: yt-dlp(PyInstaller) 가 실행 중 풀어놓는 서명 없는 라이브러리, better-sqlite3 네이티브 모듈.
+  - allow-dyld-environment-variables: Electron 권장.
+-->
+<dict>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+</dict>
+</plist>

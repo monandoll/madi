@@ -74,6 +74,8 @@ jobs:
     if: always() && (needs.prepare.result == 'success' || needs.prepare.result == 'skipped')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    env:
+      MAC_SIGNED: ${{ secrets.MAC_CERT_P12 != '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -126,11 +128,56 @@ jobs:
         run: pnpm build
 
       # 이 러너의 아키텍처만 (--arm64 만 주면 설정의 target 목록을 타서 두 아키텍처를 다 만든다 → target 도 CLI 로).
+      # 서명·공증은 secrets 가 있을 때만 (docs/packaging.md "서명"). 없으면 서명 없이 만든다 — 처음 열 때 경고가 뜬다.
+      #   macOS: MAC_CERT_P12(base64 .p12, Developer ID Application + Installer) · MAC_CERT_PASSWORD · APPLE_ID · APPLE_APP_SPECIFIC_PASSWORD · APPLE_TEAM_ID
+      #   Windows: WIN_CERT_PFX(base64 .pfx) · WIN_CERT_PASSWORD
+      # electron-builder 는 빈 CSC_LINK 도 값으로 보므로, 있는 것만 환경변수로 내보낸다.
+      - name: Signing env (only from secrets that exist)
+        shell: bash
+        env:
+          MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CERT_PFX: ${{ secrets.WIN_CERT_PFX }}
+          WIN_CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+        run: |
+          put() { { echo "$1<<__MADI_EOF__"; echo "$2"; echo "__MADI_EOF__"; } >> "$GITHUB_ENV"; }
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            if [ -n "$MAC_CERT_P12" ]; then
+              put CSC_LINK "$MAC_CERT_P12"; put CSC_KEY_PASSWORD "$MAC_CERT_PASSWORD"; echo "mac: signing on"
+            else
+              put CSC_IDENTITY_AUTO_DISCOVERY false; echo "mac: no certificate → unsigned build"
+            fi
+            if [ -n "$APPLE_ID" ]; then
+              put APPLE_ID "$APPLE_ID"; put APPLE_APP_SPECIFIC_PASSWORD "$APPLE_APP_SPECIFIC_PASSWORD"; put APPLE_TEAM_ID "$APPLE_TEAM_ID"; echo "mac: notarization on"
+            else
+              echo "mac: no Apple ID → not notarized"
+            fi
+          elif [ -n "$WIN_CERT_PFX" ]; then
+            put WIN_CSC_LINK "$WIN_CERT_PFX"; put WIN_CSC_KEY_PASSWORD "$WIN_CERT_PASSWORD"; echo "windows: signing on"
+          else
+            echo "windows: no certificate → unsigned build"
+          fi
+
       - name: Package (upload to draft Release on tag)
         if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
         run: pnpm --filter @madi/engine exec electron-builder ${{ matrix.targets }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 서명했으면 Gatekeeper 가 실제로 받아 주는지 본다 ("accepted source=Notarized Developer ID" 가 아니면 실패).
+      - name: Verify signature & notarization (macOS, when signed)
+        if: runner.os == 'macOS' && env.MAC_SIGNED == 'true' && (startsWith(github.ref, 'refs/tags/v') || inputs.tag != '')
+        run: |
+          set -e
+          for f in apps/engine/release/*.pkg; do
+            echo "== $f"
+            pkgutil --check-signature "$f"
+            spctl -a -vv -t install "$f" 2>&1 | tee /tmp/spctl.txt
+            grep -q "source=Notarized Developer ID" /tmp/spctl.txt
+          done
 
       - name: Package (artifact only)
         if: "!(startsWith(github.ref, 'refs/tags/v') || inputs.tag != '')"
