@@ -1,6 +1,6 @@
 /**
  * 2단계 브라우저 e2e: 영상 상세(미연결) → 버튼 → 진행 카드 → 결과물 카드 → 결과물 화면 → 다운로드.
- * gallery.spec 뒤에 돈다 (같은 엔진, 이미 설정·영상이 있음). 무음 구간 샘플을 하나 더 넣는다.
+ * 1-gallery.spec 뒤에 돈다 (같은 엔진). 무음 구간 샘플을 Downloads 에 넣고 설정을 직접 맞춘다.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,7 +19,7 @@ test.describe.configure({ mode: 'serial', retries: 0 });
 test('상세: 인사말, 프리뷰 펼치기, 세로로 바꾸기 → 결과물 카드', async ({ page }) => {
   fs.mkdirSync(VIDEOS, { recursive: true });
   fs.copyFileSync(path.join(FIXTURES, 'sample-gaps-8s.mp4'), path.join(VIDEOS, '어깨 가동성 루틴 3분.mp4'));
-  await page.request.patch('/api/settings', { data: { watchFolders: [VIDEOS], setupDone: true, workspaceName: '재활운동 연구소' } });
+  await page.request.patch('/api/settings', { data: { watchFolders: [VIDEOS], setupDone: true, workspaceName: '재활운동 연구소', ai: { provider: 'none' } } });
   await page.goto('/');
   const card = page.locator('[data-testid="video-card"]', { hasText: '어깨 가동성 루틴 3분' });
   await expect(card).toHaveAttribute('data-status', 'ready', { timeout: 60_000 });

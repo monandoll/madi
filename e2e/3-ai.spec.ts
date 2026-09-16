@@ -1,6 +1,6 @@
 /**
  * 4단계 브라우저 e2e: 설정에서 AI 도구 고르기 → 상세의 칩·입력창 → 채팅 → 스트리밍 답 → 도구가 만든 결과물 카드.
- * 다른 스펙과 순서에 기대지 않는다: 자기 폴더(ai-videos)에 영상을 넣고 시작하며, 끝나면 연결을 끊는다.
+ * 파일 이름 숫자 순으로 마지막에 돈다 (앞 스펙의 결과물 개수 검증을 건드리지 않게). 자기 폴더(ai-videos)에 영상을 넣고 시작하며, 끝나면 연결을 끊는다.
  * AI 는 fixtures/fake-claude.mjs (MADI_CLAUDE_BIN) — MCP 도구 호출은 진짜로 오간다.
  */
 import fs from 'node:fs';
@@ -52,11 +52,13 @@ test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지�
   await page.getByTestId('chat-send').click();
   await expect(page.getByTestId('bubble-user').last()).toHaveText('세로로 바꿔줘');
   await expect(page.getByTestId('chat-stop')).toBeVisible(); // 답하는 동안은 멈추기
-  await expect(page.getByTestId('bubble-assistant').last()).toContainText('세로로 만들게요', { timeout: 30_000 });
+  // 쓰는 중인 말풍선에 글자가 차오른다
+  await expect(page.getByTestId('bubble-streaming')).toContainText('세로로 만들게요', { timeout: 30_000 });
+  // 도구가 만든 진행 카드 → 결과물 카드 (답 말풍선 아래에 붙는다)
   await expect(page.getByTestId('output-row')).toHaveCount(before + 1, { timeout: 90_000 });
   await expect(page.getByTestId('output-row').last()).toContainText('AI 세로');
-  await expect(page.getByTestId('bubble-assistant').last()).toContainText('만들었어요');
-  await expect(page.getByTestId('chat-send')).toBeVisible();
+  await expect(page.getByTestId('bubble-assistant').filter({ hasText: '「AI 세로」 만들었어요' })).toHaveCount(2); // 답 + 카드 설명
+  await expect(page.getByTestId('chat-send')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('bubble-streaming')).toHaveCount(0);
 
   // 도구 호출 내부는 안 보인다

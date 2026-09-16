@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -40,6 +41,8 @@ export default defineConfig({
       MADI_PORT: String(PORT),
       MADI_QUIET: '1',
       MADI_SUGGEST_ROOT: suggestRoot,
+      // AI 연결 e2e: 진짜 claude 대신 fixtures/fake-claude.mjs (MCP 도구 호출은 진짜로 오간다)
+      MADI_CLAUDE_BIN: path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'fake-claude.mjs'),
     },
   },
 });
