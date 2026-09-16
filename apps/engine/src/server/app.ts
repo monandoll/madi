@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Hono } from 'hono';
+import type { HttpBindings } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
+import { RESPONSE_ALREADY_SENT } from '@hono/node-server/utils/response';
 import {
   ActionRequest,
   type ActionResponse,
@@ -59,6 +61,8 @@ export interface AppDeps {
   pickFolder?: (() => Promise<string | null>) | undefined;
   /** 폴더를 탐색기/Finder 로. Electron 은 shell.openPath, 없으면 OS 명령. */
   openFolder?: ((dir: string) => Promise<void>) | undefined;
+  /** 폰에서 올리기 (tus). node 의 req/res 를 그대로 넘긴다. */
+  uploads: import('@tus/server').Server;
 }
 
 export function toCard(v: Video, deps: Pick<AppDeps, 'videos' | 'queue' | 'library'>): VideoCard {
@@ -271,6 +275,15 @@ export function createApp(deps: AppDeps): Hono {
     const body: StyleResponse = deps.styleService.response();
     return c.json(body);
   });
+
+  // ---- 폰에서 올리기 (tus) — Hono 를 거치지 않고 node req/res 로 직접 ----
+  const tus = async (c: import('hono').Context) => {
+    const { incoming, outgoing } = c.env as unknown as HttpBindings;
+    await deps.uploads.handle(incoming, outgoing);
+    return RESPONSE_ALREADY_SENT;
+  };
+  app.all('/api/uploads', tus);
+  app.all('/api/uploads/*', tus);
 
   app.get('/api/folders/suggest', (c) => {
     const body: FoldersResponse = { folders: suggestFolders(settings.get().watchFolders) };
