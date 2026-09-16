@@ -1,78 +1,54 @@
 import { useQuery } from '@tanstack/react-query';
-import { Header } from '../components/Header.js';
-import { SetupCard } from '../components/SetupCard.js';
-import { Tabs } from '../components/Tabs.js';
+import { HeaderButton, TopBar } from '../components/TopBar.js';
 import { VideoCard } from '../components/VideoCard.js';
-import { OutputList } from '../components/ChatFeed.js';
 import { copy } from '../copy.js';
 import { api, queryKeys } from '../lib/api.js';
+import { go } from '../lib/route.js';
 import { useSettings } from '../lib/settings.js';
-import { useUi } from '../store.js';
+import { useIsPc } from '../store.js';
 
 /**
- * 첫 화면. design/Mobile.dc.html "갤러리 · 375".
- * 375 에서 2열(카드 폭 ≈169px). 더 넓으면 같은 카드 폭으로 열이 늘어난다.
+ * 첫 화면. design/v2 갤러리.
+ * 모바일: 제목 = 스튜디오 이름, 부제 "연결됨 · 영상 N개", 2열. PC: 헤더 "영상", 226px 이상 카드가 자동으로 늘어난다.
  */
 export function Gallery() {
-  const tab = useUi((s) => s.tab);
+  const pc = useIsPc();
   const health = useQuery({ queryKey: queryKeys.health, queryFn: api.health, refetchInterval: 15_000 });
   const settings = useSettings();
   const videos = useQuery({ queryKey: queryKeys.videos, queryFn: api.videos, refetchInterval: health.isError ? 3_000 : false });
-  const outputs = useQuery({ queryKey: queryKeys.outputs, queryFn: api.outputs, enabled: tab === 'outputs' });
-
   const ws = settings.settings;
-  const showSetup = settings.isSuccess && !ws.setupDone;
   const list = videos.data?.videos ?? [];
-  const inProgress = list.filter((v) => v.activeJob || v.status === 'preparing' || v.status === 'registered');
+  const engineOk = health.isSuccess;
 
   return (
-    <div className="flex h-full flex-col bg-bg">
-      <Header workspaceName={ws.workspaceName} aiConnected={health.data?.ai.connected ?? false} engineOk={health.isSuccess} />
-      <Tabs />
-      <main className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-5">
-        {tab === 'videos' && showSetup && (
-          <div className="mx-auto w-full max-w-[480px] pt-0.5 pb-3">
-            <SetupCard initialName={ws.workspaceName} initialFolders={ws.watchFolders} />
+    <div className="flex h-full min-h-0 flex-col bg-surface">
+      {pc ? (
+        <TopBar title={copy.tabs.videos} meta={copy.header.sectionMeta['videos']} actions={<HeaderButton onClick={() => go({ screen: 'settings' })}>{copy.header.galleryActions.openFolder}</HeaderButton>} />
+      ) : (
+        <TopBar title={ws.workspaceName} dot={engineOk} meta={`${engineOk ? copy.header.engineOk : copy.header.engineOff} · ${copy.header.videoCount(list.length)}`} />
+      )}
+      <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3.5 pt-3 pb-5 pc:px-6 pc:pt-5 pc:pb-10">
+        {videos.isPending ? (
+          <Empty>{copy.empty.loading}</Empty>
+        ) : videos.isError ? (
+          <Empty>{copy.empty.disconnected}</Empty>
+        ) : list.length === 0 ? (
+          <Empty>{ws.watchFolders.length === 0 ? copy.empty.noFolder : copy.empty.noVideos}</Empty>
+        ) : (
+          <div className="grid grid-cols-2 gap-x-2 gap-y-2.5 pc:grid-cols-[repeat(auto-fill,minmax(226px,1fr))] pc:gap-3.5">
+            {list.map((v) => (
+              <VideoCard key={v.id} video={v} />
+            ))}
           </div>
-        )}
-        {tab === 'videos' && (
-          <Grid>
-            {videos.isPending ? (
-              <Empty>{copy.empty.loading}</Empty>
-            ) : videos.isError ? (
-              <Empty>{copy.empty.disconnected}</Empty>
-            ) : list.length === 0 ? (
-              <Empty>{showSetup ? copy.setup.belowCard : ws.watchFolders.length === 0 ? copy.empty.noFolder : copy.empty.noVideos}</Empty>
-            ) : (
-              list.map((v) => <VideoCard key={v.id} video={v} />)
-            )}
-          </Grid>
-        )}
-        {tab === 'outputs' &&
-          (outputs.data && outputs.data.outputs.length > 0 ? (
-            <div className="mx-auto w-full max-w-[560px] pt-0.5">
-              <OutputList outputs={outputs.data.outputs} />
-            </div>
-          ) : (
-            <Empty>{copy.empty.noOutputs}</Empty>
-          ))}
-        {tab === 'inProgress' && (
-          <Grid>
-            {inProgress.length === 0 ? <Empty>{copy.empty.nothingInProgress}</Empty> : inProgress.map((v) => <VideoCard key={v.id} video={v} />)}
-          </Grid>
         )}
       </main>
     </div>
   );
 }
 
-function Grid({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-2">{children}</div>;
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
+export function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <p className="col-span-full pt-9 text-center text-13 leading-relaxed whitespace-pre-line text-text-2" data-testid="empty">
+    <p className="py-[60px] text-center text-14 leading-relaxed whitespace-pre-line text-text-3" data-testid="empty">
       {children}
     </p>
   );

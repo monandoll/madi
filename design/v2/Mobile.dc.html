@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="9c9b6671-462d-4b08-acec-deb2fe3a0cf3"></script>
+
+</head>
+<body>
+
+<x-dc>
+<helmet>
+<style>/**
+ * Minified by jsDelivr using clean-css v5.3.3.
+ * Original file: /gh/orioncactus/pretendard@1.3.9/dist/web/variable/pretendardvariable.css
+ *
+ * Do NOT use SRI with dynamically generated files! More information: https://www.jsdelivr.com/using-sri-with-dynamic-files
+ */
+@font-face{font-family:'Pretendard Variable';font-weight:45 920;font-style:normal;font-display:swap;src:url("a1a6873d-38ac-4351-bc13-6ee9e7487a7d") format('woff2-variations')}
+/*# sourceMappingURL=/sm/cb46c7e49fc38cbd97a389d4dc69706f7471d0646edc67e9dc7defe084c0b8bf.map */</style>
+<style>
+  html, body { margin:0; padding:0; background:#E8EDF1; }
+  body { font-family:"Pretendard Variable","Pretendard",system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#3E6B8A; text-decoration:none; }
+  a:hover { color:#2F5470; }
+  ::selection { background:#E4EEF5; }
+  input { font:inherit; color:inherit; }
+  ::-webkit-scrollbar { width:0; height:0; }
+</style>
+</helmet>
+<div style="min-height:100vh; box-sizing:border-box; background:#E8EDF1; color:#1C2127; padding:26px; display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; justify-content:center;">
+
+  <div style="display:flex; flex-direction:column; gap:8px;">
+    <div style="font-size:12px; color:#8A939C;">실제로 눌러보는 화면 · 375</div>
+    <div style="width:375px; height:812px; background:#FFFFFF; border:1px solid #D9E1E7; border-radius:20px; overflow:hidden; display:flex; flex-direction:column;">
+
+      <div style="flex:none; height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; font-size:12px; font-weight:600; color:#1C2127;">
+        <div>9:41</div>
+        <div style="display:flex; gap:5px; align-items:center;">
+          <div style="width:16px; height:9px; border:1px solid #1C2127; border-radius:2px; position:relative;">
+            <div style="position:absolute; inset:1px; right:4px; background:#1C2127; border-radius:1px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none; min-height:46px; display:flex; align-items:center; gap:10px; padding:4px 14px 10px; border-bottom:1px solid #EAEFF3;">
+        <sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+          <div style="width:32px; height:32px; flex:none; margin-left:-6px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#5E6872; cursor:pointer;" sc-camel-on-click="{{ back }}" style-hover="background:#EDF2F6;">
+            <svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+          </div>
+        </sc-if>
+        <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:1px;">
+          <div style="font-size:16px; font-weight:600; letter-spacing:-0.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ title }}</div>
+          <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+            <sc-if value="{{ showDot }}" hint-placeholder-val="{{ true }}">
+              <div style="width:6px; height:6px; flex:none; border-radius:999px; background:#7A9E7E;"></div>
+            </sc-if>
+            <div style="font-size:12px; color:#8A939C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ subtitle }}</div>
+          </div>
+        </div>
+        <sc-if value="{{ inVideo }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:none; font-size:13px; color:#3E6B8A; cursor:pointer; padding:5px 8px; border-radius:8px;" sc-camel-on-click="{{ openResult }}" style-hover="background:#EEF5FA;">결과물</div>
+        </sc-if>
+      </div>
+
+      <div style="flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; position:relative;">
+
+        <sc-if value="{{ isGallery }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1; min-height:0; overflow-y:auto; padding:12px 14px 20px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px 8px;">
+              <sc-for list="{{ cards }}" as="v" hint-placeholder-count="10">
+                <div style="cursor:pointer; display:flex; flex-direction:column; gap:6px;" sc-camel-on-click="{{ v.onClick }}">
+                  <div style="position:relative; aspect-ratio:16/9; border-radius:8px; overflow:hidden; background:#E6EAEE; border:1px solid #E0E6EB;">
+                    <div style="position:absolute; left:0; right:0; bottom:0; height:32%; background:#DBE1E6;"></div>
+                    <div style="position:absolute; left:50%; bottom:16%; transform:translateX(-50%); width:34%; height:28%; border-radius:4px; background:#CDD5DB;"></div>
+                    <div style="position:absolute; right:5px; bottom:5px; font-size:10px; font-weight:500; color:#FFFFFF; background:rgba(22,26,31,0.72); padding:1px 4px; border-radius:3px;">{{ v.duration }}</div>
+                    <sc-if value="{{ v.hasStack }}" hint-placeholder-val="{{ false }}">
+                      <div style="position:absolute; top:6px; right:6px; width:16px; height:14px;">
+                        <div style="position:absolute; top:0; right:0; width:11px; height:9px; border-radius:2px; border:1px solid #FFFFFF;"></div>
+                        <div style="position:absolute; bottom:0; left:0; width:11px; height:9px; border-radius:2px; border:1px solid #FFFFFF; background:rgba(22,26,31,0.3);"></div>
+                      </div>
+                    </sc-if>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:2px;">
+                    <div style="font-size:13px; font-weight:500; letter-spacing:-0.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ v.title }}</div>
+                    <div style="font-size:11px; color:#8A939C;">{{ v.sub }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}">
+          <div ref="{{ scrollRef }}" style="flex:1; min-height:0; overflow-y:auto; padding:12px 14px 14px; display:flex; flex-direction:column; gap:4px;">
+
+            <div style="display:flex; align-items:center; gap:10px; border:1px solid #E0E6EB; border-radius:10px; padding:9px 10px; background:#F7FAFC; margin-bottom:6px; cursor:pointer;" sc-camel-on-click="{{ openResult }}">
+              <div style="position:relative; width:72px; flex:none; aspect-ratio:16/9; border-radius:6px; overflow:hidden; background:#E6EAEE;">
+                <div style="position:absolute; left:0; right:0; bottom:0; height:32%; background:#DBE1E6;"></div>
+                <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:22px; height:22px; border-radius:999px; background:rgba(255,255,255,0.92); display:flex; align-items:center; justify-content:center;">
+                  <svg width="9" height="9" sc-camel-view-box="0 0 24 24" fill="#1C2127"><path d="M8 5v14l11-7z"></path></svg>
+                </div>
+              </div>
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;">
+                <div style="font-size:12px; color:#8A939C;">{{ videoMeta }}</div>
+                <div style="font-size:13px; color:#5E6872;">프리뷰 보기</div>
+              </div>
+            </div>
+
+            <sc-for list="{{ messages }}" as="m" hint-placeholder-count="4">
+              <div style="display:flex; gap:9px; padding:7px 10px; margin:0 -10px; border-radius:8px;">
+                <div style="width:26px; height:26px; flex:none; border-radius:8px; background:{{ m.avatarBg }}; color:{{ m.avatarFg }}; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700;">{{ m.avatar }}</div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:5px;">
+                  <div style="display:flex; align-items:baseline; gap:7px;">
+                    <div style="font-size:12px; font-weight:600;">{{ m.name }}</div>
+                    <div style="font-size:11px; color:#8A939C;">{{ m.at }}</div>
+                  </div>
+                  <div style="font-size:14px; line-height:1.6; text-wrap:pretty;">{{ m.text }}</div>
+
+                  <sc-if value="{{ m.hasCard }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex; align-items:center; gap:10px; border:1px solid #E0E6EB; border-left:3px solid #3E6B8A; border-radius:8px; padding:9px 10px; cursor:pointer;" sc-camel-on-click="{{ m.openCard }}">
+                      <div style="position:relative; width:{{ m.thumbW }}; flex:none; aspect-ratio:{{ m.ratio }}; border-radius:5px; overflow:hidden; background:#E6EAEE;">
+                        <div style="position:absolute; left:0; right:0; bottom:0; height:30%; background:#DBE1E6;"></div>
+                      </div>
+                      <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;">
+                        <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ m.cardTitle }}</div>
+                        <div style="font-size:11px; color:#8A939C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ m.cardMeta }}</div>
+                      </div>
+                      <div style="flex:none; font-size:12px; color:#3E6B8A;">자세히</div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ m.hasChapters }}" hint-placeholder-val="{{ false }}">
+                    <div style="border:1px solid #E0E6EB; border-radius:8px; overflow:hidden;">
+                      <sc-for list="{{ m.chapters }}" as="c" hint-placeholder-count="4">
+                        <div style="display:flex; align-items:center; gap:10px; padding:9px 10px; border-top:1px solid {{ c.sep }}; cursor:pointer;" sc-camel-on-click="{{ c.onClick }}">
+                          <div style="flex:1; min-width:0; font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.name }}</div>
+                          <div style="flex:none; font-size:11px; color:#8A939C;">{{ c.range }}</div>
+                          <div style="flex:none; font-size:12px; color:#3E6B8A;">숏폼</div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+
+            <sc-if value="{{ thinking }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; gap:9px; padding:7px 0;">
+                <div style="width:26px; height:26px; flex:none; border-radius:8px; background:#E4EEF5; color:#2F5470; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700;">마</div>
+                <div style="font-size:13px; color:#8A939C; padding-top:5px;">마디가 보고 있어요…</div>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="flex:none; border-top:1px solid #EAEFF3; padding:9px 12px 14px; display:flex; flex-direction:column; gap:8px; background:#FFFFFF;">
+            <sc-if value="{{ aiOn }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; gap:6px; overflow-x:auto;">
+                  <sc-for list="{{ chips }}" as="c" hint-placeholder-count="4">
+                    <div style="flex:none; font-size:13px; color:#4E5862; border:1px solid #E0E6EB; padding:6px 12px; border-radius:999px; cursor:pointer; white-space:nowrap;" sc-camel-on-click="{{ c.onClick }}">{{ c.label }}</div>
+                  </sc-for>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; border:1px solid #D9E1E7; border-radius:999px; padding:5px 5px 5px 16px;">
+                  <input value="{{ draft }}" sc-camel-on-change="{{ onDraft }}" sc-camel-on-key-down="{{ onKey }}" placeholder="말로 요청하세요" style="flex:1; min-width:0; height:34px; border:0; outline:none; font-size:15px; background:transparent;">
+                  <div style="width:34px; height:34px; flex:none; border-radius:999px; background:{{ sendBg }}; color:{{ sendFg }}; display:flex; align-items:center; justify-content:center; cursor:pointer;" sc-camel-on-click="{{ onSend }}">
+                    <svg width="15" height="15" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ aiOff }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px;">
+                  <sc-for list="{{ manualActions }}" as="a" hint-placeholder-count="4">
+                    <div style="min-height:46px; box-sizing:border-box; display:flex; align-items:center; border:1px solid #E0E6EB; border-radius:10px; padding:10px 12px; cursor:pointer; font-size:14px; font-weight:500;" sc-camel-on-click="{{ a.onClick }}">{{ a.label }}</div>
+                  </sc-for>
+                </div>
+                <div style="font-size:12px; color:#5E6872;">AI를 연결하면 말로 편집할 수 있어요. <a href="#" sc-camel-on-click="{{ goSettings }}">연결하기</a></div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isResult }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden;">
+            <div style="flex:none; padding:12px 14px 10px; display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; justify-content:center;">
+                <div style="position:relative; width:176px; aspect-ratio:9/16; border-radius:10px; overflow:hidden; background:#E6EAEE;">
+                  <div style="position:absolute; left:0; right:0; bottom:0; height:28%; background:#DBE1E6;"></div>
+                  <div style="position:absolute; left:50%; bottom:14%; transform:translateX(-50%); width:44%; height:32%; border-radius:5px; background:#CDD5DB;"></div>
+                  <div style="position:absolute; left:12px; right:12px; bottom:13%; display:flex; justify-content:center;">
+                    <div style="font-size:12px; font-weight:600; color:#FFFFFF; background:rgba(22,26,31,0.78); padding:3px 7px; border-radius:4px; text-align:center; line-height:1.45;">{{ activeLine }}</div>
+                  </div>
+                </div>
+              </div>
+              <div style="height:4px; border-radius:999px; background:#E7ECF0; position:relative;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:{{ playPct }}; border-radius:999px; background:#3E6B8A;"></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:32px; height:32px; flex:none; border-radius:999px; border:1px solid #E0E6EB; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                  <svg width="11" height="11" sc-camel-view-box="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+                </div>
+                <div style="font-size:12px; color:#5E6872;">{{ playTime }}</div>
+                <div style="flex:1;"></div>
+                <div style="font-size:12px; color:#8A939C;">{{ subCountLabel }}</div>
+              </div>
+            </div>
+
+            <div style="flex:1; min-height:0; overflow-y:auto; border-top:1px solid #EAEFF3;">
+              <sc-for list="{{ subRows }}" as="r" hint-placeholder-count="10">
+                <div style="display:flex; gap:10px; align-items:baseline; padding:11px 14px; border-bottom:1px solid #EDF2F6; cursor:pointer; background:{{ r.bg }};" sc-camel-on-click="{{ r.onClick }}">
+                  <div style="width:28px; flex:none; font-size:11px; color:#8A939C;">{{ r.at }}</div>
+                  <div style="flex:1; min-width:0; font-size:13px; line-height:1.55; text-wrap:pretty; color:{{ r.fg }}; text-decoration:{{ r.deco }};">{{ r.text }}</div>
+                  <sc-if value="{{ r.showCutMeta }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:11px; color:#8A939C; flex:none;">{{ r.cutMeta }}</div>
+                  </sc-if>
+                  <sc-if value="{{ r.showAction }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:12px; font-weight:500; color:#3E6B8A; flex:none;">{{ r.action }}</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="flex:none; border-top:1px solid #EAEFF3; padding:10px 14px 14px; display:flex; gap:8px;">
+              <div style="flex:1; min-height:46px; box-sizing:border-box; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; border-radius:10px; background:#3E6B8A; color:#FFFFFF; cursor:pointer;">다운로드</div>
+              <div style="flex:1; min-height:46px; box-sizing:border-box; display:flex; align-items:center; justify-content:center; font-size:14px; border-radius:10px; border:1px solid #E0E6EB; cursor:pointer;" sc-camel-on-click="{{ askFix }}">수정 요청</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1; min-height:0; overflow-y:auto; padding:14px 14px 30px; display:flex; flex-direction:column; gap:22px;">
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="font-size:14px; font-weight:600;">AI 연결</div>
+              <div style="border:1px solid #E0E6EB; border-radius:10px; overflow:hidden;">
+                <sc-for list="{{ providers }}" as="p" hint-placeholder-count="2">
+                  <div style="display:flex; align-items:center; gap:10px; padding:12px; border-top:1px solid {{ p.sep }}; background:{{ p.bg }};">
+                    <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px;">
+                      <div style="font-size:14px; font-weight:500;">{{ p.name }}</div>
+                      <div style="display:flex; align-items:center; gap:6px;">
+                        <div style="width:6px; height:6px; border-radius:999px; background:{{ p.dot }};"></div>
+                        <div style="font-size:12px; color:#8A939C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ p.status }}</div>
+                      </div>
+                    </div>
+                    <div style="flex:none; min-height:36px; box-sizing:border-box; display:flex; align-items:center; font-size:13px; font-weight:500; padding:8px 13px; border-radius:999px; border:1px solid {{ p.btnBorder }}; background:{{ p.btnBg }}; color:{{ p.btnFg }}; cursor:pointer;" sc-camel-on-click="{{ p.onClick }}">{{ p.action }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font-size:12px; color:#8A939C; line-height:1.6;">연결하지 않아도 자막 · 쉬는 구간 자르기 · 규격 변환은 그대로 됩니다.</div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="font-size:14px; font-weight:600;">내 편집 스타일</div>
+              <div style="border:1px solid #E0E6EB; border-radius:10px; overflow:hidden;">
+                <sc-for list="{{ rules }}" as="r" hint-placeholder-count="4">
+                  <div style="display:flex; align-items:center; gap:10px; padding:12px; border-top:1px solid {{ r.sep }};">
+                    <div style="flex:1; min-width:0; font-size:13px; line-height:1.5; text-wrap:pretty;">{{ r.text }}</div>
+                    <div style="flex:none; font-size:12px; color:#5E6872;">바꾸기</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="font-size:14px; font-weight:600;">이 컴퓨터</div>
+              <div style="border:1px solid #E0E6EB; border-radius:10px; overflow:hidden;">
+                <div style="display:flex; align-items:center; gap:10px; padding:12px;">
+                  <div style="flex:1; font-size:14px;">편집 엔진</div>
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <div style="width:6px; height:6px; border-radius:999px; background:#7A9E7E;"></div>
+                    <div style="font-size:13px; color:#5E6872;">연결됨</div>
+                  </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; padding:12px; border-top:1px solid #EAEFF3;">
+                  <div style="flex:1; font-size:14px;">영상 폴더</div>
+                  <div style="font-size:12px; color:#8A939C;">동영상 / 촬영본</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="flex:none; border-top:1px solid #EAEFF3; padding:6px 8px 10px; display:flex; background:#FFFFFF;">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+            <div style="flex:1; min-height:48px; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border-radius:10px; cursor:pointer; color:{{ t.fg }};" sc-camel-on-click="{{ t.onClick }}">
+              <svg width="20" height="20" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="{{ t.path1 }}"></path>
+                <path d="{{ t.path2 }}"></path>
+              </svg>
+              <div style="font-size:11px; font-weight:{{ t.weight }};">{{ t.label }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:8px;">
+    <div style="font-size:12px; color:#8A939C;">AI 미연결 · 갤러리 빈 상태</div>
+    <div style="width:375px; height:812px; background:#FFFFFF; border:1px solid #D9E1E7; border-radius:20px; overflow:hidden; display:flex; flex-direction:column;">
+      <div style="flex:none; height:44px; display:flex; align-items:center; padding:0 18px; font-size:12px; font-weight:600;">9:41</div>
+      <div style="flex:none; min-height:46px; display:flex; align-items:center; gap:10px; padding:4px 14px 10px; border-bottom:1px solid #EAEFF3;">
+        <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:1px;">
+          <div style="font-size:16px; font-weight:600; letter-spacing:-0.01em;">거북목 교정 2편 재촬영</div>
+          <div style="font-size:12px; color:#8A939C;">12:47 · 9월 15일</div>
+        </div>
+      </div>
+      <div style="flex:1; min-height:0; display:flex; flex-direction:column;">
+        <div style="flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:24px; text-align:center;">
+          <div style="font-size:14px; color:#8A939C; line-height:1.7;">AI를 연결하면<br>말로 편집할 수 있어요.</div>
+        </div>
+        <div style="flex:none; border-top:1px solid #EAEFF3; padding:10px 12px 14px; display:flex; flex-direction:column; gap:8px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px;">
+            <div style="min-height:46px; box-sizing:border-box; display:flex; align-items:center; border:1px solid #E0E6EB; border-radius:10px; padding:10px 12px; font-size:14px; font-weight:500;">자막 넣기</div>
+            <div style="min-height:46px; box-sizing:border-box; display:flex; align-items:center; border:1px solid #E0E6EB; border-radius:10px; padding:10px 12px; font-size:14px; font-weight:500;">쉬는 구간 자르기</div>
+            <div style="min-height:46px; box-sizing:border-box; display:flex; align-items:center; border:1px solid #E0E6EB; border-radius:10px; padding:10px 12px; font-size:14px; font-weight:500;">인스타 규격</div>
+            <div style="min-height:46px; box-sizing:border-box; display:flex; align-items:center; border:1px solid #E0E6EB; border-radius:10px; padding:10px 12px; font-size:14px; font-weight:500;">숏폼 자르기</div>
+          </div>
+          <div style="font-size:12px; color:#5E6872;">AI를 연결하면 말로 편집할 수 있어요. <a href="#">연결하기</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:840,&quot;height&quot;:900}}">
+const VIDEOS = [
+  { id: "knee", title: "무릎 재활 전체 루틴 풀버전", date: "9월 16일", duration: "3:20", outputs: 0 },
+  { id: "shoulder", title: "어깨 가동성 루틴 3분", date: "9월 16일", duration: "3:08", outputs: 2 },
+  { id: "neck", title: "거북목 교정 2편 재촬영", date: "9월 15일", duration: "12:47", outputs: 0 },
+  { id: "ham", title: "햄스트링 패시브 스트레칭 풀버전", date: "9월 15일", duration: "18:24", outputs: 3 },
+  { id: "pelvis", title: "골반 전방경사 셀프체크", date: "9월 14일", duration: "15:03", outputs: 0 },
+  { id: "calf", title: "종아리 근막이완 도구 없이", date: "9월 14일", duration: "7:38", outputs: 0 },
+  { id: "round", title: "라운드숄더 벽 스트레칭", date: "9월 13일", duration: "2:41", outputs: 2 },
+  { id: "warmup", title: "무릎 통증 전 준비운동", date: "9월 13일", duration: "11:19", outputs: 0 },
+  { id: "disc", title: "허리 디스크 회복기 1주차", date: "9월 12일", duration: "20:56", outputs: 0 },
+  { id: "hip", title: "고관절 외회전 가동 루틴", date: "9월 12일", duration: "6:04", outputs: 4 }
+];
+
+const SUBS = [
+  { at: "0:00", text: "무릎이 아플 때 제일 먼저 확인할 건 발목이에요" },
+  { at: "0:04", text: "매트에 앉아서 한쪽 무릎을 세웁니다" },
+  { at: "0:08", text: "어… 잠깐만요 카메라 각도 좀", cut: 3 },
+  { at: "0:10", text: "발끝을 몸쪽으로 당기는 게 중요해요" },
+  { at: "0:15", text: "허리를 굽히지 말고 골반부터 접으세요" },
+  { at: "0:20", text: "(자세 잡는 동안 조용함)", cut: 2 },
+  { at: "0:22", text: "여기서 숨을 내쉬면서 10초 버팁니다" },
+  { at: "0:28", text: "통증이 아니라 당기는 느낌까지만" },
+  { at: "0:33", text: "아 이거 다시 말할게요", cut: 4 },
+  { at: "0:36", text: "반대쪽도 똑같이 10초씩 세 번" },
+  { at: "0:42", text: "매일 하면 2주 안에 차이가 느껴져요" },
+  { at: "0:47", text: "풀버전은 프로필 링크에 있어요" }
+];
+
+const CHAPTERS = [
+  ["1부 · 준비운동", "0:00 – 0:50"],
+  ["2부 · 무릎 가동", "0:50 – 1:40"],
+  ["3부 · 근력 세트", "1:40 – 2:30"],
+  ["4부 · 마무리 이완", "2:30 – 3:20"]
+];
+
+const REPLIES = [
+  { match: ["챕터"], text: "챕터 4개로 나눴어요.", chapters: true },
+  { match: ["숏폼"], text: "말이 이어지는 구간만 골라 숏폼 1개 먼저 만들었어요.", card: { title: "숏폼 1 · 한쪽 다리 편", meta: "0:48 · 9:16 · 자막 있음", ratio: "9/16" } },
+  { match: ["자막"], text: "자막 넣었어요. 평소처럼 문장 단위로 짧게 끊었어요.", card: { title: "자막 넣은 버전", meta: "3:20 · 16:9 · 자막 12문장", ratio: "16/9" } },
+  { match: ["쉬는", "무음", "잘라"], text: "쉬는 구간 3곳, 9초를 잘라냈어요.", card: { title: "쉬는 구간 제거", meta: "3:11 · 16:9", ratio: "16/9" } },
+  { match: ["인스타", "규격", "세로"], text: "세로 9:16으로 바꿨어요.", card: { title: "인스타 규격 · 세로", meta: "3:20 · 9:16", ratio: "9/16" } },
+  { match: ["고쳐", "수정", "살려"], text: "고쳤어요. 같은 표현이 나오는 다른 문장도 함께 맞췄어요.", card: { title: "자막 수정본", meta: "0:50 · 9:16", ratio: "9/16" } }
+];
+
+let MID = 0;
+
+class Component extends DCLogic {
+  state = {
+    screen: "gallery",
+    videoId: null,
+    aiConnected: true,
+    claude: "on",
+    codex: "off",
+    draft: "",
+    thinking: false,
+    sel: 4,
+    threads: {
+      shoulder: [
+        { id: ++MID, who: "me", at: "오전 10:12", text: "세로로 바꿔줘" },
+        { id: ++MID, who: "ai", at: "오전 10:12", text: "세로로 바꿨어요.", card: { title: "어깨 가동성 루틴 3분 · 세로", meta: "3:08 · 9:16", ratio: "9/16" } }
+      ]
+    }
+  };
+
+  _scroller = React.createRef();
+  _key() {
+    const id = this.state.videoId;
+    const len = id && this.state.threads[id] ? this.state.threads[id].length : 0;
+    return this.state.screen + ":" + id + ":" + len + ":" + (this.state.thinking ? 1 : 0);
+  }
+  componentDidMount() { this._prev = this._key(); }
+  componentDidUpdate() {
+    const k = this._key();
+    const el = this._scroller.current;
+    if (el && k !== this._prev) el.scrollTop = el.scrollHeight;
+    this._prev = k;
+  }
+  componentWillUnmount() { if (this._t) clearTimeout(this._t); }
+
+  now() {
+    const d = new Date(), h = d.getHours();
+    return (h < 12 ? "오전 " : "오후 ") + (h % 12 === 0 ? 12 : h % 12) + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  push(id, msg) {
+    this.setState(s => ({ threads: { ...s.threads, [id]: [...(s.threads[id] || []), { id: ++MID, at: this.now(), ...msg }] } }));
+  }
+
+  send(text) {
+    const id = this.state.videoId;
+    if (!id || !text.trim()) return;
+    this.push(id, { who: "me", text: text.trim() });
+    this.setState({ draft: "", thinking: true, screen: "chat" });
+    if (this._t) clearTimeout(this._t);
+    this._t = setTimeout(() => {
+      const hit = REPLIES.find(r => r.match.some(m => text.includes(m)));
+      const reply = hit || { text: "이렇게 해봤어요. 마음에 안 들면 \u201C다시\u201D라고 해주세요.", card: { title: "요청 결과", meta: "0:50 · 9:16", ratio: "9/16" } };
+      this.setState({ thinking: false });
+      this.push(id, { who: "ai", text: reply.text, card: reply.card, chapters: reply.chapters });
+    }, 900);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const video = VIDEOS.find(v => v.id === s.videoId);
+    const inVideo = !!video && (s.screen === "chat" || s.screen === "result");
+    const msgs = video ? (s.threads[video.id] || []) : [];
+    const cur = SUBS[s.sel];
+    const keptAfter = SUBS.findIndex((r, i) => i >= s.sel && !r.cut);
+    const ai = s.aiConnected;
+
+    const titleMap = {
+      gallery: "수현쌤 스튜디오",
+      chat: video ? video.title : "",
+      result: "무릎 재활 2부 · 세로 자막",
+      settings: "설정"
+    };
+    const subMap = {
+      gallery: "연결됨 · 영상 " + VIDEOS.length + "개",
+      chat: video ? video.duration + " · " + video.date : "",
+      result: "0:50 · 9:16",
+      settings: ai ? "Claude 연결됨" : "AI 연결 안 됨"
+    };
+
+    return {
+      isGallery: s.screen === "gallery",
+      isChat: s.screen === "chat" && !!video,
+      isResult: s.screen === "result",
+      isSettings: s.screen === "settings",
+      inVideo: s.screen === "chat" && !!video,
+      title: titleMap[s.screen],
+      subtitle: subMap[s.screen],
+      showDot: s.screen === "gallery",
+      showBack: s.screen !== "gallery",
+      back: () => this.setState({ screen: s.screen === "result" ? "chat" : "gallery" }),
+      openResult: () => this.setState({ screen: "result" }),
+      goSettings: () => this.setState({ screen: "settings" }),
+
+      scrollRef: this._scroller,
+      videoMeta: video ? video.duration + " · " + (video.outputs ? "결과물 " + video.outputs + "개" : "결과물 없음") : "",
+
+      tabs: [
+        ["gallery", "영상", "M2.5 6.5A2 2 0 0 1 4.5 4.5h9a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2Z", "M15.5 10.5 21.5 7v10l-6-3.5"],
+        ["result", "결과물", "M4 4.5h7l2 2.5h7v12a1.5 1.5 0 0 1-1.5 1.5h-14A1.5 1.5 0 0 1 3 19V6a1.5 1.5 0 0 1 1-1.5Z", "M9.5 14.5h5"],
+        ["settings", "설정", "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z", "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"]
+      ].map(([id, label, path1, path2]) => {
+        const on = s.screen === id || (id === "gallery" && s.screen === "chat");
+        return {
+          label, path1, path2,
+          fg: on ? "#3E6B8A" : "#8A939C",
+          weight: on ? 600 : 400,
+          onClick: () => this.setState({ screen: id, videoId: id === "result" ? (s.videoId || "knee") : s.videoId })
+        };
+      }),
+
+      cards: VIDEOS.map(v => ({
+        title: v.title,
+        duration: v.duration,
+        sub: v.date + (v.outputs ? " · 결과물 " + v.outputs : ""),
+        hasStack: v.outputs > 0,
+        onClick: () => this.setState({ screen: "chat", videoId: v.id })
+      })),
+
+      messages: msgs.map(m => ({
+        name: m.who === "me" ? "수현" : "마디",
+        avatar: m.who === "me" ? "수" : "마",
+        avatarBg: m.who === "me" ? "#E2E9EF" : "#E4EEF5",
+        avatarFg: m.who === "me" ? "#4E5862" : "#2F5470",
+        at: m.at,
+        text: m.text,
+        hasCard: !!m.card,
+        cardTitle: m.card ? m.card.title : "",
+        cardMeta: m.card ? m.card.meta : "",
+        ratio: m.card ? m.card.ratio : "16/9",
+        thumbW: m.card && m.card.ratio === "9/16" ? "30px" : "56px",
+        openCard: () => this.setState({ screen: "result" }),
+        hasChapters: !!m.chapters,
+        chapters: CHAPTERS.map(([name, range], i) => ({
+          name, range,
+          sep: i === 0 ? "transparent" : "#EAEFF3",
+          onClick: () => this.send(name + " 숏폼으로 만들어줘")
+        }))
+      })),
+      thinking: s.thinking,
+
+      aiOn: ai,
+      aiOff: !ai,
+      draft: s.draft,
+      onDraft: (e) => this.setState({ draft: e.target.value }),
+      onKey: (e) => { if (e.key === "Enter") this.send(e.target.value); },
+      onSend: () => this.send(s.draft),
+      sendBg: s.draft.trim() ? "#3E6B8A" : "#E7ECF0",
+      sendFg: s.draft.trim() ? "#FFFFFF" : "#9AA3AC",
+      chips: ["숏폼 뽑아줘", "자막 넣어줘", "쉬는 구간 잘라줘", "인스타 규격으로", "챕터로 나눠줘"].map(label => ({
+        label, onClick: () => this.send(label)
+      })),
+      manualActions: ["자막 넣기", "쉬는 구간 자르기", "인스타 규격", "숏폼 자르기"].map(label => ({
+        label, onClick: () => this.setState({ screen: "result" })
+      })),
+
+      activeLine: (cur.cut ? SUBS[keptAfter >= 0 ? keptAfter : 0] : cur).text,
+      playTime: cur.at + " / 0:50",
+      playPct: Math.round((s.sel / (SUBS.length - 1)) * 100) + "%",
+      subCountLabel: "자막 " + SUBS.filter(r => !r.cut).length + "문장",
+      subRows: SUBS.map((r, i) => ({
+        at: r.at,
+        text: r.text,
+        fg: r.cut ? "#9AA3AC" : "#1C2127",
+        deco: r.cut ? "line-through" : "none",
+        bg: i === s.sel ? "#EEF5FA" : "transparent",
+        showCutMeta: !!r.cut && i !== s.sel,
+        cutMeta: r.cut + "초 잘림",
+        showAction: i === s.sel,
+        action: r.cut ? "살려줘" : "고쳐줘",
+        onClick: () => {
+          if (i === s.sel) {
+            this.setState({ screen: "chat", videoId: s.videoId || "knee" });
+            this.send((r.cut ? "이 부분 살려줘: " : "이 문장 고쳐줘: ") + r.text);
+          } else {
+            this.setState({ sel: i });
+          }
+        }
+      })),
+      askFix: () => {
+        this.setState({ screen: "chat", videoId: s.videoId || "knee" });
+        this.send("이 결과물 수정해줘");
+      },
+
+      providers: [
+        { key: "claude", name: "Claude", state: s.claude },
+        { key: "codex", name: "Codex", state: s.codex }
+      ].map((p, i) => {
+        const on = p.state === "on";
+        return {
+          name: p.name,
+          sep: i === 0 ? "transparent" : "#EAEFF3",
+          bg: on ? "#F7FAFC" : "#FFFFFF",
+          dot: on ? "#7A9E7E" : "#D2DAE1",
+          status: on ? "연결됨 · soohyun@gmail.com" : "연결 안 됨",
+          action: on ? "해제" : "연결하기",
+          btnBg: on ? "#FFFFFF" : "#3E6B8A",
+          btnFg: on ? "#5E6872" : "#FFFFFF",
+          btnBorder: on ? "#E0E6EB" : "#3E6B8A",
+          onClick: () => this.setState(st => {
+            const next = { ...st, [p.key]: on ? "off" : "on" };
+            next.aiConnected = (p.key === "claude" ? !on : st.claude === "on") || (p.key === "codex" ? !on : st.codex === "on");
+            return next;
+          })
+        };
+      }),
+      rules: [
+        "자막은 문장 단위로 짧게. 한 줄에 20자 안팎.",
+        "쉬는 구간은 잘라내되 말 앞뒤 숨은 남긴다.",
+        "숏폼은 9:16 세로, 한 동작 = 한 클립.",
+        "운동 이름·횟수가 나오는 문장은 자르지 않는다."
+      ].map((text, i) => ({ text, sep: i === 0 ? "transparent" : "#EAEFF3" }))
+    };
+  }
+}
+
+</script>
+
+
+</body></html>

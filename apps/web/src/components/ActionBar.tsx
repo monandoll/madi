@@ -1,4 +1,5 @@
 import { copy } from '../copy.js';
+import { go } from '../lib/route.js';
 
 export type ActionKey = 'subtitle' | 'silence' | 'vertical' | 'short' | 'chapters' | 'auto_shorts';
 
@@ -12,8 +13,8 @@ interface Props {
 }
 
 /**
- * AI 미연결 상태의 버튼 4개. 시안의 추천 칩 자리(하단, 1px 윗선)에 칩 모양 그대로.
- * 입력창은 없다 — 러너를 스폰하지 않는 상태라서.
+ * design/v2 AI 미연결 상태: 2열 버튼(46px, 1px 선, 10px 모서리) + "AI를 연결하면 말로 편집할 수 있어요. 연결하기".
+ * PC 는 버튼 오른쪽에 힌트 글자. 입력창은 없다 — 러너를 스폰하지 않는 상태라서.
  */
 export function ActionBar({ disabled = false, hasAudio, busy, longform = false, onAction }: Props) {
   const items: { key: ActionKey; label: string; needsAudio: boolean }[] = [
@@ -29,8 +30,8 @@ export function ActionBar({ disabled = false, hasAudio, busy, longform = false, 
       : []),
   ];
   return (
-    <div className="flex flex-none flex-col gap-2 border-t border-line px-3 pt-2.5 pb-3" data-testid="action-bar">
-      <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-none flex-col gap-2 border-t border-line-soft bg-surface px-3 pt-2.5 pb-3.5 pc:gap-2.5 pc:border-line-2 pc:px-6 pc:pb-4" data-testid="action-bar">
+      <div className="grid grid-cols-2 gap-[7px] pc:grid-cols-[repeat(auto-fit,minmax(170px,1fr))] pc:gap-2">
         {items.map((it) => {
           const off = disabled || busy || (it.needsAudio && !hasAudio);
           return (
@@ -40,13 +41,26 @@ export function ActionBar({ disabled = false, hasAudio, busy, longform = false, 
               data-action={it.key}
               disabled={off}
               onClick={() => onAction(it.key)}
-              className={`h-11 rounded-pill border border-line px-[11px] text-12 whitespace-nowrap ${off ? 'text-text-2' : ''}`}
+              className={`flex min-h-[46px] items-center gap-2 rounded-panel border border-line px-3 py-2.5 text-left text-14 font-medium hover:border-accent disabled:text-text-3 disabled:hover:border-line pc:min-h-0 pc:rounded-thumb pc:py-[11px] ${off ? 'text-text-3' : ''}`}
             >
-              {it.label}
+              <span className="flex-1">{it.label}</span>
+              <span className="hidden text-12 font-normal text-text-3 pc:inline">{copy.detail.actionHints[it.key]}</span>
             </button>
           );
         })}
       </div>
+      <p className="text-12 text-text-2 pc:text-13">
+        {copy.detail.aiOffHint}{' '}
+        <a
+          href="#/settings"
+          onClick={(e) => {
+            e.preventDefault();
+            go({ screen: 'settings' });
+          }}
+        >
+          {copy.detail.aiOffLink}
+        </a>
+      </p>
     </div>
   );
 }

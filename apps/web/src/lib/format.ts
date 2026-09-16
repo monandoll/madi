@@ -15,3 +15,11 @@ export function formatDate(ms: number, now: Date = new Date()): string {
   const base = `${d.getMonth() + 1}월 ${d.getDate()}일`;
   return d.getFullYear() === now.getFullYear() ? base : `${d.getFullYear()}년 ${base}`;
 }
+
+/** 오전 10:12 */
+export function formatTime(ms: number): string {
+  const d = new Date(ms);
+  const h = d.getHours();
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return `${h < 12 ? '오전' : '오후'} ${hh}:${String(d.getMinutes()).padStart(2, '0')}`;
+}

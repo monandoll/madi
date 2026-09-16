@@ -13,7 +13,7 @@ interface Props {
 }
 
 /**
- * 수동 숏폼 구간 고르기. 프리뷰 + 시작/끝 슬라이더 두 개.
+ * 수동 숏폼 구간 고르기. 프리뷰 + 시작/끝 슬라이더 두 개. 카드 틀은 결과물 카드와 같다 (1px 선, 8px).
  * 타임라인 편집기는 아니다 — 구간 하나만.
  */
 export function ShortPicker({ proxyUrl, posterUrl, durationSec, hasAudio, onCancel, onMake }: Props) {
@@ -32,9 +32,7 @@ export function ShortPicker({ proxyUrl, posterUrl, durationSec, hasAudio, onCanc
   return (
     <div className="flex flex-col gap-3 rounded-panel border border-line bg-surface p-3.5" data-testid="short-picker">
       <div className="text-14 font-semibold">{copy.detail.shortPicker.title}</div>
-      {proxyUrl && (
-        <video ref={video} src={proxyUrl} poster={posterUrl ?? undefined} className="w-full rounded-thumb bg-thumb" style={{ aspectRatio: '16/9' }} muted playsInline preload="metadata" />
-      )}
+      {proxyUrl && <video ref={video} src={proxyUrl} poster={posterUrl ?? undefined} className="w-full rounded-thumb bg-thumb" style={{ aspectRatio: '16/9' }} muted playsInline preload="metadata" />}
       <Slider label={copy.detail.shortPicker.start} value={start} max={total} onChange={(v) => setStart(Math.min(v, end - 1))} testId="short-start" />
       <Slider
         label={copy.detail.shortPicker.end}
@@ -48,14 +46,14 @@ export function ShortPicker({ proxyUrl, posterUrl, durationSec, hasAudio, onCanc
       />
       {hasAudio && (
         <label className="flex items-center gap-2 text-13">
-          <span className={`flex h-4 w-4 items-center justify-center rounded-[4px] border ${subs ? 'border-accent bg-accent text-white' : 'border-line'}`}>{subs && <CheckIcon />}</span>
+          <span className={`flex h-4 w-4 items-center justify-center rounded-[4px] border ${subs ? 'border-accent bg-accent text-white' : 'border-off'}`}>{subs && <CheckIcon />}</span>
           <input type="checkbox" className="sr-only" checked={subs} onChange={(e) => setSubs(e.target.checked)} />
           {copy.detail.shortPicker.withSubtitles}
         </label>
       )}
-      {!ok && <p className="text-12 text-text-2">{copy.detail.shortPicker.tooShort}</p>}
+      {!ok && <p className="text-12 text-text-3">{copy.detail.shortPicker.tooShort}</p>}
       <div className="flex gap-2">
-        <button type="button" onClick={onCancel} className="h-11 flex-1 rounded-thumb border border-line text-14">
+        <button type="button" onClick={onCancel} className="min-h-[42px] flex-1 rounded-thumb border border-line text-14 hover:bg-hover">
           {copy.detail.shortPicker.cancel}
         </button>
         <button
@@ -63,7 +61,7 @@ export function ShortPicker({ proxyUrl, posterUrl, durationSec, hasAudio, onCanc
           data-testid="short-make"
           disabled={!ok}
           onClick={() => onMake({ start, end }, subs)}
-          className="h-11 flex-1 rounded-thumb bg-accent text-14 font-semibold text-white disabled:opacity-50"
+          className="min-h-[42px] flex-1 rounded-thumb bg-accent text-14 font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
         >
           {copy.detail.shortPicker.make}
         </button>
@@ -74,18 +72,9 @@ export function ShortPicker({ proxyUrl, posterUrl, durationSec, hasAudio, onCanc
 
 function Slider({ label, value, max, onChange, testId }: { label: string; value: number; max: number; onChange(v: number): void; testId: string }) {
   return (
-    <label className="flex items-center gap-3 text-12 text-text-3">
+    <label className="flex items-center gap-3 text-12 text-text-2">
       <span className="w-6 flex-none">{label}</span>
-      <input
-        type="range"
-        data-testid={testId}
-        min={0}
-        max={max}
-        step={0.1}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1 flex-1 accent-[var(--color-accent)]"
-      />
+      <input type="range" data-testid={testId} min={0} max={max} step={0.1} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-1 flex-1 accent-[var(--color-accent)]" />
       <span className="w-12 flex-none text-right text-12 text-text">{formatDuration(value)}</span>
     </label>
   );

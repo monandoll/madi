@@ -24,17 +24,13 @@ test('처음 켜면 설정 카드가 뜨고, 이름과 폴더를 고르면 영�
 
   await page.goto('/');
   await expect(page).toHaveTitle('마디');
-  await expect(page.getByRole('heading', { name: '내 스튜디오' })).toBeVisible();
-  await expect(page.getByText('AI 연결 안 됨')).toBeVisible();
-  await expect(page.getByTestId('engine-dot')).toHaveCSS('background-color', 'rgb(122, 158, 126)');
-  for (const banned of ['인코딩', '프록시', '트랜스크립트']) {
-    await expect(page.getByText(banned)).toHaveCount(0);
-  }
 
+  // 설정 전에는 첫 실행 화면만 (design/v2 Desktop 첫 실행 카드)
   const card = page.getByTestId('setup-card');
   await expect(card).toBeVisible();
   await expect(card.getByText('처음이시죠?')).toBeVisible();
-  await expect(page.getByTestId('empty')).toContainText('폴더를 고르면');
+  await expect(card.getByTestId('setup-name')).toHaveValue('내 스튜디오');
+  await expect(page.getByTestId('video-card')).toHaveCount(0);
 
   // 엔진이 찾아 준 후보: 동영상(영상 2개), 바탕화면(영상 없음)
   const videosRow = card.getByRole('radio', { name: /동영상/ });
@@ -48,6 +44,11 @@ test('처음 켜면 설정 카드가 뜨고, 이름과 폴더를 고르면 영�
 
   await expect(card).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '재활운동 연구소' })).toBeVisible();
+  await expect(page.getByText('AI 연결 안 됨')).toBeVisible();
+  await expect(page.getByTestId('engine-dot')).toHaveCSS('background-color', 'rgb(122, 158, 126)');
+  for (const banned of ['인코딩', '프록시', '트랜스크립트']) {
+    await expect(page.getByText(banned)).toHaveCount(0);
+  }
   const cards = page.getByTestId('video-card');
   await expect(cards).toHaveCount(2, { timeout: 30_000 });
   await expect(page.locator('[data-testid="video-card"][data-status="ready"]')).toHaveCount(2, { timeout: 60_000 });
@@ -117,8 +118,9 @@ test('설정 화면: 톱니로 들어가서 이름을 바꾸고 폴더를 더하
   await expect(remote.getByTestId('remote-token')).toBeVisible();
   await expect(screen.getByText(/^마디 \d+\.\d+\.\d+$/)).toBeVisible();
 
-  // 뒤로 → 갤러리 헤더에 새 이름
-  await page.getByRole('button', { name: '뒤로' }).click();
+  // 사이드바 '영상' → 갤러리, 사이드바 맨 위에 새 이름
+  await page.getByRole('tab', { name: '영상' }).click();
+  await expect(page).toHaveURL(/#\/$/);
   await expect(page.getByRole('heading', { name: '움직임 연구소' })).toBeVisible();
   await expect(page.getByTestId('video-card')).toHaveCount(2);
 });

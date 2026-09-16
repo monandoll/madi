@@ -5,81 +5,81 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>마디 설치</title>
 <meta name="description" content="운동·재활 영상을 말로 편집하는 도구. PC 에서 열고 설치 버튼 하나.">
+<!-- design/v2/Install.dc.html 을 그대로. 토큰은 apps/web/src/index.css 와 같다. -->
 <style>
-  :root { --bg:#F7F3EE; --surface:#fff; --line:#E8E0D8; --line-soft:#F1EAE2; --text:#2B2622; --text-2:#8A7F76; --text-3:#6E635B; --accent:#C96A4B; --accent-hover:#A9543A; --accent-soft:#F5E7DF; --ok:#7A9E7E; }
+  :root { --bg:#F3F5F7; --surface:#FFFFFF; --line:#E0E6EB; --line-soft:#EAEFF3; --hover:#EDF2F6; --text:#1C2127; --text-2:#5E6872; --text-3:#8A939C; --accent:#3E6B8A; --accent-hover:#2F5470; --track:#E7ECF0; --off:#D2DAE1; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
-  main { max-width:480px; margin:0 auto; padding:48px 16px 64px; display:flex; flex-direction:column; gap:16px; }
-  h1 { font-size:20px; margin:0; font-weight:700; letter-spacing:-0.01em; }
-  p { margin:0; font-size:14px; line-height:1.6; color:var(--text-2); }
-  .card { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px; }
-  .card h2 { margin:0; font-size:14px; font-weight:600; color:var(--text); }
-  .btn { display:flex; align-items:center; justify-content:center; gap:8px; height:48px; padding:0 16px; border-radius:8px; background:var(--accent); color:#fff; font-size:14px; font-weight:600; text-decoration:none; border:0; cursor:pointer; }
-  .btn:hover { background:var(--accent-hover); }
-  .btn[aria-disabled="true"] { background:var(--accent-soft); color:var(--text-2); pointer-events:none; }
-  .btn.alt { background:transparent; color:var(--text); border:1px solid var(--line); font-weight:500; height:40px; font-size:13px; }
-  .btn.alt:hover { background:var(--line-soft); }
-  .meta { font-size:12px; color:var(--text-2); text-align:center; }
-  .meta a, p a { color:var(--text-3); text-decoration:underline; text-underline-offset:2px; }
-  ol { margin:0; padding-left:18px; font-size:13px; line-height:1.7; color:var(--text-3); }
-  ol b { color:var(--text); font-weight:600; }
-  .others { display:flex; flex-direction:column; gap:8px; }
-  .others a { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--text); text-decoration:none; padding:10px 12px; border:1px solid var(--line); border-radius:8px; }
-  .others a:hover { background:var(--line-soft); }
-  .others small { color:var(--text-2); font-size:12px; }
+  html, body { margin:0; padding:0; background:var(--bg); }
+  body { color:var(--text); font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:var(--accent); text-decoration:none; } a:hover { color:var(--accent-hover); }
+  ::selection { background:#E4EEF5; }
+  main { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:32px 24px; }
+  .wrap { width:100%; max-width:520px; display:flex; flex-direction:column; gap:22px; }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .mark { width:26px; height:26px; border-radius:8px; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+  .brand b { font-size:14px; font-weight:600; letter-spacing:-0.01em; }
+  h1 { margin:0; font-size:26px; font-weight:600; letter-spacing:-0.03em; line-height:1.35; text-wrap:pretty; }
+  .sub { margin:8px 0 0; font-size:15px; color:var(--text-2); line-height:1.65; text-wrap:pretty; }
+  .cta { display:flex; flex-direction:column; gap:12px; }
+  .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .btn { min-height:44px; display:inline-flex; align-items:center; gap:9px; font-size:15px; font-weight:600; padding:11px 20px; border-radius:10px; background:var(--accent); color:#fff; border:1px solid var(--accent); cursor:pointer; text-decoration:none; }
+  .btn:hover { background:var(--accent-hover); border-color:var(--accent-hover); color:#fff; }
+  .btn[aria-disabled="true"] { background:var(--hover); color:var(--text-3); border-color:var(--line); pointer-events:none; }
+  .other { font-size:13px; color:var(--text-2); cursor:pointer; padding:6px 8px; border-radius:8px; background:none; border:0; }
+  .other:hover { background:var(--hover); }
+  .meta { font-size:12px; color:var(--text-3); line-height:1.6; }
+  .meta a { color:var(--text-2); text-decoration:underline; text-underline-offset:2px; }
+  hr { border:0; height:1px; background:var(--line); margin:0; }
+  .facts { display:flex; flex-direction:column; gap:2px; }
+  .fact { display:flex; gap:12px; align-items:baseline; padding:9px 0; border-top:1px solid var(--line-soft); }
+  .fact:first-child { border-top-color:transparent; }
+  .fact .k { width:96px; flex:none; font-size:13px; color:var(--text-3); }
+  .fact .v { flex:1; min-width:0; font-size:14px; line-height:1.6; text-wrap:pretty; }
+  .fact .v b { font-weight:600; }
+  .steps { display:flex; align-items:center; gap:7px; }
+  .dot { width:6px; height:6px; border-radius:999px; background:var(--off); }
+  .dot.on { background:var(--text); }
+  .steps span { font-size:12px; color:var(--text-3); padding-left:4px; }
   .hide { display:none !important; }
-  .chip { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--text-3); background:var(--line-soft); border-radius:999px; padding:4px 10px; align-self:flex-start; }
-  .dot { width:6px; height:6px; border-radius:999px; background:var(--ok); }
 </style>
 </head>
 <body>
 <main>
-  <div>
-    <h1>마디</h1>
-    <p style="margin-top:6px">운동·재활 영상을 말로 편집하는 도구예요. 설치하면 영상 폴더가 갤러리로 뜨고, 자막·쉬는 구간 잘라내기·세로 변환·숏폼이 바로 됩니다.</p>
-  </div>
+  <div class="wrap">
+    <div class="brand"><div class="mark">마</div><b>마디</b></div>
 
-  <!-- PC: 내 OS 에 맞는 설치 파일 하나 -->
-  <div class="card" id="install">
-    <span class="chip" id="os-chip"><span class="dot"></span><span id="os-name">확인 중…</span></span>
-    <a class="btn" id="install-btn" aria-disabled="true" href="https://github.com/monandoll/madi/releases/latest">최신 버전 찾는 중…</a>
-    <div class="meta" id="install-meta">받은 파일을 열면 설치가 끝나고 브라우저가 열려요.</div>
-    <ol id="steps-win" class="hide">
-      <li>받은 <b>madi-engine-….exe</b> 를 열어요.</li>
-      <li>파란 경고가 뜨면 <b>추가 정보 → 실행</b>. (아직 서명이 없어서 그래요)</li>
-      <li>설치는 알아서 끝나고 <b>브라우저가 열려요</b>. 스튜디오 이름과 영상 폴더만 고르면 됩니다.</li>
-    </ol>
-    <ol id="steps-mac" class="hide">
-      <li>받은 <b>madi-engine-….pkg</b> 를 열고 <b>계속 → 설치</b>. 맥 비밀번호를 물어요.</li>
-      <li>"확인할 수 없어 열 수 없다"고 하면 <b>시스템 설정 → 개인정보 보호 및 보안</b> 맨 아래 <b>그래도 열기</b>. (아직 서명이 없어서 그래요)</li>
-      <li>설치가 끝나면 <b>브라우저가 열려요</b>. 스튜디오 이름과 영상 폴더만 고르면 됩니다.</li>
-    </ol>
-  </div>
-
-  <!-- 폰·다른 OS: PC 에서 열어 달라고 -->
-  <div class="card hide" id="not-pc">
-    <h2>이 페이지를 PC 에서 열어주세요</h2>
-    <p>마디는 영상이 있는 PC(Windows 또는 Mac)에 설치해요. 설치가 끝나면 폰에서도 그 PC 를 볼 수 있어요.</p>
-  </div>
-
-  <div class="card">
-    <h2>다른 파일이 필요하면</h2>
-    <div class="others" id="others">
-      <a data-key="win" href="https://github.com/monandoll/madi/releases/latest">Windows 10/11 <small>.exe</small></a>
-      <a data-key="mac-arm64" href="https://github.com/monandoll/madi/releases/latest">Mac (Apple Silicon · M1 이후) <small>.pkg</small></a>
-      <a data-key="mac-x64" href="https://github.com/monandoll/madi/releases/latest">Mac (Intel) <small>.pkg</small></a>
+    <!-- PC -->
+    <div id="pc">
+      <h1 id="title">이 컴퓨터에 편집 엔진을 설치할게요</h1>
+      <p class="sub">영상은 이 컴퓨터 안에서만 편집돼요. 어디에도 올라가지 않습니다.</p>
     </div>
-    <p>내 맥이 어느 쪽인지 모르면: 왼쪽 위 사과 메뉴 → 이 Mac에 관하여. "칩 Apple M…" 이면 Apple Silicon.</p>
-  </div>
+    <!-- 폰·다른 OS -->
+    <div id="not-pc" class="hide">
+      <h1>이 페이지를 PC 에서 열어주세요</h1>
+      <p class="sub">마디는 영상이 있는 PC(Windows 또는 Mac)에 설치해요. 설치가 끝나면 폰에서도 그 PC 를 볼 수 있어요.</p>
+    </div>
 
-  <div class="card">
-    <h2>설치 뒤</h2>
-    <ol>
-      <li>트레이(작업 표시줄 오른쪽 / 메뉴 막대)에 점 아이콘이 생겨요. 브라우저가 닫혔으면 눌러서 <b>마디 열기</b>.</li>
-      <li>업데이트는 자동으로 받아요. 새 버전은 다음에 켤 때 적용돼요.</li>
-      <li>폰이나 다른 PC 에서 보려면 설정 → <b>밖에서 접속하기</b>. 같은 와이파이면 <b>http://PC주소:41520</b> 으로 바로 돼요.</li>
-    </ol>
-    <a class="btn alt" href="https://github.com/monandoll/madi">GitHub</a>
+    <div class="cta">
+      <div class="row">
+        <a class="btn" id="install-btn" aria-disabled="true" href="https://github.com/monandoll/madi/releases/latest">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="m7 11 5 4 5-4"></path><path d="M4 19.5h16"></path></svg>
+          <span id="btn-label">최신 버전 찾는 중…</span>
+        </a>
+        <button type="button" class="other" id="other-btn"></button>
+      </div>
+      <div class="meta" id="meta"></div>
+    </div>
+
+    <hr>
+
+    <div class="facts">
+      <div class="fact"><div class="k">필요한 것</div><div class="v" id="need">Windows 10 이상 · 64비트 / macOS 13 이상 · Apple 실리콘 · 인텔</div></div>
+      <div class="fact"><div class="k">계정</div><div class="v">필요 없어요. 설치하면 바로 쓸 수 있어요.</div></div>
+      <div class="fact"><div class="k">AI 연결</div><div class="v">나중에 설정에서 해도 돼요. 자막 · 쉬는 구간 자르기 · 규격 변환은 AI 없이도 됩니다.</div></div>
+      <div class="fact" id="warn-row"><div class="k">처음 열 때</div><div class="v" id="warn">아직 서명이 없어서 경고가 한 번 떠요. Windows 는 <b>추가 정보 → 실행</b>, Mac 은 <b>시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기</b>. 설치가 끝나면 브라우저가 알아서 열려요.</div></div>
+    </div>
+
+    <div class="steps"><div class="dot on"></div><div class="dot"></div><div class="dot"></div><span>설치</span><span style="padding-left:0">· 다음은 영상 폴더 정하기</span></div>
   </div>
 </main>
 
@@ -89,7 +89,7 @@
   var RELEASES = 'https://github.com/' + REPO + '/releases/latest';
   var $ = function (id) { return document.getElementById(id); };
 
-  // 1) OS 알아내기. 맥은 Apple Silicon / Intel 을 UA 로는 못 가려서 userAgentData → WebGL → 기본 Apple Silicon.
+  // 1) OS. 맥의 Apple 실리콘 / 인텔은 UA 로 못 가려서 userAgentData → WebGL → 기본 Apple 실리콘.
   function detect() {
     var ua = navigator.userAgent || '';
     var mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -120,54 +120,73 @@
     return Promise.resolve(byGl());
   }
 
-  var LABEL = { win: 'Windows', 'mac-arm64': 'Mac (Apple Silicon)', 'mac-x64': 'Mac (Intel)' };
-  var MATCH = { win: /-win-x64\.exe$/, 'mac-arm64': /-mac-arm64\.pkg$/, 'mac-x64': /-mac-x64\.pkg$/ };
-
+  var OS = {
+    win: { name: 'Windows', match: /-win-x64\.exe$/, need: 'Windows 10 이상 · 64비트', warn: '아직 서명이 없어서 파란 경고가 한 번 떠요. <b>추가 정보 → 실행</b>을 누르면 설치되고 브라우저가 알아서 열려요.' },
+    'mac-arm64': { name: 'macOS', match: /-mac-arm64\.pkg$/, need: 'macOS 13 이상 · Apple 실리콘 (M1 이후)', warn: '아직 서명이 없어서 "확인할 수 없음"이 뜰 수 있어요. <b>시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기</b> 뒤 계속 → 설치. 끝나면 브라우저가 알아서 열려요.' },
+    'mac-x64': { name: 'macOS', match: /-mac-x64\.pkg$/, need: 'macOS 13 이상 · 인텔', warn: '아직 서명이 없어서 "확인할 수 없음"이 뜰 수 있어요. <b>시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기</b> 뒤 계속 → 설치. 끝나면 브라우저가 알아서 열려요.' }
+  };
   function fmtSize(n) { return n > 1024 * 1024 * 1024 ? (n / 1024 / 1024 / 1024).toFixed(1) + ' GB' : Math.round(n / 1024 / 1024) + ' MB'; }
 
-  // 2) 최신 릴리스에서 파일 고르기
+  // 2) 최신 릴리스
   function latest() {
     return fetch('https://api.github.com/repos/' + REPO + '/releases/latest', { headers: { accept: 'application/vnd.github+json' } })
       .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(function (rel) {
         var assets = {};
-        (rel.assets || []).forEach(function (a) {
-          Object.keys(MATCH).forEach(function (k) { if (MATCH[k].test(a.name)) assets[k] = a; });
-        });
+        (rel.assets || []).forEach(function (a) { Object.keys(OS).forEach(function (k) { if (OS[k].match.test(a.name)) assets[k] = a; }); });
         return { version: String(rel.tag_name || '').replace(/^v/, ''), assets: assets };
       });
   }
 
-  Promise.all([detect(), latest().catch(function () { return null; })]).then(function (res) {
-    var os = res[0], rel = res[1];
+  var state = { os: 'win', rel: null };
+  function render() {
+    var os = OS[state.os];
+    var asset = state.rel && state.rel.assets[state.os];
     var btn = $('install-btn');
-    // 다른 파일 링크
-    if (rel) {
-      Array.prototype.forEach.call(document.querySelectorAll('#others a'), function (a) {
-        var asset = rel.assets[a.getAttribute('data-key')];
-        if (asset) { a.href = asset.browser_download_url; a.querySelector('small').textContent = fmtSize(asset.size); }
-      });
-    }
-    if (os === 'mobile' || os === 'other') {
-      $('install').classList.add('hide');
-      $('not-pc').classList.remove('hide');
-      return;
-    }
-    $('os-name').textContent = LABEL[os] + (rel ? ' · v' + rel.version : '');
-    $('steps-' + (os === 'win' ? 'win' : 'mac')).classList.remove('hide');
-    var asset = rel && rel.assets[os];
+    $('need').textContent = os.need;
+    $('warn').innerHTML = os.warn;
     if (asset) {
       btn.href = asset.browser_download_url;
-      btn.textContent = LABEL[os] + '에 설치 (' + fmtSize(asset.size) + ')';
-      btn.setAttribute('aria-disabled', 'false');
       btn.setAttribute('download', '');
+      $('btn-label').textContent = os.name + '용 다운로드';
+      $('meta').textContent = asset.name + ' · ' + fmtSize(asset.size) + (state.rel.version ? ' · v' + state.rel.version : '');
     } else {
-      // 릴리스를 못 읽었거나(오프라인·API 한도) 파일이 없으면 릴리스 페이지로
       btn.href = RELEASES;
-      btn.textContent = rel ? '아직 ' + LABEL[os] + ' 파일이 없어요 — 릴리스 보기' : '설치 파일 받기';
-      btn.setAttribute('aria-disabled', 'false');
-      if (!rel) $('install-meta').innerHTML = '목록을 못 불러왔어요. 릴리스 페이지에서 <b>' + (os === 'win' ? '-win-x64.exe' : os === 'mac-arm64' ? '-mac-arm64.pkg' : '-mac-x64.pkg') + '</b> 로 끝나는 파일을 받아요.';
+      btn.removeAttribute('download');
+      $('btn-label').textContent = state.rel ? '아직 ' + os.name + ' 파일이 없어요 — 릴리스 보기' : os.name + '용 다운로드';
+      $('meta').innerHTML = state.rel ? '' : '목록을 못 불러왔어요. <a href="' + RELEASES + '">릴리스 페이지</a>에서 받아 주세요.';
     }
+    btn.setAttribute('aria-disabled', 'false');
+    // 다른 OS 로 바꾸기: Windows ↔ macOS, 맥 안에서는 Apple 실리콘 ↔ 인텔
+    var other = state.os === 'win' ? 'mac-arm64' : state.os === 'mac-arm64' ? 'mac-x64' : 'win';
+    var label = other === 'win' ? 'Windows용 받기' : other === 'mac-arm64' ? 'macOS용 받기' : '인텔 맥이면 여기';
+    if (state.os === 'mac-arm64') label = '인텔 맥이면 여기';
+    if (state.os === 'mac-x64') label = 'Apple 실리콘 맥이면 여기';
+    var ob = $('other-btn');
+    ob.textContent = label;
+    ob.onclick = function () {
+      state.os = state.os === 'win' ? 'mac-arm64' : state.os === 'mac-arm64' ? 'mac-x64' : 'mac-arm64';
+      render();
+    };
+    // 맥에서 Windows 로 가는 길도 남긴다
+    if (state.os !== 'win') {
+      var win = document.createElement('button');
+      win.type = 'button'; win.className = 'other'; win.textContent = 'Windows용 받기';
+      win.onclick = function () { state.os = 'win'; render(); };
+      var old = document.getElementById('win-btn'); if (old) old.remove();
+      win.id = 'win-btn'; ob.parentNode.appendChild(win);
+    } else { var old2 = document.getElementById('win-btn'); if (old2) old2.remove(); }
+  }
+
+  Promise.all([detect(), latest().catch(function () { return null; })]).then(function (res) {
+    var os = res[0];
+    state.rel = res[1];
+    if (os === 'mobile' || os === 'other') {
+      $('pc').classList.add('hide');
+      $('not-pc').classList.remove('hide');
+      state.os = 'win';
+    } else state.os = os;
+    render();
   });
 })();
 </script>

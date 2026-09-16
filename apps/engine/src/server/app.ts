@@ -204,9 +204,13 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.patch('/api/settings', async (c) => {
-    const parsed = SettingsPatch.safeParse(await c.req.json().catch(() => null));
+    const raw: unknown = await c.req.json().catch(() => null);
+    const parsed = SettingsPatch.safeParse(raw);
     if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
-    const next = settings.patch(parsed.data);
+    // zod 는 partial 이어도 default 가 있는 키를 채워 넣는다 (setupDone=false 등). 보낸 키만 바꾼다.
+    const sent = new Set(Object.keys((raw ?? {}) as object));
+    const patch = Object.fromEntries(Object.entries(parsed.data).filter(([k]) => sent.has(k))) as typeof parsed.data;
+    const next = settings.patch(patch);
     deps.onSettingsChanged?.();
     const body: SettingsResponse = { settings: next };
     return c.json(body);

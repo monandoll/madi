@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="c9e3deaa-66b7-453f-ac05-f5c8b8f0941d"></script>
+
+</head>
+<body>
+
+<x-dc>
+<helmet>
+<style>/**
+ * Minified by jsDelivr using clean-css v5.3.3.
+ * Original file: /gh/orioncactus/pretendard@1.3.9/dist/web/variable/pretendardvariable.css
+ *
+ * Do NOT use SRI with dynamically generated files! More information: https://www.jsdelivr.com/using-sri-with-dynamic-files
+ */
+@font-face{font-family:'Pretendard Variable';font-weight:45 920;font-style:normal;font-display:swap;src:url("ef0d8744-2bdf-4f5a-b269-8fe2b4cf760c") format('woff2-variations')}
+/*# sourceMappingURL=/sm/cb46c7e49fc38cbd97a389d4dc69706f7471d0646edc67e9dc7defe084c0b8bf.map */</style>
+<style>
+  html, body { margin:0; padding:0; background:#F3F5F7; }
+  body { font-family:"Pretendard Variable","Pretendard",system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#3E6B8A; text-decoration:none; }
+  a:hover { color:#2F5470; }
+  ::selection { background:#E4EEF5; }
+</style>
+</helmet>
+<div style="min-height:100vh; box-sizing:border-box; background:#F3F5F7; color:#1C2127; display:flex; align-items:center; justify-content:center; padding:32px 24px;">
+  <div style="width:100%; max-width:520px; display:flex; flex-direction:column; gap:22px;">
+
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="width:26px; height:26px; border-radius:8px; background:#3E6B8A; color:#FFFFFF; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">마</div>
+      <div style="font-size:14px; font-weight:600; letter-spacing:-0.01em;">마디</div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div style="font-size:26px; font-weight:600; letter-spacing:-0.03em; line-height:1.35; text-wrap:pretty;">{{ title }}</div>
+      <div style="font-size:15px; color:#5E6872; line-height:1.65; text-wrap:pretty;">{{ sub }}</div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <div style="min-height:44px; box-sizing:border-box; display:flex; align-items:center; gap:9px; font-size:15px; font-weight:600; padding:11px 20px; border-radius:10px; background:{{ btnBg }}; color:{{ btnFg }}; border:1px solid {{ btnBorder }}; cursor:pointer;" sc-camel-on-click="{{ onPrimary }}">
+          <sc-if value="{{ showDownloadIcon }}" hint-placeholder-val="{{ true }}">
+            <svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="m7 11 5 4 5-4"></path><path d="M4 19.5h16"></path></svg>
+          </sc-if>
+          <sc-if value="{{ showCheckIcon }}" hint-placeholder-val="{{ false }}">
+            <svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+          </sc-if>
+          <div>{{ btnLabel }}</div>
+        </div>
+        <sc-if value="{{ showOther }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px; color:#5E6872; cursor:pointer; padding:6px 8px; border-radius:8px;" sc-camel-on-click="{{ toggleOs }}" style-hover="background:#EDF2F6;">{{ otherLabel }}</div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ showProgress }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; gap:7px;">
+          <div style="height:4px; border-radius:999px; background:#E7ECF0; position:relative; overflow:hidden;">
+            <div style="position:absolute; left:0; top:0; bottom:0; width:{{ pct }}; border-radius:999px; background:#3E6B8A; transition:width 240ms linear;"></div>
+          </div>
+          <div style="font-size:12px; color:#8A939C;">{{ progressLabel }}</div>
+        </div>
+      </sc-if>
+
+      <div style="font-size:12px; color:#8A939C; line-height:1.6;">{{ meta }}</div>
+    </div>
+
+    <div style="height:1px; background:#E0E6EB;"></div>
+
+    <div style="display:flex; flex-direction:column; gap:2px;">
+      <sc-for list="{{ facts }}" as="f" hint-placeholder-count="3">
+        <div style="display:flex; gap:12px; align-items:baseline; padding:9px 0; border-top:1px solid {{ f.sep }};">
+          <div style="width:96px; flex:none; font-size:13px; color:#8A939C;">{{ f.key }}</div>
+          <div style="flex:1; min-width:0; font-size:14px; line-height:1.6; text-wrap:pretty;">{{ f.value }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:7px;">
+      <sc-for list="{{ dots }}" as="d" hint-placeholder-count="3">
+        <div style="width:6px; height:6px; border-radius:999px; background:{{ d.bg }};"></div>
+      </sc-for>
+      <div style="font-size:12px; color:#8A939C; padding-left:4px;">{{ stepLabel }}</div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:900,&quot;height&quot;:700}}">
+const OS = {
+  mac: { name: "macOS", file: "마디-0.1.1.dmg", size: "42MB", need: "macOS 13 이상 · Apple 실리콘 / 인텔" },
+  win: { name: "Windows", file: "마디-0.1.1-setup.exe", size: "46MB", need: "Windows 10 이상 · 64비트" }
+};
+
+class Component extends DCLogic {
+  state = { os: "mac", phase: "ready", pct: 0 };
+
+  componentWillUnmount() { if (this._t) clearInterval(this._t); }
+
+  start() {
+    if (this.state.phase !== "ready") {
+      if (this.state.phase === "done") this.setState({ phase: "ready", pct: 0 });
+      return;
+    }
+    this.setState({ phase: "downloading", pct: 4 });
+    if (this._t) clearInterval(this._t);
+    this._t = setInterval(() => {
+      this.setState(s => {
+        if (s.phase === "downloading") {
+          const n = s.pct + 9;
+          return n >= 100 ? { phase: "installing", pct: 100 } : { pct: n };
+        }
+        if (s.phase === "installing") {
+          clearInterval(this._t);
+          return { phase: "done" };
+        }
+        return {};
+      });
+    }, 260);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const os = OS[s.os];
+    const other = s.os === "mac" ? OS.win : OS.mac;
+
+    const copy = {
+      ready: {
+        title: "이 컴퓨터에 편집 엔진을 설치할게요",
+        sub: "영상은 이 컴퓨터 안에서만 편집돼요. 어디에도 올라가지 않습니다.",
+        btn: os.name + "용 다운로드"
+      },
+      downloading: {
+        title: "받고 있어요",
+        sub: "다 받으면 자동으로 설치가 시작돼요.",
+        btn: "받는 중…"
+      },
+      installing: {
+        title: "설치하고 있어요",
+        sub: "잠깐만요. 1분도 안 걸려요.",
+        btn: "설치 중…"
+      },
+      done: {
+        title: "연결됐어요",
+        sub: "이제 영상이 있는 폴더만 알려주시면 바로 시작할 수 있어요.",
+        btn: "다음"
+      }
+    }[s.phase];
+
+    const step = s.phase === "done" ? 1 : 0;
+
+    return {
+      title: copy.title,
+      sub: copy.sub,
+      btnLabel: copy.btn,
+      showDownloadIcon: s.phase === "ready",
+      showCheckIcon: s.phase === "done",
+      btnBg: s.phase === "downloading" || s.phase === "installing" ? "#EDF2F6" : "#3E6B8A",
+      btnFg: s.phase === "downloading" || s.phase === "installing" ? "#8A939C" : "#FFFFFF",
+      btnBorder: s.phase === "downloading" || s.phase === "installing" ? "#E0E6EB" : "#3E6B8A",
+      onPrimary: () => this.start(),
+      showOther: s.phase === "ready",
+      otherLabel: other.name + "용 받기",
+      toggleOs: () => this.setState({ os: s.os === "mac" ? "win" : "mac" }),
+      showProgress: s.phase === "downloading" || s.phase === "installing",
+      pct: (s.phase === "installing" ? 100 : s.pct) + "%",
+      progressLabel: s.phase === "installing" ? "설치 중" : s.pct + "% · " + os.file,
+      meta: s.phase === "ready" ? os.file + " · " + os.size : "",
+      facts: [
+        { key: "필요한 것", value: os.need },
+        { key: "계정", value: "필요 없어요. 설치하면 바로 쓸 수 있어요." },
+        { key: "AI 연결", value: "나중에 설정에서 해도 돼요. 자막 · 쉬는 구간 자르기 · 규격 변환은 AI 없이도 됩니다." }
+      ].map((f, i) => ({ ...f, sep: i === 0 ? "transparent" : "#EAEFF3" })),
+      dots: [0, 1, 2].map(i => ({ bg: i === step ? "#1C2127" : "#D2DAE1" })),
+      stepLabel: step === 0 ? "설치" : "영상 폴더 정하기"
+    };
+  }
+}
+
+</script>
+
+
+</body></html>

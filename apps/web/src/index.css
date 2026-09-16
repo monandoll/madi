@@ -1,38 +1,59 @@
 @import 'tailwindcss';
 
-/* CLAUDE.md 디자인 토큰. 값은 design/Mobile.dc.html 과 같다. */
+/* 디자인 토큰. 값은 design/v2/{Mobile,Desktop,Install}.dc.html 과 같다 (CLAUDE.md 표와 동기). */
 @theme {
-  --color-bg: #f7f3ee;
+  --color-bg: #ffffff;
+  --color-side: #f3f5f7;
   --color-surface: #ffffff;
-  --color-line: #e8e0d8;
-  --color-line-soft: #f1eae2;
-  --color-text: #2b2622;
-  --color-text-2: #8a7f76;
-  --color-text-3: #6e635b;
-  --color-accent: #c96a4b;
-  --color-accent-hover: #a9543a;
-  --color-accent-soft: #f5e7df;
+  --color-surface-2: #f7fafc;
+  --color-line: #e0e6eb;
+  --color-line-2: #e7ecf0;
+  --color-line-soft: #eaeff3;
+  --color-line-faint: #edf2f6;
+  --color-input: #d9e1e7;
+  --color-text: #1c2127;
+  --color-text-2: #5e6872;
+  --color-text-3: #8a939c;
+  --color-text-4: #4e5862;
+  --color-muted: #9aa3ac;
+  --color-accent: #3e6b8a;
+  --color-accent-hover: #2f5470;
+  --color-accent-soft: #e4eef5;
+  --color-accent-faint: #eef5fa;
+  --color-select: #dfe7ed;
+  --color-select-2: #d8e2e9;
+  --color-hover: #edf2f6;
   --color-ok: #7a9e7e;
+  --color-off: #d2dae1;
   --color-busy: #d9a441;
   --color-error: #b85c5c;
-  --color-subtitle: #e8c33f;
-  --color-thumb: #dcd4ca;
-  --color-thumb-2: #cec5ba;
-  --color-thumb-3: #c2b9ae;
-  --color-track: #efe7de;
+  --color-thumb: #e6eaee;
+  --color-thumb-2: #dbe1e6;
+  --color-thumb-3: #cdd5db;
+  --color-track: #e7ecf0;
+  --color-avatar-me: #e2e9ef;
+  --color-overlay: rgba(22, 26, 31, 0.72);
+  --color-overlay-2: rgba(22, 26, 31, 0.78);
 
   --font-sans: 'Pretendard Variable', Pretendard, system-ui, -apple-system, sans-serif;
 
+  --text-10: 10px;
   --text-11: 11px;
   --text-12: 12px;
   --text-13: 13px;
   --text-14: 14px;
   --text-15: 15px;
+  --text-16: 16px;
   --text-20: 20px;
+  --text-26: 26px;
 
+  --radius-row: 6px;
   --radius-thumb: 8px;
-  --radius-panel: 12px;
+  --radius-panel: 10px;
+  --radius-card: 12px;
   --radius-pill: 999px;
+
+  --breakpoint-pc: 900px;
 
   --shadow-*: initial;
 }
@@ -56,6 +77,8 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -68,7 +91,31 @@ body {
   a:hover {
     color: var(--color-accent-hover);
   }
+  input,
+  button {
+    font: inherit;
+    color: inherit;
+  }
 }
 ::selection {
-  background: #eadfd4;
+  background: #e4eef5;
+}
+/* PC 는 시안대로 얇은 스크롤바, 모바일은 숨김 */
+@media (min-width: 900px) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #d2dae1;
+    border-radius: 8px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+}
+@media (max-width: 899px) {
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
 }
