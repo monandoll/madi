@@ -95,7 +95,7 @@ describe('learn', () => {
     const home = tempHome('madi-scan-');
     fs.mkdirSync(path.join(home, 'a', 'b', 'c'), { recursive: true });
     for (const f of ['a/x.mp4', 'a/y.txt', 'a/.hidden.mp4', 'a/b/z.mov', 'a/b/c/deep.mp4']) fs.writeFileSync(path.join(home, f), '');
-    expect(scanReferenceFoldersForTest([path.join(home, 'a')]).map((p) => path.relative(home, p))).toEqual(['a/b/z.mov', 'a/x.mp4']);
+    expect(scanReferenceFoldersForTest([path.join(home, 'a')]).map((p) => path.relative(home, p).split(path.sep).join('/'))).toEqual(['a/b/z.mov', 'a/x.mp4']);
     fs.rmSync(home, { recursive: true, force: true });
   });
 });
