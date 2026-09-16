@@ -5,6 +5,8 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import {
   ActionRequest,
   type ActionResponse,
+  AddRuleRequest,
+  type StyleResponse,
   type AiProvidersResponse,
   ChatRequest,
   type ChatResponse,
@@ -46,6 +48,7 @@ export interface AppDeps {
   tunnel: import('../tunnel.js').Tunnel;
   agent: import('../agent/runner.js').AgentRunner;
   agentTools: import('../agent/tools.js').AgentTools;
+  styleService: import('../style/service.js').StyleService;
   version: string;
   onSettingsChanged?: () => void;
   /** 시스템 폴더 선택창. Electron 이 붙여 준다. 없으면 브라우저만 뜬 상태. */
@@ -204,6 +207,36 @@ export function createApp(deps: AppDeps): Hono {
     const next = settings.patch(parsed.data);
     deps.onSettingsChanged?.();
     const body: SettingsResponse = { settings: next };
+    return c.json(body);
+  });
+
+  // ---- 편집 스타일 (5단계) ----
+  app.get('/api/style', (c) => {
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  app.post('/api/style/rules', async (c) => {
+    const parsed = AddRuleRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    deps.agent.style.appendRule(parsed.data.rule);
+    deps.styleService.emit('style.updated');
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  app.delete('/api/style/rules/:index', (c) => {
+    const index = Number(c.req.param('index'));
+    if (!Number.isInteger(index) || !deps.agent.style.removeRule(index)) return c.json({ error: { code: 'rule_locked', message: 'learned or missing rule' } }, 400);
+    deps.styleService.emit('style.updated');
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  /** 완성본 폴더를 다시 훑고, 실패한 것도 다시 분석한다. */
+  app.post('/api/style/relearn', (c) => {
+    deps.styleService.refresh({ retryFailed: true });
+    const body: StyleResponse = deps.styleService.response();
     return c.json(body);
   });
 

@@ -34,6 +34,8 @@ export function useEngineEvents(): void {
           void qc.invalidateQueries({ queryKey: queryKeys.video(ev.output.videoId) });
           void qc.invalidateQueries({ queryKey: queryKeys.outputs });
           void qc.invalidateQueries({ queryKey: queryKeys.videos });
+        } else if (ev.type === 'style.updated' || ev.type === 'reference.updated') {
+          void qc.invalidateQueries({ queryKey: queryKeys.style });
         } else if (ev.type === 'job.updated' && ev.job.videoId) {
           // 상세 화면의 진행 카드: 잡 진행률만 캐시에 얹는다 (재요청 없이)
           qc.setQueryData<import('@madi/shared').VideoDetailResponse>(queryKeys.video(ev.job.videoId), (prev) =>

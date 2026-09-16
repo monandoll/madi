@@ -87,7 +87,7 @@ describe('StyleProfile', () => {
     expect(s.appendRule('- 숏폼은 30초 안쪽으로')).toBe(before + 1);
     expect(fs.readFileSync(s.mdPath, 'utf8')).toContain('- 숏폼은 30초 안쪽으로');
     expect(s.params().subtitleStyle.fontFamily).toBe('Pretendard');
-    s.writeParams({ subtitleStyle: { ...s.params().subtitleStyle, fontSize: 70 } });
+    s.writeParams({ ...s.params(), subtitleStyle: { ...s.params().subtitleStyle, fontSize: 70 } });
     expect(s.params().subtitleStyle.fontSize).toBe(70);
     fs.rmSync(home, { recursive: true, force: true });
   });

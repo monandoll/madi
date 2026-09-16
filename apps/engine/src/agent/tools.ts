@@ -106,7 +106,7 @@ export class AgentTools {
 
   private async findSilences(video: Video, ctx: ToolContext, input: ToolInput<'find_silences'>) {
     if (video.hasAudio === false) throw new ToolError('이 영상은 소리가 없어요.');
-    const { stderr } = await run(this.d.ffmpegBin, silenceDetectArgs(video.path, input.minSec !== undefined ? { minSec: input.minSec } : {}), { signal: ctx.signal });
+    const { stderr } = await run(this.d.ffmpegBin, silenceDetectArgs(video.path, { minSec: input.minSec ?? this.d.style.params().silenceMinSec }), { signal: ctx.signal });
     const silences = parseSilences(stderr, video.durationSec ?? 0);
     return { silences: silences.map((s) => ({ start: r2(s.start), end: r2(s.end) })), totalSec: r2(silences.reduce((a, s) => a + s.end - s.start, 0)) };
   }
@@ -119,7 +119,7 @@ export class AgentTools {
 
   private async proposeCuts(video: Video, ctx: ToolContext, input: ToolInput<'propose_cuts'>) {
     if (video.hasAudio === false) throw new ToolError('이 영상은 소리가 없어서 쉬는 구간을 찾을 수 없어요.');
-    const { stderr } = await run(this.d.ffmpegBin, silenceDetectArgs(video.path, input.minSilenceSec !== undefined ? { minSec: input.minSilenceSec } : {}), { signal: ctx.signal });
+    const { stderr } = await run(this.d.ffmpegBin, silenceDetectArgs(video.path, { minSec: input.minSilenceSec ?? this.d.style.params().silenceMinSec }), { signal: ctx.signal });
     const silences = parseSilences(stderr, video.durationSec ?? 0);
     const cuts = silencesToCuts(silences, video.durationSec ?? 0, input.padSec ?? 0.2);
     return { cuts: cuts.map((c) => ({ start: r2(c.start), end: r2(c.end), reason: c.reason })), removedSec: r2(cuts.reduce((a, c) => a + c.end - c.start, 0)) };
@@ -212,7 +212,7 @@ export class AgentTools {
       style = { ...edit.subtitleStyle, ...patch };
       this.d.library.updateEdit(edit.id, { subtitleStyle: style });
     }
-    if (input.remember) this.d.style.writeParams({ subtitleStyle: { ...DEFAULT_SUBTITLE_STYLE, ...style } });
+    if (input.remember) this.d.style.writeParams({ ...this.d.style.params(), subtitleStyle: { ...DEFAULT_SUBTITLE_STYLE, ...style } });
     return { subtitleStyle: style, remembered: !!input.remember };
   }
 

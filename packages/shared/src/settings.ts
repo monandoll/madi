@@ -16,6 +16,8 @@ export const Settings = z.object({
   setupDone: z.boolean().default(false),
   /** Cloudflare Tunnel 토큰. 있으면 엔진이 cloudflared 를 띄워 밖에서 접속하게 한다. */
   tunnelToken: z.string().nullable().default(null),
+  /** 완성본(예전에 만든 결과물) 폴더. 여기 영상을 분석해 편집 스타일을 배운다. 갤러리엔 안 뜬다. */
+  referenceFolders: z.array(z.string()).default([]),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -25,6 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
   ai: { provider: 'none' },
   setupDone: false,
   tunnelToken: null,
+  referenceFolders: [],
 };
 
 export const SettingsPatch = Settings.partial();
