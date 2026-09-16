@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react';
 
-export type Route = { screen: 'gallery' } | { screen: 'settings' } | { screen: 'video'; id: string } | { screen: 'output'; id: string };
+export type Route =
+  | { screen: 'gallery' }
+  | { screen: 'outputs' }
+  | { screen: 'running' }
+  | { screen: 'settings' }
+  | { screen: 'video'; id: string }
+  | { screen: 'output'; id: string };
 
 /** 해시 라우팅. 뒤로가기가 그대로 동작하고 라우터 의존성이 없다. */
 function read(): Route {
   const h = location.hash;
   if (h === '#/settings') return { screen: 'settings' };
+  if (h === '#/outputs') return { screen: 'outputs' };
+  if (h === '#/running') return { screen: 'running' };
   let m = /^#\/videos\/([A-Za-z0-9_-]+)$/.exec(h);
   if (m) return { screen: 'video', id: m[1]! };
   m = /^#\/outputs\/([A-Za-z0-9_-]+)$/.exec(h);
@@ -27,6 +35,10 @@ export function hrefOf(r: Route): string {
   switch (r.screen) {
     case 'gallery':
       return '#/';
+    case 'outputs':
+      return '#/outputs';
+    case 'running':
+      return '#/running';
     case 'settings':
       return '#/settings';
     case 'video':

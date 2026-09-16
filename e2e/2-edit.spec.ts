@@ -29,7 +29,7 @@ test('상세: 인사말, 프리뷰 펼치기, 세로로 바꾸기 → 결과물 
   const detail = page.getByTestId('video-detail');
   await expect(detail.getByRole('heading', { name: '어깨 가동성 루틴 3분' })).toBeVisible();
   await expect(page.getByTestId('bubble-assistant').first()).toContainText('무엇을 해드릴까요');
-  await expect(page.getByText('결과물 없음')).toBeVisible();
+  await expect(page.getByText('결과물 없음').first()).toBeVisible();
 
   // 프리뷰 펼치기 → 플레이어
   await page.getByTestId('preview-toggle').click();
@@ -55,7 +55,7 @@ test('상세: 인사말, 프리뷰 펼치기, 세로로 바꾸기 → 결과물 
   await expect(page.getByTestId('progress-card')).toHaveCount(0);
   await expect(page.getByTestId('bubble-assistant').last()).toContainText('세로로 바꿨어요');
   await expect(page.getByTestId('output-row')).toContainText('9:16');
-  await expect(page.getByText('결과물 1개')).toBeVisible();
+  await expect(page.getByText('결과물 1개').first()).toBeVisible();
 });
 
 test('쉬는 구간 잘라내기 → 잘라낸 결과 문구, 결과물 2개', async ({ page }) => {
@@ -103,8 +103,11 @@ test('숏폼 자르기: 구간 고르고 만들기 → 결과물 화면 → 다�
   expect(res.status()).toBe(200);
   expect(res.headers()['content-disposition']).toContain('attachment');
 
-  await out.getByRole('button', { name: '뒤로' }).click();
+  // PC 에서는 옆 패널이라 영상 채팅이 뒤에 그대로 있다. 닫으면 #/videos/ 로 돌아간다.
   await expect(page.getByTestId('video-detail')).toBeVisible();
+  await out.getByTestId('panel-close').click();
+  await expect(page).toHaveURL(/#\/videos\//);
+  await expect(page.getByTestId('output-detail')).toHaveCount(0);
 });
 
 test('자막 넣기 (whisper 있을 때만): 자막 결과물과 자막 목록', async ({ page }) => {

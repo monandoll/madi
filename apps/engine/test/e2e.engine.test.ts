@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import WebSocket from 'ws';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { FoldersResponse, HealthResponse, VideosResponse, WsEvent } from '@madi/shared';
+import { FoldersResponse, HealthResponse, SettingsResponse, VideosResponse, WsEvent } from '@madi/shared';
 import { type Engine, startEngine } from '../src/engine.js';
 import { SAMPLE_5S, SAMPLE_SILENT, freePort, tempHome, waitFor } from './helpers.js';
 
@@ -130,6 +130,14 @@ describe('engine e2e', () => {
     }, 60_000);
     const { videos } = VideosResponse.parse(await api('/api/videos'));
     expect(videos.filter((v) => v.title === '거북목 교정')).toHaveLength(1);
+  });
+
+  it('설정은 보낸 키만 바뀐다 (ai 만 보내도 setupDone 이 기본값으로 돌아가지 않는다)', async () => {
+    const patch = (body: unknown) => api('/api/settings', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    await patch({ setupDone: true });
+    const after = SettingsResponse.parse(await patch({ ai: { provider: 'none' } }));
+    expect(after.settings.setupDone).toBe(true);
+    expect(after.settings.workspaceName).toBe('우리 스튜디오');
   });
 
   it('감시 폴더를 바꾸면 이전 폴더 영상은 갤러리에서 빠지고, 되돌리면 다시 만들지 않고 돌아온다', async () => {

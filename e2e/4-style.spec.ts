@@ -39,6 +39,7 @@ test('완성본 폴더를 고르면 분석해서 배운 줄이 붙는다', async
   fs.copyFileSync(path.join(FIXTURES, 'sample-5s.mp4'), path.join(DESKTOP, '어깨 루틴_final.mp4'));
   await page.goto('/#/settings');
   const refs = page.getByTestId('references-section');
+  await refs.getByRole('button', { name: '샘플 영상 더 넣어서 다시 배우기' }).click();
   await refs.getByRole('button', { name: '폴더 추가…' }).click();
   await refs.getByRole('checkbox', { name: /바탕화면/ }).click();
   await expect(refs.getByTestId('reference-folders')).toContainText('Desktop');

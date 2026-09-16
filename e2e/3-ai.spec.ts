@@ -27,12 +27,13 @@ test('설정: 설치된 도구 중 Claude Code 를 고르면 연결됨', async (
   const claude = ai.getByTestId('ai-provider-claude');
   await expect(claude).toContainText('Claude Code');
   await expect(claude).toContainText('설치됨 · 9.9.9');
-  await claude.getByRole('button', { name: '쓰기' }).click();
-  await expect(ai.getByTestId('ai-status')).toHaveText('Claude Code로 연결됨');
-  await expect(claude).toContainText('쓰는 중');
-  // 헤더 표시. 붉은색 없이 조용하게.
+  await claude.getByRole('button', { name: '연결하기' }).click();
+  await expect(ai.getByTestId('ai-status')).toHaveText('Claude Code 연결됨');
+  await expect(claude).toContainText('연결됨');
+  await expect(claude.getByTestId('ai-disconnect')).toBeVisible();
+  // 사이드바 아래 표시. 붉은색 없이 조용하게.
   await page.goto('/');
-  await expect(page.getByText('AI 연결됨')).toBeVisible();
+  await expect(page.getByTestId('sidebar').getByText('Claude Code 연결됨')).toBeVisible();
 });
 
 test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지며 결과물 카드가 붙는다', async ({ page }) => {
@@ -42,7 +43,7 @@ test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지�
   await expect(detail).toHaveAttribute('data-ai', 'on');
   await expect(page.getByTestId('action-bar')).toHaveCount(0);
   const bar = page.getByTestId('chat-bar');
-  await expect(bar.getByTestId('chat-chip')).toHaveCount(3);
+  await expect(bar.getByTestId('chat-chip')).toHaveCount(4);
   await expect(bar.getByTestId('chat-chip').first()).toHaveText('숏폼 뽑아줘');
   const input = page.getByPlaceholder('말로 요청하세요');
   await expect(input).toBeVisible();

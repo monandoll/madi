@@ -14,7 +14,7 @@
 5. 오류는 토스트가 아니라 채팅 안에 AI 말투로. ("이 영상은 소리가 없어서 자막을 못 만들었어요")
 6. 상태는 조용하게. AI 미연결은 오류가 아니다 — 붉은색 쓰지 않는다.
 7. 개인화는 전부 설정값. 사용자 이름·워크스페이스명을 코드에 박지 않는다.
-8. 디자인 시안이 정답이다. `design/` 의 HTML 내보내기를 픽셀 단위로 따른다. 임의로 컴포넌트를 "개선"하지 않는다.
+8. 디자인 시안이 정답이다. `design/v2/` 의 HTML 내보내기(Mobile · Desktop · Install)를 픽셀 단위로 따른다. 임의로 컴포넌트를 "개선"하지 않는다. `design/` 바로 아래는 1차 시안(참고용).
 
 ## 아키텍처
 
@@ -69,7 +69,7 @@ apps/web/             Vite React (빌드 결과 → engine에 포함)
 apps/site/            설치 안내 정적 페이지 (Cloudflare Pages)
 packages/shared/      zod 스키마, 타입, API 계약
 packages/ffmpeg-presets/  컷/크롭/자막/프록시 명령 템플릿
-design/               Claude Design HTML 내보내기 (참조용, 수정 금지)
+design/               Claude Design HTML 내보내기 (참조용, 수정 금지). v2/ 가 현재 시안
 resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리 (git-lfs)
 ```
 
@@ -95,17 +95,19 @@ resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리
 - 에이전트 응답은 채팅에 스트리밍. 도구 호출 내부는 사용자에게 보이지 않는다.
 - AI 미연결 상태에서는 러너를 아예 스폰하지 않는다. 버튼 4개는 워커를 직접 호출한다.
 
-## 디자인 토큰 (Tailwind 설정에 그대로)
+## 디자인 토큰 (Tailwind 설정에 그대로 · `design/v2` 기준)
 
 ```
-bg        #F7F3EE   surface #FFFFFF   line #E8E0D8   line-soft #F1EAE2
-text      #2B2622   text-2  #8A7F76   text-3 #6E635B
-accent    #C96A4B   accent-hover #A9543A   accent-soft #F5E7DF
-ok        #7A9E7E   busy #D9A441   error #B85C5C
-subtitle  #E8C33F  (프리뷰 자막 박스)
-font      Pretendard Variable (self-host)   sizes 11/12/13/14/20
-radius    8px(썸네일·버튼) 12px(패널) 999px(칩·토글)
-shadow    없음. 구분은 1px 선.
+bg/surface  #FFFFFF   side #F3F5F7 (사이드바·첫 실행 배경)   surface-2 #F7FAFC
+line        #E0E6EB   line-2 #E7ECF0   line-soft #EAEFF3   line-faint #EDF2F6   input #D9E1E7
+text        #1C2127   text-2 #5E6872   text-3 #8A939C   text-4 #4E5862 (칩)   muted #9AA3AC
+accent      #3E6B8A   accent-hover #2F5470   accent-soft #E4EEF5   accent-faint #EEF5FA
+select      #DFE7ED (사이드바 활성)   hover #EDF2F6   ok #7A9E7E   off #D2DAE1   busy #D9A441   error #B85C5C
+thumb       #E6EAEE / #DBE1E6 / #CDD5DB   track #E7ECF0   overlay rgba(22,26,31,.72) (길이 배지·자막)
+font        Pretendard Variable (self-host)   sizes 10/11/12/13/14/15/16/20/26
+radius      6px(사이드바 줄) 8px(카드·버튼·썸네일) 10px(패널·칩 바·폰 버튼) 12px(첫 실행 카드) 999px(칩·알약)
+shadow      없음. 구분은 1px 선.
+레이아웃    900px 이상 = PC(왼쪽 252px 사이드바 + 화면 + 오른쪽 380px 결과물 패널), 미만 = 모바일(화면 + 아래 탭 3개)
 ```
 
 ## 개발 규칙
