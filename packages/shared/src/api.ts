@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Video } from './video.js';
 import { Job } from './job.js';
-import { Settings } from './settings.js';
+import { AiProvider, Settings } from './settings.js';
 import { Transcript, TimeRange } from './transcript.js';
 import { Edit } from './edit.js';
 import { Output } from './output.js';
@@ -30,13 +30,14 @@ export type OutputCard = z.infer<typeof OutputCard>;
 export const VideosResponse = z.object({ videos: z.array(VideoCard) });
 export type VideosResponse = z.infer<typeof VideosResponse>;
 
-/** 영상 상세: 카드 + 자막 + 결과물 + 대화 + 돌고 있는 잡. */
+/** 영상 상세: 카드 + 자막 + 결과물 + 대화 + 돌고 있는 잡 + 에이전트가 답하는 중인지. */
 export const VideoDetailResponse = z.object({
   video: VideoCard,
   transcript: Transcript.nullable(),
   outputs: z.array(OutputCard),
   messages: z.array(ChatMessage),
   jobs: z.array(Job),
+  aiBusy: z.boolean().default(false),
 });
 export type VideoDetailResponse = z.infer<typeof VideoDetailResponse>;
 
@@ -69,6 +70,29 @@ export type ActionRequest = z.infer<typeof ActionRequest>;
 export const ActionResponse = z.object({ messages: z.array(ChatMessage), job: Job.nullable() });
 export type ActionResponse = z.infer<typeof ActionResponse>;
 
+/**
+ * AI 연결 뒤의 채팅. 문장 하나를 보내면 엔진이 사용자 말풍선 + (쓰는 중인) 답 말풍선을 만들고
+ * 에이전트를 띄운다. 답은 WS message.updated 로 채워진다.
+ */
+export const ChatRequest = z.object({ text: z.string().trim().min(1).max(2000) });
+export type ChatRequest = z.infer<typeof ChatRequest>;
+
+export const ChatResponse = z.object({ messages: z.array(ChatMessage) });
+export type ChatResponse = z.infer<typeof ChatResponse>;
+
+/** 이 PC 에 설치된 AI 도구. 사용자는 이 중 하나를 고른다. */
+export const AiProviderInfo = z.object({
+  id: AiProvider.exclude(['none']),
+  /** 화면에 보이는 이름 */
+  label: z.string(),
+  installed: z.boolean(),
+  version: z.string().nullable(),
+});
+export type AiProviderInfo = z.infer<typeof AiProviderInfo>;
+
+export const AiProvidersResponse = z.object({ providers: z.array(AiProviderInfo) });
+export type AiProvidersResponse = z.infer<typeof AiProvidersResponse>;
+
 export const JobsResponse = z.object({ jobs: z.array(Job) });
 export type JobsResponse = z.infer<typeof JobsResponse>;
 
@@ -81,7 +105,8 @@ export type TunnelStatus = z.infer<typeof TunnelStatus>;
 export const HealthResponse = z.object({
   ok: z.literal(true),
   version: z.string(),
-  ai: z.object({ connected: z.boolean() }),
+  /** connected = 프로바이더를 골랐고 그 도구가 이 PC 에 있다. */
+  ai: z.object({ connected: z.boolean(), provider: AiProvider, installed: z.boolean() }),
   tunnel: z.object({ status: TunnelStatus, error: z.string().nullable() }),
 });
 export type HealthResponse = z.infer<typeof HealthResponse>;

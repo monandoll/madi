@@ -4,6 +4,7 @@ import { parseProbe, probeArgs } from './probe.js';
 import { proxyArgs } from './proxy.js';
 import { thumbnailArgs, thumbnailTime } from './thumbnail.js';
 import { ProgressParser } from './progress.js';
+import { parseScenes, sceneDetectArgs, scenesToRanges } from './scene.js';
 
 describe('encoder', () => {
   it('맥에서는 videotoolbox, 엔비디아면 nvenc, 아니면 libx264', () => {
@@ -107,5 +108,28 @@ describe('ProgressParser', () => {
     p.feed('frame=1\nout_time_us=2500000\nprogress=con');
     p.feed('tinue\nout_time_us=10000000\nprogress=end\n');
     expect(got).toEqual([0.25, 1]);
+  });
+});
+
+describe('scene', () => {
+  it('showinfo 출력에서 장면 시각을 뽑고 구간으로 만든다', () => {
+    expect(sceneDetectArgs('/a.mp4', 0.3)).toContain("select='gt(scene,0.3)',showinfo");
+    const err = [
+      "[Parsed_showinfo_1 @ 0x1] n:   0 pts:  12000 pts_time:0.4     duration_time:0.033",
+      '[Parsed_showinfo_1 @ 0x1] n:   1 pts:  90000 pts_time:3       duration_time:0.033',
+      '[Parsed_showinfo_1 @ 0x1] n:   2 pts:  90001 pts_time:3.02    duration_time:0.033',
+      'frame=    3 fps=0.0 q=-0.0 Lsize=N/A',
+    ].join('\n');
+    expect(parseScenes(err)).toEqual([0.4, 3]);
+    expect(scenesToRanges([0.4, 3], 8)).toEqual([
+      { start: 0, end: 3 },
+      { start: 3, end: 8 },
+    ]);
+    expect(scenesToRanges([2, 4, 6], 8, 1)).toEqual([
+      { start: 0, end: 2 },
+      { start: 2, end: 4 },
+      { start: 4, end: 6 },
+      { start: 6, end: 8 },
+    ]);
   });
 });
