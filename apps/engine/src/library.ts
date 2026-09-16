@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { ChatMessage, Edit, Output, Transcript, type Segment } from '@madi/shared';
 import type { Db } from './db/index.js';
@@ -51,6 +51,16 @@ export class Library extends EventEmitter<LibraryEvents> {
     const row = { ...e, id: nanoid(), createdAt: Date.now() };
     this.db.insert(edits).values(row).run();
     return Edit.parse(row);
+  }
+
+  /** 수동 숏폼(구간을 정한 편집) 개수. 제목의 번호에 쓴다. */
+  shortEditCount(videoId: string): number {
+    const row = this.db
+      .select({ n: sql<number>`count(*)` })
+      .from(edits)
+      .where(and(eq(edits.videoId, videoId), isNotNull(edits.keep)))
+      .get();
+    return row?.n ?? 0;
   }
 
   edit(id: string): Edit | null {

@@ -78,7 +78,7 @@ export function runAction(d: ActionDeps, video: Video, req: ActionRequest): Acti
       const end = Math.min(duration, Math.max(req.range.start, req.range.end));
       if (end - start < 1) throw new ActionError('range_too_short');
       user('action.short', { start: Math.round(start), end: Math.round(end) });
-      const n = d.library.outputsOf(video.id).filter((o) => o.kind === 'short').length + 1;
+      const n = d.library.shortEditCount(video.id) + 1;
       const wantSubs = req.subtitles && video.hasAudio !== false;
       const edit = d.library.createEdit({ ...baseEdit(`${video.title} · 숏폼 ${n}`), keep: { start, end }, crop: 'vertical', subtitles: wantSubs });
       if (wantSubs && !transcript) {
