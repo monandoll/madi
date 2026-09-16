@@ -13,7 +13,8 @@ import { z } from 'zod';
  * - 'ai.text'    params.text — 에이전트 답. params.streaming 이 true 면 아직 쓰는 중,
  *                params.status 가 'working' 이면 도구를 돌리는 중(내용은 안 보여준다).
  */
-export const ChatKind = z.enum(['text', 'progress', 'output', 'error']);
+/** chapters: 챕터 목록 카드 (내용은 VideoDetail.chapters 에서 읽는다) */
+export const ChatKind = z.enum(['text', 'progress', 'output', 'error', 'chapters']);
 export type ChatKind = z.infer<typeof ChatKind>;
 
 export const ChatRole = z.enum(['assistant', 'user']);

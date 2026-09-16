@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const JobType = z.enum(['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze']);
+export const JobType = z.enum(['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze', 'chapters']);
 export type JobType = z.infer<typeof JobType>;
 
 export const JobStatus = z.enum(['queued', 'running', 'done', 'failed', 'canceled']);
@@ -20,6 +20,13 @@ export const SilenceJobPayload = z.object({ type: z.literal('silence'), videoId:
 export const RenderJobPayload = z.object({ type: z.literal('render'), videoId: z.string(), editId: z.string() });
 /** 완성본 하나 분석 (5단계 스타일 학습). 영상(videoId)이 아니라 완성본(referenceId)에 붙는다. */
 export const AnalyzeJobPayload = z.object({ type: z.literal('analyze'), referenceId: z.string() });
+/** 롱폼 챕터 나누기. then='shorts' 면 챕터마다 숏폼 렌더까지. */
+export const ChaptersJobPayload = z.object({
+  type: z.literal('chapters'),
+  videoId: z.string(),
+  then: z.enum(['none', 'shorts']).default('none'),
+  max: z.number().int().min(1).max(10).default(3),
+});
 
 export const JobPayload = z.discriminatedUnion('type', [
   ProbeJobPayload,
@@ -29,6 +36,7 @@ export const JobPayload = z.discriminatedUnion('type', [
   SilenceJobPayload,
   RenderJobPayload,
   AnalyzeJobPayload,
+  ChaptersJobPayload,
 ]);
 export type JobPayload = z.infer<typeof JobPayload>;
 
@@ -57,4 +65,5 @@ export const JOB_CONCURRENCY: Record<JobType, number> = {
   silence: 1,
   render: 1,
   analyze: 1,
+  chapters: 1,
 };
