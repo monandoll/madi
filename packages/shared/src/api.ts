@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { Video } from './video.js';
 import { Job } from './job.js';
 import { Settings } from './settings.js';
+import { Transcript, TimeRange } from './transcript.js';
+import { Edit } from './edit.js';
+import { Output } from './output.js';
+import { ChatMessage } from './chat.js';
 
 export const ENGINE_PORT = 41520;
 
@@ -15,11 +19,55 @@ export const VideoCard = Video.extend({
 });
 export type VideoCard = z.infer<typeof VideoCard>;
 
+/** 결과물 카드: 파일 URL 과 다운로드 URL. */
+export const OutputCard = Output.extend({
+  url: z.string(),
+  downloadUrl: z.string(),
+  thumbnailUrl: z.string().nullable(),
+});
+export type OutputCard = z.infer<typeof OutputCard>;
+
 export const VideosResponse = z.object({ videos: z.array(VideoCard) });
 export type VideosResponse = z.infer<typeof VideosResponse>;
 
-export const VideoResponse = z.object({ video: VideoCard });
-export type VideoResponse = z.infer<typeof VideoResponse>;
+/** 영상 상세: 카드 + 자막 + 결과물 + 대화 + 돌고 있는 잡. */
+export const VideoDetailResponse = z.object({
+  video: VideoCard,
+  transcript: Transcript.nullable(),
+  outputs: z.array(OutputCard),
+  messages: z.array(ChatMessage),
+  jobs: z.array(Job),
+});
+export type VideoDetailResponse = z.infer<typeof VideoDetailResponse>;
+
+export const OutputsResponse = z.object({ outputs: z.array(OutputCard) });
+export type OutputsResponse = z.infer<typeof OutputsResponse>;
+
+export const OutputDetailResponse = z.object({
+  output: OutputCard,
+  edit: Edit,
+  transcript: Transcript.nullable(),
+  video: VideoCard,
+});
+export type OutputDetailResponse = z.infer<typeof OutputDetailResponse>;
+
+/**
+ * AI 미연결 상태의 버튼 4개. 워커를 직접 부른다.
+ * - subtitle: 자막 만들기 (없으면) → 자막 번인 결과물
+ * - silence:  쉬는 구간 잘라내기
+ * - vertical: 세로(9:16)로 바꾸기
+ * - short:    구간 하나를 세로 숏폼으로
+ */
+export const ActionRequest = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('subtitle') }),
+  z.object({ type: z.literal('silence') }),
+  z.object({ type: z.literal('vertical') }),
+  z.object({ type: z.literal('short'), range: TimeRange, subtitles: z.boolean().default(true) }),
+]);
+export type ActionRequest = z.infer<typeof ActionRequest>;
+
+export const ActionResponse = z.object({ messages: z.array(ChatMessage), job: Job.nullable() });
+export type ActionResponse = z.infer<typeof ActionResponse>;
 
 export const JobsResponse = z.object({ jobs: z.array(Job) });
 export type JobsResponse = z.infer<typeof JobsResponse>;
