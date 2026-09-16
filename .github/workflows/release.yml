@@ -4,11 +4,17 @@ name: Release
 #   prepare  → 태그 이름으로 draft Release 를 먼저 만든다 (세 빌드가 동시에 만들려다 부딪히지 않게)
 #   build    → 플랫폼별 설치 파일을 만들어 그 draft 에 올린다 (electron-builder publish, releaseType: draft)
 #   publish  → macOS 두 아키텍처의 latest-mac.yml 을 하나로 합쳐 올리고 draft 를 푼다 → 설치 페이지가 바로 집어간다
-# workflow_dispatch 로 돌리면 Release 없이 아티팩트만 남긴다 (설정 점검용).
+# workflow_dispatch: tag 를 주면 그 태그의 코드를 main 의 이 워크플로로 다시 빌드해 같은 Release 에 올린다 (재시도용).
+#                    비우면 Release 없이 아티팩트만 남긴다 (설정 점검용).
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: '다시 만들 릴리스 태그 (예: v0.1.1). 비우면 아티팩트만'
+        required: false
+        default: ''
 
 env:
   ELECTRON_SKIP_BINARY_DOWNLOAD: '0'
@@ -20,15 +26,17 @@ permissions:
 jobs:
   prepare:
     name: draft release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - name: Create draft release (if missing)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           if gh release view "$TAG" --json isDraft > /dev/null 2>&1; then
             echo "release $TAG exists"
@@ -54,20 +62,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # targets: 러너마다 자기 아키텍처만. 설정 파일에는 arch 를 두지 않는다 (electron-builder.yml 주석 참고).
           - os: windows-latest
             label: windows x64
             platform: win32-x64
-            arch: x64
+            targets: --win nsis --x64
           - os: macos-14
             label: macOS arm64
             platform: darwin-arm64
-            arch: arm64
+            targets: --mac pkg zip --arm64
           - os: macos-15-intel
             label: macOS x64
             platform: darwin-x64
-            arch: x64
+            targets: --mac pkg zip --x64
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -98,17 +109,16 @@ jobs:
       - name: Build web + engine
         run: pnpm build
 
-      # 이 러너의 아키텍처만. 설정의 arch 목록을 그대로 두면 러너마다 두 아키텍처를 다 만들어
-      # 사이드카 없는 빌드가 생기고, pkg 임시 파일(dev.madi.engine.pkg)을 서로 지워 ENOENT 로 죽는다.
+      # 이 러너의 아키텍처만 (--arm64 만 주면 설정의 target 목록을 타서 두 아키텍처를 다 만든다 → target 도 CLI 로).
       - name: Package (upload to draft Release on tag)
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: pnpm --filter @madi/engine exec electron-builder --publish always --${{ matrix.arch }}
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+        run: pnpm --filter @madi/engine exec electron-builder ${{ matrix.targets }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Package (artifact only)
-        if: "!startsWith(github.ref, 'refs/tags/v')"
-        run: pnpm --filter @madi/engine exec electron-builder --publish never --${{ matrix.arch }}
+        if: "!(startsWith(github.ref, 'refs/tags/v') || inputs.tag != '')"
+        run: pnpm --filter @madi/engine exec electron-builder ${{ matrix.targets }} --publish never
 
       - uses: actions/upload-artifact@v4
         with:
@@ -124,7 +134,7 @@ jobs:
   publish:
     name: publish release
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -139,7 +149,7 @@ jobs:
       - name: Merge latest-mac.yml (arm64 + x64) and upload
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -e
           mapfile -t YMLS < <(find dl -name latest-mac.yml | sort)
@@ -150,7 +160,7 @@ jobs:
       - name: Check assets and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -e
           gh release view "$TAG" --json assets --jq '.assets[].name' | tee assets.txt
