@@ -15,6 +15,13 @@
       "when": 1789521372983,
       "tag": "0001_volatile_sway",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789535846254,
+      "tag": "0002_style_references",
+      "breakpoints": true
     }
   ]
 }

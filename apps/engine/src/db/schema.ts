@@ -41,7 +41,7 @@ export const jobs = sqliteTable(
   'jobs',
   {
     id: text('id').primaryKey(),
-    type: text('type', { enum: ['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render'] }).notNull(),
+    type: text('type', { enum: ['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze'] }).notNull(),
     status: text('status', { enum: ['queued', 'running', 'done', 'failed', 'canceled'] })
       .notNull()
       .default('queued'),
@@ -143,4 +143,26 @@ export const messages = sqliteTable(
     updatedAt: integer('updated_at').notNull(),
   },
   (t) => [index('messages_video_idx').on(t.videoId, t.createdAt)],
+);
+
+/** 완성본(예전에 만든 결과물). 스타일 학습용. 갤러리엔 안 뜬다. */
+export const references = sqliteTable(
+  'references',
+  {
+    id: text('id').primaryKey(),
+    path: text('path').notNull(),
+    fileName: text('file_name').notNull(),
+    title: text('title').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    status: text('status', { enum: ['queued', 'analyzing', 'done', 'failed', 'missing'] })
+      .notNull()
+      .default('queued'),
+    stats: text('stats', { mode: 'json' }),
+    /** 짝 맞추기용 자막 (있을 때만) */
+    segments: text('segments', { mode: 'json' }),
+    error: text('error'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (t) => [uniqueIndex('references_path_idx').on(t.path)],
 );
