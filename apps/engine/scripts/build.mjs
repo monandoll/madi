@@ -21,6 +21,17 @@ await build({
   sourcemap: true,
 });
 
+// MCP 서버 (에이전트 CLI 가 자식으로 띄운다). 의존성 없이 한 파일로.
+await build({
+  entryPoints: [path.join(root, 'src/mcp/index.ts')],
+  outfile: path.join(dist, 'mcp.mjs'),
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node22',
+  sourcemap: true,
+});
+
 // 트레이·앱 아이콘
 await import('./tray-icon.mjs');
 
@@ -30,4 +41,4 @@ fs.rmSync(path.join(resources, 'web'), { recursive: true, force: true });
 if (fs.existsSync(webDist)) fs.cpSync(webDist, path.join(resources, 'web'), { recursive: true });
 fs.rmSync(path.join(resources, 'drizzle'), { recursive: true, force: true });
 fs.cpSync(path.join(root, 'drizzle'), path.join(resources, 'drizzle'), { recursive: true });
-console.log('engine built → dist/main.mjs, resources/{web,drizzle}');
+console.log('engine built → dist/{main,mcp}.mjs, resources/{web,drizzle}');

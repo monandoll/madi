@@ -1,0 +1,131 @@
+import { findCli } from './detect.js';
+import { type AgentProvider, type AgentResult, type AgentRunOptions, runCli, type StreamEvent, type StreamParser } from './provider.js';
+
+export const MCP_SERVER_NAME = 'madi';
+
+/**
+ * `claude -p --output-format stream-json --include-partial-messages` 출력 파서.
+ * - stream_event/content_block_delta(text_delta): 지금 턴의 글자를 이어 붙인다
+ * - assistant: 턴 확정 (같은 글이 다시 오므로 partial 을 이걸로 바꾼다), tool_use 는 도구 호출
+ * - result: 끝. is_error 또는 subtype!=='success' 면 실패
+ */
+export class ClaudeStream implements StreamParser {
+  private turns: string[] = [];
+  private partial = '';
+  toolCalls = 0;
+  done = false;
+  error: string | null = null;
+
+  get text(): string {
+    return [...this.turns, this.partial].filter((t) => t.trim()).join('\n\n');
+  }
+
+  feed(line: string): StreamEvent[] {
+    if (!line.startsWith('{')) return [];
+    let msg: Record<string, unknown>;
+    try {
+      msg = JSON.parse(line) as Record<string, unknown>;
+    } catch {
+      return [];
+    }
+    const out: StreamEvent[] = [];
+    switch (msg['type']) {
+      case 'stream_event': {
+        const ev = msg['event'] as { type?: string; delta?: { type?: string; text?: string } } | undefined;
+        if (ev?.type === 'content_block_delta' && ev.delta?.type === 'text_delta' && ev.delta.text) {
+          this.partial += ev.delta.text;
+          out.push({ type: 'text', text: this.text });
+        }
+        break;
+      }
+      case 'assistant': {
+        const content = ((msg['message'] as { content?: unknown[] } | undefined)?.content ?? []) as {
+          type: string;
+          text?: string;
+          name?: string;
+        }[];
+        const text = content
+          .filter((b) => b.type === 'text' && b.text)
+          .map((b) => b.text!)
+          .join('');
+        for (const b of content) {
+          if (b.type === 'tool_use') {
+            this.toolCalls++;
+            out.push({ type: 'tool', name: (b.name ?? '').replace(new RegExp(`^mcp__${MCP_SERVER_NAME}__`), '') });
+          }
+        }
+        // 확정 턴: partial(스트리밍으로 모은 것)을 버리고 전체 글로 바꾼다
+        if (text.trim()) this.turns.push(text);
+        this.partial = '';
+        if (text.trim()) out.push({ type: 'text', text: this.text });
+        break;
+      }
+      case 'result': {
+        this.done = true;
+        const isError = msg['is_error'] === true || (typeof msg['subtype'] === 'string' && msg['subtype'] !== 'success');
+        if (isError) {
+          const r = msg['result'];
+          this.error = typeof r === 'string' && r.trim() ? r.trim().slice(0, 400) : String(msg['subtype'] ?? 'error');
+        } else if (this.turns.length === 0 && typeof msg['result'] === 'string' && (msg['result'] as string).trim()) {
+          // 텍스트 턴을 못 받았으면 result 의 최종 답이라도 쓴다
+          this.turns.push(msg['result'] as string);
+          out.push({ type: 'text', text: this.text });
+        }
+        out.push({ type: 'done', ok: !isError, ...(isError ? { error: this.error! } : {}) });
+        break;
+      }
+      default:
+        break;
+    }
+    return out;
+  }
+}
+
+/** 마디 MCP 도구 이름 → claude 의 도구 이름. */
+export function claudeToolName(tool: string): string {
+  return `mcp__${MCP_SERVER_NAME}__${tool}`;
+}
+
+/** 에이전트가 파일·셸을 못 만지게 막는 내장 도구들. */
+export const CLAUDE_DISALLOWED = ['Bash', 'Edit', 'Write', 'Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch', 'Task', 'NotebookEdit', 'MultiEdit', 'TodoWrite', 'KillShell', 'BashOutput'];
+
+export function claudeArgs(opts: { mcpConfigPath: string; toolNames: string[]; system: string; maxTurns?: number }): string[] {
+  return [
+    '-p',
+    '--output-format',
+    'stream-json',
+    '--verbose',
+    '--include-partial-messages',
+    '--mcp-config',
+    opts.mcpConfigPath,
+    '--strict-mcp-config',
+    '--allowedTools',
+    ...opts.toolNames.map(claudeToolName),
+    '--disallowedTools',
+    ...CLAUDE_DISALLOWED,
+    '--append-system-prompt',
+    opts.system,
+    '--max-turns',
+    String(opts.maxTurns ?? 40),
+  ];
+}
+
+/** 사용자 본인의 Claude Code 구독으로 돈다. */
+export class ClaudeProvider implements AgentProvider {
+  readonly id = 'claude' as const;
+  readonly label = 'Claude Code';
+
+  constructor(private readonly writeMcpConfig: (mcp: AgentRunOptions['mcp'], cwd: string) => string) {}
+
+  bin(): string | null {
+    return findCli('claude');
+  }
+
+  async run(opts: AgentRunOptions): Promise<AgentResult> {
+    const bin = this.bin();
+    if (!bin) return { text: '', toolCalls: 0, ok: false, error: 'not_installed' };
+    const mcpConfigPath = this.writeMcpConfig(opts.mcp, opts.cwd);
+    const args = claudeArgs({ mcpConfigPath, toolNames: opts.toolNames, system: opts.system });
+    return runCli(bin, args, opts.prompt, new ClaudeStream(), opts);
+  }
+}
