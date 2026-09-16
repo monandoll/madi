@@ -20,7 +20,7 @@
 </helmet>
 <!--
   처음 켰을 때 설정 카드 + 설정 화면. Mobile.dc.html 과 같은 토큰·간격.
-  4단계에서 AI 항목(설치된 도구 고르기)과 밖에서 접속하기(터널)를 합쳤다. 영상 상세의 AI 연결 상태(칩+입력)는 Mobile.dc.html 그대로.
+  4단계에서 AI 항목(설치된 도구 고르기)과 밖에서 접속하기(터널)를, 5단계에서 편집 스타일(규칙·배움)과 완성본 폴더를 합쳤다. 영상 상세의 AI 연결 상태(칩+입력)는 Mobile.dc.html 그대로.
   - 카드: surface, 1px line, radius 12, padding 14. 그림자 없음.
   - 입력: 44px, radius 8, 1px line. 포커스 시 line → accent.
   - 폴더 후보: 엔진이 찾은 폴더 목록에서 고른다. 경로 타이핑 없음.
@@ -159,6 +159,47 @@
           </div>
           <div style="font-size:11px; color:#8A7F76; line-height:1.5;">이 PC에 설치된 도구 중 하나를 고르면 채팅으로 편집을 시킬 수 있어요. 본인 구독으로 돌아가요.</div>
           <div style="font-size:11px; color:#8A7F76; line-height:1.5;">AI 없이도 자막·무음 제거·규격 변환·숏폼 자르기는 돼요.</div>
+        </div>
+
+        <div style="padding:16px 14px 14px; display:flex; flex-direction:column; gap:6px; background:#FFFFFF; border-bottom:1px solid #E8E0D8;">
+          <div style="font-size:12px; color:#6E635B;">편집 스타일</div>
+          <div style="border:1px solid #E8E0D8; border-radius:8px; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; gap:10px; padding:8px 12px; min-height:44px; box-sizing:border-box;">
+              <div style="flex:1; font-size:13px; line-height:1.4;">쉬는 구간(무음)은 잘라내되 말 앞뒤 숨은 남긴다.</div>
+              <div style="font-size:12px; color:#6E635B; flex:none;">빼기</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; padding:8px 12px; min-height:44px; box-sizing:border-box; border-top:1px solid #F1EAE2;">
+              <div style="flex:1; font-size:13px; line-height:1.4;">운동 이름, 횟수, 주의사항이 나오는 문장은 자르지 않는다.</div>
+              <div style="font-size:12px; color:#6E635B; flex:none;">빼기</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; padding:8px 12px; min-height:44px; box-sizing:border-box; border-top:1px solid #F1EAE2;">
+              <div style="flex:1; font-size:13px; line-height:1.4; color:#6E635B;">(배움) 완성본 12개 기준: 세로 9:16, 보통 32초 길이.</div>
+              <div style="font-size:11px; color:#C96A4B; background:#F5E7DF; border-radius:999px; padding:2px 8px; flex:none;">배움</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <div style="flex:1; height:44px; box-sizing:border-box; border:1px solid #E8E0D8; border-radius:8px; padding:0 12px; display:flex; align-items:center; font-size:14px; color:#8A7F76;">규칙 한 줄 (예: 인트로는 3초만)</div>
+            <div style="height:44px; box-sizing:border-box; border:1px solid #E8E0D8; border-radius:8px; padding:0 14px; display:flex; align-items:center; font-size:14px; color:#8A7F76;">추가</div>
+          </div>
+          <div style="font-size:11px; color:#8A7F76; line-height:1.5;">여기 적힌 대로 AI가 편집해요. 채팅에서 "앞으로도 이렇게"라고 하면 한 줄씩 늘어나요.</div>
+        </div>
+
+        <div style="padding:16px 14px 14px; display:flex; flex-direction:column; gap:8px; background:#FFFFFF; border-bottom:1px solid #E8E0D8;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <div style="font-size:12px; color:#6E635B;">완성본에서 배우기</div>
+            <div style="font-size:11px; color:#8A7F76;">완성본 12개 · 배우는 중 1개</div>
+          </div>
+          <div style="border:1px solid #E8E0D8; border-radius:8px; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; gap:10px; padding:0 12px; height:44px;">
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:1px;">
+                <div style="font-size:13px; font-weight:500;">완성본</div>
+                <div style="font-size:11px; color:#8A7F76; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">D:\유튜브\완성본</div>
+              </div>
+              <div style="font-size:12px; color:#6E635B; flex:none;">빼기</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; padding:0 12px; height:44px; border-top:1px solid #F1EAE2; font-size:13px; color:#C96A4B; font-weight:500;">폴더 추가…</div>
+          </div>
+          <div style="font-size:11px; color:#8A7F76; line-height:1.5;">예전에 만든 완성본 폴더를 정하면 길이·비율·쉬는 구간 기준을 배워요. 갤러리엔 안 나타나요.</div>
         </div>
 
         <div style="padding:16px 14px 14px; display:flex; flex-direction:column; gap:6px; background:#FFFFFF; border-bottom:1px solid #E8E0D8;">

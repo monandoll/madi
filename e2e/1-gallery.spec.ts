@@ -86,7 +86,7 @@ test('설정 화면: 톱니로 들어가서 이름을 바꾸고 폴더를 더하
   const list = page.getByTestId('folder-list');
   await expect(list.getByText(VIDEOS)).toBeVisible();
   await expect(list.getByText('동영상', { exact: true })).toBeVisible(); // 폴더 이름이 아니라 한국어 라벨
-  await page.getByRole('button', { name: '폴더 추가…' }).click();
+  await page.getByTestId('folder-list').getByRole('button', { name: '폴더 추가…' }).click();
   const chooser = page.getByTestId('folder-chooser');
   await expect(chooser.getByRole('checkbox', { name: /동영상/ })).toHaveCount(0); // 이미 고른 건 안 보임
   await chooser.getByRole('checkbox', { name: /바탕화면/ }).click();
@@ -94,7 +94,7 @@ test('설정 화면: 톱니로 들어가서 이름을 바꾸고 폴더를 더하
   await expect.poll(async () => (await (await page.request.get('/api/settings')).json()).settings.watchFolders).toEqual([VIDEOS, DESKTOP]);
 
   // 시스템 선택창은 브라우저만 뜬 상태에선 안내 문구
-  await page.getByRole('button', { name: '폴더 추가…' }).click();
+  await page.getByTestId('folder-list').getByRole('button', { name: '폴더 추가…' }).click();
   await page.getByTestId('folder-chooser').getByRole('button', { name: '폴더 추가…' }).click();
   await expect(page.getByText('폴더 선택창은')).toBeVisible();
 

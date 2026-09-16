@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Settings as SettingsSchema } from '@madi/shared';
 import { FolderChooser } from '../components/FolderChooser.js';
+import { StyleSection } from '../components/StyleSection.js';
 import { copy } from '../copy.js';
 import { api, queryKeys } from '../lib/api.js';
 import { go } from '../lib/route.js';
 import { usePatchSettings, useSettings } from '../lib/settings.js';
 
-/** design/Setup.dc.html 오른쪽. 이름 · 영상 폴더 · AI · 버전. 저장 버튼 없이 바로 반영. */
+/** design/Setup.dc.html 오른쪽. 이름 · 영상 폴더 · AI · 편집 스타일 · 완성본 · 밖에서 접속 · 버전. 저장 버튼 없이 바로 반영. */
 export function SettingsScreen() {
   const { settings } = useSettings();
   const patch = usePatchSettings();
@@ -144,6 +145,8 @@ export function SettingsScreen() {
           <p className="text-11 leading-normal text-text-2">{copy.settings.aiPickHelp}</p>
           <p className="text-11 leading-normal text-text-2">{copy.settings.aiHelp}</p>
         </section>
+
+        <StyleSection />
 
         <section className="flex flex-col gap-1.5 border-b border-line bg-surface px-3.5 pt-4 pb-3.5" data-testid="remote-section">
           <span className="text-12 text-text-3">{copy.settings.remoteLabel}</span>
