@@ -22,6 +22,8 @@ import {
   type OutputsResponse,
   type PickFolderResponse,
   type VideoDetailResponse,
+  TranscriptPutRequest,
+  type TranscriptResponse,
   type Job,
   type JobsResponse,
   SettingsPatch,
@@ -41,6 +43,7 @@ import { detectCli } from '../agent/detect.js';
 import { TOOL_NAMES, type ToolName } from '../mcp/tools.js';
 import { describeFolder, openFolderWithSystem, suggestFolders } from '../folders.js';
 import { LinkError } from '../style/service.js';
+import { mergeSubtitleLines } from '../agent/subtitles.js';
 import { serveFile } from './media.js';
 
 export interface AppDeps {
@@ -164,6 +167,24 @@ export function createApp(deps: AppDeps): Hono {
     if (!body?.videoId) return c.json({ error: { code: 'bad_request', message: 'videoId required' } }, 400);
     const outcome = await deps.agentTools.call(name as ToolName, { videoId: body.videoId, runId: body.runId ?? '', signal: deps.agent.signalFor(body.runId ?? '') }, body.input);
     return c.json(outcome);
+  });
+
+  /** 자막 직접 쓰기/고치기: 자막 전체를 준 줄들로 바꾼다 (소리 없는 영상도). 바뀐 줄은 단어 시각이 없고, 그대로인 줄은 유지. */
+  app.put('/api/videos/:id/transcript', async (c) => {
+    const video = deps.videos.get(c.req.param('id'));
+    if (!video) return c.notFound();
+    const parsed = TranscriptPutRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    const existing = deps.library.transcriptOf(video.id);
+    const fresh = mergeSubtitleLines([], parsed.data.segments, true);
+    const segments = fresh.map((seg) => {
+      const same = existing?.segments.find((o) => o.text === seg.text && Math.abs(o.start - seg.start) < 0.05 && Math.abs(o.end - seg.end) < 0.05);
+      return same ?? seg;
+    });
+    const transcript = deps.library.setTranscript(video.id, { language: existing?.language ?? 'ko', model: existing?.model ?? 'manual', segments });
+    deps.events.record('transcript.edited', { lines: segments.length, manual: true, total: segments.length });
+    const body: TranscriptResponse = { transcript };
+    return c.json(body);
   });
 
   app.post('/api/videos/:id/actions', async (c) => {

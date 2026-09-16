@@ -7,6 +7,7 @@ import { ChatFeed } from '../components/ChatFeed.js';
 import { CloseIcon, PlayIcon } from '../components/Icons.js';
 import { OutputView } from '../components/OutputView.js';
 import { ShortPicker } from '../components/ShortPicker.js';
+import { SubtitleEditor } from '../components/SubtitleEditor.js';
 import { Thumb } from '../components/Thumb.js';
 import { HeaderButton, TopBar } from '../components/TopBar.js';
 import { copy, errorMessage } from '../copy.js';
@@ -38,6 +39,13 @@ export function VideoDetail({ id, panelOutputId }: Props) {
   const panel = panelOutputId ?? null;
   const feedEnd = useRef<HTMLDivElement>(null);
   const storePrefill = useUi((s) => s.prefill);
+  const storeEditor = useUi((s) => s.subtitleEditor);
+  const [editingSubs, setEditingSubs] = useState(false);
+
+  // 결과물 화면의 "자막 고치기"(AI 없이) 로 넘어온 경우
+  useEffect(() => {
+    if (storeEditor && storeEditor.videoId === id) setEditingSubs(true);
+  }, [storeEditor, id]);
 
   // 결과물 화면에서 "이 문장 고쳐줘" 로 넘어온 말
   useEffect(() => {
@@ -63,6 +71,19 @@ export function VideoDetail({ id, panelOutputId }: Props) {
     onError,
   });
   const stop = useMutation({ mutationFn: () => api.cancelChat(id), onSuccess: invalidate });
+  // 자막 직접 쓰기: 자막을 통째로 바꾼 뒤 바로 "자막 넣기"
+  const saveSubs = useMutation({
+    mutationFn: async (lines: { start: number; end: number; text: string }[]) => {
+      await api.putTranscript(id, lines);
+      return api.act(id, { type: 'subtitle' });
+    },
+    onSuccess: () => {
+      setEditingSubs(false);
+      setLocalError(null);
+      invalidate();
+    },
+    onError,
+  });
 
   const messageCount = q.data?.messages.length ?? 0;
   const lastUpdated = q.data?.messages.at(-1)?.updatedAt ?? 0;
@@ -92,7 +113,7 @@ export function VideoDetail({ id, panelOutputId }: Props) {
     act.mutate({ type: key });
   };
   // 챕터 카드의 숏폼은 되묻지 않는다: 자막이 이미 있으면 넣고, 없으면 자막 없이 (자막을 새로 만들지 않는다)
-  const onShortFromChapter = (range: { start: number; end: number }) => act.mutate({ type: 'short', range, subtitles: hasAudio && !!transcript });
+  const onShortFromChapter = (range: { start: number; end: number }) => act.mutate({ type: 'short', range, subtitles: !!transcript && transcript.segments.length > 0 });
   const ask = (text: string) => setPrefill({ text, at: Date.now() });
   const onRevise = (o: OutputCard) => ask(copy.detail.outputCard.revisePrefill(o.title));
   const openOutput = (o: OutputCard) => go({ screen: 'output', id: o.id });
@@ -161,6 +182,15 @@ export function VideoDetail({ id, panelOutputId }: Props) {
           )}
         </div>
 
+        {/* 자막 직접 쓰기 — 소리가 없는 영상에도, AI 없이도 */}
+        {!editingSubs && video.status === 'ready' && (
+          <button type="button" onClick={() => setEditingSubs(true)} className="mb-1 self-start text-13 font-medium text-accent hover:text-accent-hover" data-testid="subtitle-editor-open">
+            {transcript && transcript.segments.length ? copy.subtitleEditor.edit : copy.subtitleEditor.open}
+          </button>
+        )}
+        {editingSubs && (
+          <SubtitleEditor segments={transcript?.segments ?? []} durationSec={video.durationSec ?? 0} saving={saveSubs.isPending} onSave={(lines) => saveSubs.mutate(lines)} onCancel={() => setEditingSubs(false)} />
+        )}
         <ChatFeed messages={messages} outputs={outputs} jobs={jobs} onRevise={aiOn ? onRevise : undefined} chapters={chapters} onShortFromChapter={busy || act.isPending ? undefined : onShortFromChapter} onOpenOutput={openOutput} />
         {localError && (
           <div className="rounded-thumb bg-accent-faint px-3 py-2 text-13 leading-normal" data-testid="chat-error">
@@ -186,10 +216,10 @@ export function VideoDetail({ id, panelOutputId }: Props) {
       {aiOn ? (
         <ChatBar busy={chatBusy} disabled={video.status !== 'ready'} prefill={prefill} longform={longform} onSend={(t) => chat.mutate(t)} onStop={() => stop.mutate()} />
       ) : (
-        <ActionBar hasAudio={hasAudio} busy={busy || act.isPending} disabled={video.status !== 'ready'} longform={longform} onAction={onAction} />
+        <ActionBar hasAudio={hasAudio} hasTranscript={!!transcript && transcript.segments.length > 0} busy={busy || act.isPending} disabled={video.status !== 'ready'} longform={longform} onAction={onAction} />
       )}
 
-      {pc && panel && <OutputPanel outputId={panel} onClose={closePanel} onAsk={aiOn ? ask : undefined} />}
+      {pc && panel && <OutputPanel outputId={panel} onClose={closePanel} onAsk={aiOn ? ask : undefined} onEdit={aiOn ? undefined : () => setEditingSubs(true)} />}
     </div>
   );
 }
@@ -204,7 +234,7 @@ function Prop({ k, v }: { k: string; v: string }) {
 }
 
 /** PC 오른쪽 결과물 패널 (380px, 1px 왼선). 제목 · 메타 · 닫기 + OutputView. */
-function OutputPanel({ outputId, onClose, onAsk }: { outputId: string; onClose(): void; onAsk?: ((text: string) => void) | undefined }) {
+function OutputPanel({ outputId, onClose, onAsk, onEdit }: { outputId: string; onClose(): void; onAsk?: ((text: string) => void) | undefined; onEdit?: (() => void) | undefined }) {
   const q = useQuery({ queryKey: queryKeys.output(outputId), queryFn: () => api.output(outputId) });
   const o = q.data?.output;
   const vertical = o ? o.width < o.height : true;
@@ -219,7 +249,7 @@ function OutputPanel({ outputId, onClose, onAsk }: { outputId: string; onClose()
           <CloseIcon />
         </button>
       </header>
-      {q.data ? <OutputView data={q.data} onAsk={onAsk} /> : <div className="flex flex-1 items-center justify-center p-4 text-13 text-text-3">{q.isError ? copy.output.notFound : copy.empty.loading}</div>}
+      {q.data ? <OutputView data={q.data} onAsk={onAsk} onEdit={onEdit} /> : <div className="flex flex-1 items-center justify-center p-4 text-13 text-text-3">{q.isError ? copy.output.notFound : copy.empty.loading}</div>}
     </aside>
   );
 }

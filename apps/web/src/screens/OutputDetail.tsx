@@ -18,6 +18,7 @@ export function OutputDetail({ id }: { id: string }) {
   const q = useQuery({ queryKey: queryKeys.output(id), queryFn: () => api.output(id) });
   const health = useQuery({ queryKey: queryKeys.health, queryFn: api.health, refetchInterval: 15_000 });
   const setPrefill = useUi((s) => s.setPrefill);
+  const openSubtitleEditor = useUi((s) => s.openSubtitleEditor);
 
   if (pc) {
     if (q.isPending) return <Frame title="">{null}</Frame>;
@@ -34,10 +35,14 @@ export function OutputDetail({ id }: { id: string }) {
     setPrefill(output.videoId, text);
     go({ screen: 'video', id: output.videoId });
   };
+  const edit = () => {
+    openSubtitleEditor(output.videoId);
+    go({ screen: 'video', id: output.videoId });
+  };
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface" data-testid="output-detail">
       <TopBar title={output.title} meta={`${formatDuration(output.durationSec)} · ${vertical ? '9:16' : '16:9'}`} showBack backFallback={{ screen: 'video', id: output.videoId }} />
-      <OutputView data={q.data} wide onAsk={aiOn ? ask : undefined} />
+      <OutputView data={q.data} wide onAsk={aiOn ? ask : undefined} onEdit={aiOn ? undefined : edit} />
     </div>
   );
 }

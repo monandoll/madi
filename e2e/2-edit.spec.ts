@@ -122,3 +122,43 @@ test('자막 넣기 (whisper 있을 때만): 자막 결과물과 자막 목록',
   await page.getByTestId('output-row').filter({ hasText: '자막' }).getByRole('button', { name: '자세히' }).click();
   await expect(page.getByTestId('output-detail')).toBeVisible();
 });
+
+test('소리 없는 영상: "자막 직접 쓰기"로 원하는 자리에 자막을 넣는다 (AI 없이)', async ({ page }) => {
+  fs.copyFileSync(path.join(FIXTURES, 'sample-silent-3s.mp4'), path.join(VIDEOS, '무음 시연.mp4'));
+  await page.goto('/');
+  const card = page.locator('[data-testid="video-card"]', { hasText: '무음 시연' });
+  await expect(card).toHaveAttribute('data-status', 'ready', { timeout: 60_000 });
+  await card.click();
+  const bar = page.getByTestId('action-bar');
+  await expect(bar.locator('[data-action="subtitle"]')).toBeDisabled(); // 소리 없고 자막도 없음
+  await page.getByTestId('subtitle-editor-open').click();
+  const editor = page.getByTestId('subtitle-editor');
+  await expect(editor.getByTestId('subtitle-editor-row')).toHaveCount(1);
+  await editor.getByTestId('subtitle-editor-start').fill('0');
+  await editor.getByTestId('subtitle-editor-end').fill('1.5');
+  await editor.getByTestId('subtitle-editor-text').fill('무릎 펴기');
+  await editor.getByTestId('subtitle-editor-add').click();
+  const rows = editor.getByTestId('subtitle-editor-row');
+  await expect(rows).toHaveCount(2);
+  await rows.nth(1).getByTestId('subtitle-editor-text').fill('천천히');
+  await editor.getByTestId('subtitle-editor-save').click();
+  await expect(editor).toHaveCount(0);
+  await expect(page.getByTestId('bubble-user').last()).toContainText('자막 넣어줘');
+  await expect(page.getByTestId('output-row')).toHaveCount(1, { timeout: 90_000 });
+  await expect(page.getByTestId('bubble-assistant').last()).toContainText('자막을 넣었어요');
+  // 이제 자막 넣기 버튼도 살아 있다
+  await expect(bar.locator('[data-action="subtitle"]')).toBeEnabled();
+  // 결과물의 자막 목록에 그대로
+  await page.getByTestId('output-row').getByRole('button', { name: '자세히' }).click();
+  const out = page.getByTestId('output-detail');
+  await expect(out.getByTestId('subtitle-row')).toHaveCount(2);
+  await expect(out.getByTestId('subtitle-row').first()).toContainText('무릎 펴기');
+  // AI 없이도 고칠 수 있다: 고른 줄 → 자막 고치기 → 편집기가 기존 줄로 열린다
+  await out.getByTestId('subtitle-row').first().click();
+  await out.getByTestId('subtitle-edit').click();
+  await expect(page.getByTestId('subtitle-editor').getByTestId('subtitle-editor-row')).toHaveCount(2);
+  await expect(page.getByTestId('subtitle-editor').getByTestId('subtitle-editor-text').first()).toHaveValue('무릎 펴기');
+  for (const banned of ['transcript', '세그먼트', '렌더']) {
+    await expect(page.getByText(banned, { exact: false })).toHaveCount(0);
+  }
+});

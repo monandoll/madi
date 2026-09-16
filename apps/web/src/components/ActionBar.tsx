@@ -6,6 +6,8 @@ export type ActionKey = 'subtitle' | 'silence' | 'vertical' | 'short' | 'chapter
 interface Props {
   disabled?: boolean;
   hasAudio: boolean;
+  /** 직접 쓴 자막이 있으면 소리가 없어도 "자막 넣기"가 된다 */
+  hasTranscript?: boolean;
   busy: boolean;
   /** 긴 영상(2분 이상)이면 챕터·자동 숏폼 버튼이 더 보인다 */
   longform?: boolean;
@@ -16,9 +18,9 @@ interface Props {
  * design/v2 AI 미연결 상태: 2열 버튼(46px, 1px 선, 10px 모서리) + "AI를 연결하면 말로 편집할 수 있어요. 연결하기".
  * PC 는 버튼 오른쪽에 힌트 글자. 입력창은 없다 — 러너를 스폰하지 않는 상태라서.
  */
-export function ActionBar({ disabled = false, hasAudio, busy, longform = false, onAction }: Props) {
+export function ActionBar({ disabled = false, hasAudio, hasTranscript = false, busy, longform = false, onAction }: Props) {
   const items: { key: ActionKey; label: string; needsAudio: boolean }[] = [
-    { key: 'subtitle', label: copy.detail.actions.subtitle, needsAudio: true },
+    { key: 'subtitle', label: copy.detail.actions.subtitle, needsAudio: !hasTranscript },
     { key: 'silence', label: copy.detail.actions.silence, needsAudio: true },
     { key: 'vertical', label: copy.detail.actions.vertical, needsAudio: false },
     { key: 'short', label: copy.detail.actions.short, needsAudio: false },

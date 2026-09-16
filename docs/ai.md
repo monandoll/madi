@@ -70,3 +70,10 @@ Windows 의 `claude.cmd` 는 `cmd.exe /d /s /c` 로 띄운다 (`provider.ts spaw
 러너는 CLI 의 stderr/JSON 오류를 코드로 나눠 채팅에 보인다 (`classifyAgentError`): `ai_login`(로그인 안 됨 — `codex login` / `claude`), `ai_node_missing`(npm 설치본이 `node` 를 못 찾음), 나머지 `ai_failed`. 원문 300자는 말풍선 아래 "이유: …" 로 보인다.
 
 트레이 앱은 로그인 셸 PATH 를 물려받지 못한다. npm 으로 깐 `codex`/`claude` 는 `#!/usr/bin/env node` 라 `node` 가 PATH 에 없으면 exit 127 로 죽는다 → 자식 CLI 를 띄울 때 `withKnownDirs` 가 `/opt/homebrew/bin`, `/usr/local/bin`, `~/.nvm/versions/node/*/bin`, `%APPDATA%\npm`, `Program Files\nodejs` 등을 PATH 뒤에 붙인다.
+
+## 소리 없는 영상의 자막
+
+자막은 말소리에서만 오지 않는다. 직접 쓴 자막(`model=manual`)이 있으면 소리가 없어도 자막 넣기·숏폼 자막·`apply_edit(subtitles)` 가 된다.
+- 사용자: 영상 상세의 **자막 직접 쓰기** (줄마다 시작·끝·글) → `PUT /api/videos/:id/transcript {segments}` → 바로 자막 넣기. 결과물의 고른 줄 → **자막 고치기** 로 같은 편집기가 열린다 (AI 없이).
+- 에이전트: `set_subtitle_text` 로 넣은 뒤 `apply_edit(subtitles=true)` → `render`. 시각을 안 주면 영상 전체에 한 줄.
+- 소리도 없고 자막도 없을 때만 `no_audio`.

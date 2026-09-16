@@ -183,4 +183,34 @@ describe('edit actions (AI off)', () => {
     expect(res.status).toBe(409);
     expect((await res.json()).error.code).toBe('no_audio');
   });
+
+  it('무음 영상에도 직접 쓴 자막은 넣는다 (PUT transcript → 자막 넣기 → 결과물)', async () => {
+    const silent = VideosResponse.parse(await api('/api/videos')).videos.find((v) => v.title === '무음')!;
+    const put = await fetch(`${engine.url}/api/videos/${silent.id}/transcript`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ segments: [{ start: 0, end: 1.5, text: '무릎 펴기' }, { start: 1.5, end: 3, text: '천천히' }] }),
+    });
+    expect(put.status).toBe(200);
+    const t = (await put.json()).transcript;
+    expect(t.model).toBe('manual');
+    expect(t.segments.map((s: { text: string }) => s.text)).toEqual(['무릎 펴기', '천천히']);
+    const res = await api<ActionResponse>(`/api/videos/${silent.id}/actions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'subtitle' }) });
+    expect(res.job?.type).toBe('render');
+    await waitJob(res.job!.id);
+    const d = VideoDetailResponse.parse(await api(`/api/videos/${silent.id}`));
+    const out = d.outputs.find((o) => o.title.includes('자막'));
+    expect(out).toBeTruthy();
+    expect(fs.existsSync(out!.path)).toBe(true);
+    // 같은 줄은 그대로, 바뀐 줄만 새로 (id 유지 확인)
+    const again = await fetch(`${engine.url}/api/videos/${silent.id}/transcript`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ segments: [{ start: 0, end: 1.5, text: '무릎 펴기' }, { start: 1.5, end: 3, text: '아주 천천히' }] }),
+    });
+    const t2 = (await again.json()).transcript;
+    expect(t2.segments[0].id).toBe(t.segments[0].id);
+    expect(t2.segments[1].id).not.toBe(t.segments[1].id);
+    expect((await fetch(`${engine.url}/api/videos/${silent.id}/transcript`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ segments: [] }) })).status).toBe(400);
+  });
 });

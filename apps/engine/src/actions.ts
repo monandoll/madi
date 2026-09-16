@@ -46,7 +46,8 @@ export function runAction(d: ActionDeps, video: Video, req: ActionRequest): Acti
 
   switch (req.type) {
     case 'subtitle': {
-      if (video.hasAudio === false) throw new ActionError('no_audio');
+      // 소리가 없어도 직접 쓴 자막(transcript)이 있으면 넣는다
+      if (video.hasAudio === false && !transcript) throw new ActionError('no_audio');
       user('action.subtitle');
       const edit = d.library.createEdit({ ...baseEdit(`${video.title} · 자막`), subtitles: true });
       if (transcript) {
@@ -79,7 +80,7 @@ export function runAction(d: ActionDeps, video: Video, req: ActionRequest): Acti
       if (end - start < 1) throw new ActionError('range_too_short');
       user('action.short', { start: Math.round(start), end: Math.round(end) });
       const n = d.library.shortEditCount(video.id) + 1;
-      const wantSubs = req.subtitles && video.hasAudio !== false;
+      const wantSubs = req.subtitles && (video.hasAudio !== false || !!transcript);
       const edit = d.library.createEdit({ ...baseEdit(`${video.title} · 숏폼 ${n}`), keep: { start, end }, crop: 'vertical', subtitles: wantSubs });
       if (wantSubs && !transcript) {
         const job = d.queue.enqueue({ type: 'transcribe', videoId: video.id, renderEditId: edit.id });
