@@ -5,6 +5,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import {
   ActionRequest,
   type ActionResponse,
+  AddLinkRequest,
   AddRuleRequest,
   type StyleResponse,
   type AiProvidersResponse,
@@ -12,6 +13,7 @@ import {
   type ChatResponse,
   type FoldersResponse,
   type HealthResponse,
+  type OpenFolderResponse,
   type Output,
   type OutputCard,
   type OutputDetailResponse,
@@ -35,7 +37,8 @@ import { ActionError, greetIfEmpty, runAction } from '../actions.js';
 import { AgentError } from '../agent/runner.js';
 import { detectCli } from '../agent/detect.js';
 import { TOOL_NAMES, type ToolName } from '../mcp/tools.js';
-import { describeFolder, suggestFolders } from '../folders.js';
+import { describeFolder, openFolderWithSystem, suggestFolders } from '../folders.js';
+import { LinkError } from '../style/service.js';
 import { serveFile } from './media.js';
 
 export interface AppDeps {
@@ -54,6 +57,8 @@ export interface AppDeps {
   onSettingsChanged?: () => void;
   /** 시스템 폴더 선택창. Electron 이 붙여 준다. 없으면 브라우저만 뜬 상태. */
   pickFolder?: (() => Promise<string | null>) | undefined;
+  /** 폴더를 탐색기/Finder 로. Electron 은 shell.openPath, 없으면 OS 명령. */
+  openFolder?: ((dir: string) => Promise<void>) | undefined;
 }
 
 export function toCard(v: Video, deps: Pick<AppDeps, 'videos' | 'queue' | 'library'>): VideoCard {
@@ -239,15 +244,53 @@ export function createApp(deps: AppDeps): Hono {
     return c.json(body);
   });
 
-  /** 완성본 폴더를 다시 훑고, 실패한 것도 다시 분석한다. */
+  /** 완성본 폴더를 다시 훑고, 실패한 것(링크 포함)도 다시 분석한다. */
   app.post('/api/style/relearn', (c) => {
     deps.styleService.refresh({ retryFailed: true });
     const body: StyleResponse = deps.styleService.response();
     return c.json(body);
   });
 
+  /** 링크로 배우기: 유튜브·틱톡·릴스 주소 → 받아서 완성본으로 분석. */
+  app.post('/api/style/links', async (c) => {
+    const parsed = AddLinkRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_link', message: parsed.error.message } }, 400);
+    try {
+      deps.styleService.addLink(parsed.data.url);
+    } catch (err) {
+      if (err instanceof LinkError) return c.json({ error: { code: err.code, message: err.code } }, err.code === 'no_downloader' ? 501 : 400);
+      throw err;
+    }
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  /** 완성본 하나 빼기 (링크로 받은 것은 파일도 지운다). */
+  app.delete('/api/style/references/:id', (c) => {
+    if (!deps.styleService.removeReference(c.req.param('id'))) return c.json({ error: { code: 'not_found', message: 'reference not found' } }, 404);
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
   app.get('/api/folders/suggest', (c) => {
     const body: FoldersResponse = { folders: suggestFolders(settings.get().watchFolders) };
+    return c.json(body);
+  });
+
+  /** 갤러리의 "폴더 열기": 첫 영상 폴더를 이 PC 의 탐색기/Finder 로 연다. 폴더가 없으면 opened=false. */
+  app.post('/api/folders/open', async (c) => {
+    const dir = settings.get().watchFolders.find((f) => fs.existsSync(f)) ?? null;
+    if (!dir) {
+      const body: OpenFolderResponse = { opened: false, path: null };
+      return c.json(body);
+    }
+    try {
+      await (deps.openFolder ?? openFolderWithSystem)(dir);
+    } catch (err) {
+      return c.json({ error: { code: 'open_failed', message: err instanceof Error ? err.message : String(err) } }, 500);
+    }
+    deps.events.record('folder.opened');
+    const body: OpenFolderResponse = { opened: true, path: dir };
     return c.json(body);
   });
 

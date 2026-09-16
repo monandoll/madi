@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -66,4 +67,27 @@ export function suggestFolders(watching: string[]): FolderSuggestion[] {
     out.push(describeFolder(abs, watching, k.label));
   }
   return out;
+}
+
+/**
+ * 폴더를 이 PC 의 탐색기/Finder 로 연다 (Electron 이 없을 때의 폴백 — 개발 모드).
+ * 테스트는 MADI_OPENER 로 여는 프로그램을 바꾼다 (경로를 인자 하나로 받는다).
+ */
+export function openFolderWithSystem(dir: string): Promise<void> {
+  const opener = process.env['MADI_OPENER'];
+  const [bin, args] = opener
+    ? [opener, [dir]]
+    : process.platform === 'win32'
+      ? ['explorer.exe', [dir]]
+      : process.platform === 'darwin'
+        ? ['open', [dir]]
+        : ['xdg-open', [dir]];
+  return new Promise((resolve, reject) => {
+    const child = spawn(bin, args, { stdio: 'ignore', detached: true, windowsHide: true });
+    child.once('error', reject);
+    child.once('spawn', () => {
+      child.unref();
+      resolve();
+    });
+  });
 }

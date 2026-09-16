@@ -47,8 +47,13 @@ export const ReferenceStats = z.object({
 });
 export type ReferenceStats = z.infer<typeof ReferenceStats>;
 
-export const ReferenceStatus = z.enum(['queued', 'analyzing', 'done', 'failed', 'missing']);
+/** downloading 은 링크 완성본만 (yt-dlp 로 받는 중). */
+export const ReferenceStatus = z.enum(['queued', 'downloading', 'analyzing', 'done', 'failed', 'missing']);
 export type ReferenceStatus = z.infer<typeof ReferenceStatus>;
+
+/** folder = 완성본 폴더에서 훑은 파일, link = 유튜브·틱톡·릴스 링크에서 받은 영상 (~/.madi/references/) */
+export const ReferenceSource = z.enum(['folder', 'link']);
+export type ReferenceSource = z.infer<typeof ReferenceSource>;
 
 export const Reference = z.object({
   id: z.string(),
@@ -57,6 +62,9 @@ export const Reference = z.object({
   title: z.string(),
   sizeBytes: z.number().int(),
   status: ReferenceStatus,
+  source: ReferenceSource,
+  /** source = link 일 때 원래 링크 */
+  url: z.string().nullable(),
   stats: ReferenceStats.nullable(),
   error: z.string().nullable(),
   createdAt: z.number().int(),
@@ -86,8 +94,37 @@ export const StyleResponse = z.object({
   subtitleStyle: SubtitleStyle,
   /** 무음 잘라내기 기준(초). 배운 값이 있으면 그것. */
   silenceMinSec: z.number(),
+  /** 링크로 배우기가 되는지 (이 PC 에 yt-dlp 가 있는지). 설치본은 항상 true. */
+  linkImport: z.boolean(),
 });
 export type StyleResponse = z.infer<typeof StyleResponse>;
 
 export const AddRuleRequest = z.object({ rule: z.string().trim().min(2).max(200) });
 export type AddRuleRequest = z.infer<typeof AddRuleRequest>;
+
+/** 링크로 배우기: 유튜브·틱톡·인스타 릴스 등 yt-dlp 가 읽는 공개 영상 주소. */
+export const AddLinkRequest = z.object({ url: z.string().trim().min(8).max(2000) });
+export type AddLinkRequest = z.infer<typeof AddLinkRequest>;
+
+/** 링크 안에서 영상 주소 하나 고르기. http(s) 가 아니면 null. 브라우저·엔진이 같은 판단을 한다 (URL 클래스 없이 — shared 는 DOM/node 를 모른다). */
+export function normalizeVideoUrl(input: string): string | null {
+  const m = input.trim().match(/https?:\/\/[^\s<>"']+/i);
+  if (!m) return null;
+  const host = hostOf(m[0]);
+  if (!host || !host.includes('.')) return null;
+  return m[0].replace(/[.,;)]+$/, '');
+}
+
+function hostOf(url: string): string {
+  const m = /^https?:\/\/(?:[^@/?#]*@)?([^/?#:\s]+)/i.exec(url);
+  return (m?.[1] ?? '').toLowerCase().replace(/^www\./, '');
+}
+
+/** 화면에 보일 출처 이름 (유튜브 · 틱톡 · 인스타그램 · 그 외는 도메인). */
+export function linkSiteLabel(url: string): string {
+  const host = hostOf(url);
+  if (host === 'youtu.be' || host.endsWith('youtube.com')) return '유튜브';
+  if (host.endsWith('tiktok.com')) return '틱톡';
+  if (host.endsWith('instagram.com')) return '인스타그램';
+  return host;
+}

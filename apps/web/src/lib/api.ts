@@ -7,6 +7,7 @@ import {
   StyleResponse,
   FoldersResponse,
   HealthResponse,
+  OpenFolderResponse,
   OutputDetailResponse,
   OutputsResponse,
   PickFolderResponse,
@@ -58,10 +59,13 @@ export const api = {
   addRule: (rule: string) => send('POST', '/api/style/rules', { rule }, StyleResponse),
   removeRule: (index: number) => send('DELETE', `/api/style/rules/${index}`, undefined, StyleResponse),
   relearn: () => send('POST', '/api/style/relearn', undefined, StyleResponse),
+  addLink: (url: string) => send('POST', '/api/style/links', { url }, StyleResponse),
+  removeReference: (id: string) => send('DELETE', `/api/style/references/${id}`, undefined, StyleResponse),
   outputs: () => get('/api/outputs', OutputsResponse),
   output: (id: string) => get(`/api/outputs/${id}`, OutputDetailResponse),
   suggestFolders: () => get('/api/folders/suggest', FoldersResponse),
   pickFolder: () => send('POST', '/api/folders/pick', undefined, PickFolderResponse),
+  openFolder: () => send('POST', '/api/folders/open', undefined, OpenFolderResponse),
 };
 
 export const queryKeys = {

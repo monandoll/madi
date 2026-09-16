@@ -157,3 +157,15 @@ test('넓은 화면에서는 같은 카드 폭으로 열이 늘어난다', async
   expect(a!.width).toBeGreaterThan(168);
   expect(a!.width).toBeLessThan(260);
 });
+
+test('PC 의 "폴더 열기"는 이 PC 의 영상 폴더를 연다 (설정으로 가지 않는다)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+  const opened = path.join(process.env['MADI_E2E_HOME']!, 'opened.txt');
+  fs.rmSync(opened, { force: true });
+  await page.getByTestId('open-folder').click();
+  await expect.poll(() => (fs.existsSync(opened) ? fs.readFileSync(opened, 'utf8') : null), { timeout: 10_000 }).toBe(VIDEOS);
+  // 설정으로 가지 않고 갤러리에 그대로
+  await expect(page).not.toHaveURL(/settings/);
+  await expect(page.getByTestId('video-card')).toHaveCount(2);
+});

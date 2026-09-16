@@ -29,6 +29,13 @@
       "when": 1789536690721,
       "tag": "0003_chapters",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789569283801,
+      "tag": "0004_link_references",
+      "breakpoints": true
     }
   ]
 }
