@@ -3,6 +3,7 @@ import { Header } from '../components/Header.js';
 import { SetupCard } from '../components/SetupCard.js';
 import { Tabs } from '../components/Tabs.js';
 import { VideoCard } from '../components/VideoCard.js';
+import { OutputList } from '../components/ChatFeed.js';
 import { copy } from '../copy.js';
 import { api, queryKeys } from '../lib/api.js';
 import { useSettings } from '../lib/settings.js';
@@ -17,6 +18,7 @@ export function Gallery() {
   const health = useQuery({ queryKey: queryKeys.health, queryFn: api.health, refetchInterval: 15_000 });
   const settings = useSettings();
   const videos = useQuery({ queryKey: queryKeys.videos, queryFn: api.videos, refetchInterval: health.isError ? 3_000 : false });
+  const outputs = useQuery({ queryKey: queryKeys.outputs, queryFn: api.outputs, enabled: tab === 'outputs' });
 
   const ws = settings.settings;
   const showSetup = settings.isSuccess && !ws.setupDone;
@@ -46,7 +48,14 @@ export function Gallery() {
             )}
           </Grid>
         )}
-        {tab === 'outputs' && <Empty>{copy.empty.noOutputs}</Empty>}
+        {tab === 'outputs' &&
+          (outputs.data && outputs.data.outputs.length > 0 ? (
+            <div className="mx-auto w-full max-w-[560px] pt-0.5">
+              <OutputList outputs={outputs.data.outputs} />
+            </div>
+          ) : (
+            <Empty>{copy.empty.noOutputs}</Empty>
+          ))}
         {tab === 'inProgress' && (
           <Grid>
             {inProgress.length === 0 ? <Empty>{copy.empty.nothingInProgress}</Empty> : inProgress.map((v) => <VideoCard key={v.id} video={v} />)}
