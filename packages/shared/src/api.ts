@@ -136,6 +136,10 @@ export type FoldersResponse = z.infer<typeof FoldersResponse>;
 export const PickFolderResponse = z.object({ folder: FolderSuggestion.nullable() });
 export type PickFolderResponse = z.infer<typeof PickFolderResponse>;
 
+/** PC 의 영상 폴더를 탐색기/Finder 로 연 결과. 폴더가 없으면 opened=false. */
+export const OpenFolderResponse = z.object({ opened: z.boolean(), path: z.string().nullable() });
+export type OpenFolderResponse = z.infer<typeof OpenFolderResponse>;
+
 export const ErrorResponse = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
 });

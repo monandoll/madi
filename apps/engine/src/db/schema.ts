@@ -41,7 +41,7 @@ export const jobs = sqliteTable(
   'jobs',
   {
     id: text('id').primaryKey(),
-    type: text('type', { enum: ['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze', 'chapters'] }).notNull(),
+    type: text('type', { enum: ['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze', 'chapters', 'download'] }).notNull(),
     status: text('status', { enum: ['queued', 'running', 'done', 'failed', 'canceled'] })
       .notNull()
       .default('queued'),
@@ -154,9 +154,12 @@ export const references = sqliteTable(
     fileName: text('file_name').notNull(),
     title: text('title').notNull(),
     sizeBytes: integer('size_bytes').notNull(),
-    status: text('status', { enum: ['queued', 'analyzing', 'done', 'failed', 'missing'] })
+    status: text('status', { enum: ['queued', 'downloading', 'analyzing', 'done', 'failed', 'missing'] })
       .notNull()
       .default('queued'),
+    /** folder = 완성본 폴더 파일, link = 링크에서 받은 영상 (폴더를 훑어도 missing 이 되지 않는다) */
+    source: text('source', { enum: ['folder', 'link'] }).notNull().default('folder'),
+    url: text('url'),
     stats: text('stats', { mode: 'json' }),
     /** 짝 맞추기용 자막 (있을 때만) */
     segments: text('segments', { mode: 'json' }),

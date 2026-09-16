@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { HeaderButton, TopBar } from '../components/TopBar.js';
 import { VideoCard } from '../components/VideoCard.js';
 import { copy } from '../copy.js';
@@ -19,11 +19,22 @@ export function Gallery() {
   const ws = settings.settings;
   const list = videos.data?.videos ?? [];
   const engineOk = health.isSuccess;
+  // PC 헤더 "폴더 열기": 이 PC 의 영상 폴더를 탐색기/Finder 로. 폴더가 아직 없으면 설정으로 보낸다.
+  const openFolder = useMutation({
+    mutationFn: api.openFolder,
+    onSuccess: (r) => {
+      if (!r.opened) go({ screen: 'settings' });
+    },
+  });
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface">
       {pc ? (
-        <TopBar title={copy.tabs.videos} meta={copy.header.sectionMeta['videos']} actions={<HeaderButton onClick={() => go({ screen: 'settings' })}>{copy.header.galleryActions.openFolder}</HeaderButton>} />
+        <TopBar title={copy.tabs.videos} meta={copy.header.sectionMeta['videos']} actions={
+            <HeaderButton onClick={() => openFolder.mutate()} testId="open-folder">
+              {copy.header.galleryActions.openFolder}
+            </HeaderButton>
+          } />
       ) : (
         <TopBar title={ws.workspaceName} dot={engineOk} meta={`${engineOk ? copy.header.engineOk : copy.header.engineOff} · ${copy.header.videoCount(list.length)}`} />
       )}

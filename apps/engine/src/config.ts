@@ -22,6 +22,8 @@ export interface EngineConfig {
   workDir: string;
   /** StyleProfile (style.md, params.json, examples/) */
   styleDir: string;
+  /** 링크로 받은 완성본 영상 (갤러리엔 안 나온다) */
+  referencesDir: string;
   rootDir: string;
   migrationsDir: string;
   webDir: string;
@@ -63,6 +65,7 @@ export function loadConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     modelsDir: path.join(dataDir, 'models'),
     workDir: path.join(dataDir, 'work'),
     styleDir: path.join(dataDir, 'style'),
+    referencesDir: path.join(dataDir, 'references'),
     rootDir,
     migrationsDir: isDev ? path.join(rootDir, 'apps/engine/drizzle') : path.join(rootDir, 'drizzle'),
     webDir: isDev ? path.join(rootDir, 'apps/web/dist') : path.join(rootDir, 'web'),
@@ -72,7 +75,7 @@ export function loadConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     isDev,
     ...overrides,
   };
-  for (const dir of [cfg.dataDir, cfg.logsDir, cfg.proxiesDir, cfg.thumbsDir, cfg.outputsDir, cfg.modelsDir, cfg.workDir, cfg.styleDir]) {
+  for (const dir of [cfg.dataDir, cfg.logsDir, cfg.proxiesDir, cfg.thumbsDir, cfg.outputsDir, cfg.modelsDir, cfg.workDir, cfg.styleDir, cfg.referencesDir]) {
     fs.mkdirSync(dir, { recursive: true });
   }
   return cfg;

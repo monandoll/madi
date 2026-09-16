@@ -62,7 +62,7 @@ macOS 는 `pkg-scripts/postinstall` 이 설치 직후 앱을 띄운다.
 resources/            (= process.resourcesPath, 엔진의 MADI_ROOT)
   web/                브라우저 UI
   drizzle/            마이그레이션
-  bin/<platform>/     ffmpeg, ffprobe, whisper-cli, cloudflared
+  bin/<platform>/     ffmpeg, ffprobe, whisper-cli, cloudflared, yt-dlp
   fonts/              Pretendard OTF (자막 번인)
   tray.png            트레이 아이콘
 app.asar              main.mjs (esbuild 번들) + package.json
@@ -82,6 +82,7 @@ Apple Developer / 코드 서명 인증서가 생기면 `electron-builder.yml` �
 | ffmpeg/ffprobe | BtbN FFmpeg-Builds master-latest win64 gpl (NVENC 포함) | osxexperts (arm64) / evermeet (x64) 정적 빌드 |
 | whisper-cli | whisper.cpp 릴리스 `whisper-bin-x64.zip` (CPU) | 소스 빌드 (정적, Metal) |
 | cloudflared | cloudflared 릴리스 | cloudflared 릴리스 |
+| yt-dlp (링크로 배우기) | yt-dlp 릴리스 latest `yt-dlp.exe` (단일 실행 파일) | `yt-dlp_macos` (universal2) |
 | Pretendard | orioncactus/pretendard 릴리스 OTF | 같음 |
 
 GPU 자막(CUDA)은 CUDA 런타임 DLL 까지 동봉해야 해서 뒤로 뒀다. 엔진은 어느 빌드든 같은 인자로 부른다.

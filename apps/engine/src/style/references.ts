@@ -3,7 +3,7 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { asc, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { Reference, type ReferenceStats, type ReferenceStatus, type Segment, titleFromFileName } from '@madi/shared';
+import { linkSiteLabel, Reference, type ReferenceStats, type ReferenceStatus, type Segment, titleFromFileName } from '@madi/shared';
 import type { Db } from '../db/index.js';
 import { references } from '../db/schema.js';
 
@@ -30,6 +30,11 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
 
   getByPath(p: string): Reference | null {
     const row = this.db.select().from(references).where(eq(references.path, p)).get();
+    return row ? toRef(row) : null;
+  }
+
+  getByUrl(url: string): Reference | null {
+    const row = this.db.select().from(references).where(eq(references.url, url)).get();
     return row ? toRef(row) : null;
   }
 
@@ -61,6 +66,8 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
       title: titleFromFileName(fileName),
       sizeBytes: size,
       status: 'queued',
+      source: 'folder',
+      url: null,
       stats: null,
       segments: null,
       error: null,
@@ -73,7 +80,54 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
     return { ref, changed: true };
   }
 
-  update(id: string, patch: Partial<{ sizeBytes: number; status: ReferenceStatus; stats: ReferenceStats | null; segments: Segment[] | null; error: string | null }>): Reference {
+  /**
+   * 링크 하나 등록. 파일은 아직 없다 — download 잡이 dir/<id>.mp4 로 받은 뒤 채운다.
+   * 같은 링크가 이미 있으면 그것을 돌려주고(changed=false), 실패했던 것이면 다시 받게 돌린다(changed=true).
+   */
+  upsertFromLink(url: string, dir: string): { ref: Reference; changed: boolean } {
+    const existing = this.getByUrl(url);
+    if (existing) {
+      if (existing.status !== 'failed' && existing.status !== 'missing') return { ref: existing, changed: false };
+      const ref = this.update(existing.id, { status: 'queued', stats: null, segments: null, error: null });
+      return { ref, changed: true };
+    }
+    const id = nanoid();
+    const fileName = `${id}.mp4`;
+    const now = Date.now();
+    const row: Row = {
+      id,
+      path: path.join(dir, fileName),
+      fileName,
+      title: `${linkSiteLabel(url)} 영상`,
+      sizeBytes: 0,
+      status: 'queued',
+      source: 'link',
+      url,
+      stats: null,
+      segments: null,
+      error: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.db.insert(references).values(row).run();
+    const ref = toRef(row);
+    this.emit('reference.updated', ref);
+    return { ref, changed: true };
+  }
+
+  /** 링크 완성본을 지운다 (받은 파일도). 폴더 완성본은 폴더에서 빼는 것이라 여기서 안 지운다. */
+  remove(id: string): Reference | null {
+    const ref = this.get(id);
+    if (!ref) return null;
+    this.db.delete(references).where(eq(references.id, id)).run();
+    if (ref.source === 'link') fs.rmSync(ref.path, { force: true });
+    return ref;
+  }
+
+  update(
+    id: string,
+    patch: Partial<{ path: string; fileName: string; title: string; sizeBytes: number; status: ReferenceStatus; stats: ReferenceStats | null; segments: Segment[] | null; error: string | null }>,
+  ): Reference {
     this.db
       .update(references)
       .set({ ...patch, updatedAt: Date.now() })
@@ -85,9 +139,10 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
     return ref;
   }
 
-  /** 지금 폴더에 없는 것은 missing. 폴더에 다시 나타나면 upsert 가 되살린다. */
+  /** 지금 폴더에 없는 것은 missing. 폴더에 다시 나타나면 upsert 가 되살린다. 링크 완성본은 폴더와 무관하니 건드리지 않는다. */
   markMissingExcept(presentPaths: Set<string>): void {
     for (const r of this.list()) {
+      if (r.source === 'link') continue;
       if (!presentPaths.has(r.path) && r.status !== 'missing') this.update(r.id, { status: 'missing' });
     }
   }

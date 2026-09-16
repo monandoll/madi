@@ -9,6 +9,8 @@ import { StyleResponse } from '@madi/shared';
 import { type Engine, startEngine } from '../src/engine.js';
 import { FIXTURES, freePort, tempHome, waitFor } from './helpers.js';
 
+const FAKE_YTDLP = path.join(FIXTURES, 'fake-ytdlp.mjs');
+
 let home: string;
 let refDir: string;
 let engine: Engine;
@@ -25,6 +27,7 @@ beforeAll(async () => {
   refDir = path.join(home, 'finished');
   fs.mkdirSync(refDir);
   process.env['MADI_QUIET'] = '1';
+  process.env['MADI_YTDLP'] = FAKE_YTDLP;
   engine = await startEngine({ dataDir: home, dbPath: path.join(home, 'madi.db'), port: await freePort() });
 });
 
@@ -105,5 +108,58 @@ describe('스타일 학습', () => {
     await waitFor(async () => (await style()).learned?.count === 3, 60_000);
     const s = await style();
     expect(s.references.find((r) => r.title === '무음 완성')?.stats?.hasAudio).toBe(false);
+  });
+
+  it('링크로 배우기: 받아서(가짜 yt-dlp) 분석하고 배운 수에 더해진다', async () => {
+    await waitFor(async () => (await style()).linkImport, 10_000);
+    // 주소가 아니면 400
+    expect((await api('/api/style/links', json('POST', { url: '햄스트링 루틴 영상' }))).status).toBe(400);
+    const res = await api<StyleResponse>('/api/style/links', json('POST', { url: '봐봐 https://www.youtube.com/shorts/gaps 이거' }));
+    expect(res.status).toBe(200);
+    const link = res.body.references.find((r) => r.source === 'link')!;
+    expect(link).toMatchObject({ url: 'https://www.youtube.com/shorts/gaps', title: '유튜브 영상' });
+    expect(['queued', 'downloading']).toContain(link.status);
+    await waitFor(async () => (await style()).references.find((r) => r.id === link.id)?.status === 'done', 60_000);
+    const s = await style();
+    const done = s.references.find((r) => r.id === link.id)!;
+    expect(done.title).toBe('gaps');
+    expect(done.path).toBe(path.join(home, 'references', `${link.id}.mp4`));
+    expect(fs.existsSync(done.path)).toBe(true);
+    expect(done.stats).toMatchObject({ aspect: '16:9', hasAudio: true });
+    expect(s.learned?.count).toBe(4);
+    // 같은 링크를 또 넣어도 하나
+    await api('/api/style/links', json('POST', { url: 'https://www.youtube.com/shorts/gaps' }));
+    expect((await style()).references.filter((r) => r.source === 'link')).toHaveLength(1);
+    // 폴더를 다시 훑어도 링크 완성본은 missing 이 되지 않는다
+    await api('/api/style/relearn', { method: 'POST' });
+    await waitFor(async () => (await style()).learned?.count === 4, 30_000);
+    expect((await style()).references.find((r) => r.id === link.id)?.status).toBe('done');
+  });
+
+  it('링크로 배우기: 못 가져오면 이유 코드가 남고, 다시 배우기가 다시 받는다, 빼면 파일도 사라진다', async () => {
+    const res = await api<StyleResponse>('/api/style/links', json('POST', { url: 'https://www.instagram.com/reel/private' }));
+    expect(res.status).toBe(200);
+    const link = res.body.references.find((r) => r.url === 'https://www.instagram.com/reel/private')!;
+    await waitFor(async () => (await style()).references.find((r) => r.id === link.id)?.status === 'failed', 30_000);
+    let s = await style();
+    expect(s.references.find((r) => r.id === link.id)).toMatchObject({ status: 'failed', error: 'link_private', title: '인스타그램 영상' });
+    expect(s.learned?.count).toBe(4);
+    // 다시 배우기 → 다시 받는다 (또 실패)
+    await api('/api/style/relearn', { method: 'POST' });
+    await waitFor(async () => {
+      const r = (await style()).references.find((r) => r.id === link.id);
+      return r?.status === 'queued' || r?.status === 'downloading';
+    }, 10_000);
+    await waitFor(async () => (await style()).references.find((r) => r.id === link.id)?.status === 'failed', 30_000);
+    // 빼기
+    expect((await api(`/api/style/references/${link.id}`, { method: 'DELETE' })).status).toBe(200);
+    expect((await api(`/api/style/references/${link.id}`, { method: 'DELETE' })).status).toBe(404);
+    const okLink = (await style()).references.find((r) => r.source === 'link' && r.status === 'done')!;
+    expect(fs.existsSync(okLink.path)).toBe(true);
+    await api(`/api/style/references/${okLink.id}`, { method: 'DELETE' });
+    expect(fs.existsSync(okLink.path)).toBe(false);
+    s = await style();
+    expect(s.references.filter((r) => r.source === 'link')).toHaveLength(0);
+    expect(s.learned?.count).toBe(3);
   });
 });

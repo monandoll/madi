@@ -2,11 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-export type SidecarName = 'ffmpeg' | 'ffprobe' | 'whisper' | 'cloudflared';
+export type SidecarName = 'ffmpeg' | 'ffprobe' | 'whisper' | 'cloudflared' | 'ytdlp';
 
 /**
  * 사이드카 바이너리 경로. 우선순위:
- * 1. 환경변수 MADI_FFMPEG / MADI_FFPROBE / MADI_WHISPER / MADI_CLOUDFLARED
+ * 1. 환경변수 MADI_FFMPEG / MADI_FFPROBE / MADI_WHISPER / MADI_CLOUDFLARED / MADI_YTDLP
  * 2. resources/bin/<platform>-<arch>/<name>[.exe]  (배포 경로, git-lfs)
  * 3. (개발 폴백) @ffmpeg-installer / @ffprobe-installer 패키지
  * 4. PATH
@@ -15,8 +15,8 @@ export function resolveSidecar(name: SidecarName, binDir: string): string {
   const fromEnv = process.env[`MADI_${name.toUpperCase()}`];
   if (fromEnv) return fromEnv;
 
-  // whisper.cpp 의 실행 파일 이름은 whisper-cli
-  const base = name === 'whisper' ? 'whisper-cli' : name;
+  // whisper.cpp 의 실행 파일 이름은 whisper-cli, yt-dlp 는 하이픈
+  const base = name === 'whisper' ? 'whisper-cli' : name === 'ytdlp' ? 'yt-dlp' : name;
   const exe = process.platform === 'win32' ? `${base}.exe` : base;
   const bundled = path.join(binDir, `${process.platform}-${process.arch}`, exe);
   if (fs.existsSync(bundled)) return bundled;

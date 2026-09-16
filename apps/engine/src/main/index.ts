@@ -48,6 +48,10 @@ app.whenReady().then(async () => {
   // 패키징된 앱만 resources 경로를 쓴다. 개발 모드에서 undefined 를 대입하면 문자열 "undefined" 가 된다.
   if (app.isPackaged) process.env['MADI_ROOT'] = process.resourcesPath;
   engine = await startEngine();
+  engine.setFolderOpener(async (dir) => {
+    const err = await shell.openPath(dir);
+    if (err) throw new Error(err);
+  });
   engine.setFolderPicker(async () => {
     const res = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] });
     const picked = res.canceled ? null : (res.filePaths[0] ?? null);

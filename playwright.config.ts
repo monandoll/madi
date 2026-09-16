@@ -43,6 +43,10 @@ export default defineConfig({
       MADI_SUGGEST_ROOT: suggestRoot,
       // AI 연결 e2e: 진짜 claude 대신 fixtures/fake-claude.mjs (MCP 도구 호출은 진짜로 오간다)
       MADI_CLAUDE_BIN: path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'fake-claude.mjs'),
+      // 링크로 배우기 e2e: 진짜 yt-dlp 대신 fixtures/fake-ytdlp.mjs (URL 로 샘플을 고른다)
+      MADI_YTDLP: path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'fake-ytdlp.mjs'),
+      // 갤러리 "폴더 열기": 탐색기 대신 fixtures/fake-opener.mjs (연 경로를 MADI_HOME/opened.txt 에 적는다)
+      MADI_OPENER: path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'fake-opener.mjs'),
     },
   },
 });

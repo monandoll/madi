@@ -4,7 +4,7 @@
  *   node scripts/fetch-sidecars.mjs [--platform win32-x64|darwin-arm64|darwin-x64] [--only ffmpeg,cloudflared,fonts]
  *
  * 결과:
- *   resources/bin/<platform-arch>/{ffmpeg,ffprobe,whisper-cli,cloudflared}[.exe]
+ *   resources/bin/<platform-arch>/{ffmpeg,ffprobe,whisper-cli,cloudflared,yt-dlp}[.exe]
  *   resources/fonts/Pretendard-*.otf
  *
  * 출처는 전부 공식 배포본(GitHub Releases 등). git 에는 넣지 않는다 (.gitignore).
@@ -47,6 +47,8 @@ const MANIFEST = {
       url: `https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-windows-amd64.exe`,
       dest: 'cloudflared.exe',
     },
+    // 링크로 배우기 (유튜브·틱톡·릴스). 사이트가 자주 바뀌어 빌드 시점의 최신을 쓴다. 단일 실행 파일(파이썬 불필요).
+    { name: 'ytdlp', url: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe', dest: 'yt-dlp.exe' },
   ],
   'darwin-arm64': [
     { name: 'ffmpeg', url: 'https://www.osxexperts.net/ffmpeg71arm.zip', pick: [{ match: /(^|\/)ffmpeg$/, dest: 'ffmpeg' }] },
@@ -56,6 +58,8 @@ const MANIFEST = {
       url: `https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-darwin-arm64.tgz`,
       pick: [{ match: /(^|\/)cloudflared$/, dest: 'cloudflared' }],
     },
+    // yt-dlp_macos 는 universal2 (arm64 + x64) 한 파일
+    { name: 'ytdlp', url: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos', dest: 'yt-dlp' },
   ],
   'darwin-x64': [
     { name: 'ffmpeg', url: 'https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip', pick: [{ match: /(^|\/)ffmpeg$/, dest: 'ffmpeg' }] },
@@ -65,6 +69,7 @@ const MANIFEST = {
       url: `https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-darwin-amd64.tgz`,
       pick: [{ match: /(^|\/)cloudflared$/, dest: 'cloudflared' }],
     },
+    { name: 'ytdlp', url: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos', dest: 'yt-dlp' },
   ],
 };
 

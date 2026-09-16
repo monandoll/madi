@@ -27,9 +27,9 @@
 
 ```
 resources/bin/
-  win32-x64/     ffmpeg.exe  ffprobe.exe  whisper.exe  cloudflared.exe
-  darwin-arm64/  ffmpeg      ffprobe      whisper      cloudflared
-  darwin-x64/    ffmpeg      ffprobe      whisper      cloudflared
+  win32-x64/     ffmpeg.exe  ffprobe.exe  whisper-cli.exe  cloudflared.exe  yt-dlp.exe
+  darwin-arm64/  ffmpeg      ffprobe      whisper-cli      cloudflared      yt-dlp
+  darwin-x64/    ffmpeg      ffprobe      whisper-cli      cloudflared      yt-dlp
 ```
 
 바이너리는 git-lfs. 개발 환경에서 폴더가 비어 있으면 `MADI_FFMPEG` / `MADI_FFPROBE` 환경변수,

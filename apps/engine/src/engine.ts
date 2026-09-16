@@ -62,6 +62,8 @@ export interface Engine {
   url: string;
   /** Electron 이 시스템 폴더 선택창을 붙인다. */
   setFolderPicker(fn: (() => Promise<string | null>) | undefined): void;
+  /** Electron 이 shell.openPath 를 붙인다 (갤러리의 "폴더 열기"). */
+  setFolderOpener(fn: ((dir: string) => Promise<void>) | undefined): void;
   stop(): Promise<void>;
 }
 
@@ -95,7 +97,8 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   registerChapterWorkers({ queue, videos, library, chapters, style, ffmpegBin, events, log });
   const watcher = new FolderWatcher({ videos, queue, events, log });
   const refs = new ReferenceStore(db);
-  const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, whisper, events, log });
+  const ytdlpBin = resolveSidecar('ytdlp', cfg.binDir);
+  const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, ytdlpBin, whisper, events, log });
   styleService.registerWorker();
 
   const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
@@ -134,6 +137,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
       if (p !== 'none') void detectCli(p, { fresh: true });
     },
     pickFolder: undefined as (() => Promise<string | null>) | undefined,
+    openFolder: undefined as ((dir: string) => Promise<void>) | undefined,
   };
   const app = createApp(deps);
   const ws = attachWs(app, VERSION);
@@ -159,6 +163,8 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   await watcher.setFolders(settings.get().watchFolders);
   tunnel.apply(settings.get().tunnelToken);
   styleService.refresh();
+  // 링크로 배우기(yt-dlp)가 되는 PC 인지 — 몇 초 걸릴 수 있어 기다리지 않는다
+  void styleService.detectDownloader();
   queue.tick();
   // AI 도구 설치 여부는 미리 봐 둔다 (--version 이 몇 초 걸릴 수 있다)
   if (settings.get().ai.provider !== 'none') void detectCli(settings.get().ai.provider as 'claude' | 'codex');
@@ -180,6 +186,9 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     url,
     setFolderPicker(fn) {
       deps.pickFolder = fn;
+    },
+    setFolderOpener(fn) {
+      deps.openFolder = fn;
     },
     async stop() {
       agent.stopAll();
