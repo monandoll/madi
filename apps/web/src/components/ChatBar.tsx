@@ -7,6 +7,8 @@ interface Props {
   disabled?: boolean;
   /** 밖에서 채워 넣는 말 (결과물 카드의 수정 요청). 바뀔 때마다 입력창에 들어간다. */
   prefill?: { text: string; at: number } | undefined;
+  /** 긴 영상이면 챕터·숏폼 여러 개 칩 */
+  longform?: boolean;
   onSend(text: string): void;
   onStop(): void;
 }
@@ -15,7 +17,7 @@ interface Props {
  * design/Mobile.dc.html 영상 상세 하단: 추천 칩 한 줄 + 둥근 입력(44px, bg) + accent 원형 보내기.
  * AI 가 연결됐을 때만 보인다. 답하는 동안은 보내기 대신 멈추기.
  */
-export function ChatBar({ busy, disabled = false, prefill, onSend, onStop }: Props) {
+export function ChatBar({ busy, disabled = false, prefill, longform = false, onSend, onStop }: Props) {
   const [text, setText] = useState('');
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -34,7 +36,7 @@ export function ChatBar({ busy, disabled = false, prefill, onSend, onStop }: Pro
   return (
     <div className="flex flex-none flex-col gap-2 border-t border-line px-3 pt-2.5 pb-3" data-testid="chat-bar">
       <div className="flex gap-1.5 overflow-x-auto">
-        {copy.detail.chat.chips.map((chip) => (
+        {(longform ? copy.detail.chat.chipsLong : copy.detail.chat.chips).map((chip) => (
           <button
             key={chip}
             type="button"

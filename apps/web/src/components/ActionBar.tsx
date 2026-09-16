@@ -1,11 +1,13 @@
 import { copy } from '../copy.js';
 
-export type ActionKey = 'subtitle' | 'silence' | 'vertical' | 'short';
+export type ActionKey = 'subtitle' | 'silence' | 'vertical' | 'short' | 'chapters' | 'auto_shorts';
 
 interface Props {
   disabled?: boolean;
   hasAudio: boolean;
   busy: boolean;
+  /** 긴 영상(2분 이상)이면 챕터·자동 숏폼 버튼이 더 보인다 */
+  longform?: boolean;
   onAction(key: ActionKey): void;
 }
 
@@ -13,12 +15,18 @@ interface Props {
  * AI 미연결 상태의 버튼 4개. 시안의 추천 칩 자리(하단, 1px 윗선)에 칩 모양 그대로.
  * 입력창은 없다 — 러너를 스폰하지 않는 상태라서.
  */
-export function ActionBar({ disabled = false, hasAudio, busy, onAction }: Props) {
+export function ActionBar({ disabled = false, hasAudio, busy, longform = false, onAction }: Props) {
   const items: { key: ActionKey; label: string; needsAudio: boolean }[] = [
     { key: 'subtitle', label: copy.detail.actions.subtitle, needsAudio: true },
     { key: 'silence', label: copy.detail.actions.silence, needsAudio: true },
     { key: 'vertical', label: copy.detail.actions.vertical, needsAudio: false },
     { key: 'short', label: copy.detail.actions.short, needsAudio: false },
+    ...(longform
+      ? [
+          { key: 'chapters' as const, label: copy.detail.actions.chapters, needsAudio: false },
+          { key: 'auto_shorts' as const, label: copy.detail.actions.autoShorts, needsAudio: false },
+        ]
+      : []),
   ];
   return (
     <div className="flex flex-none flex-col gap-2 border-t border-line px-3 pt-2.5 pb-3" data-testid="action-bar">
