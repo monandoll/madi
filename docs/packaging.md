@@ -33,6 +33,12 @@ cp /tmp/whisper/build/bin/whisper-cli resources/bin/darwin-arm64/
 버전은 `apps/engine/package.json` 의 `version` 이다 — 태그와 맞춘다.
 
 `workflow_dispatch` 로 돌리면 Release 없이 아티팩트만 남는다. 설정을 바꿨을 때 먼저 이걸로 확인한다.
+`tag` 입력에 `v0.1.1` 처럼 기존 태그를 주면 그 태그의 코드를 **main 의 워크플로**로 다시 빌드해 같은 Release 에 올린다 —
+워크플로만 고쳤을 때 태그를 다시 찍지 않아도 된다.
+
+러너마다 자기 아키텍처만 만든다 (`electron-builder --mac pkg zip --arm64` 처럼 target 과 arch 를 CLI 로).
+`electron-builder.yml` 에는 arch 목록을 두지 않는다: 두면 CLI 에 `--arm64` 를 줘도 목록대로 두 아키텍처를 다 만들어
+사이드카 없는 빌드가 생기고 pkg 임시 파일이 충돌한다.
 
 ## 설치 페이지
 

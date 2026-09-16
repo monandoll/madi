@@ -32,10 +32,11 @@ extraResources:
   - from: build/trayTemplate.png
     to: trayTemplate.png
 
+# 아키텍처는 설정에 적지 않는다: 릴리스 워크플로가 러너마다 `electron-builder --win nsis --x64` 처럼 CLI 로 준다.
+# 설정에 arch 목록을 두면 CLI --arm64 를 줘도 목록대로 두 아키텍처를 다 만든다 (사이드카 없는 빌드 + pkg 임시 파일 충돌).
 win:
   target:
     - target: nsis
-      arch: [x64]
   extraResources:
     - from: ../../resources/bin/win32-x64
       to: bin/win32-x64
@@ -48,12 +49,10 @@ nsis:
 mac:
   category: public.app-category.video
   target:
-    # pkg: 받은 파일을 열면 설치 마법사 → /Applications → 끝나면 바로 실행 (build/pkg-scripts/postinstall).
+    # pkg: 받은 파일을 열면 설치 마법사 → /Applications → 끝나면 바로 실행 (pkg-scripts/postinstall).
     # dmg 처럼 끌어다 놓는 단계가 없다. zip 은 electron-updater 용.
     - target: pkg
-      arch: [arm64, x64]
     - target: zip
-      arch: [arm64, x64]
   # 서명·공증은 아직 없다 (Apple Developer 계정 없음). 받은 pkg 를 처음 열 때
   # "확인할 수 없음" 이 뜨면 시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기.
   identity: null
