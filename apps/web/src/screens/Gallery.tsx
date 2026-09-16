@@ -29,7 +29,7 @@ export function Gallery() {
       <Tabs />
       <main className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-5">
         {tab === 'videos' && showSetup && (
-          <div className="pt-0.5 pb-3">
+          <div className="mx-auto w-full max-w-[480px] pt-0.5 pb-3">
             <SetupCard initialName={ws.workspaceName} initialFolders={ws.watchFolders} />
           </div>
         )}

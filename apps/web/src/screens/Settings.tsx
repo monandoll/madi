@@ -39,7 +39,8 @@ export function SettingsScreen() {
         <h1 className="flex-1 text-14 font-semibold">{copy.settings.title}</h1>
       </header>
 
-      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      {/* 넓은 화면에서는 폼 폭을 560 으로 제한. 모바일에선 그대로 전체 폭. */}
+      <main className="mx-auto flex min-h-0 w-full max-w-[560px] flex-1 flex-col overflow-y-auto">
         <section className="flex flex-col gap-1.5 border-b border-line bg-surface px-3.5 pt-4 pb-3.5">
           <label className="text-12 text-text-3" htmlFor="settings-name">
             {copy.settings.nameLabel}
