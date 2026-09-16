@@ -30,6 +30,8 @@ export interface EditWorkerDeps {
 export function editErrorCode(err: unknown): string {
   if (err instanceof WhisperMissingError) return err.message.includes('model') ? 'whisper_model_missing' : 'whisper_missing';
   const msg = err instanceof Error ? err.message : String(err);
+  if (/model download failed|fetch failed/i.test(msg)) return 'whisper_model_missing';
+  if (/whisper-cli.*ENOENT|ENOENT.*whisper/i.test(msg)) return 'whisper_missing';
   if (/nothing to render/i.test(msg)) return 'nothing_left';
   if (/no audio|Output file is empty|does not contain any stream/i.test(msg)) return 'no_audio';
   if (/ENOENT/.test(msg) && /ffmpeg/.test(msg)) return 'ffmpeg_missing';
