@@ -29,6 +29,7 @@ import { ReferenceStore } from './style/references.js';
 import { ChapterStore } from './chapters/store.js';
 import { registerChapterWorkers } from './workers/chapters.js';
 import { StyleService } from './style/service.js';
+import { createUploadServer } from './server/upload.js';
 
 const require = createRequire(import.meta.url);
 const VERSION: string = (require('../package.json') as { version: string }).version;
@@ -116,6 +117,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     mcpCommand: () => mcpCommand(cfg),
     engineUrl: () => url,
   });
+  const uploads = createUploadServer({ cfg, settings, events, log });
   const deps = {
     cfg,
     videos,
@@ -125,6 +127,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     events,
     tunnel,
     agent,
+    uploads,
     agentTools,
     styleService,
     chapters,

@@ -24,6 +24,8 @@ export interface EngineConfig {
   styleDir: string;
   /** 링크로 받은 완성본 영상 (갤러리엔 안 나온다) */
   referencesDir: string;
+  /** 폰에서 올리는 중인 조각 (다 올라오면 영상 폴더로 옮긴다) */
+  uploadsDir: string;
   rootDir: string;
   migrationsDir: string;
   webDir: string;
@@ -66,6 +68,7 @@ export function loadConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     workDir: path.join(dataDir, 'work'),
     styleDir: path.join(dataDir, 'style'),
     referencesDir: path.join(dataDir, 'references'),
+    uploadsDir: path.join(dataDir, 'uploads'),
     rootDir,
     migrationsDir: isDev ? path.join(rootDir, 'apps/engine/drizzle') : path.join(rootDir, 'drizzle'),
     webDir: isDev ? path.join(rootDir, 'apps/web/dist') : path.join(rootDir, 'web'),
@@ -75,7 +78,7 @@ export function loadConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     isDev,
     ...overrides,
   };
-  for (const dir of [cfg.dataDir, cfg.logsDir, cfg.proxiesDir, cfg.thumbsDir, cfg.outputsDir, cfg.modelsDir, cfg.workDir, cfg.styleDir, cfg.referencesDir]) {
+  for (const dir of [cfg.dataDir, cfg.logsDir, cfg.proxiesDir, cfg.thumbsDir, cfg.outputsDir, cfg.modelsDir, cfg.workDir, cfg.styleDir, cfg.referencesDir, cfg.uploadsDir]) {
     fs.mkdirSync(dir, { recursive: true });
   }
   return cfg;

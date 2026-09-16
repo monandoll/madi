@@ -169,3 +169,48 @@ test('PC 의 "폴더 열기"는 이 PC 의 영상 폴더를 연다 (설정으로
   await expect(page).not.toHaveURL(/settings/);
   await expect(page.getByTestId('video-card')).toHaveCount(2);
 });
+
+test('폰(375)에서 "올리기"로 영상을 올리면 진행 줄이 뜨고 갤러리에 카드가 생긴다', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/');
+  await expect(page.getByTestId('video-card')).toHaveCount(2);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('upload-button').click()]);
+  await chooser.setFiles({ name: '폰 촬영 어깨 루틴.mp4', mimeType: 'video/mp4', buffer: fs.readFileSync(path.join(FIXTURES, 'sample-gaps-8s.mp4')) });
+  const row = page.getByTestId('upload-row');
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('폰 촬영 어깨 루틴.mp4');
+  // 다 올라가면 갤러리에 나타나고 진행 줄은 사라진다
+  await expect(page.getByTestId('video-card')).toHaveCount(3, { timeout: 30_000 });
+  await expect(page.locator('[data-testid="video-card"]', { hasText: '폰 촬영 어깨 루틴' })).toBeVisible();
+  await expect(row).toHaveCount(0, { timeout: 10_000 });
+  expect(fs.existsSync(path.join(VIDEOS, '폰 촬영 어깨 루틴.mp4'))).toBe(true);
+  for (const banned of ['tus', '업로드 중', 'upload']) {
+    await expect(page.getByText(banned, { exact: false })).toHaveCount(0);
+  }
+  // 영상이 아닌 파일은 올리지 않고 이유를 말한다
+  const [chooser2] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('upload-button').click()]);
+  await chooser2.setFiles({ name: '메모.txt', mimeType: 'text/plain', buffer: Buffer.from('x') });
+  await expect(page.getByTestId('upload-status')).toHaveText('영상 파일만 올릴 수 있어요.');
+  await page.getByTestId('upload-remove').click();
+  await expect(page.getByTestId('upload-row')).toHaveCount(0);
+  // 뒷정리: 올린 파일을 지우면 갤러리에서도 빠진다 (다음 스펙은 카드 2개를 기대한다)
+  fs.rmSync(path.join(VIDEOS, '폰 촬영 어깨 루틴.mp4'));
+  await expect(page.getByTestId('video-card')).toHaveCount(2, { timeout: 30_000 });
+});
+
+test('PC 의 "폰에서 업로드"는 안내 카드를 열고, 거기서 이 브라우저 파일도 올릴 수 있다', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+  await page.getByTestId('upload-help-toggle').click();
+  const help = page.getByTestId('upload-help');
+  await expect(help).toBeVisible();
+  await expect(help).toContainText('폰에서 마디를 열면');
+  await expect(help.getByTestId('upload-remote')).toContainText('밖에서 접속하기');
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), help.getByTestId('upload-pick-here').click()]);
+  await chooser.setFiles({ name: '데스크 업로드.mp4', mimeType: 'video/mp4', buffer: fs.readFileSync(path.join(FIXTURES, 'sample-5s.mp4')) });
+  await expect(page.locator('[data-testid="video-card"]', { hasText: '데스크 업로드' })).toBeVisible({ timeout: 30_000 });
+  await help.getByRole('button', { name: '닫기' }).click();
+  await expect(help).toHaveCount(0);
+  fs.rmSync(path.join(VIDEOS, '데스크 업로드.mp4'));
+  await expect(page.getByTestId('video-card')).toHaveCount(2, { timeout: 30_000 });
+});

@@ -1,6 +1,6 @@
 {
   "name": "@madi/engine",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "마디 엔진 — 사용자 PC에서 돌아가는 편집 서버 (트레이 전용)",
   "productName": "madi-engine",
@@ -31,6 +31,8 @@
     "@hono/node-ws": "^1.3.1",
     "@madi/ffmpeg-presets": "workspace:*",
     "@madi/shared": "workspace:*",
+    "@tus/file-store": "^2.1.1",
+    "@tus/server": "^2.4.5",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "26.5.1",
     "@types/ws": "^8.18.1",
