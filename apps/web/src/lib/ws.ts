@@ -28,7 +28,22 @@ export function useEngineEvents(): void {
         const ev = parsed.data;
         if (ev.type === 'video.added' || ev.type === 'video.updated' || ev.type === 'video.removed') {
           void qc.invalidateQueries({ queryKey: queryKeys.videos });
+        } else if (ev.type === 'message.added' || ev.type === 'message.updated') {
+          void qc.invalidateQueries({ queryKey: queryKeys.video(ev.message.videoId) });
+        } else if (ev.type === 'output.added') {
+          void qc.invalidateQueries({ queryKey: queryKeys.video(ev.output.videoId) });
+          void qc.invalidateQueries({ queryKey: queryKeys.outputs });
+          void qc.invalidateQueries({ queryKey: queryKeys.videos });
         } else if (ev.type === 'job.updated' && ev.job.videoId) {
+          // 상세 화면의 진행 카드: 잡 진행률만 캐시에 얹는다 (재요청 없이)
+          qc.setQueryData<import('@madi/shared').VideoDetailResponse>(queryKeys.video(ev.job.videoId), (prev) =>
+            prev
+              ? {
+                  ...prev,
+                  jobs: [...prev.jobs.filter((j) => j.id !== ev.job.id), ...(ev.job.status === 'queued' || ev.job.status === 'running' ? [ev.job] : [])],
+                }
+              : prev,
+          );
           const { job } = ev;
           qc.setQueryData<VideosResponse>(queryKeys.videos, (prev) =>
             prev

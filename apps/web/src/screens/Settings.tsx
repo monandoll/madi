@@ -33,7 +33,7 @@ export function SettingsScreen() {
   return (
     <div className="flex h-full flex-col bg-bg" data-testid="settings-screen">
       <header className="flex h-12 flex-none items-center gap-2.5 border-b border-line bg-surface px-3.5">
-        <button type="button" onClick={() => go('gallery')} className="-ml-1 flex h-11 items-center px-1 text-13 text-text-3">
+        <button type="button" onClick={() => go({ screen: 'gallery' })} className="-ml-1 flex h-11 items-center px-1 text-13 text-text-3">
           ← {copy.settings.back}
         </button>
         <h1 className="flex-1 text-14 font-semibold">{copy.settings.title}</h1>
