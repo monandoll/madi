@@ -25,6 +25,8 @@ export interface RenderInput {
   encoder: Encoder;
   /** 자막을 번인할 때 미리 써 둔 .ass 파일 */
   subtitleFile?: string | undefined;
+  /** 동봉 폰트 폴더 (Pretendard). 없으면 시스템 폰트. */
+  fontsDir?: string | undefined;
 }
 
 /** 인코더별 결과물 품질 옵션. 프록시보다 좋게. */
@@ -79,7 +81,8 @@ export function renderPlan(r: RenderInput): RenderPlan {
     post.push(`crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)'`, `scale=${SHORT_WIDTH}:${SHORT_HEIGHT}:flags=lanczos`);
   }
   if (r.edit.subtitles && r.subtitleFile) {
-    post.push(`subtitles='${escapeFilterPath(r.subtitleFile)}'`);
+    const fonts = r.fontsDir ? `:fontsdir='${escapeFilterPath(r.fontsDir)}'` : '';
+    post.push(`subtitles='${escapeFilterPath(r.subtitleFile)}'${fonts}`);
   }
   post.push('format=yuv420p');
   parts.push(`[vc]${post.join(',')}[vout]`);

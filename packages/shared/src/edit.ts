@@ -22,7 +22,7 @@ export const SubtitleStyle = z.object({
 export type SubtitleStyle = z.infer<typeof SubtitleStyle>;
 
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
-  fontFamily: 'Pretendard Variable',
+  fontFamily: 'Pretendard',
   fontSize: 56,
   color: '#2B2622',
   boxColor: '#E8C33F',
