@@ -12,6 +12,9 @@ export function SettingsScreen() {
   const { settings } = useSettings();
   const patch = usePatchSettings();
   const health = useQuery({ queryKey: queryKeys.health, queryFn: api.health });
+  // 후보 목록의 한국어 라벨(동영상·바탕화면…)을 여기서도 쓴다
+  const suggest = useQuery({ queryKey: queryKeys.folders, queryFn: api.suggestFolders });
+  const labelOf = (p: string) => suggest.data?.folders.find((f) => f.path === p)?.label ?? baseName(p);
   const [name, setName] = useState(settings.workspaceName);
   const [adding, setAdding] = useState(false);
   useEffect(() => setName(settings.workspaceName), [settings.workspaceName]);
@@ -65,7 +68,7 @@ export function SettingsScreen() {
             {settings.watchFolders.map((p, i) => (
               <div key={p} className={`flex h-11 items-center gap-2.5 px-3 ${i > 0 ? 'border-t border-line-soft' : ''}`}>
                 <span className="flex min-w-0 flex-1 flex-col gap-px">
-                  <span className="text-13 font-medium">{baseName(p)}</span>
+                  <span className="text-13 font-medium">{labelOf(p)}</span>
                   <span className="truncate text-11 text-text-2">{p}</span>
                 </span>
                 <button type="button" onClick={() => setFolders(settings.watchFolders.filter((x) => x !== p))} className="flex-none text-12 text-text-3">

@@ -85,6 +85,7 @@ test('설정 화면: 톱니로 들어가서 이름을 바꾸고 폴더를 더하
   // 폴더 더하기: 바탕화면
   const list = page.getByTestId('folder-list');
   await expect(list.getByText(VIDEOS)).toBeVisible();
+  await expect(list.getByText('동영상', { exact: true })).toBeVisible(); // 폴더 이름이 아니라 한국어 라벨
   await page.getByRole('button', { name: '폴더 추가…' }).click();
   const chooser = page.getByTestId('folder-chooser');
   await expect(chooser.getByRole('checkbox', { name: /동영상/ })).toHaveCount(0); // 이미 고른 건 안 보임
