@@ -121,7 +121,7 @@ export class AgentTools {
   private async getTranscript(video: Video, ctx: ToolContext) {
     let t = this.d.library.transcriptOf(video.id);
     if (!t) {
-      if (video.hasAudio === false) throw new ToolError('이 영상은 소리가 없어서 자막을 만들 수 없어요.');
+      if (video.hasAudio === false) throw new ToolError('이 영상은 소리가 없어서 자막을 자동으로 만들 수 없어요. 넣을 문장과 시각을 알면 set_subtitle_text 로 넣을 수 있어요.');
       const job = this.d.queue.enqueue({ type: 'transcribe', videoId: video.id });
       if (!this.d.library.messageForJob(job.id)) {
         this.d.library.say({ videoId: video.id, role: 'assistant', kind: 'progress', code: 'progress.transcribe', jobId: job.id, params: { step: 'transcribe', action: 'ai', durationSec: Math.round(video.durationSec ?? 0) } });
@@ -166,7 +166,7 @@ export class AgentTools {
     const cuts = input.cuts?.map((c) => ({ start: clamp(Math.min(c.start, c.end)), end: clamp(Math.max(c.start, c.end)), reason: c.reason ?? ('ai' as const) })).filter((c) => c.end > c.start);
     const keep = input.keep === undefined ? undefined : input.keep === null ? null : { start: clamp(Math.min(input.keep.start, input.keep.end)), end: clamp(Math.max(input.keep.start, input.keep.end)) };
     if (keep && keep.end - keep.start < 1) throw new ToolError('구간이 너무 짧아요. 1초보다 길게 잡아 주세요.');
-    if (input.subtitles && video.hasAudio === false) throw new ToolError('이 영상은 소리가 없어서 자막을 넣을 수 없어요.');
+    if (input.subtitles && video.hasAudio === false && !transcript) throw new ToolError('이 영상은 소리가 없어서 자막을 자동으로 만들 수 없어요. set_subtitle_text 로 문장을 먼저 넣어 주세요.');
 
     let edit: Edit;
     if (input.editId) {
@@ -205,7 +205,7 @@ export class AgentTools {
   }
 
   private async extractShorts(video: Video, ctx: ToolContext, input: ToolInput<'extract_shorts'>) {
-    const wantSubs = (input.subtitles ?? true) && video.hasAudio !== false;
+    const wantSubs = (input.subtitles ?? true) && (video.hasAudio !== false || !!this.d.library.transcriptOf(video.id));
     if (wantSubs && !this.d.library.transcriptOf(video.id)) await this.getTranscript(video, ctx);
     const transcript = this.d.library.transcriptOf(video.id);
     const outputs: ReturnType<typeof summarizeOutput>[] = [];

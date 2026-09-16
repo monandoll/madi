@@ -11,6 +11,8 @@ interface Props {
   wide?: boolean;
   /** AI 연결 시 "이 문장 고쳐줘 / 이 부분 살려줘" 와 수정 요청 */
   onAsk?: ((text: string) => void) | undefined;
+  /** AI 없이 자막을 직접 고치기 (영상 상세의 자막 편집으로) */
+  onEdit?: (() => void) | undefined;
 }
 
 /**
@@ -18,7 +20,7 @@ interface Props {
  * 잘린 문장은 취소선 + 'N초 잘림'. 고른 줄은 EEF5FA 배경에 "이 문장 고쳐줘/이 부분 살려줘".
  * 모바일 결과물 화면과 PC 옆 패널이 같은 컴포넌트를 쓴다.
  */
-export function OutputView({ data, wide = false, onAsk }: Props) {
+export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
   const { output, edit, transcript, video } = data;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [t, setT] = useState(0);
@@ -95,7 +97,17 @@ export function OutputView({ data, wide = false, onAsk }: Props) {
 
       <div className="min-h-0 flex-1 overflow-y-auto border-t border-line-soft" data-testid="subtitle-rows">
         {rows.length === 0 ? (
-          <p className="px-3.5 py-6 text-center text-13 text-text-3">{copy.output.noSubtitles}</p>
+          <p className="px-3.5 py-6 text-center text-13 text-text-3">
+            {copy.output.noSubtitles}
+            {onEdit && (
+              <>
+                {' '}
+                <button type="button" onClick={onEdit} className="font-medium text-accent" data-testid="subtitle-edit">
+                  {copy.subtitleEditor.open}
+                </button>
+              </>
+            )}
+          </p>
         ) : (
           rows.map((r) => {
             const cut = r.at === null;
@@ -132,6 +144,19 @@ export function OutputView({ data, wide = false, onAsk }: Props) {
                     data-testid="subtitle-ask"
                   >
                     {cut ? copy.output.restoreLine : copy.output.fixLine}
+                  </button>
+                )}
+                {on && !onAsk && onEdit && !cut && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit();
+                    }}
+                    className="flex-none text-12 font-medium text-accent"
+                    data-testid="subtitle-edit"
+                  >
+                    {copy.subtitleEditor.edit}
                   </button>
                 )}
               </div>

@@ -13,6 +13,7 @@ import {
   PickFolderResponse,
   SettingsResponse,
   type SettingsPatch,
+  TranscriptResponse,
   VideoDetailResponse,
   VideosResponse,
 } from '@madi/shared';
@@ -32,7 +33,7 @@ export class ApiError extends Error {
   }
 }
 
-async function send<T>(method: 'PATCH' | 'POST' | 'DELETE', path: string, body: unknown, schema: z.ZodType<T>): Promise<T> {
+async function send<T>(method: 'PATCH' | 'POST' | 'DELETE' | 'PUT', path: string, body: unknown, schema: z.ZodType<T>): Promise<T> {
   const res = await fetch(path, {
     method,
     headers: { 'content-type': 'application/json', accept: 'application/json' },
@@ -52,6 +53,7 @@ export const api = {
   patchSettings: (body: SettingsPatch) => send('PATCH', '/api/settings', body, SettingsResponse),
   video: (id: string) => get(`/api/videos/${id}`, VideoDetailResponse),
   act: (id: string, body: ActionRequest) => send('POST', `/api/videos/${id}/actions`, body, ActionResponse),
+  putTranscript: (id: string, segments: { start: number; end: number; text: string }[]) => send('PUT', `/api/videos/${id}/transcript`, { segments }, TranscriptResponse),
   chat: (id: string, text: string) => send('POST', `/api/videos/${id}/chat`, { text }, ChatResponse),
   cancelChat: (id: string) => send('POST', `/api/videos/${id}/chat/cancel`, undefined, z.object({ canceled: z.boolean() })),
   aiProviders: (fresh = false) => get(`/api/ai/providers${fresh ? '?fresh=1' : ''}`, AiProvidersResponse),

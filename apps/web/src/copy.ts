@@ -142,6 +142,24 @@ export const copy = {
     remove: '빼기',
     retry: '다시',
   },
+  /** 자막 직접 쓰기 (AI 없이, 소리 없는 영상에도) */
+  subtitleEditor: {
+    open: '자막 직접 쓰기',
+    edit: '자막 고치기',
+    title: '자막 직접 쓰기',
+    hint: '시각은 초 또는 분:초 (예: 3, 0:03.5, 1:02)',
+    start: '시작',
+    end: '끝',
+    text: '자막 글',
+    placeholder: '이 구간에 보일 글',
+    add: '+ 줄 추가',
+    remove: '줄 빼기',
+    save: '저장하고 자막 넣기',
+    cancel: '취소',
+    badTime: '시각은 3 이나 0:03 처럼 적어 주세요.',
+    badRange: '끝 시각이 시작보다 뒤여야 해요.',
+    empty: '글이 있는 줄이 하나는 있어야 해요.',
+  },
   tabs: {
     videos: '영상',
     outputs: '결과물',
@@ -262,7 +280,7 @@ export const copy = {
     greeting: (p: { durationSec: number; hasAudio: boolean }) =>
       p.hasAudio
         ? `이 영상 ${fmtMin(p.durationSec)}이네요. 무엇을 해드릴까요?`
-        : `이 영상 ${fmtMin(p.durationSec)}이네요. 소리가 없어서 자막이랑 쉬는 구간 잘라내기는 안 되지만, 세로 변환이랑 숏폼은 돼요.`,
+        : `이 영상 ${fmtMin(p.durationSec)}이네요. 소리가 없어서 자막을 자동으로 만들진 못하지만, 직접 써서 넣을 수 있어요. 세로 변환이랑 숏폼도 돼요.`,
     'action.subtitle': () => '자막 넣어줘',
     'action.silence': () => '쉬는 구간 잘라줘',
     'action.vertical': () => '세로로 바꿔줘',
@@ -310,7 +328,7 @@ export const copy = {
     ffmpeg_missing: '영상 도구를 찾지 못했어요. 마디를 다시 설치해 주세요.',
     unreadable: '이 파일은 깨져 있어서 열지 못했어요.',
     media_failed: '이 영상은 열지 못했어요. 다른 형식으로 저장해서 다시 넣어 주세요.',
-    no_audio: '이 영상은 소리가 없어서 자막을 못 만들었어요.',
+    no_audio: '이 영상은 소리가 없어서 자막을 자동으로 못 만들어요. "자막 직접 쓰기"로 원하는 자리에 넣을 수는 있어요.',
     whisper_missing: '자막 도구가 아직 설치되지 않았어요. 마디를 다시 설치하면 들어와요.',
     whisper_model_missing: '자막 모델을 받지 못했어요. 인터넷이 연결되어 있는지 봐 주세요.',
     nothing_left: '잘라내고 나니 남는 게 없어서 만들지 않았어요.',

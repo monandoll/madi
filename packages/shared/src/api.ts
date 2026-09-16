@@ -75,6 +75,14 @@ export const ActionRequest = z.discriminatedUnion('type', [
 export type ActionRequest = z.infer<typeof ActionRequest>;
 
 export const ActionResponse = z.object({ messages: z.array(ChatMessage), job: Job.nullable() });
+
+/** 자막 직접 쓰기/고치기: 자막 전체를 이 줄들로 바꾼다 (소리 없는 영상도 됨). */
+export const TranscriptPutRequest = z.object({
+  segments: z.array(z.object({ start: z.number().min(0), end: z.number().min(0), text: z.string().trim().min(1).max(200) })).min(1).max(500),
+});
+export type TranscriptPutRequest = z.infer<typeof TranscriptPutRequest>;
+export const TranscriptResponse = z.object({ transcript: Transcript });
+export type TranscriptResponse = z.infer<typeof TranscriptResponse>;
 export type ActionResponse = z.infer<typeof ActionResponse>;
 
 /**
