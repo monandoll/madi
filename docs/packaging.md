@@ -32,8 +32,12 @@ cp /tmp/whisper/build/bin/whisper-cli resources/bin/darwin-arm64/
 설치된 앱은 electron-updater 로 이 Release 를 보고 스스로 갱신한다(6시간마다, 다음 실행 때 적용).
 버전은 `apps/engine/package.json` 의 `version` 이다 — 태그와 맞춘다.
 
-`workflow_dispatch` 로 돌리면 Release 없이 아티팩트만 남는다. 설정을 바꿨을 때 먼저 이걸로 확인한다.
-`tag` 입력에 `v0.1.1` 처럼 기존 태그를 주면 그 태그의 코드를 **main 의 워크플로**로 다시 빌드해 같은 Release 에 올린다 —
+새 릴리스는 태그를 손으로 푸시하지 않아도 된다: `apps/engine/package.json` 의 `version` 을 올려 main 에 넣은 뒤
+Actions → Release → Run workflow 에서 `tag` 에 `v0.2.0` 처럼 **아직 없는** 태그를 주면, 그 커밋에 태그를 찍고 Release 까지 만든다
+(version 과 태그가 다르면 멈춘다).
+
+`workflow_dispatch` 를 `tag` 없이 돌리면 Release 없이 아티팩트만 남는다. 설정을 바꿨을 때 먼저 이걸로 확인한다.
+`tag` 에 `v0.1.1` 처럼 **이미 있는** 태그를 주면 그 태그의 코드를 **main 의 워크플로**로 다시 빌드해 같은 Release 에 올린다 —
 워크플로만 고쳤을 때 태그를 다시 찍지 않아도 된다.
 
 러너마다 자기 아키텍처만 만든다 (`electron-builder --mac pkg zip --arm64` 처럼 target 과 arch 를 CLI 로).
