@@ -1,0 +1,36 @@
+name: Install page
+
+# apps/site (설치 안내 페이지) 를 GitHub Pages 로 올린다 → https://monandoll.github.io/madi/
+# 페이지는 GitHub Releases 의 최신 릴리스에서 내 OS 에 맞는 설치 파일을 골라 버튼 하나로 준다.
+on:
+  push:
+    branches: [main]
+    paths: ['apps/site/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/site
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -63,6 +63,9 @@ app.whenReady().then(async () => {
   tray.setContextMenu(buildMenu());
   tray.on('click', () => tray?.popUpContextMenu());
 
+  // 설치 직후(첫 실행, 설정 전) 브라우저를 바로 연다. 설치 파일을 누른 사람이 트레이를 찾아다니지 않게.
+  if (app.isPackaged && !engine.settings.get().setupDone) void shell.openExternal(engine.url);
+
   if (app.isPackaged) {
     // GitHub Releases 에서 새 버전을 받아 다음 실행 때 적용한다. 6시간마다 다시 본다.
     const { autoUpdater } = await import('electron-updater');

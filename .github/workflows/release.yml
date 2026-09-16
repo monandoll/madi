@@ -1,6 +1,9 @@
 name: Release
 
 # v* 태그를 푸시하면 Windows·macOS 설치 파일을 만들어 GitHub Release 에 올린다.
+#   prepare  → 태그 이름으로 draft Release 를 먼저 만든다 (세 빌드가 동시에 만들려다 부딪히지 않게)
+#   build    → 플랫폼별 설치 파일을 만들어 그 draft 에 올린다 (electron-builder publish, releaseType: draft)
+#   publish  → macOS 두 아키텍처의 latest-mac.yml 을 하나로 합쳐 올리고 draft 를 푼다 → 설치 페이지가 바로 집어간다
 # workflow_dispatch 로 돌리면 Release 없이 아티팩트만 남긴다 (설정 점검용).
 on:
   push:
@@ -11,9 +14,34 @@ env:
   ELECTRON_SKIP_BINARY_DOWNLOAD: '0'
   WHISPER_VERSION: v1.7.6
 
+permissions:
+  contents: write
+
 jobs:
+  prepare:
+    name: draft release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create draft release (if missing)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" --json isDraft > /dev/null 2>&1; then
+            echo "release $TAG exists"
+          else
+            gh release create "$TAG" --draft --verify-tag --title "마디 $TAG" \
+              --notes "설치: https://monandoll.github.io/madi/ (PC 에서 열고 설치 버튼)"
+          fi
+
   build:
     name: ${{ matrix.label }}
+    needs: prepare
+    # workflow_dispatch 에서는 prepare 가 skipped → 그래도 빌드는 한다
+    if: always() && (needs.prepare.result == 'success' || needs.prepare.result == 'skipped')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
@@ -61,7 +89,7 @@ jobs:
       - name: Build web + engine
         run: pnpm build
 
-      - name: Package (publish to GitHub Release on tag)
+      - name: Package (upload to draft Release on tag)
         if: startsWith(github.ref, 'refs/tags/v')
         run: pnpm --filter @madi/engine package:publish
         env:
@@ -76,8 +104,46 @@ jobs:
           name: madi-engine-${{ matrix.platform }}
           path: |
             apps/engine/release/*.exe
-            apps/engine/release/*.dmg
+            apps/engine/release/*.pkg
             apps/engine/release/*.zip
             apps/engine/release/*.yml
             apps/engine/release/*.blockmap
           if-no-files-found: error
+
+  publish:
+    name: publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: madi-engine-darwin-*
+          path: dl
+      - name: Merge latest-mac.yml (arm64 + x64) and upload
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -e
+          mapfile -t YMLS < <(find dl -name latest-mac.yml | sort)
+          echo "merging: ${YMLS[*]}"
+          node apps/engine/scripts/merge-latest-mac.mjs "${YMLS[@]}" > latest-mac.yml
+          cat latest-mac.yml
+          gh release upload "$TAG" latest-mac.yml --clobber
+      - name: Check assets and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -e
+          gh release view "$TAG" --json assets --jq '.assets[].name' | tee assets.txt
+          for want in -win-x64.exe -mac-arm64.pkg -mac-x64.pkg -mac-arm64.zip -mac-x64.zip latest.yml latest-mac.yml; do
+            grep -q -- "$want" assets.txt || { echo "missing asset: $want"; exit 1; }
+          done
+          gh release edit "$TAG" --draft=false --latest

@@ -1,0 +1,10 @@
+#!/bin/bash
+# macOS pkg 설치가 끝나면 마디를 바로 띄운다 (설치 마법사는 root 로 돌아서, 로그인한 사용자로 open).
+# $2 = 설치 위치 (/Applications)
+APP="$2/madi-engine.app"
+USER_NAME="$(stat -f%Su /dev/console)"
+USER_ID="$(id -u "$USER_NAME" 2>/dev/null || echo 0)"
+if [ -d "$APP" ] && [ "$USER_ID" != "0" ]; then
+  launchctl asuser "$USER_ID" sudo -u "$USER_NAME" open -a "$APP" >/dev/null 2>&1 || true
+fi
+exit 0
