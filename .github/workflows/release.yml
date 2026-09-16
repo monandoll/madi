@@ -4,15 +4,18 @@ name: Release
 #   prepare  → 태그 이름으로 draft Release 를 먼저 만든다 (세 빌드가 동시에 만들려다 부딪히지 않게)
 #   build    → 플랫폼별 설치 파일을 만들어 그 draft 에 올린다 (electron-builder publish, releaseType: draft)
 #   publish  → macOS 두 아키텍처의 latest-mac.yml 을 하나로 합쳐 올리고 draft 를 푼다 → 설치 페이지가 바로 집어간다
-# workflow_dispatch: tag 를 주면 그 태그의 코드를 main 의 이 워크플로로 다시 빌드해 같은 Release 에 올린다 (재시도용).
-#                    비우면 Release 없이 아티팩트만 남긴다 (설정 점검용).
+# workflow_dispatch: tag 를 주면 —
+#   · 그 태그가 없으면 이 워크플로를 돌린 커밋(보통 main)에 태그를 찍고 Release 를 만든다 (태그를 따로 푸시할 필요 없음).
+#     apps/engine/package.json 의 version 과 태그가 맞지 않으면 멈춘다.
+#   · 이미 있으면 그 태그의 코드를 main 의 이 워크플로로 다시 빌드해 같은 Release 에 올린다 (재시도용).
+#   비우면 Release 없이 아티팩트만 남긴다 (설정 점검용).
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
-        description: '다시 만들 릴리스 태그 (예: v0.1.1). 비우면 아티팩트만'
+        description: '릴리스 태그 (예: v0.2.0). 없는 태그면 이 커밋에 새로 찍는다. 비우면 아티팩트만'
         required: false
         default: ''
 
@@ -30,9 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # 태그가 아직 없을 수 있으니 (dispatch 로 새 릴리스) 워크플로를 돌린 커밋을 받는다.
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag || github.ref }}
       - name: Create draft release (if missing)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -46,9 +48,19 @@ jobs:
               gh release edit "$TAG" --draft
               echo "release $TAG → draft (빌드 동안)"
             fi
-          else
+          elif git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
             gh release create "$TAG" --draft --verify-tag --title "마디 $TAG" \
               --notes "설치: https://monandoll.github.io/madi/ (PC 에서 열고 설치 버튼)"
+          else
+            # 새 태그: 이 커밋의 version 과 맞는지 확인한 뒤, Release 를 만들면서 태그도 같이 찍는다 (--target).
+            VERSION="v$(node -p "require('./apps/engine/package.json').version")"
+            if [ "$VERSION" != "$TAG" ]; then
+              echo "apps/engine/package.json 의 version($VERSION) 과 태그($TAG) 가 다릅니다. 먼저 version 을 맞추세요."
+              exit 1
+            fi
+            gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "마디 $TAG" \
+              --notes "설치: https://monandoll.github.io/madi/ (PC 에서 열고 설치 버튼)"
+            echo "release $TAG 만듦 (태그 → $GITHUB_SHA)"
           fi
 
   build:
