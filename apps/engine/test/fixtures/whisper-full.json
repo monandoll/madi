@@ -1,0 +1,39 @@
+{
+  "systeminfo": "AVX = 1 | AVX2 = 1",
+  "model": { "type": "tiny", "multilingual": true },
+  "params": { "model": "ggml-tiny.bin", "language": "ko", "translate": false },
+  "result": { "language": "ko" },
+  "transcription": [
+    {
+      "timestamps": { "from": "00:00:00,000", "to": "00:00:03,200" },
+      "offsets": { "from": 0, "to": 3200 },
+      "text": " 매트에 앉아서 한쪽 무릎을 세웁니다",
+      "tokens": [
+        { "text": "[_BEG_]", "timestamps": { "from": "00:00:00,000", "to": "00:00:00,000" }, "offsets": { "from": 0, "to": 0 }, "id": 50364, "p": 0.99 },
+        { "text": " 매", "timestamps": { "from": "00:00:00,000", "to": "00:00:00,300" }, "offsets": { "from": 0, "to": 300 }, "id": 1, "p": 0.9 },
+        { "text": "트", "timestamps": { "from": "00:00:00,300", "to": "00:00:00,500" }, "offsets": { "from": 300, "to": 500 }, "id": 2, "p": 0.8 },
+        { "text": "에", "timestamps": { "from": "00:00:00,500", "to": "00:00:00,700" }, "offsets": { "from": 500, "to": 700 }, "id": 3, "p": 0.95 },
+        { "text": " 앉", "timestamps": { "from": "00:00:00,800", "to": "00:00:01,100" }, "offsets": { "from": 800, "to": 1100 }, "id": 4, "p": 0.9 },
+        { "text": "아서", "timestamps": { "from": "00:00:01,100", "to": "00:00:01,400" }, "offsets": { "from": 1100, "to": 1400 }, "id": 5, "p": 0.9 },
+        { "text": " 한쪽", "timestamps": { "from": "00:00:01,500", "to": "00:00:01,900" }, "offsets": { "from": 1500, "to": 1900 }, "id": 6, "p": 0.7 },
+        { "text": " 무릎", "timestamps": { "from": "00:00:02,000", "to": "00:00:02,400" }, "offsets": { "from": 2000, "to": 2400 }, "id": 7, "p": 0.9 },
+        { "text": "을", "timestamps": { "from": "00:00:02,400", "to": "00:00:02,500" }, "offsets": { "from": 2400, "to": 2500 }, "id": 8, "p": 0.9 },
+        { "text": " 세웁니다", "timestamps": { "from": "00:00:02,600", "to": "00:00:03,200" }, "offsets": { "from": 2600, "to": 3200 }, "id": 9, "p": 0.85 },
+        { "text": "[_TT_160]", "timestamps": { "from": "00:00:03,200", "to": "00:00:03,200" }, "offsets": { "from": 3200, "to": 3200 }, "id": 50524, "p": 0.5 }
+      ]
+    },
+    {
+      "timestamps": { "from": "00:00:03,400", "to": "00:00:03,400" },
+      "offsets": { "from": 3400, "to": 3400 },
+      "text": " [_BEG_]",
+      "tokens": [
+        { "text": "[_BEG_]", "timestamps": { "from": "00:00:03,400", "to": "00:00:03,400" }, "offsets": { "from": 3400, "to": 3400 }, "id": 50364, "p": 0.9 }
+      ]
+    },
+    {
+      "timestamps": { "from": "00:00:03,600", "to": "00:00:05,000" },
+      "offsets": { "from": 3600, "to": 5000 },
+      "text": " 발끝을 몸쪽으로 당기는 게 중요해요"
+    }
+  ]
+}

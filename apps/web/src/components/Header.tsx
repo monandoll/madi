@@ -23,7 +23,7 @@ export function Header({ workspaceName, aiConnected, engineOk }: Props) {
         type="button"
         aria-label={copy.header.settings}
         title={copy.header.settings}
-        onClick={() => go('settings')}
+        onClick={() => go({ screen: 'settings' })}
         className="-mr-1 flex h-11 w-9 items-center justify-center text-text-2"
       >
         <GearIcon />

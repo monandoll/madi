@@ -1,12 +1,15 @@
 import type { VideoCard as VideoCardData } from '@madi/shared';
 import { copy } from '../copy.js';
 import { formatDate, formatDuration } from '../lib/format.js';
+import { hrefOf } from '../lib/route.js';
 
 /** 갤러리 카드 상태 배지 문구. 없으면 null (배지 없음). */
 export function statusLabel(v: VideoCardData): string | null {
   if (v.status === 'registered' || v.status === 'preparing') return copy.status.preparing;
   if (v.status === 'failed') return copy.status.failed;
   if (v.status === 'missing') return copy.status.missing;
+  if (v.activeJob && v.activeJob.type !== 'probe' && v.activeJob.type !== 'proxy' && v.activeJob.type !== 'thumbnail') return copy.status.working;
+  if (v.outputCount > 0) return copy.status.outputs(v.outputCount);
   return null;
 }
 
@@ -14,7 +17,7 @@ export function VideoCard({ video }: { video: VideoCardData }) {
   const badge = statusLabel(video);
   const duration = formatDuration(video.durationSec);
   return (
-    <article data-testid="video-card" data-status={video.status}>
+    <a href={hrefOf({ screen: 'video', id: video.id })} className="block text-text" data-testid="video-card" data-status={video.status}>
       <div className="relative aspect-video overflow-hidden rounded-thumb bg-thumb">
         {video.thumbnailUrl ? (
           <img src={video.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
@@ -42,7 +45,7 @@ export function VideoCard({ video }: { video: VideoCardData }) {
         <div className="truncate text-12 font-medium">{video.title}</div>
         <div className="text-11 text-text-2">{formatDate(video.recordedAt)}</div>
       </div>
-    </article>
+    </a>
   );
 }
 

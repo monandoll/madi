@@ -52,6 +52,8 @@ export const copy = {
     preparing: '준비 중',
     failed: '열 수 없음',
     missing: '파일 없음',
+    working: '만드는 중',
+    outputs: (n: number) => `결과물 ${n}개`,
   },
   empty: {
     noFolder: '아직 영상 폴더가 없어요.\n오른쪽 위 설정에서 폴더를 골라 주세요.',
@@ -61,14 +63,108 @@ export const copy = {
     loading: '불러오는 중',
     disconnected: '엔진이 응답하지 않아요. 잠시 뒤 다시 시도할게요.',
   },
+  detail: {
+    back: '뒤로',
+    outputs: (n: number) => `결과물 ${n}개`,
+    noOutputs: '결과물 없음',
+    previewOpen: '프리뷰 펼치기',
+    previewClose: '프리뷰 접기',
+    /** AI 미연결 상태의 버튼 4개 */
+    actions: {
+      subtitle: '자막 넣기',
+      silence: '쉬는 구간 잘라내기',
+      vertical: '세로로 바꾸기',
+      short: '숏폼 자르기',
+    },
+    shortPicker: {
+      title: '어디부터 어디까지 자를까요?',
+      start: '시작',
+      end: '끝',
+      withSubtitles: '자막도 넣기',
+      make: '이 구간으로 만들기',
+      cancel: '취소',
+      tooShort: '1초보다 길어야 해요.',
+    },
+    outputCard: {
+      download: '다운로드',
+      revise: '수정 요청',
+      more: '자세히',
+      reviseHint: 'AI를 연결하면 말로 고칠 수 있어요.',
+    },
+    progressEta: (sec: number) => (sec < 60 ? '금방 돼요' : `약 ${Math.max(1, Math.round(sec / 60))}분`),
+  },
+  output: {
+    back: '뒤로',
+    download: '다운로드',
+    revise: '수정 요청',
+    cutMeta: (sec: number) => `${sec}초 잘림`,
+    noSubtitles: '이 결과물엔 자막이 없어요.',
+    notFound: '이 결과물을 찾지 못했어요. 지워졌을 수도 있어요.',
+  },
+  /**
+   * 엔진이 남기는 대화 코드 → 문장. AI 말투. params 로 채운다.
+   * 새 코드를 엔진에 추가하면 여기도 같이.
+   */
+  chat: {
+    greeting: (p: { durationSec: number; hasAudio: boolean }) =>
+      p.hasAudio
+        ? `이 영상 ${fmtMin(p.durationSec)}이네요. 무엇을 해드릴까요?`
+        : `이 영상 ${fmtMin(p.durationSec)}이네요. 소리가 없어서 자막이랑 쉬는 구간 잘라내기는 안 되지만, 세로 변환이랑 숏폼은 돼요.`,
+    'action.subtitle': () => '자막 넣어줘',
+    'action.silence': () => '쉬는 구간 잘라줘',
+    'action.vertical': () => '세로로 바꿔줘',
+    'action.short': (p: { start: number; end: number }) => `${fmtClock(p.start)}부터 ${fmtClock(p.end)}까지 숏폼으로 잘라줘`,
+    'progress.transcribe': () => '자막 만드는 중',
+    'progress.silence': () => '쉬는 구간 찾는 중',
+    'progress.render': (p: { action?: string; cuts?: number; removedSec?: number }) =>
+      p.action === 'silence' && p.cuts ? `쉬는 구간 ${p.cuts}곳, ${p.removedSec ?? 0}초를 빼고 만드는 중` : p.action === 'short' ? '숏폼 만드는 중' : p.action === 'vertical' ? '세로로 만드는 중' : '만드는 중',
+    'transcript.ready': (p: { segments: number }) => `자막 ${p.segments}줄을 만들었어요.`,
+    'silence.none': () => '쉬는 구간이 없어서 그대로 두었어요.',
+    'output.ready': (p: { action?: string; cuts?: number; removedSec?: number; title?: string }) =>
+      p.action === 'silence'
+        ? `쉬는 구간 ${p.cuts ?? 0}곳, ${p.removedSec ?? 0}초를 잘라냈어요.`
+        : p.action === 'vertical'
+          ? '세로로 바꿨어요.'
+          : p.action === 'short'
+            ? '숏폼 하나 만들었어요.'
+            : p.action === 'subtitle'
+              ? '자막을 넣었어요.'
+              : '다 됐어요.',
+  } as unknown as Record<string, (p: Record<string, any>) => string>,
   error: {
     no_video_stream: '이 파일엔 영상이 없어서 열지 못했어요.',
     no_duration: '이 영상은 길이를 읽을 수 없어서 열지 못했어요.',
     ffmpeg_missing: '영상 도구를 찾지 못했어요. 마디를 다시 설치해 주세요.',
     unreadable: '이 파일은 깨져 있어서 열지 못했어요.',
     media_failed: '이 영상은 열지 못했어요. 다른 형식으로 저장해서 다시 넣어 주세요.',
+    no_audio: '이 영상은 소리가 없어서 자막을 못 만들었어요.',
+    whisper_missing: '자막 도구가 아직 설치되지 않았어요. 마디를 다시 설치하면 들어와요.',
+    whisper_model_missing: '자막 모델을 받지 못했어요. 인터넷이 연결되어 있는지 봐 주세요.',
+    nothing_left: '잘라내고 나니 남는 게 없어서 만들지 않았어요.',
+    range_too_short: '구간이 너무 짧아요. 1초보다 길게 잡아 주세요.',
+    video_not_ready: '이 영상은 아직 준비 중이에요. 잠시 뒤에 다시 해 주세요.',
+    edit_failed: '만들다가 문제가 생겼어요. 한 번 더 해 볼게요.',
   } as Record<string, string>,
 } as const;
+
+function fmtMin(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  if (m === 0) return `${s}초`;
+  return s === 0 ? `${m}분` : `${m}분 ${s}초`;
+}
+
+function fmtClock(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+/** 대화 코드 → 문장. 모르는 코드는 코드 그대로 (놓친 문구가 눈에 띄게). */
+export function chatText(code: string, params: Record<string, any>): string {
+  const fn = copy.chat[code];
+  return fn ? fn(params) : code;
+}
 
 export function errorMessage(code: string | null | undefined): string {
   return (code && copy.error[code]) || copy.error['media_failed']!;

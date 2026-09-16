@@ -15,7 +15,7 @@ async function patchSettings(page: Page, body: Record<string, unknown>) {
   expect(res.ok()).toBeTruthy();
 }
 
-test.describe.configure({ mode: 'serial' });
+test.describe.configure({ mode: 'serial', retries: 0 });
 
 test('처음 켜면 설정 카드가 뜨고, 이름과 폴더를 고르면 영상이 나타난다', async ({ page }) => {
   await patchSettings(page, { workspaceName: '내 스튜디오', watchFolders: [], setupDone: false });
