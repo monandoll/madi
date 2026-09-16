@@ -26,6 +26,8 @@ import { StyleProfile } from './agent/style.js';
 import { AgentTools } from './agent/tools.js';
 import { writeMcpConfig } from './agent/mcp-config.js';
 import { ReferenceStore } from './style/references.js';
+import { ChapterStore } from './chapters/store.js';
+import { registerChapterWorkers } from './workers/chapters.js';
 import { StyleService } from './style/service.js';
 
 const require = createRequire(import.meta.url);
@@ -56,6 +58,7 @@ export interface Engine {
   style: StyleProfile;
   styleService: StyleService;
   refs: ReferenceStore;
+  chapters: ChapterStore;
   url: string;
   /** Electron 이 시스템 폴더 선택창을 붙인다. */
   setFolderPicker(fn: (() => Promise<string | null>) | undefined): void;
@@ -88,6 +91,8 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   const style = new StyleProfile(cfg.styleDir);
   style.ensure();
   registerEditWorkers({ cfg, queue, videos, library, ffmpeg, ffmpegBin, events, log, whisper, style });
+  const chapters = new ChapterStore(db);
+  registerChapterWorkers({ queue, videos, library, chapters, style, ffmpegBin, events, log });
   const watcher = new FolderWatcher({ videos, queue, events, log });
   const refs = new ReferenceStore(db);
   const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, whisper, events, log });
@@ -95,7 +100,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
 
   const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
   const url = `http://127.0.0.1:${cfg.port}`;
-  const agentTools = new AgentTools({ cfg, library, videos, queue, ffmpegBin, style, events, log });
+  const agentTools = new AgentTools({ cfg, library, videos, queue, ffmpegBin, style, chapters, events, log });
   const agent = new AgentRunner({
     cfg,
     settings,
@@ -119,6 +124,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     agent,
     agentTools,
     styleService,
+    chapters,
     version: VERSION,
     onSettingsChanged: () => {
       void watcher.setFolders(settings.get().watchFolders);
@@ -170,6 +176,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     style,
     styleService,
     refs,
+    chapters,
     url,
     setFolderPicker(fn) {
       deps.pickFolder = fn;

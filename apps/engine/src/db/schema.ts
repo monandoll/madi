@@ -41,7 +41,7 @@ export const jobs = sqliteTable(
   'jobs',
   {
     id: text('id').primaryKey(),
-    type: text('type', { enum: ['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze'] }).notNull(),
+    type: text('type', { enum: ['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze', 'chapters'] }).notNull(),
     status: text('status', { enum: ['queued', 'running', 'done', 'failed', 'canceled'] })
       .notNull()
       .default('queued'),
@@ -134,7 +134,7 @@ export const messages = sqliteTable(
       .notNull()
       .references(() => videos.id, { onDelete: 'cascade' }),
     role: text('role', { enum: ['assistant', 'user'] }).notNull(),
-    kind: text('kind', { enum: ['text', 'progress', 'output', 'error'] }).notNull(),
+    kind: text('kind', { enum: ['text', 'progress', 'output', 'error', 'chapters'] }).notNull(),
     code: text('code').notNull(),
     params: text('params', { mode: 'json' }).notNull(),
     jobId: text('job_id'),
@@ -166,3 +166,13 @@ export const references = sqliteTable(
   },
   (t) => [uniqueIndex('references_path_idx').on(t.path)],
 );
+
+/** 롱폼 챕터. 영상당 하나, 다시 나누면 덮어쓴다. */
+export const chapters = sqliteTable('chapters', {
+  videoId: text('video_id')
+    .primaryKey()
+    .references(() => videos.id, { onDelete: 'cascade' }),
+  items: text('items', { mode: 'json' }).notNull(),
+  fromTranscript: integer('from_transcript', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at').notNull(),
+});

@@ -1,4 +1,4 @@
-import { type ChatMessage, isStreaming, type Job, type OutputCard } from '@madi/shared';
+import { type Chapters, type ChatMessage, isStreaming, type Job, type OutputCard, type TimeRange } from '@madi/shared';
 import { chatText, copy, errorMessage } from '../copy.js';
 import { formatDuration } from '../lib/format.js';
 import { go } from '../lib/route.js';
@@ -10,6 +10,10 @@ interface Props {
   jobs: Job[];
   /** AI 연결 시 결과물 카드의 "수정 요청"이 산다 */
   onRevise?: ((output: OutputCard) => void) | undefined;
+  /** 롱폼 챕터 (chapters 카드가 읽는다) */
+  chapters?: Chapters | null | undefined;
+  /** 챕터 카드의 "숏폼으로" */
+  onShortFromChapter?: ((range: TimeRange, title: string) => void) | undefined;
 }
 
 /**
@@ -17,7 +21,7 @@ interface Props {
  * 말풍선(assistant 왼쪽 F7F3EE / user 오른쪽 F1EAE2), 결과물 카드, 진행 카드. 오류도 말풍선.
  * 에이전트가 쓰는 중인 말풍선은 글자가 차오르고, 비어 있으면 "생각하는 중 / 만드는 중".
  */
-export function ChatFeed({ messages, outputs, jobs, onRevise }: Props) {
+export function ChatFeed({ messages, outputs, jobs, onRevise, chapters, onShortFromChapter }: Props) {
   const outputById = new Map(outputs.map((o) => [o.id, o]));
   const jobById = new Map(jobs.map((j) => [j.id, j]));
   return (
@@ -41,6 +45,14 @@ export function ChatFeed({ messages, outputs, jobs, onRevise }: Props) {
             <Bubble key={m.id} role="assistant" testId="chat-error">
               {errorMessage(m.code)}
             </Bubble>
+          );
+        }
+        if (m.kind === 'chapters') {
+          return (
+            <div key={m.id} className="flex flex-col gap-2">
+              <Bubble role="assistant">{chatText(m.code, m.params)}</Bubble>
+              {chapters && chapters.items.length > 0 && <ChaptersCard chapters={chapters} onShort={onShortFromChapter} />}
+            </div>
           );
         }
         if (isStreaming(m)) {
@@ -141,6 +153,36 @@ export function OutputList({ outputs, onRevise }: { outputs: OutputCard[]; onRev
     <div className="flex w-full flex-col overflow-hidden rounded-panel border border-line" data-testid="output-list">
       {outputs.map((o, i) => (
         <OutputRow key={o.id} output={o} first={i === 0} onRevise={onRevise} />
+      ))}
+    </div>
+  );
+}
+
+/** 챕터 목록 카드: 번호 · 제목 · 구간 · 숏폼으로. 결과물 카드와 같은 틀(1px 선, 12px 모서리). */
+export function ChaptersCard({ chapters, onShort }: { chapters: Chapters; onShort?: ((range: TimeRange, title: string) => void) | undefined }) {
+  return (
+    <div className="flex w-full flex-col overflow-hidden rounded-panel border border-line" data-testid="chapters-card">
+      <div className="flex items-baseline justify-between px-3 pt-[10px] pb-1">
+        <span className="text-13 font-medium">{copy.detail.chaptersCard.title(chapters.items.length)}</span>
+        <span className="text-11 text-text-2">{formatDuration(chapters.items[chapters.items.length - 1]?.end ?? 0)}</span>
+      </div>
+      {chapters.items.map((c) => (
+        <div key={c.index} className="flex items-center gap-2.5 border-t border-line-soft px-3 py-[9px]" data-testid="chapter-row">
+          <span className="w-5 flex-none text-11 text-text-2">{c.index + 1}</span>
+          <div className="flex min-w-0 flex-1 flex-col gap-[2px]">
+            <div className="truncate text-13 font-medium">{c.title}</div>
+            <div className="text-11 text-text-2">
+              {formatDuration(c.start)} – {formatDuration(c.end)} · {formatDuration(c.end - c.start)}
+            </div>
+          </div>
+          {c.highlight && onShort ? (
+            <button type="button" onClick={() => onShort(c.highlight!, c.title)} className="flex-none text-12 text-text-3" data-testid="chapter-short">
+              {copy.detail.chaptersCard.makeShort}
+            </button>
+          ) : (
+            <span className="flex-none text-11 text-text-2">{c.highlight ? '' : copy.detail.chaptersCard.noHighlight}</span>
+          )}
+        </div>
       ))}
     </div>
   );

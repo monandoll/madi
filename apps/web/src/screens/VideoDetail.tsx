@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type ActionRequest, isStreaming, type OutputCard } from '@madi/shared';
+import { type ActionRequest, isStreaming, LONGFORM_MIN_SEC, type OutputCard } from '@madi/shared';
 import { type ActionKey, ActionBar } from '../components/ActionBar.js';
 import { ChatBar } from '../components/ChatBar.js';
 import { ChatFeed } from '../components/ChatFeed.js';
@@ -54,19 +54,26 @@ export function VideoDetail({ id }: { id: string }) {
 
   if (q.isPending) return <Shell title="">{null}</Shell>;
   if (q.isError || !q.data) return <Shell title="">{copy.empty.disconnected}</Shell>;
-  const { video, outputs, messages, jobs, aiBusy } = q.data;
+  const { video, outputs, messages, jobs, aiBusy, chapters, transcript } = q.data;
   const aiOn = health.data?.ai.connected ?? false;
   const busy = jobs.length > 0;
   const chatBusy = aiBusy || messages.some(isStreaming) || chat.isPending;
   const hasAudio = video.hasAudio !== false;
+  const longform = (video.durationSec ?? 0) >= LONGFORM_MIN_SEC;
 
   const onAction = (key: ActionKey) => {
     if (key === 'short') {
       setPicking(true);
       return;
     }
+    if (key === 'auto_shorts') {
+      act.mutate({ type: 'auto_shorts', max: 3 });
+      return;
+    }
     act.mutate({ type: key });
   };
+  // 챕터 카드의 숏폼은 되묻지 않는다: 자막이 이미 있으면 넣고, 없으면 자막 없이 (자막을 새로 만들지 않는다)
+  const onShortFromChapter = (range: { start: number; end: number }) => act.mutate({ type: 'short', range, subtitles: hasAudio && !!transcript });
   const onRevise = (o: OutputCard) => setPrefill({ text: copy.detail.outputCard.revisePrefill(o.title), at: Date.now() });
 
   return (
@@ -95,7 +102,7 @@ export function VideoDetail({ id }: { id: string }) {
       </div>
 
       <main className="mx-auto flex min-h-0 w-full max-w-[560px] flex-1 flex-col gap-2 overflow-y-auto px-3.5 py-3">
-        <ChatFeed messages={messages} outputs={outputs} jobs={jobs} onRevise={aiOn ? onRevise : undefined} />
+        <ChatFeed messages={messages} outputs={outputs} jobs={jobs} onRevise={aiOn ? onRevise : undefined} chapters={chapters} onShortFromChapter={busy || act.isPending ? undefined : onShortFromChapter} />
         {localError && (
           <div className="max-w-[80%] self-start rounded-[12px_12px_12px_4px] bg-bg px-[11px] py-2 text-13 leading-[1.55]" data-testid="chat-error">
             {localError}
@@ -118,9 +125,9 @@ export function VideoDetail({ id }: { id: string }) {
       </main>
 
       {aiOn ? (
-        <ChatBar busy={chatBusy} disabled={video.status !== 'ready'} prefill={prefill} onSend={(t) => chat.mutate(t)} onStop={() => stop.mutate()} />
+        <ChatBar busy={chatBusy} disabled={video.status !== 'ready'} prefill={prefill} longform={longform} onSend={(t) => chat.mutate(t)} onStop={() => stop.mutate()} />
       ) : (
-        <ActionBar hasAudio={hasAudio} busy={busy || act.isPending} disabled={video.status !== 'ready'} onAction={onAction} />
+        <ActionBar hasAudio={hasAudio} busy={busy || act.isPending} disabled={video.status !== 'ready'} longform={longform} onAction={onAction} />
       )}
     </div>
   );

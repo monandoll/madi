@@ -101,12 +101,19 @@ export const copy = {
     noOutputs: '결과물 없음',
     previewOpen: '프리뷰 펼치기',
     previewClose: '프리뷰 접기',
-    /** AI 미연결 상태의 버튼 4개 */
+    /** AI 미연결 상태의 버튼 4개 (+ 긴 영상이면 2개 더) */
     actions: {
       subtitle: '자막 넣기',
       silence: '쉬는 구간 잘라내기',
       vertical: '세로로 바꾸기',
       short: '숏폼 자르기',
+      chapters: '챕터 나누기',
+      autoShorts: '숏폼 3개 뽑기',
+    },
+    chaptersCard: {
+      title: (n: number) => `챕터 ${n}개`,
+      makeShort: '숏폼으로',
+      noHighlight: '너무 짧아요',
     },
     shortPicker: {
       title: '어디부터 어디까지 자를까요?',
@@ -131,6 +138,8 @@ export const copy = {
       send: '보내기',
       stop: '멈추기',
       chips: ['숏폼 뽑아줘', '자막 넣어줘', '쉬는 구간 잘라줘'],
+      /** 긴 영상(2분 이상) */
+      chipsLong: ['챕터 나눠줘', '숏폼 3개 뽑아줘', '자막 넣어줘'],
       thinking: '생각하는 중',
       working: '만드는 중',
     },
@@ -157,6 +166,11 @@ export const copy = {
     'action.silence': () => '쉬는 구간 잘라줘',
     'action.vertical': () => '세로로 바꿔줘',
     'action.short': (p: { start: number; end: number }) => `${fmtClock(p.start)}부터 ${fmtClock(p.end)}까지 숏폼으로 잘라줘`,
+    'action.chapters': () => '챕터로 나눠줘',
+    'action.auto_shorts': (p: { max: number }) => `숏폼 ${p.max}개 뽑아줘`,
+    'progress.chapters': (p: { hasAudio?: boolean }) => (p.hasAudio === false ? '장면을 보고 챕터 나누는 중' : '자막을 보고 챕터 나누는 중'),
+    'chapters.ready': (p: { count: number }) => `챕터 ${p.count}개로 나눴어요. 마음에 드는 챕터는 바로 숏폼으로 만들 수 있어요.`,
+    'chapters.shorts': (p: { count: number; shorts: number }) => `챕터 ${p.count}개로 나누고, ${p.shorts}개를 숏폼으로 만들고 있어요.`,
     'progress.transcribe': () => '자막 만드는 중',
     'progress.silence': () => '쉬는 구간 찾는 중',
     'progress.render': (p: { action?: string; cuts?: number; removedSec?: number; title?: string }) =>
@@ -200,6 +214,7 @@ export const copy = {
     nothing_left: '잘라내고 나니 남는 게 없어서 만들지 않았어요.',
     range_too_short: '구간이 너무 짧아요. 1초보다 길게 잡아 주세요.',
     video_not_ready: '이 영상은 아직 준비 중이에요. 잠시 뒤에 다시 해 주세요.',
+    too_short_for_chapters: '이 영상은 짧아서 챕터로 나눌 게 없어요. 숏폼 자르기로 바로 만들어 보세요.',
     edit_failed: '만들다가 문제가 생겼어요. 한 번 더 해 볼게요.',
     ai_off: 'AI가 연결되어 있지 않아요. 설정에서 연결해 주세요.',
     ai_busy: '아직 앞 요청을 하고 있어요. 끝나면 다시 말해 주세요.',

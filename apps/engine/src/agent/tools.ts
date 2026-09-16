@@ -10,6 +10,8 @@ import type { VideoStore } from '../videos.js';
 import { run } from '../workers/spawn.js';
 import { TOOL_DEFS, type ToolInput, type ToolName } from '../mcp/tools.js';
 import type { ToolOutcome } from '../mcp/server.js';
+import type { ChapterStore } from '../chapters/store.js';
+import { computeChapters } from '../workers/chapters.js';
 import type { StyleProfile } from './style.js';
 
 export interface AgentToolDeps {
@@ -19,6 +21,7 @@ export interface AgentToolDeps {
   queue: JobQueue;
   ffmpegBin: string;
   style: StyleProfile;
+  chapters: ChapterStore;
   events: EventLog;
   log: Logger;
 }
@@ -78,9 +81,26 @@ export class AgentTools {
         return this.extractShorts(video, ctx, input as ToolInput<'extract_shorts'>);
       case 'set_subtitle_style':
         return Promise.resolve(this.setSubtitleStyle(video, input as ToolInput<'set_subtitle_style'>));
+      case 'get_chapters':
+        return this.getChapters(video, ctx, input as ToolInput<'get_chapters'>);
       case 'update_style_rule':
         return Promise.resolve(this.updateStyleRule(input as ToolInput<'update_style_rule'>));
     }
+  }
+
+  private async getChapters(video: Video, ctx: ToolContext, input: ToolInput<'get_chapters'>) {
+    let ch = input.refresh ? null : this.d.chapters.get(video.id);
+    if (!ch) {
+      if ((video.durationSec ?? 0) < 30) throw new ToolError('이 영상은 너무 짧아서 챕터로 나눌 게 없어요.');
+      const controller = new AbortController();
+      ctx.signal?.addEventListener('abort', () => controller.abort(), { once: true });
+      ch = await computeChapters({ queue: this.d.queue, videos: this.d.videos, library: this.d.library, chapters: this.d.chapters, style: this.d.style, ffmpegBin: this.d.ffmpegBin, events: this.d.events, log: this.d.log }, video, controller.signal);
+      this.d.library.say({ videoId: video.id, role: 'assistant', kind: 'chapters', code: 'chapters.ready', params: { count: ch.items.length, action: 'ai' } });
+    }
+    return {
+      fromTranscript: ch.fromTranscript,
+      chapters: ch.items.map((c) => ({ index: c.index, title: c.title, start: r2(c.start), end: r2(c.end), highlight: c.highlight ? { start: r2(c.highlight.start), end: r2(c.highlight.end) } : null })),
+    };
   }
 
   // ---- 읽기 ----

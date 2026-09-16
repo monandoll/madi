@@ -6,6 +6,7 @@ import { Transcript, TimeRange } from './transcript.js';
 import { Edit } from './edit.js';
 import { Output } from './output.js';
 import { ChatMessage } from './chat.js';
+import { Chapters } from './chapter.js';
 
 export const ENGINE_PORT = 41520;
 
@@ -38,6 +39,8 @@ export const VideoDetailResponse = z.object({
   messages: z.array(ChatMessage),
   jobs: z.array(Job),
   aiBusy: z.boolean().default(false),
+  /** 롱폼 챕터 (나눈 적 있을 때) */
+  chapters: Chapters.nullable().default(null),
 });
 export type VideoDetailResponse = z.infer<typeof VideoDetailResponse>;
 
@@ -64,6 +67,10 @@ export const ActionRequest = z.discriminatedUnion('type', [
   z.object({ type: z.literal('silence') }),
   z.object({ type: z.literal('vertical') }),
   z.object({ type: z.literal('short'), range: TimeRange, subtitles: z.boolean().default(true) }),
+  /** 롱폼: 챕터 나누기 (자막 없으면 먼저 만든다) */
+  z.object({ type: z.literal('chapters') }),
+  /** 롱폼: 챕터마다 숏폼 하나씩 자동으로 (max 개까지) */
+  z.object({ type: z.literal('auto_shorts'), max: z.number().int().min(1).max(10).default(3) }),
 ]);
 export type ActionRequest = z.infer<typeof ActionRequest>;
 
