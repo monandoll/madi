@@ -16,6 +16,7 @@ import { registerMediaWorkers } from './workers/index.js';
 import { registerEditWorkers } from './workers/edit.js';
 import { Whisper } from './workers/whisper.js';
 import { Library } from './library.js';
+import { Tunnel } from './tunnel.js';
 
 const require = createRequire(import.meta.url);
 const VERSION: string = (require('../package.json') as { version: string }).version;
@@ -27,6 +28,7 @@ export interface Engine {
   videos: VideoStore;
   queue: JobQueue;
   library: Library;
+  tunnel: Tunnel;
   watcher: FolderWatcher;
   url: string;
   /** Electron 이 시스템 폴더 선택창을 붙인다. */
@@ -69,6 +71,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   });
   const watcher = new FolderWatcher({ videos, queue, events, log });
 
+  const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
   const deps = {
     cfg,
     videos,
@@ -76,8 +79,12 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     settings,
     library,
     events,
+    tunnel,
     version: VERSION,
-    onSettingsChanged: () => void watcher.setFolders(settings.get().watchFolders),
+    onSettingsChanged: () => {
+      void watcher.setFolders(settings.get().watchFolders);
+      tunnel.apply(settings.get().tunnelToken);
+    },
     pickFolder: undefined as (() => Promise<string | null>) | undefined,
   };
   const app = createApp(deps);
@@ -101,6 +108,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   events.record('engine.start', { version: VERSION });
 
   await watcher.setFolders(settings.get().watchFolders);
+  tunnel.apply(settings.get().tunnelToken);
   queue.tick();
 
   return {
@@ -110,12 +118,14 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     videos,
     queue,
     library,
+    tunnel,
     watcher,
     url,
     setFolderPicker(fn) {
       deps.pickFolder = fn;
     },
     async stop() {
+      tunnel.stop();
       await watcher.stop();
       await queue.stop();
       ws.closeAll();

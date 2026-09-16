@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import WebSocket from 'ws';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { FoldersResponse, VideosResponse, WsEvent } from '@madi/shared';
+import { FoldersResponse, HealthResponse, VideosResponse, WsEvent } from '@madi/shared';
 import { type Engine, startEngine } from '../src/engine.js';
 import { SAMPLE_5S, SAMPLE_SILENT, freePort, tempHome, waitFor } from './helpers.js';
 
@@ -46,9 +46,10 @@ const api = async <T>(p: string, init?: RequestInit): Promise<T> => {
 
 describe('engine e2e', () => {
   it('health 는 버전과 AI 미연결을 돌려준다', async () => {
-    const h = await api<{ ok: true; version: string; ai: { connected: boolean } }>('/api/health');
+    const h = HealthResponse.parse(await api('/api/health'));
     expect(h.ok).toBe(true);
     expect(h.ai.connected).toBe(false);
+    expect(h.tunnel.status).toBe('off');
   });
 
   it('설정을 바꾸면 감시가 시작되고, 폴더에 넣은 영상이 ready 가 된다', async () => {

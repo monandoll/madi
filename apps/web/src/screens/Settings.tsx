@@ -11,13 +11,16 @@ import { usePatchSettings, useSettings } from '../lib/settings.js';
 export function SettingsScreen() {
   const { settings } = useSettings();
   const patch = usePatchSettings();
-  const health = useQuery({ queryKey: queryKeys.health, queryFn: api.health });
+  const health = useQuery({ queryKey: queryKeys.health, queryFn: api.health, refetchInterval: 5_000 });
   // 후보 목록의 한국어 라벨(동영상·바탕화면…)을 여기서도 쓴다
   const suggest = useQuery({ queryKey: queryKeys.folders, queryFn: api.suggestFolders });
   const labelOf = (p: string) => suggest.data?.folders.find((f) => f.path === p)?.label ?? baseName(p);
   const [name, setName] = useState(settings.workspaceName);
   const [adding, setAdding] = useState(false);
+  const [token, setToken] = useState('');
   useEffect(() => setName(settings.workspaceName), [settings.workspaceName]);
+  const tunnel = health.data?.tunnel;
+  const tunnelOn = !!settings.tunnelToken;
 
   const commitName = () => {
     const parsed = SettingsSchema.shape.workspaceName.safeParse(name);
@@ -107,6 +110,49 @@ export function SettingsScreen() {
             {!health.data?.ai.connected && <span className="text-12 text-text-2">{copy.settings.aiSoon}</span>}
           </div>
           <p className="text-11 leading-normal text-text-2">{copy.settings.aiHelp}</p>
+        </section>
+
+        <section className="flex flex-col gap-1.5 border-b border-line bg-surface px-3.5 pt-4 pb-3.5" data-testid="remote-section">
+          <span className="text-12 text-text-3">{copy.settings.remoteLabel}</span>
+          <div className="flex h-11 items-center gap-2">
+            <span
+              className="h-[7px] w-[7px] rounded-pill"
+              style={{ background: tunnel?.status === 'running' ? 'var(--color-ok)' : tunnel?.status === 'starting' ? 'var(--color-busy)' : 'var(--color-line)' }}
+            />
+            <span className="flex-1 text-14" data-testid="remote-status">
+              {copy.settings.remoteStatus[tunnelOn ? (tunnel?.status ?? 'starting') : 'off']}
+            </span>
+            {tunnelOn && (
+              <button type="button" onClick={() => patch.mutate({ tunnelToken: null })} className="text-12 text-text-3">
+                {copy.settings.remoteClear}
+              </button>
+            )}
+          </div>
+          {!tunnelOn && (
+            <div className="flex gap-2">
+              <input
+                data-testid="remote-token"
+                className="h-11 min-w-0 flex-1 rounded-thumb border border-line bg-surface px-3 text-14 outline-none placeholder:text-text-2 focus:border-accent"
+                value={token}
+                placeholder={copy.settings.remotePlaceholder}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(e) => setToken(e.target.value)}
+              />
+              <button
+                type="button"
+                disabled={!token.trim() || patch.isPending}
+                onClick={() => {
+                  patch.mutate({ tunnelToken: token.trim() });
+                  setToken('');
+                }}
+                className="h-11 rounded-thumb border border-line px-3.5 text-14 disabled:text-text-2"
+              >
+                {copy.settings.remoteSave}
+              </button>
+            </div>
+          )}
+          <p className="text-11 leading-normal text-text-2">{copy.settings.remoteHelp}</p>
         </section>
 
         <p className="p-3.5 text-11 text-text-2">{health.data ? copy.settings.version(health.data.version) : ''}</p>

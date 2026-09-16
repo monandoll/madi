@@ -37,6 +37,7 @@ export interface AppDeps {
   settings: SettingsStore;
   library: Library;
   events: import('../events.js').EventLog;
+  tunnel: import('../tunnel.js').Tunnel;
   version: string;
   onSettingsChanged?: () => void;
   /** 시스템 폴더 선택창. Electron 이 붙여 준다. 없으면 브라우저만 뜬 상태. */
@@ -71,7 +72,12 @@ export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
 
   app.get('/api/health', (c) => {
-    const body: HealthResponse = { ok: true, version: deps.version, ai: { connected: settings.get().ai.provider !== 'none' } };
+    const body: HealthResponse = {
+      ok: true,
+      version: deps.version,
+      ai: { connected: settings.get().ai.provider !== 'none' },
+      tunnel: { status: deps.tunnel.state.status, error: deps.tunnel.state.error },
+    };
     return c.json(body);
   });
 

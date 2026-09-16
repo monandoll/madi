@@ -41,6 +41,17 @@ export const copy = {
     aiOff: '연결 안 됨',
     aiSoon: '곧 연결할 수 있어요',
     aiHelp: 'AI 없이도 자막·무음 제거·규격 변환·숏폼 자르기는 돼요.',
+    remoteLabel: '밖에서 접속하기',
+    remoteHelp: 'Cloudflare Tunnel 토큰을 붙여 넣으면 폰이나 다른 PC에서도 이 마디에 들어올 수 있어요.',
+    remotePlaceholder: '토큰 붙여넣기',
+    remoteSave: '연결',
+    remoteClear: '끊기',
+    remoteStatus: {
+      off: '연결 안 함',
+      starting: '연결하는 중',
+      running: '연결됨',
+      error: '연결이 안 돼요. 토큰을 다시 확인해 주세요.',
+    } as Record<string, string>,
     version: (v: string) => `마디 ${v}`,
   },
   tabs: {
