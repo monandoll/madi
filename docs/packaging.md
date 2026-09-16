@@ -69,11 +69,41 @@ app.asar              main.mjs (esbuild 번들) + package.json
 app.asar.unpacked/    better-sqlite3 (네이티브)
 ```
 
-## 서명
+## 서명 · 공증
 
-아직 없다. Windows 는 SmartScreen "추가 정보 → 실행". macOS 는 받은 pkg 를 열 때 "확인할 수 없음" 이 뜨면
-시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기 (pkg 로 설치된 앱 자체는 격리 표시가 없어 그 뒤로는 경고 없이 뜬다).
-Apple Developer / 코드 서명 인증서가 생기면 `electron-builder.yml` 의 `mac.identity` 와 `win.certificateFile` 만 채우면 된다.
+서명이 없으면 받은 설치 파일을 처음 열 때 OS 가 막는다.
+- macOS: 「Apple은 … 악성 코드가 없음을 확인할 수 없습니다」 (macOS 15 부터는 그 창에 "열기"가 없다) → 완료 → 시스템 설정 → 개인정보 보호 및 보안 → 맨 아래 "그래도 열기". pkg 로 설치된 앱 자체는 격리 표시가 없어 그 뒤로는 경고 없이 뜬다.
+- Windows: 파란 SmartScreen → 추가 정보 → 실행.
+
+설치 페이지(`apps/site`)가 이 단계를 OS 별로 안내한다. 하지만 **근본 해결은 서명·공증**뿐이다. 릴리스 워크플로는 아래 secrets 가 있으면 자동으로 서명·공증하고, 없으면 서명 없이 만든다 (설정 파일은 손댈 것 없음).
+
+### macOS (Apple Developer Program, 연 US$99)
+
+1. https://developer.apple.com/programs/ 가입 (개인 계정이면 됨, 승인까지 1~2일).
+2. Mac 에서 **키체인 접근 → 인증서 지원 → 인증 기관에서 인증서 요청** 으로 CSR 을 만든다.
+3. https://developer.apple.com/account/resources/certificates 에서 인증서 **두 개**를 만든다: **Developer ID Application** (앱), **Developer ID Installer** (pkg). 둘 다 CSR 로 만들고 내려받아 더블클릭해 키체인에 넣는다.
+4. 키체인 접근에서 그 두 인증서(개인 키 포함)를 **같이 선택 → 내보내기 → .p12** (암호 지정). 터미널에서 base64 로: `base64 -i madi.p12 | pbcopy`.
+5. https://account.apple.com → 로그인 및 보안 → **앱 암호** 하나 만든다 (공증용).
+6. **Team ID**: https://developer.apple.com/account → Membership details.
+7. GitHub → 저장소 → Settings → Secrets and variables → Actions 에 넣는다:
+
+| secret | 값 |
+|---|---|
+| `MAC_CERT_P12` | 4 의 base64 문자열 |
+| `MAC_CERT_PASSWORD` | 4 의 .p12 암호 |
+| `APPLE_ID` | Apple 계정 이메일 |
+| `APPLE_APP_SPECIFIC_PASSWORD` | 5 의 앱 암호 |
+| `APPLE_TEAM_ID` | 6 |
+
+8. 다음 릴리스부터 electron-builder 가 앱(안의 ffmpeg·whisper-cli·cloudflared·yt-dlp·better-sqlite3 까지, `entitlements.mac.plist` 권한으로)과 pkg 를 서명하고 Apple 에 공증(notarize)·스테이플한다. 워크플로가 `spctl -a -t install` 로 "Notarized Developer ID" 를 확인한다. 실패하면 그 단계 로그를 본다 (흔한 원인: .p12 에 Installer 인증서가 빠짐, 앱 암호 오타).
+
+### Windows (선택)
+
+SmartScreen 을 없애려면 코드 서명 인증서가 필요하다. 저렴한 쪽부터:
+- **Azure Trusted Signing** (월 US$10 안팎, 개인은 아직 지역 제한) — electron-builder 의 `win.azureSignOptions`.
+- OV/EV 코드 서명 인증서 (연 US$200~400, SSL.com·Sectigo 등). .pfx 를 base64 로 `WIN_CERT_PFX`, 암호를 `WIN_CERT_PASSWORD` 에 넣으면 워크플로가 서명한다. OV 는 서명해도 평판이 쌓일 때까지 SmartScreen 이 몇 주 더 뜰 수 있다.
+
+Windows 는 서명이 없어도 "추가 정보 → 실행" 두 번 누르면 되므로, macOS 부터 한다.
 
 ## 사이드카 출처
 

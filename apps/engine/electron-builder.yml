@@ -53,10 +53,14 @@ mac:
     # dmg 처럼 끌어다 놓는 단계가 없다. zip 은 electron-updater 용.
     - target: pkg
     - target: zip
-  # 서명·공증은 아직 없다 (Apple Developer 계정 없음). 받은 pkg 를 처음 열 때
-  # "확인할 수 없음" 이 뜨면 시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기.
-  identity: null
-  hardenedRuntime: false
+  # 서명·공증: 릴리스 워크플로가 secrets(MAC_CERT_P12 · APPLE_ID …)가 있을 때만 CSC_LINK / APPLE_* 환경변수를 준다.
+  # 없으면 CSC_IDENTITY_AUTO_DISCOVERY=false 로 서명 없이 만든다 → 받은 pkg 를 처음 열 때 "확인할 수 없음"
+  # (시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기). docs/packaging.md "서명" 참고.
+  # 서명할 때는 앱 안의 실행 파일(사이드카·네이티브 모듈)까지 같은 권한으로 서명하고, pkg 는 Developer ID Installer 로 서명한 뒤 공증한다.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: entitlements.mac.plist
+  entitlementsInherit: entitlements.mac.plist
   extraResources:
     - from: ../../resources/bin/darwin-${arch}
       to: bin/darwin-${arch}

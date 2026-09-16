@@ -36,6 +36,8 @@
   .fact .k { width:96px; flex:none; font-size:13px; color:var(--text-3); }
   .fact .v { flex:1; min-width:0; font-size:14px; line-height:1.6; text-wrap:pretty; }
   .fact .v b { font-weight:600; }
+  .fact .v ol { margin:6px 0 0; padding-left:20px; display:flex; flex-direction:column; gap:3px; }
+  .fact .v .note { display:block; margin-top:6px; font-size:12px; color:var(--text-3); }
   .steps { display:flex; align-items:center; gap:7px; }
   .dot { width:6px; height:6px; border-radius:999px; background:var(--off); }
   .dot.on { background:var(--text); }
@@ -76,7 +78,7 @@
       <div class="fact"><div class="k">필요한 것</div><div class="v" id="need">Windows 10 이상 · 64비트 / macOS 13 이상 · Apple 실리콘 · 인텔</div></div>
       <div class="fact"><div class="k">계정</div><div class="v">필요 없어요. 설치하면 바로 쓸 수 있어요.</div></div>
       <div class="fact"><div class="k">AI 연결</div><div class="v">나중에 설정에서 해도 돼요. 자막 · 쉬는 구간 자르기 · 규격 변환은 AI 없이도 됩니다.</div></div>
-      <div class="fact" id="warn-row"><div class="k">처음 열 때</div><div class="v" id="warn">아직 서명이 없어서 경고가 한 번 떠요. Windows 는 <b>추가 정보 → 실행</b>, Mac 은 <b>시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기</b>. 설치가 끝나면 브라우저가 알아서 열려요.</div></div>
+      <div class="fact" id="warn-row"><div class="k">처음 열 때</div><div class="v" id="warn">아직 Apple · Microsoft 서명이 없어서 경고가 한 번 떠요. Windows 는 <b>추가 정보 → 실행</b>, Mac 은 <b>완료 → 시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기</b>. 설치가 끝나면 브라우저가 알아서 열려요.</div></div>
     </div>
 
     <div class="steps"><div class="dot on"></div><div class="dot"></div><div class="dot"></div><span>설치</span><span style="padding-left:0">· 다음은 영상 폴더 정하기</span></div>
@@ -120,10 +122,21 @@
     return Promise.resolve(byGl());
   }
 
+  // 처음 열 때 안내. 아직 서명·공증이 없어서 OS 가 한 번 막는다 — 넘어가는 길을 그대로 적는다.
+  var WARN_WIN = '파란 「Windows의 PC 보호」 창이 뜨면 <b>추가 정보 → 실행</b>. 아직 Microsoft 서명이 없어서 그래요. 설치가 끝나면 브라우저가 알아서 열려요.';
+  var WARN_MAC =
+    '받은 파일을 열면 「Apple은 … 악성 코드가 없음을 확인할 수 없습니다」 창이 떠요. 아직 Apple 서명이 없어서 그래요. 이렇게 넘어가요.' +
+    '<ol>' +
+    '<li>그 창에서 <b>완료</b>를 누르세요 (휴지통으로 이동 아니에요).</li>' +
+    '<li><b>시스템 설정 → 개인정보 보호 및 보안</b>을 열고 맨 아래 <b>보안</b>까지 내려요.</li>' +
+    '<li>「madi-engine…pkg이(가) 차단됨」 옆 <b>그래도 열기</b> → Mac 암호 → <b>열기</b>.</li>' +
+    '<li>설치 마법사에서 계속 → 설치. 끝나면 브라우저가 알아서 열려요.</li>' +
+    '</ol>' +
+    '<span class="note">macOS 13 · 14 는 파일을 control 키를 누른 채 클릭 → 열기 로도 돼요. 설치된 뒤에는 경고가 다시 뜨지 않아요.</span>';
   var OS = {
-    win: { name: 'Windows', match: /-win-x64\.exe$/, need: 'Windows 10 이상 · 64비트', warn: '아직 서명이 없어서 파란 경고가 한 번 떠요. <b>추가 정보 → 실행</b>을 누르면 설치되고 브라우저가 알아서 열려요.' },
-    'mac-arm64': { name: 'macOS', match: /-mac-arm64\.pkg$/, need: 'macOS 13 이상 · Apple 실리콘 (M1 이후)', warn: '아직 서명이 없어서 "확인할 수 없음"이 뜰 수 있어요. <b>시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기</b> 뒤 계속 → 설치. 끝나면 브라우저가 알아서 열려요.' },
-    'mac-x64': { name: 'macOS', match: /-mac-x64\.pkg$/, need: 'macOS 13 이상 · 인텔', warn: '아직 서명이 없어서 "확인할 수 없음"이 뜰 수 있어요. <b>시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기</b> 뒤 계속 → 설치. 끝나면 브라우저가 알아서 열려요.' }
+    win: { name: 'Windows', match: /-win-x64\.exe$/, need: 'Windows 10 이상 · 64비트', warn: WARN_WIN },
+    'mac-arm64': { name: 'macOS', match: /-mac-arm64\.pkg$/, need: 'macOS 13 이상 · Apple 실리콘 (M1 이후)', warn: WARN_MAC },
+    'mac-x64': { name: 'macOS', match: /-mac-x64\.pkg$/, need: 'macOS 13 이상 · 인텔', warn: WARN_MAC }
   };
   function fmtSize(n) { return n > 1024 * 1024 * 1024 ? (n / 1024 / 1024 / 1024).toFixed(1) + ' GB' : Math.round(n / 1024 / 1024) + ' MB'; }
 
