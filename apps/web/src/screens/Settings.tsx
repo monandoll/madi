@@ -12,6 +12,10 @@ export function SettingsScreen() {
   const { settings } = useSettings();
   const patch = usePatchSettings();
   const health = useQuery({ queryKey: queryKeys.health, queryFn: api.health, refetchInterval: 5_000 });
+  // 설치된 AI 도구. 설정 화면을 열 때마다 새로 찾는다 (설치 직후 바로 보이게).
+  const providers = useQuery({ queryKey: queryKeys.aiProviders, queryFn: () => api.aiProviders(true), staleTime: 30_000 });
+  const ai = health.data?.ai;
+  const labelOfProvider = (id: string) => providers.data?.providers.find((p) => p.id === id)?.label ?? id;
   // 후보 목록의 한국어 라벨(동영상·바탕화면…)을 여기서도 쓴다
   const suggest = useQuery({ queryKey: queryKeys.folders, queryFn: api.suggestFolders });
   const labelOf = (p: string) => suggest.data?.folders.find((f) => f.path === p)?.label ?? baseName(p);
@@ -102,13 +106,42 @@ export function SettingsScreen() {
           )}
         </section>
 
-        <section className="flex flex-col gap-1.5 border-b border-line bg-surface px-3.5 pt-4 pb-3.5">
+        <section className="flex flex-col gap-1.5 border-b border-line bg-surface px-3.5 pt-4 pb-3.5" data-testid="ai-section">
           <span className="text-12 text-text-3">{copy.settings.aiLabel}</span>
           <div className="flex h-11 items-center gap-2">
-            <span className="h-[7px] w-[7px] rounded-pill" style={{ background: health.data?.ai.connected ? 'var(--color-ok)' : 'var(--color-line)' }} />
-            <span className="flex-1 text-14">{health.data?.ai.connected ? copy.header.aiOn : copy.settings.aiOff}</span>
-            {!health.data?.ai.connected && <span className="text-12 text-text-2">{copy.settings.aiSoon}</span>}
+            <span className="h-[7px] w-[7px] rounded-pill" style={{ background: ai?.connected ? 'var(--color-ok)' : ai && ai.provider !== 'none' ? 'var(--color-busy)' : 'var(--color-line)' }} />
+            <span className="flex-1 text-14" data-testid="ai-status">
+              {!ai || ai.provider === 'none' ? copy.settings.aiOff : ai.connected ? copy.settings.aiOn(labelOfProvider(ai.provider)) : copy.settings.aiMissing(labelOfProvider(ai.provider))}
+            </span>
+            {ai && ai.provider !== 'none' && (
+              <button type="button" onClick={() => patch.mutate({ ai: { provider: 'none' } })} className="text-12 text-text-3" data-testid="ai-disconnect">
+                {copy.settings.aiDisconnect}
+              </button>
+            )}
           </div>
+          <div className="flex flex-col overflow-hidden rounded-thumb border border-line" data-testid="ai-providers">
+            {(providers.data?.providers ?? []).map((p, i) => {
+              const selected = settings.ai.provider === p.id;
+              return (
+                <div key={p.id} className={`flex h-11 items-center gap-2.5 px-3 ${i > 0 ? 'border-t border-line-soft' : ''} ${selected ? 'bg-accent-soft' : ''}`} data-testid={`ai-provider-${p.id}`}>
+                  <span className="flex min-w-0 flex-1 flex-col gap-px">
+                    <span className="text-13 font-medium">{p.label}</span>
+                    <span className="truncate text-11 text-text-2">{p.installed ? copy.settings.aiInstalled(p.version) : copy.settings.aiNotInstalled}</span>
+                  </span>
+                  <button
+                    type="button"
+                    disabled={!p.installed || selected || patch.isPending}
+                    onClick={() => patch.mutate({ ai: { provider: p.id } })}
+                    className={`flex-none text-12 ${selected ? 'text-accent' : p.installed ? 'text-text-3' : 'text-text-2'}`}
+                  >
+                    {selected ? copy.settings.aiInUse : copy.settings.aiUse}
+                  </button>
+                </div>
+              );
+            })}
+            {providers.isPending && <div className="flex h-11 items-center px-3 text-13 text-text-2">{copy.settings.aiChecking}</div>}
+          </div>
+          <p className="text-11 leading-normal text-text-2">{copy.settings.aiPickHelp}</p>
           <p className="text-11 leading-normal text-text-2">{copy.settings.aiHelp}</p>
         </section>
 

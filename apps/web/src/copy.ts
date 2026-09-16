@@ -39,8 +39,16 @@ export const copy = {
     foldersHelp: '여기 있는 영상이 갤러리에 나타나요',
     aiLabel: 'AI',
     aiOff: '연결 안 됨',
-    aiSoon: '곧 연결할 수 있어요',
+    aiOn: (label: string) => `${label}로 연결됨`,
+    aiMissing: (label: string) => `${label}를 이 PC에서 찾지 못했어요`,
     aiHelp: 'AI 없이도 자막·무음 제거·규격 변환·숏폼 자르기는 돼요.',
+    aiPickHelp: '이 PC에 설치된 도구 중 하나를 고르면 채팅으로 편집을 시킬 수 있어요. 본인 구독으로 돌아가요.',
+    aiInstalled: (v: string | null) => (v ? `설치됨 · ${v}` : '설치됨'),
+    aiNotInstalled: '설치 안 됨',
+    aiUse: '쓰기',
+    aiInUse: '쓰는 중',
+    aiDisconnect: '연결 끊기',
+    aiChecking: '찾는 중',
     remoteLabel: '밖에서 접속하기',
     remoteHelp: 'Cloudflare Tunnel 토큰을 붙여 넣으면 폰이나 다른 PC에서도 이 마디에 들어올 수 있어요.',
     remotePlaceholder: '토큰 붙여넣기',
@@ -101,6 +109,17 @@ export const copy = {
       revise: '수정 요청',
       more: '자세히',
       reviseHint: 'AI를 연결하면 말로 고칠 수 있어요.',
+      /** 수정 요청을 누르면 입력창에 미리 채우는 말 */
+      revisePrefill: (title: string) => `「${title}」 고쳐줘: `,
+    },
+    /** AI 연결 뒤의 채팅 입력 */
+    chat: {
+      placeholder: '말로 요청하세요',
+      send: '보내기',
+      stop: '멈추기',
+      chips: ['숏폼 뽑아줘', '자막 넣어줘', '쉬는 구간 잘라줘'],
+      thinking: '생각하는 중',
+      working: '만드는 중',
     },
     progressEta: (sec: number) => (sec < 60 ? '금방 돼요' : `약 ${Math.max(1, Math.round(sec / 60))}분`),
   },
@@ -127,8 +146,16 @@ export const copy = {
     'action.short': (p: { start: number; end: number }) => `${fmtClock(p.start)}부터 ${fmtClock(p.end)}까지 숏폼으로 잘라줘`,
     'progress.transcribe': () => '자막 만드는 중',
     'progress.silence': () => '쉬는 구간 찾는 중',
-    'progress.render': (p: { action?: string; cuts?: number; removedSec?: number }) =>
-      p.action === 'silence' && p.cuts ? `쉬는 구간 ${p.cuts}곳, ${p.removedSec ?? 0}초를 빼고 만드는 중` : p.action === 'short' ? '숏폼 만드는 중' : p.action === 'vertical' ? '세로로 만드는 중' : '만드는 중',
+    'progress.render': (p: { action?: string; cuts?: number; removedSec?: number; title?: string }) =>
+      p.action === 'silence' && p.cuts
+        ? `쉬는 구간 ${p.cuts}곳, ${p.removedSec ?? 0}초를 빼고 만드는 중`
+        : p.action === 'short'
+          ? '숏폼 만드는 중'
+          : p.action === 'vertical'
+            ? '세로로 만드는 중'
+            : p.action === 'ai' && p.title
+              ? `「${p.title}」 만드는 중`
+              : '만드는 중',
     'transcript.ready': (p: { segments: number }) => `자막 ${p.segments}줄을 만들었어요.`,
     'silence.none': () => '쉬는 구간이 없어서 그대로 두었어요.',
     'output.ready': (p: { action?: string; cuts?: number; removedSec?: number; title?: string }) =>
@@ -140,7 +167,13 @@ export const copy = {
             ? '숏폼 하나 만들었어요.'
             : p.action === 'subtitle'
               ? '자막을 넣었어요.'
-              : '다 됐어요.',
+              : p.action === 'ai' && p.title
+                ? `「${p.title}」 만들었어요.`
+                : '다 됐어요.',
+    'user.text': (p: { text: string }) => p.text,
+    'ai.text': (p: { text: string }) => p.text,
+    'ai.done': () => '다 했어요.',
+    'ai.stopped': () => '멈췄어요.',
   } as unknown as Record<string, (p: Record<string, any>) => string>,
   error: {
     no_video_stream: '이 파일엔 영상이 없어서 열지 못했어요.',
@@ -155,6 +188,10 @@ export const copy = {
     range_too_short: '구간이 너무 짧아요. 1초보다 길게 잡아 주세요.',
     video_not_ready: '이 영상은 아직 준비 중이에요. 잠시 뒤에 다시 해 주세요.',
     edit_failed: '만들다가 문제가 생겼어요. 한 번 더 해 볼게요.',
+    ai_off: 'AI가 연결되어 있지 않아요. 설정에서 연결해 주세요.',
+    ai_busy: '아직 앞 요청을 하고 있어요. 끝나면 다시 말해 주세요.',
+    ai_missing: 'AI 도구를 이 PC에서 찾지 못했어요. 설정에서 다시 골라 주세요.',
+    ai_failed: 'AI가 답하다가 문제가 생겼어요. 한 번 더 말해 주세요.',
   } as Record<string, string>,
 } as const;
 

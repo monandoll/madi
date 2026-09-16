@@ -2,6 +2,8 @@ import { z } from 'zod';
 import {
   type ActionRequest,
   ActionResponse,
+  AiProvidersResponse,
+  ChatResponse,
   FoldersResponse,
   HealthResponse,
   OutputDetailResponse,
@@ -48,6 +50,9 @@ export const api = {
   patchSettings: (body: SettingsPatch) => send('PATCH', '/api/settings', body, SettingsResponse),
   video: (id: string) => get(`/api/videos/${id}`, VideoDetailResponse),
   act: (id: string, body: ActionRequest) => send('POST', `/api/videos/${id}/actions`, body, ActionResponse),
+  chat: (id: string, text: string) => send('POST', `/api/videos/${id}/chat`, { text }, ChatResponse),
+  cancelChat: (id: string) => send('POST', `/api/videos/${id}/chat/cancel`, undefined, z.object({ canceled: z.boolean() })),
+  aiProviders: (fresh = false) => get(`/api/ai/providers${fresh ? '?fresh=1' : ''}`, AiProvidersResponse),
   outputs: () => get('/api/outputs', OutputsResponse),
   output: (id: string) => get(`/api/outputs/${id}`, OutputDetailResponse),
   suggestFolders: () => get('/api/folders/suggest', FoldersResponse),
@@ -62,4 +67,5 @@ export const queryKeys = {
   video: (id: string) => ['video', id] as const,
   outputs: ['outputs'] as const,
   output: (id: string) => ['output', id] as const,
+  aiProviders: ['ai-providers'] as const,
 };
