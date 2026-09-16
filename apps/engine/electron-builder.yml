@@ -1,0 +1,65 @@
+# 마디 엔진 패키징. `pnpm --filter @madi/engine package` (먼저 web 빌드 + engine 빌드 + 사이드카).
+appId: dev.madi.engine
+productName: madi-engine
+copyright: madi
+artifactName: madi-engine-${version}-${os}-${arch}.${ext}
+
+directories:
+  output: release
+  buildResources: build
+
+# esbuild 번들 하나 + 네이티브 모듈. 나머지 의존성은 번들 안에 있다.
+files:
+  - dist/**
+  - package.json
+  - "!**/*.map"
+asar: true
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+
+# 엔진이 MADI_ROOT=process.resourcesPath 아래에서 찾는 것들
+extraResources:
+  - from: resources/web
+    to: web
+  - from: resources/drizzle
+    to: drizzle
+  - from: ../../resources/fonts
+    to: fonts
+  - from: build/tray.png
+    to: tray.png
+  - from: build/trayTemplate.png
+    to: trayTemplate.png
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  extraResources:
+    - from: ../../resources/bin/win32-x64
+      to: bin/win32-x64
+nsis:
+  oneClick: true
+  perMachine: false
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+
+mac:
+  category: public.app-category.video
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  # 서명·공증은 아직 없다 (Apple Developer 계정 없음). 처음 열 때 우클릭 → 열기.
+  identity: null
+  hardenedRuntime: false
+  extraResources:
+    - from: ../../resources/bin/darwin-${arch}
+      to: bin/darwin-${arch}
+
+# 자동 업데이트: GitHub Releases (공개 저장소라 토큰 없이 받는다)
+publish:
+  provider: github
+  owner: monandoll
+  repo: madi
+  releaseType: release

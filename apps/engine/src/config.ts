@@ -22,6 +22,7 @@ export interface EngineConfig {
   migrationsDir: string;
   webDir: string;
   binDir: string;
+  fontsDir: string;
   isDev: boolean;
 }
 
@@ -58,6 +59,7 @@ export function loadConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     migrationsDir: isDev ? path.join(rootDir, 'apps/engine/drizzle') : path.join(rootDir, 'drizzle'),
     webDir: isDev ? path.join(rootDir, 'apps/web/dist') : path.join(rootDir, 'web'),
     binDir: isDev ? path.join(rootDir, 'resources/bin') : path.join(rootDir, 'bin'),
+    fontsDir: isDev ? path.join(rootDir, 'resources/fonts') : path.join(rootDir, 'fonts'),
     isDev,
     ...overrides,
   };

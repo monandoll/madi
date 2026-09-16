@@ -28,6 +28,24 @@ export function proxyEncoderArgs(encoder: Encoder): string[] {
   }
 }
 
+/**
+ * 하드웨어 인코더가 실제로 도는지 확인하는 인자. 합성 검은 화면 2프레임을 인코딩해서 버린다.
+ * 인코더 이름이 목록에 있어도 GPU 가 없거나(VM, 헤드리스) 드라이버가 막혀 있으면 여기서 실패한다.
+ * 실패하면 엔진은 libx264 로 내려간다.
+ */
+export function encoderSmokeArgs(encoder: Encoder): string[] {
+  return [
+    '-hide_banner',
+    '-nostdin',
+    '-f', 'lavfi',
+    '-i', 'color=c=black:s=128x128:r=30:d=0.1',
+    '-frames:v', '2',
+    ...proxyEncoderArgs(encoder),
+    '-f', 'null',
+    '-',
+  ];
+}
+
 /** `ffmpeg -hide_banner -encoders` 출력에서 인코더 이름만 뽑는다. */
 export function parseEncoderList(stdout: string): Set<string> {
   const names = new Set<string>();

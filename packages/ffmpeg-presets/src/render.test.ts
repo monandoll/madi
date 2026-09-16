@@ -65,6 +65,8 @@ describe('renderPlan', () => {
     const fc = plan.args[plan.args.indexOf('-filter_complex') + 1]!;
     expect(fc).toContain("subtitles='C\\:/madi/a\\:b.ass'");
     expect(escapeFilterPath("/tmp/it's.ass")).toBe("/tmp/it\\'s.ass");
+    const withFonts = renderPlan({ ...base, subtitleFile: '/a.ass', fontsDir: '/app/fonts', edit: { keep: null, cuts: [], crop: 'none', subtitles: true, subtitleStyle: DEFAULT_SUBTITLE_STYLE } });
+    expect(withFonts.args[withFonts.args.indexOf('-filter_complex') + 1]).toContain("subtitles='/a.ass':fontsdir='/app/fonts'");
   });
   it('남는 구간이 없으면 던진다', () => {
     expect(() => renderPlan({ ...base, edit: { keep: { start: 20, end: 30 }, cuts: [], crop: 'none', subtitles: false, subtitleStyle: DEFAULT_SUBTITLE_STYLE } })).toThrow('nothing to render');

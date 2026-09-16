@@ -18,9 +18,11 @@
     "db:migrate": "pnpm --filter @madi/engine db:migrate",
     "db:studio": "pnpm --filter @madi/engine db:studio",
     "e2e": "pnpm e2e:engine && pnpm e2e:web",
-    "e2e:engine": "pnpm --filter @madi/engine exec vitest run test/e2e.engine.test.ts test/e2e.edit.test.ts",
+    "e2e:engine": "pnpm --filter @madi/engine exec vitest run --config vitest.e2e.config.ts",
     "e2e:web": "playwright test",
-    "e2e:web:ui": "playwright test --ui"
+    "e2e:web:ui": "playwright test --ui",
+    "sidecars": "node scripts/fetch-sidecars.mjs",
+    "package": "pnpm build && pnpm --filter @madi/engine package"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

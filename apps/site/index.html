@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>마디 설치</title>
+<style>
+  :root { --bg:#F7F3EE; --surface:#fff; --line:#E8E0D8; --text:#2B2622; --text-2:#8A7F76; --accent:#C96A4B; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  main { max-width:480px; margin:0 auto; padding:48px 20px; display:flex; flex-direction:column; gap:20px; }
+  h1 { font-size:20px; margin:0; }
+  p { margin:0; font-size:14px; line-height:1.6; color:var(--text-2); }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .btn { display:flex; align-items:center; justify-content:center; height:44px; border-radius:8px; background:var(--accent); color:#fff; font-size:14px; font-weight:600; text-decoration:none; }
+  .btn.alt { background:transparent; color:var(--text); border:1px solid var(--line); font-weight:500; }
+  ol { margin:0; padding-left:18px; font-size:13px; line-height:1.7; }
+  code { font-size:12px; background:var(--bg); padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>마디</h1>
+  <p>운동·재활 영상을 말로 편집하는 도구예요. 설치하면 영상 폴더가 갤러리로 뜨고, 자막·쉬는 구간 잘라내기·세로 변환·숏폼이 바로 됩니다.</p>
+
+  <div class="card">
+    <a class="btn" href="https://github.com/monandoll/madi/releases/latest">최신 버전 받기</a>
+    <p>Windows: <code>madi-engine-x.y.z-win-x64.exe</code> · macOS(Apple Silicon): <code>…-mac-arm64.dmg</code> · macOS(Intel): <code>…-mac-x64.dmg</code></p>
+  </div>
+
+  <div class="card">
+    <strong style="font-size:14px">설치 뒤</strong>
+    <ol>
+      <li>트레이(작업 표시줄 오른쪽 / 메뉴 막대)에 점 아이콘이 생겨요. 눌러서 <b>마디 열기</b>.</li>
+      <li>브라우저에서 스튜디오 이름과 영상 폴더를 고르면 끝.</li>
+      <li>업데이트는 자동으로 받아요. 새 버전은 다음에 켤 때 적용돼요.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <strong style="font-size:14px">알아두기</strong>
+    <p>아직 서명이 없어서 처음 열 때 경고가 떠요. Windows는 "추가 정보 → 실행", macOS는 우클릭 → 열기.</p>
+    <p>폰이나 다른 PC에서 쓰려면 설정 → 밖에서 접속하기에 Cloudflare Tunnel 토큰을 넣어요.</p>
+    <a class="btn alt" href="https://github.com/monandoll/madi">GitHub</a>
+  </div>
+</main>
+</body>
+</html>

@@ -37,8 +37,14 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
-      - name: Build web
-        run: pnpm --filter @madi/web build
+      - name: Build web + engine bundle
+        run: pnpm build
+
+      # 패키징 설정이 깨지지 않았는지: 리눅스 unpacked 빌드만 (배포 타깃은 win/mac)
+      - name: electron-builder smoke (linux --dir)
+        run: node scripts/fetch-sidecars.mjs --only fonts && pnpm --filter @madi/engine exec electron-builder --linux dir --publish never
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '0'
 
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium

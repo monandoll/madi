@@ -75,10 +75,14 @@ export type JobsResponse = z.infer<typeof JobsResponse>;
 export const SettingsResponse = z.object({ settings: Settings });
 export type SettingsResponse = z.infer<typeof SettingsResponse>;
 
+export const TunnelStatus = z.enum(['off', 'starting', 'running', 'error']);
+export type TunnelStatus = z.infer<typeof TunnelStatus>;
+
 export const HealthResponse = z.object({
   ok: z.literal(true),
   version: z.string(),
   ai: z.object({ connected: z.boolean() }),
+  tunnel: z.object({ status: TunnelStatus, error: z.string().nullable() }),
 });
 export type HealthResponse = z.infer<typeof HealthResponse>;
 

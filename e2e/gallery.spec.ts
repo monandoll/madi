@@ -104,6 +104,17 @@ test('설정 화면: 톱니로 들어가서 이름을 바꾸고 폴더를 더하
 
   // AI 는 조용히
   await expect(screen.getByText('연결 안 됨')).toBeVisible();
+
+  // 밖에서 접속: 토큰을 넣으면 '연결하는 중', 끊으면 다시 입력창 (cloudflared 는 없으니 running 은 안 된다)
+  const remote = screen.getByTestId('remote-section');
+  await expect(remote.getByTestId('remote-status')).toHaveText('연결 안 함');
+  await remote.getByTestId('remote-token').fill('eyJhIjoiZmFrZSJ9');
+  await remote.getByRole('button', { name: '연결' }).click();
+  await expect(remote.getByTestId('remote-status')).not.toHaveText('연결 안 함');
+  await expect.poll(async () => (await (await page.request.get('/api/settings')).json()).settings.tunnelToken).toBe('eyJhIjoiZmFrZSJ9');
+  await remote.getByRole('button', { name: '끊기' }).click();
+  await expect(remote.getByTestId('remote-status')).toHaveText('연결 안 함');
+  await expect(remote.getByTestId('remote-token')).toBeVisible();
   await expect(screen.getByText(/^마디 \d+\.\d+\.\d+$/)).toBeVisible();
 
   // 뒤로 → 갤러리 헤더에 새 이름

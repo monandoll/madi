@@ -138,6 +138,7 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
         hasAudio: video.hasAudio ?? true,
         encoder,
         subtitleFile,
+        fontsDir: fs.existsSync(cfg.fontsDir) ? cfg.fontsDir : undefined,
       });
       const parser = new ProgressParser(plan.durationSec, setProgress);
       await run(d.ffmpegBin, plan.args, { signal, onStdout: (c) => parser.feed(c) });

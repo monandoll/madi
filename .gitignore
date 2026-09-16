@@ -19,3 +19,9 @@ coverage/
 # playwright
 playwright-report/
 test-results/
+
+# 사이드카 바이너리·폰트는 scripts/fetch-sidecars.mjs 로 받는다
+resources/bin/
+resources/fonts/
+apps/engine/build/
+apps/engine/release/

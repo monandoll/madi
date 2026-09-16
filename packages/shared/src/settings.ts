@@ -14,6 +14,8 @@ export const Settings = z.object({
   }),
   /** 처음 켰을 때 설정 카드를 끝냈는지. false 면 갤러리 위에 카드가 뜬다. */
   setupDone: z.boolean().default(false),
+  /** Cloudflare Tunnel 토큰. 있으면 엔진이 cloudflared 를 띄워 밖에서 접속하게 한다. */
+  tunnelToken: z.string().nullable().default(null),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -22,6 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
   watchFolders: [],
   ai: { provider: 'none' },
   setupDone: false,
+  tunnelToken: null,
 };
 
 export const SettingsPatch = Settings.partial();
