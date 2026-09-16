@@ -14,6 +14,7 @@ let home: string;
 let engine: Engine;
 let videoId: string;
 const FAKE = path.join(FIXTURES, 'fake-claude.mjs');
+const FAKE_CODEX = path.join(FIXTURES, 'fake-codex.mjs');
 
 const api = async <T>(p: string, init?: RequestInit): Promise<{ status: number; body: T }> => {
   const res = await fetch(`${engine.url}${p}`, init);
@@ -40,6 +41,7 @@ beforeAll(async () => {
   fs.chmodSync(FAKE, 0o755);
   process.env['MADI_QUIET'] = '1';
   process.env['MADI_CLAUDE_BIN'] = FAKE;
+  process.env['MADI_CODEX_BIN'] = FAKE_CODEX;
   resetCliCache();
   engine = await startEngine({ dataDir: home, dbPath: path.join(home, 'madi.db'), port: await freePort() });
   fs.copyFileSync(path.join(FIXTURES, 'sample-gaps-8s.mp4'), path.join(watchDir, '햄스트링 스트레칭.mp4'));
@@ -53,6 +55,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   delete process.env['MADI_CLAUDE_BIN'];
+  delete process.env['MADI_CODEX_BIN'];
+  delete process.env['MADI_FAKE_CODEX'];
   await engine?.stop();
   fs.rmSync(home, { recursive: true, force: true });
 });
@@ -111,6 +115,16 @@ describe('AI 연결', () => {
     expect(String((await waitReply()).params['text'])).toContain('규칙 읽었어요');
   });
 
+  it('set_subtitle_text: 사용자 문장이 자막이 된다 (자막이 없어도)', async () => {
+    await chat('이 문장 고쳐줘: 안녕하세요 앱 소개합니다');
+    const m = await waitReply();
+    expect(String(m.params['text'])).toContain('"안녕하세요 앱 소개합니다" 로 바꿨어요');
+    const t = engine.library.transcriptOf(videoId)!;
+    expect(t.model).toBe('manual');
+    expect(t.segments.map((s) => s.text)).toEqual(['안녕하세요 앱 소개합니다']);
+    expect(t.segments[0]).toMatchObject({ start: 0, end: 2 });
+  });
+
   it('update_style_rule 은 style.md 에 한 줄 붙인다', async () => {
     await chat('규칙 저장해줘');
     expect(String((await waitReply()).params['text'])).toContain('앞으로 그렇게 할게요.');
@@ -149,6 +163,25 @@ describe('AI 연결', () => {
     const m = await waitReply();
     expect(m).toMatchObject({ kind: 'error', code: 'ai_missing' });
     process.env['MADI_CLAUDE_BIN'] = FAKE;
+    resetCliCache();
+  });
+
+  it('Codex: 가짜 codex 로 답이 오고, 로그인 안 됐으면 ai_login 오류', async () => {
+    await api('/api/settings', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ai: { provider: 'codex' } }) });
+    resetCliCache();
+    const h = HealthResponse.parse((await api('/api/health')).body);
+    expect(h.ai).toEqual({ connected: true, provider: 'codex', installed: true });
+    await chat('안녕');
+    let m = await waitReply();
+    expect(m.kind).toBe('text');
+    expect(String(m.params['text'])).toContain('코덱스가 "안녕" 라고 들었어요');
+    process.env['MADI_FAKE_CODEX'] = 'login';
+    await chat('안녕');
+    m = await waitReply();
+    expect(m).toMatchObject({ kind: 'error', code: 'ai_login' });
+    expect(String(m.params['detail'])).toContain('Not logged in');
+    delete process.env['MADI_FAKE_CODEX'];
+    await api('/api/settings', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ai: { provider: 'claude' } }) });
     resetCliCache();
   });
 });

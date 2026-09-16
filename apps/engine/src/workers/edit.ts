@@ -73,7 +73,7 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
         const render = queue.enqueue({ type: 'render', videoId: video.id, editId: payload.renderEditId });
         if (m) library.updateMessage(m.id, { jobId: render.id, code: 'progress.render', params: { ...m.params, step: 'render' } });
       } else if (m) {
-        library.updateMessage(m.id, { kind: 'text', code: 'transcript.ready', params: { segments: transcript.segments.length } });
+        library.updateMessage(m.id, { kind: 'text', code: transcript.segments.length ? 'transcript.ready' : 'transcript.empty', params: { segments: transcript.segments.length } });
       }
     } catch (err) {
       fail(job.id, err);

@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import type { AiProvider } from '@madi/shared';
+import { withKnownDirs } from './detect.js';
 
 /** 러너가 프로바이더에 넘기는 것. 프롬프트는 이미 완성된 상태(스타일 규칙 포함). */
 export interface AgentRunOptions {
@@ -59,7 +60,8 @@ export function runCli(
   opts: Pick<AgentRunOptions, 'cwd' | 'signal' | 'onText' | 'onTool' | 'onLog'> & { env?: Record<string, string> },
 ): Promise<AgentResult> {
   return new Promise((resolve) => {
-    const env = { ...process.env, ...opts.env };
+    // 트레이 앱엔 로그인 셸 PATH 가 없다 → node·codex·claude 가 있을 만한 곳을 붙인다
+    const env = withKnownDirs({ ...process.env, ...opts.env });
     // 중첩 실행 가드: 이 엔진이 Claude Code 안에서 개발될 때 자식 claude 가 거부하지 않게
     delete env['CLAUDECODE'];
     delete env['CLAUDE_CODE_ENTRYPOINT'];

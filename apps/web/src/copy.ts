@@ -234,6 +234,7 @@ export const copy = {
       /** 긴 영상(2분 이상) */
       chipsLong: ['챕터로 나눠줘', '숏폼 3개 뽑아줘', '자막 넣어줘', '쉬는 구간 잘라줘'],
       thinking: '마디가 보고 있어요…',
+      errorDetail: (d: string) => `이유: ${d}`,
       working: '만드는 중…',
     },
     progressEta: (sec: number) => (sec < 60 ? '금방 돼요' : `약 ${Math.max(1, Math.round(sec / 60))}분`),
@@ -284,6 +285,7 @@ export const copy = {
               ? `「${p.title}」 만드는 중`
               : '만드는 중',
     'transcript.ready': (p: { segments: number }) => `자막 ${p.segments}줄을 만들었어요.`,
+    'transcript.empty': () => '말소리를 찾지 못해서 자막이 없어요. 소리가 작거나 음악만 있는 영상일 수 있어요.',
     'silence.none': () => '쉬는 구간이 없어서 그대로 두었어요.',
     'output.ready': (p: { action?: string; cuts?: number; removedSec?: number; title?: string }) =>
       p.action === 'silence'
@@ -320,6 +322,8 @@ export const copy = {
     ai_busy: '아직 앞 요청을 하고 있어요. 끝나면 다시 말해 주세요.',
     ai_missing: 'AI 도구를 이 PC에서 찾지 못했어요. 설정에서 다시 골라 주세요.',
     ai_failed: 'AI가 답하다가 문제가 생겼어요. 한 번 더 말해 주세요.',
+    ai_login: 'AI 도구에 로그인이 되어 있지 않아요. 터미널에서 한 번 로그인해 주세요 (Codex 는 codex login, Claude 는 claude).',
+    ai_node_missing: 'AI 도구를 실행하지 못했어요. 이 PC에서 node 를 찾지 못했어요. 마디를 한 번 껐다 켜 보고, 그래도 안 되면 AI 도구를 다시 설치해 주세요.',
   } as Record<string, string>,
 } as const;
 

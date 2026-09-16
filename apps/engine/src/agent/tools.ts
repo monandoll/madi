@@ -13,6 +13,7 @@ import type { ToolOutcome } from '../mcp/server.js';
 import type { ChapterStore } from '../chapters/store.js';
 import { computeChapters } from '../workers/chapters.js';
 import type { StyleProfile } from './style.js';
+import { mergeSubtitleLines } from './subtitles.js';
 
 export interface AgentToolDeps {
   cfg: EngineConfig;
@@ -81,11 +82,23 @@ export class AgentTools {
         return this.extractShorts(video, ctx, input as ToolInput<'extract_shorts'>);
       case 'set_subtitle_style':
         return Promise.resolve(this.setSubtitleStyle(video, input as ToolInput<'set_subtitle_style'>));
+      case 'set_subtitle_text':
+        return Promise.resolve(this.setSubtitleText(video, input as ToolInput<'set_subtitle_text'>));
       case 'get_chapters':
         return this.getChapters(video, ctx, input as ToolInput<'get_chapters'>);
       case 'update_style_rule':
         return Promise.resolve(this.updateStyleRule(input as ToolInput<'update_style_rule'>));
     }
+  }
+
+  /** 자막 문장 고치기. 자막이 없으면 준 줄들로 새로 만든다 (model=manual). */
+  private setSubtitleText(video: Video, input: ToolInput<'set_subtitle_text'>) {
+    const existing = this.d.library.transcriptOf(video.id);
+    const segments = mergeSubtitleLines(existing?.segments ?? [], input.lines, input.replaceAll ?? false);
+    if (segments.length === 0) throw new ToolError('넣을 문장이 없어요.');
+    const t = this.d.library.setTranscript(video.id, { language: existing?.language ?? 'ko', model: existing ? existing.model : 'manual', segments });
+    this.d.events.record('transcript.edited', { lines: input.lines.length, replaceAll: !!input.replaceAll, total: segments.length });
+    return { segments: t.segments.map((s, i) => ({ i, start: r2(s.start), end: r2(s.end), text: s.text })) };
   }
 
   private async getChapters(video: Video, ctx: ToolContext, input: ToolInput<'get_chapters'>) {

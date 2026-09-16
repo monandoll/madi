@@ -157,7 +157,7 @@ export class AgentRunner {
       } else if (result.error === 'not_installed') {
         this.d.library.updateMessage(run.messageId, { kind: 'error', code: 'ai_missing', params: { streaming: false, provider: providerId } });
       } else {
-        this.d.library.updateMessage(run.messageId, { kind: 'error', code: 'ai_failed', params: { streaming: false, detail: (result.error ?? '').slice(0, 300) } });
+        this.d.library.updateMessage(run.messageId, { kind: 'error', code: classifyAgentError(result.error ?? ''), params: { streaming: false, detail: (result.error ?? '').slice(0, 300) } });
       }
       this.d.events.record('ai.ask', { provider: providerId, ok: result.ok, toolCalls: result.toolCalls, chars: text.length }, Date.now() - started);
       this.d.log.info({ run: run.id, ok: result.ok, tools: result.toolCalls, ms: Date.now() - started, err: result.error }, 'agent run');
@@ -175,8 +175,10 @@ export class AgentRunner {
       "너는 '마디'의 편집 도우미다. 운동·재활 영상 크리에이터를 돕는다. 사용자는 편집 지식이 없다.",
       '',
       '규칙:',
-      '- 파일이나 셸을 직접 만지지 않는다. 마디 도구(get_transcript, find_silences, find_scenes, propose_cuts, apply_edit, render, extract_shorts, get_chapters, set_subtitle_style, update_style_rule)만 쓴다.',
+      '- 파일이나 셸을 직접 만지지 않는다. 마디 도구(get_transcript, find_silences, find_scenes, propose_cuts, apply_edit, render, extract_shorts, get_chapters, set_subtitle_style, set_subtitle_text, update_style_rule)만 쓴다.',
       '- 어디를 자를지 정하기 전에 get_transcript 로 내용을 본다. 소리가 없는 영상이면 건너뛴다.',
+      '- "자막 넣어줘"는 되묻지 않고 바로 한다: get_transcript → apply_edit(subtitles=true) → render. 자막을 넣는 데 필요한 건 그것뿐이다.',
+      '- 사용자가 문장을 직접 말해 줬으면("안녕하세요 앱 소개합니다 자막을 넣어줘", "이 문장 고쳐줘: …") 그 문장이 영상에서 하는 말이다. 들린 말이 그 문장과 다르거나 뜻이 안 통하면 set_subtitle_text 로 그 구간의 글을 사용자 문장으로 바꾼 뒤 넣는다. "자막에 원하는 문장을 넣는 기능이 없다"고 답하지 않는다.',
       '- 긴 영상(2분 이상)에서 숏폼을 여러 개 뽑거나 목차를 만들 땐 get_chapters 로 챕터와 하이라이트 구간을 먼저 본다.',
       '- 결과 파일은 render 또는 extract_shorts 로만 만든다. 만들어지면 카드가 대화에 자동으로 붙으니 경로·링크·id 를 답에 쓰지 않는다.',
       '- 답은 짧고 쉬운 한국어, 존댓말. 전문 용어(인코딩, 프록시, 트랜스크립트, 렌더, 세그먼트) 금지 → "만드는 중", "자막", "구간".',
@@ -256,4 +258,11 @@ function fmtDuration(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = Math.round(sec % 60);
   return m ? `${m}분 ${s}초` : `${s}초`;
+}
+
+/** CLI 가 죽은 이유를 사용자 말로 고를 수 있게 분류한다. ai_login = 로그인 안 됨, ai_node_missing = node 를 못 찾음(npm 설치본), 나머지 ai_failed. */
+export function classifyAgentError(err: string): 'ai_login' | 'ai_node_missing' | 'ai_failed' {
+  if (/not logged in|log ?in|unauthori[sz]ed|authenticat|invalid api key|api key/i.test(err)) return 'ai_login';
+  if (/env: node|node: (command )?not found|node.*No such file|exit 127/i.test(err)) return 'ai_node_missing';
+  return 'ai_failed';
 }

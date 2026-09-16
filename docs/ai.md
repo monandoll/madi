@@ -37,6 +37,7 @@ claude -p --output-format stream-json --mcp-config mcp.json --strict-mcp-config 
 | `render` | Edit → 결과 파일. 끝날 때까지 기다림 |
 | `extract_shorts` | 구간 여러 개 → 9:16 숏폼 파일들 |
 | `set_subtitle_style` | 자막 모양. `remember` 면 기본값도 |
+| `set_subtitle_text` | 자막 문장 고치기. `lines[{start,end,text}]` 가 겹치는 문장을 바꾼다(`replaceAll` 이면 전체). 자막이 없으면 `model=manual` 로 새로 만든다. "이 문장 고쳐줘", "○○라고 자막 넣어줘" 용 |
 | `update_style_rule` | style.md 에 규칙 한 줄 (사용자가 예라고 한 뒤에만) |
 
 렌더는 항상 Edit 로부터 — 에이전트도 예외 없다.
@@ -63,3 +64,9 @@ Windows 의 `claude.cmd` 는 `cmd.exe /d /s /c` 로 띄운다 (`provider.ts spaw
 - 브라우저 e2e `e2e/3-ai.spec.ts`: 설정에서 고르기 → 칩·입력 → 스트리밍 답 → 결과물 카드 → 멈추기 → 연결 끊기.
 
 진짜 CLI 로 손 테스트: `claude` 가 PATH 에 있으면 설정 → AI → Claude Code "쓰기". 로그는 `~/.madi/logs/engine.log` (`agent` 항목, debug).
+
+## CLI 가 죽을 때
+
+러너는 CLI 의 stderr/JSON 오류를 코드로 나눠 채팅에 보인다 (`classifyAgentError`): `ai_login`(로그인 안 됨 — `codex login` / `claude`), `ai_node_missing`(npm 설치본이 `node` 를 못 찾음), 나머지 `ai_failed`. 원문 300자는 말풍선 아래 "이유: …" 로 보인다.
+
+트레이 앱은 로그인 셸 PATH 를 물려받지 못한다. npm 으로 깐 `codex`/`claude` 는 `#!/usr/bin/env node` 라 `node` 가 PATH 에 없으면 exit 127 로 죽는다 → 자식 CLI 를 띄울 때 `withKnownDirs` 가 `/opt/homebrew/bin`, `/usr/local/bin`, `~/.nvm/versions/node/*/bin`, `%APPDATA%\npm`, `Program Files\nodejs` 등을 PATH 뒤에 붙인다.
