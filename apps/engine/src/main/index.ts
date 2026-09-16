@@ -55,16 +55,23 @@ app.whenReady().then(async () => {
     return picked;
   });
 
-  const icon = nativeImage.createFromPath(path.join(process.resourcesPath, 'tray.png'));
+  const iconName = process.platform === 'darwin' ? 'trayTemplate.png' : 'tray.png';
+  const icon = nativeImage.createFromPath(path.join(process.resourcesPath, iconName));
+  if (process.platform === 'darwin') icon.setTemplateImage(true);
   tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
   tray.setToolTip('마디');
   tray.setContextMenu(buildMenu());
   tray.on('click', () => tray?.popUpContextMenu());
 
   if (app.isPackaged) {
+    // GitHub Releases 에서 새 버전을 받아 다음 실행 때 적용한다. 6시간마다 다시 본다.
     const { autoUpdater } = await import('electron-updater');
     autoUpdater.logger = null;
-    void autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+    const check = () => void autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    check();
+    setInterval(check, 6 * 60 * 60 * 1000);
   }
 });
 

@@ -21,6 +21,9 @@ await build({
   sourcemap: true,
 });
 
+// 트레이·앱 아이콘
+await import('./tray-icon.mjs');
+
 const webDist = path.resolve(root, '../web/dist');
 const resources = path.join(root, 'resources');
 fs.rmSync(path.join(resources, 'web'), { recursive: true, force: true });
