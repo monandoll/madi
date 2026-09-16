@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseEncoderList, pickEncoder, supportsNvencPresets } from './encoder.js';
+import { encoderSmokeArgs, parseEncoderList, pickEncoder, supportsNvencPresets } from './encoder.js';
 import { parseProbe, probeArgs } from './probe.js';
 import { proxyArgs } from './proxy.js';
 import { thumbnailArgs, thumbnailTime } from './thumbnail.js';
@@ -26,6 +26,14 @@ describe('encoder', () => {
     expect(set.has('h264_nvenc')).toBe(true);
     expect(set.has('aac')).toBe(true);
     expect(set.has('Video')).toBe(false);
+  });
+
+  it('인코더 확인은 합성 입력 2프레임을 null 로 버린다', () => {
+    const args = encoderSmokeArgs('h264_videotoolbox');
+    expect(args).toContain('lavfi');
+    expect(args.slice(-2)).toEqual(['null', '-']);
+    expect(args[args.indexOf('-c:v') + 1]).toBe('h264_videotoolbox');
+    expect(args[args.indexOf('-frames:v') + 1]).toBe('2');
   });
 
   it('nvenc 도움말에 p4 프리셋이 있어야 새 프리셋을 쓴다', () => {

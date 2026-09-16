@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   type Encoder,
+  encoderSmokeArgs,
   nvencHelpArgs,
   parseEncoderList,
   parseProbe,
@@ -36,6 +37,11 @@ export class Ffmpeg {
         // 오래된 ffmpeg 빌드는 nvenc 는 있어도 p4 프리셋을 모른다. 그럴 땐 소프트웨어 인코더로.
         const help = await run(this.bins.ffmpeg, nvencHelpArgs()).catch(() => null);
         if (!help || !supportsNvencPresets(help.stdout)) encoder = 'libx264';
+      }
+      if (encoder !== 'libx264') {
+        // 이름만 있고 실제로는 못 도는 경우(GPU 없는 VM, VideoToolbox 세션 실패 -12903 등)를 걸러낸다.
+        const ok = await run(this.bins.ffmpeg, encoderSmokeArgs(encoder)).then(() => true, () => false);
+        if (!ok) encoder = 'libx264';
       }
       this.encoder = encoder;
     } catch {
