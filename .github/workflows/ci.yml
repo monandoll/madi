@@ -11,6 +11,7 @@ concurrency:
 
 env:
   ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+  WHISPER_VERSION: v1.7.6
 
 jobs:
   check:
@@ -42,8 +43,31 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
+      # 자막 e2e 용 whisper.cpp — 빌드와 tiny 모델은 캐시한다
+      - name: Cache whisper.cpp
+        id: whisper-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/whisper/bin/whisper-cli
+            ~/whisper/models/ggml-tiny.bin
+          key: whisper-${{ runner.os }}-${{ env.WHISPER_VERSION }}-tiny
+
+      - name: Build whisper.cpp
+        if: steps.whisper-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 -b "$WHISPER_VERSION" https://github.com/ggml-org/whisper.cpp ~/whisper/src
+          cmake -S ~/whisper/src -B ~/whisper/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
+          cmake --build ~/whisper/build --config Release -j "$(nproc)" --target whisper-cli
+          mkdir -p ~/whisper/bin ~/whisper/models
+          cp ~/whisper/build/bin/whisper-cli ~/whisper/bin/whisper-cli
+          curl -sSL -o ~/whisper/models/ggml-tiny.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
+
       - name: E2E (engine + browser)
         run: pnpm e2e
+        env:
+          MADI_WHISPER: /home/runner/whisper/bin/whisper-cli
+          MADI_WHISPER_MODEL: /home/runner/whisper/models/ggml-tiny.bin
 
       - name: Upload Playwright report
         if: failure()

@@ -105,3 +105,16 @@ test('숏폼 자르기: 구간 고르고 만들기 → 결과물 화면 → 다�
   await out.getByRole('button', { name: '뒤로' }).click();
   await expect(page.getByTestId('video-detail')).toBeVisible();
 });
+
+test('자막 넣기 (whisper 있을 때만): 자막 결과물과 자막 목록', async ({ page }) => {
+  test.skip(!process.env['MADI_WHISPER_MODEL'] || !fs.existsSync(process.env['MADI_WHISPER_MODEL']), 'whisper 모델 없음');
+  await page.goto('/');
+  await page.locator('[data-testid="video-card"]', { hasText: '어깨 가동성 루틴 3분' }).click();
+  await page.getByTestId('action-bar').locator('[data-action="subtitle"]').click();
+  await expect(page.getByTestId('bubble-user').last()).toContainText('자막 넣어줘');
+  await expect(page.getByTestId('progress-card')).toContainText('자막 만드는 중');
+  await expect(page.getByTestId('output-row')).toHaveCount(4, { timeout: 180_000 });
+  await expect(page.getByTestId('bubble-assistant').last()).toContainText('자막을 넣었어요');
+  await page.getByTestId('output-row').filter({ hasText: '자막' }).getByRole('button', { name: '자세히' }).click();
+  await expect(page.getByTestId('output-detail')).toBeVisible();
+});
