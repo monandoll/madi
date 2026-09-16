@@ -1,0 +1,107 @@
+{
+  "result": {
+    "language": "ko"
+  },
+  "transcription": [
+    {
+      "offsets": {
+        "from": 0,
+        "to": 1500
+      },
+      "text": " 무릎을 세웁니다",
+      "tokens": [
+        {
+          "text": "[_BEG_]",
+          "offsets": {
+            "from": 0,
+            "to": 0
+          },
+          "p": 0.9
+        },
+        {
+          "text": " �",
+          "offsets": {
+            "from": 0,
+            "to": 300
+          },
+          "p": 0.9
+        },
+        {
+          "text": "��",
+          "offsets": {
+            "from": 300,
+            "to": 500
+          },
+          "p": 0.8
+        },
+        {
+          "text": "�을",
+          "offsets": {
+            "from": 500,
+            "to": 700
+          },
+          "p": 0.9
+        },
+        {
+          "text": " 세웁니다",
+          "offsets": {
+            "from": 800,
+            "to": 1500
+          },
+          "p": 0.85
+        }
+      ]
+    },
+    {
+      "offsets": {
+        "from": 2000,
+        "to": 4000
+      },
+      "text": " [음악]",
+      "tokens": [
+        {
+          "text": " [음악]",
+          "offsets": {
+            "from": 2000,
+            "to": 4000
+          },
+          "p": 0.3
+        }
+      ]
+    },
+    {
+      "offsets": {
+        "from": 5000,
+        "to": 5600
+      },
+      "text": " 번째]",
+      "tokens": [
+        {
+          "text": " 번째]",
+          "offsets": {
+            "from": 5000,
+            "to": 5600
+          },
+          "p": 0.2
+        }
+      ]
+    },
+    {
+      "offsets": {
+        "from": 6000,
+        "to": 7000
+      },
+      "text": " 네네네네네네네네",
+      "tokens": [
+        {
+          "text": " 네네네네네네네네",
+          "offsets": {
+            "from": 6000,
+            "to": 7000
+          },
+          "p": 0.4
+        }
+      ]
+    }
+  ]
+}

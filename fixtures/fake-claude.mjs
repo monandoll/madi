@@ -5,6 +5,7 @@
  * 시나리오는 프롬프트 마지막 줄("사용자 요청: …")의 낱말로 고른다.
  *   세로   → apply_edit(vertical) + render
  *   규칙   → update_style_rule
+ *   문장   → set_subtitle_text (사용자 문장을 0–2초 자막으로)
  *   자막   → get_transcript (whisper 없으면 도구 오류를 그대로 전한다)
  *   실패   → result is_error
  *   느리게 → 8초 기다린다 (취소 테스트)
@@ -101,6 +102,11 @@ try {
   } else if (request.includes('규칙')) {
     await call('update_style_rule', { rule: '숏폼은 30초 안쪽으로' });
     say('앞으로 그렇게 할게요.');
+  } else if (request.includes('문장')) {
+    // "이 문장 고쳐줘: …" / "○○라고 자막 넣어줘" → 사용자 문장을 그 구간에 넣는다
+    const text = (request.split(':')[1] ?? '안녕하세요 앱 소개합니다').trim();
+    const r = await call('set_subtitle_text', { lines: [{ start: 0, end: 2, text }] });
+    say(`자막 ${r.segments.length}줄 중 첫 줄을 "${text}" 로 바꿨어요.`);
   } else if (request.includes('자막')) {
     try {
       const t = await call('get_transcript', {});

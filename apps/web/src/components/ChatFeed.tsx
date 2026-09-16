@@ -45,7 +45,16 @@ export function ChatFeed({ messages, outputs, jobs, onRevise, chapters, onShortF
           );
         }
         if (m.kind === 'error') {
-          return <Row key={m.id} role="assistant" at={m.createdAt} text={errorMessage(m.code)} testId="chat-error" />;
+          const detail = typeof m.params['detail'] === 'string' && m.params['detail'] ? String(m.params['detail']) : null;
+          return (
+            <Row key={m.id} role="assistant" at={m.createdAt} text={errorMessage(m.code)} testId="chat-error">
+              {detail && (
+                <div className="truncate text-12 text-text-3" title={detail} data-testid="chat-error-detail">
+                  {copy.detail.chat.errorDetail(detail)}
+                </div>
+              )}
+            </Row>
+          );
         }
         if (m.kind === 'chapters') {
           return (

@@ -89,7 +89,7 @@ resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리
 ## AI 에이전트 규칙
 
 - 에이전트는 파일을 직접 만지지 않는다. MCP 도구만 호출한다.
-- 도구 목록 (`apps/engine/src/mcp/tools.ts`): `get_transcript`, `find_silences`, `find_scenes`, `propose_cuts`, `apply_edit`, `render`, `extract_shorts`, `get_chapters`, `set_subtitle_style`, `update_style_rule`
+- 도구 목록 (`apps/engine/src/mcp/tools.ts`): `get_transcript`, `find_silences`, `find_scenes`, `propose_cuts`, `apply_edit`, `render`, `extract_shorts`, `get_chapters`, `set_subtitle_style`, `set_subtitle_text`, `update_style_rule`
 - 에이전트 컨텍스트에 `StyleProfile.style.md`를 항상 주입한다.
 - 수정 요청이 오면 고친 뒤 **"앞으로도 이렇게 할까요?"** 를 한 번 묻고, 예일 때만 `update_style_rule`.
 - 에이전트 응답은 채팅에 스트리밍. 도구 호출 내부는 사용자에게 보이지 않는다.

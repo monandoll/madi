@@ -66,6 +66,17 @@ export const TOOL_DEFS = {
       remember: z.boolean().optional(),
     }),
   },
+  set_subtitle_text: {
+    description:
+      '자막 문장을 고친다. 들린 말이 틀렸거나 알아듣기 어려울 때, 또는 사용자가 문장을 직접 알려 줬을 때("○○라고 자막 넣어줘", "이 문장 고쳐줘"). lines 는 시작·끝 시각(초)과 글. 그 시각과 겹치는 기존 문장은 이 줄로 바뀐다. replaceAll=true 면 자막 전체를 이 줄들로 새로 만든다. 자막이 아직 없어도 된다. 고친 뒤 화면에 넣으려면 apply_edit(subtitles=true) → render.',
+    input: z.object({
+      lines: z
+        .array(z.object({ start: z.number().min(0), end: z.number().min(0), text: z.string().trim().min(1).max(200) }))
+        .min(1)
+        .max(200),
+      replaceAll: z.boolean().optional(),
+    }),
+  },
   get_chapters: {
     description: '긴 영상을 챕터로 나눠 돌려준다(제목·시각·숏폼으로 뽑기 좋은 하이라이트 구간). 없으면 지금 만든다(자막이 없으면 자막부터, 수 분). 숏폼을 여러 개 뽑거나 목차를 만들 때 먼저 부른다.',
     input: z.object({

@@ -30,7 +30,7 @@ export function findCli(name: CliName): string | null {
   return null;
 }
 
-function knownDirs(): string[] {
+export function knownDirs(): string[] {
   const home = os.homedir();
   const out = [
     path.join(home, '.claude', 'local'),
@@ -47,6 +47,7 @@ function knownDirs(): string[] {
     const local = process.env['LOCALAPPDATA'];
     if (appData) out.push(path.join(appData, 'npm'));
     if (local) out.push(path.join(local, 'Programs', 'claude'), path.join(local, 'Microsoft', 'WinGet', 'Links'));
+    out.push(path.join(process.env['ProgramFiles'] ?? 'C:\\Program Files', 'nodejs'));
   }
   // nvm / fnm 의 현재 node 옆
   try {
@@ -116,3 +117,15 @@ export function resetCliCache(): void {
 
 // execFile 은 직접 안 쓰지만, spawnCli 없이 단순 실행이 필요할 때를 위해 남겨 둔다.
 export const _execFile = execFile;
+
+/**
+ * 자식 CLI 에 줄 PATH. 트레이 앱은 로그인 셸 PATH 를 물려받지 못해서, npm 으로 깐 codex/claude(`#!/usr/bin/env node`)가
+ * node 를 못 찾고 죽는다 (exit 127). 흔한 설치 위치를 PATH 뒤에 붙인다. Windows 는 키가 Path 다.
+ */
+export function withKnownDirs(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const key = Object.keys(env).find((k) => k.toLowerCase() === 'path') ?? 'PATH';
+  const current = (env[key] ?? '').split(path.delimiter).filter(Boolean);
+  const seen = new Set(current);
+  const extra = knownDirs().filter((d) => !seen.has(d) && fs.existsSync(d));
+  return { ...env, [key]: [...current, ...extra].join(path.delimiter) };
+}
