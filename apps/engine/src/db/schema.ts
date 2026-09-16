@@ -41,7 +41,7 @@ export const jobs = sqliteTable(
   'jobs',
   {
     id: text('id').primaryKey(),
-    type: text('type', { enum: ['probe', 'proxy', 'thumbnail', 'transcribe', 'render'] }).notNull(),
+    type: text('type', { enum: ['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render'] }).notNull(),
     status: text('status', { enum: ['queued', 'running', 'done', 'failed', 'canceled'] })
       .notNull()
       .default('queued'),
@@ -72,3 +72,75 @@ export const kv = sqliteTable('kv', {
   value: text('value', { mode: 'json' }).notNull(),
   updatedAt: integer('updated_at').notNull(),
 });
+
+/** whisper 결과. 영상당 하나. segments 는 JSON. */
+export const transcripts = sqliteTable('transcripts', {
+  id: text('id').primaryKey(),
+  videoId: text('video_id')
+    .notNull()
+    .unique()
+    .references(() => videos.id, { onDelete: 'cascade' }),
+  language: text('language').notNull(),
+  model: text('model').notNull(),
+  segments: text('segments', { mode: 'json' }).notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
+/** 편집 결정 목록. 결과물은 항상 여기서 재현된다. */
+export const edits = sqliteTable('edits', {
+  id: text('id').primaryKey(),
+  videoId: text('video_id')
+    .notNull()
+    .references(() => videos.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  keep: text('keep', { mode: 'json' }),
+  cuts: text('cuts', { mode: 'json' }).notNull(),
+  crop: text('crop', { enum: ['none', 'vertical'] }).notNull().default('none'),
+  subtitles: integer('subtitles', { mode: 'boolean' }).notNull().default(false),
+  transcriptId: text('transcript_id'),
+  subtitleStyle: text('subtitle_style', { mode: 'json' }).notNull(),
+  speed: text('speed', { mode: 'json' }).notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
+export const outputs = sqliteTable(
+  'outputs',
+  {
+    id: text('id').primaryKey(),
+    videoId: text('video_id')
+      .notNull()
+      .references(() => videos.id, { onDelete: 'cascade' }),
+    editId: text('edit_id')
+      .notNull()
+      .references(() => edits.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    kind: text('kind', { enum: ['long', 'short'] }).notNull(),
+    path: text('path').notNull(),
+    durationSec: real('duration_sec').notNull(),
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (t) => [index('outputs_video_idx').on(t.videoId, t.createdAt)],
+);
+
+/** 영상별 대화. 문구는 코드 + params, UI 가 문장으로 만든다. */
+export const messages = sqliteTable(
+  'messages',
+  {
+    id: text('id').primaryKey(),
+    videoId: text('video_id')
+      .notNull()
+      .references(() => videos.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['assistant', 'user'] }).notNull(),
+    kind: text('kind', { enum: ['text', 'progress', 'output', 'error'] }).notNull(),
+    code: text('code').notNull(),
+    params: text('params', { mode: 'json' }).notNull(),
+    jobId: text('job_id'),
+    outputId: text('output_id'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (t) => [index('messages_video_idx').on(t.videoId, t.createdAt)],
+);

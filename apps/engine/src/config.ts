@@ -16,6 +16,8 @@ export interface EngineConfig {
   logsDir: string;
   proxiesDir: string;
   thumbsDir: string;
+  outputsDir: string;
+  modelsDir: string;
   rootDir: string;
   migrationsDir: string;
   webDir: string;
@@ -50,6 +52,8 @@ export function loadConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     logsDir: path.join(dataDir, 'logs'),
     proxiesDir: path.join(dataDir, 'proxies'),
     thumbsDir: path.join(dataDir, 'thumbs'),
+    outputsDir: path.join(dataDir, 'outputs'),
+    modelsDir: path.join(dataDir, 'models'),
     rootDir,
     migrationsDir: isDev ? path.join(rootDir, 'apps/engine/drizzle') : path.join(rootDir, 'drizzle'),
     webDir: isDev ? path.join(rootDir, 'apps/web/dist') : path.join(rootDir, 'web'),
@@ -57,7 +61,7 @@ export function loadConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     isDev,
     ...overrides,
   };
-  for (const dir of [cfg.dataDir, cfg.logsDir, cfg.proxiesDir, cfg.thumbsDir]) {
+  for (const dir of [cfg.dataDir, cfg.logsDir, cfg.proxiesDir, cfg.thumbsDir, cfg.outputsDir, cfg.modelsDir]) {
     fs.mkdirSync(dir, { recursive: true });
   }
   return cfg;
