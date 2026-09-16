@@ -5,6 +5,9 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import {
   ActionRequest,
   type ActionResponse,
+  type AiProvidersResponse,
+  ChatRequest,
+  type ChatResponse,
   type FoldersResponse,
   type HealthResponse,
   type Output,
@@ -27,6 +30,9 @@ import type { SettingsStore } from '../settings.js';
 import type { VideoStore } from '../videos.js';
 import type { Library } from '../library.js';
 import { ActionError, greetIfEmpty, runAction } from '../actions.js';
+import { AgentError } from '../agent/runner.js';
+import { detectCli } from '../agent/detect.js';
+import { TOOL_NAMES, type ToolName } from '../mcp/tools.js';
 import { describeFolder, suggestFolders } from '../folders.js';
 import { serveFile } from './media.js';
 
@@ -38,6 +44,8 @@ export interface AppDeps {
   library: Library;
   events: import('../events.js').EventLog;
   tunnel: import('../tunnel.js').Tunnel;
+  agent: import('../agent/runner.js').AgentRunner;
+  agentTools: import('../agent/tools.js').AgentTools;
   version: string;
   onSettingsChanged?: () => void;
   /** 시스템 폴더 선택창. Electron 이 붙여 준다. 없으면 브라우저만 뜬 상태. */
@@ -71,12 +79,24 @@ export function createApp(deps: AppDeps): Hono {
   const { cfg, videos, queue, settings } = deps;
   const app = new Hono();
 
-  app.get('/api/health', (c) => {
+  app.get('/api/health', async (c) => {
+    const ai = await deps.agent.status();
     const body: HealthResponse = {
       ok: true,
       version: deps.version,
-      ai: { connected: settings.get().ai.provider !== 'none' },
+      ai,
       tunnel: { status: deps.tunnel.state.status, error: deps.tunnel.state.error },
+    };
+    return c.json(body);
+  });
+
+  app.get('/api/ai/providers', async (c) => {
+    const [claude, codex] = await Promise.all([detectCli('claude', { fresh: c.req.query('fresh') === '1' }), detectCli('codex', { fresh: c.req.query('fresh') === '1' })]);
+    const body: AiProvidersResponse = {
+      providers: [
+        { id: 'claude', label: 'Claude Code', installed: claude.installed, version: claude.version },
+        { id: 'codex', label: 'Codex', installed: codex.installed, version: codex.version },
+      ],
     };
     return c.json(body);
   });
@@ -96,8 +116,40 @@ export function createApp(deps: AppDeps): Hono {
       outputs: deps.library.outputsOf(v.id).map((o) => toOutputCard(o, cfg)),
       messages: deps.library.messagesOf(v.id),
       jobs: queue.list(['queued', 'running']).filter((j) => j.videoId === v.id),
+      aiBusy: deps.agent.isBusy(v.id),
     };
     return c.json(body);
+  });
+
+  // AI 연결 뒤의 채팅. 미연결이면 러너를 스폰하지 않는다 (409 ai_off).
+  app.post('/api/videos/:id/chat', async (c) => {
+    const v = videos.get(c.req.param('id'));
+    if (!v) return c.json({ error: { code: 'not_found', message: 'video not found' } }, 404);
+    if (v.status !== 'ready') return c.json({ error: { code: 'video_not_ready', message: 'video not ready' } }, 409);
+    const parsed = ChatRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    try {
+      const body: ChatResponse = { messages: deps.agent.ask(v, parsed.data.text) };
+      return c.json(body);
+    } catch (err) {
+      if (err instanceof AgentError) return c.json({ error: { code: err.code, message: err.code } }, 409);
+      throw err;
+    }
+  });
+
+  app.post('/api/videos/:id/chat/cancel', (c) => {
+    return c.json({ canceled: deps.agent.cancel(c.req.param('id')) });
+  });
+
+  // MCP 서버 프로세스 → 엔진. 러너가 준 토큰이 있어야 한다.
+  app.post('/api/agent/tools/:name', async (c) => {
+    if (c.req.header('x-madi-agent') !== deps.agent.token) return c.json({ error: { code: 'forbidden', message: 'bad agent token' } }, 403);
+    const name = c.req.param('name');
+    if (!(TOOL_NAMES as string[]).includes(name)) return c.json({ error: { code: 'unknown_tool', message: `unknown tool: ${name}` } }, 404);
+    const body = (await c.req.json().catch(() => null)) as { videoId?: string; runId?: string; input?: unknown } | null;
+    if (!body?.videoId) return c.json({ error: { code: 'bad_request', message: 'videoId required' } }, 400);
+    const outcome = await deps.agentTools.call(name as ToolName, { videoId: body.videoId, runId: body.runId ?? '', signal: deps.agent.signalFor(body.runId ?? '') }, body.input);
+    return c.json(outcome);
   });
 
   app.post('/api/videos/:id/actions', async (c) => {

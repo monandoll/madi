@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import { serve, type ServerType } from '@hono/node-server';
 import { type EngineConfig, loadConfig } from './config.js';
 import { openDb } from './db/index.js';
@@ -17,9 +18,28 @@ import { registerEditWorkers } from './workers/edit.js';
 import { Whisper } from './workers/whisper.js';
 import { Library } from './library.js';
 import { Tunnel } from './tunnel.js';
+import { ClaudeProvider } from './agent/claude.js';
+import { CodexProvider } from './agent/codex.js';
+import { detectCli } from './agent/detect.js';
+import { AgentRunner } from './agent/runner.js';
+import { StyleProfile } from './agent/style.js';
+import { AgentTools } from './agent/tools.js';
+import { writeMcpConfig } from './agent/mcp-config.js';
 
 const require = createRequire(import.meta.url);
 const VERSION: string = (require('../package.json') as { version: string }).version;
+
+/**
+ * 우리 MCP 서버를 띄우는 명령. 에이전트 CLI 가 자식으로 실행한다.
+ * 개발: node --import tsx/esm src/mcp/index.ts. 패키징: Electron 을 node 로(ELECTRON_RUN_AS_NODE) mcp.mjs.
+ */
+export function mcpCommand(cfg: EngineConfig): { command: string; args: string[]; env: Record<string, string> } {
+  if (cfg.isDev) {
+    const loader = pathToFileURL(require.resolve('tsx/esm')).href;
+    return { command: process.execPath, args: ['--import', loader, cfg.mcpEntry], env: {} };
+  }
+  return { command: process.execPath, args: [cfg.mcpEntry], env: { ELECTRON_RUN_AS_NODE: '1' } };
+}
 
 export interface Engine {
   cfg: EngineConfig;
@@ -30,6 +50,8 @@ export interface Engine {
   library: Library;
   tunnel: Tunnel;
   watcher: FolderWatcher;
+  agent: AgentRunner;
+  style: StyleProfile;
   url: string;
   /** Electron 이 시스템 폴더 선택창을 붙인다. */
   setFolderPicker(fn: (() => Promise<string | null>) | undefined): void;
@@ -72,6 +94,22 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   const watcher = new FolderWatcher({ videos, queue, events, log });
 
   const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
+  const style = new StyleProfile(cfg.styleDir);
+  style.ensure();
+  const url = `http://127.0.0.1:${cfg.port}`;
+  const agentTools = new AgentTools({ cfg, library, videos, queue, ffmpegBin, style, events, log });
+  const agent = new AgentRunner({
+    cfg,
+    settings,
+    library,
+    videos,
+    events,
+    log,
+    style,
+    providers: { claude: new ClaudeProvider(writeMcpConfig), codex: new CodexProvider() },
+    mcpCommand: () => mcpCommand(cfg),
+    engineUrl: () => url,
+  });
   const deps = {
     cfg,
     videos,
@@ -80,10 +118,14 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     library,
     events,
     tunnel,
+    agent,
+    agentTools,
     version: VERSION,
     onSettingsChanged: () => {
       void watcher.setFolders(settings.get().watchFolders);
       tunnel.apply(settings.get().tunnelToken);
+      const p = settings.get().ai.provider;
+      if (p !== 'none') void detectCli(p, { fresh: true });
     },
     pickFolder: undefined as (() => Promise<string | null>) | undefined,
   };
@@ -103,13 +145,14 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     s.once('error', reject);
   });
   ws.injectWebSocket(server);
-  const url = `http://127.0.0.1:${cfg.port}`;
   log.info({ url, encoder: await ffmpeg.detectEncoder(), data: cfg.dataDir, web: webMounted ? cfg.webDir : null }, 'engine up');
   events.record('engine.start', { version: VERSION });
 
   await watcher.setFolders(settings.get().watchFolders);
   tunnel.apply(settings.get().tunnelToken);
   queue.tick();
+  // AI 도구 설치 여부는 미리 봐 둔다 (--version 이 몇 초 걸릴 수 있다)
+  if (settings.get().ai.provider !== 'none') void detectCli(settings.get().ai.provider as 'claude' | 'codex');
 
   return {
     cfg,
@@ -120,11 +163,14 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     library,
     tunnel,
     watcher,
+    agent,
+    style,
     url,
     setFolderPicker(fn) {
       deps.pickFolder = fn;
     },
     async stop() {
+      agent.stopAll();
       tunnel.stop();
       await watcher.stop();
       await queue.stop();

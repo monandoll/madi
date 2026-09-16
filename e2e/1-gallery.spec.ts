@@ -18,7 +18,7 @@ async function patchSettings(page: Page, body: Record<string, unknown>) {
 test.describe.configure({ mode: 'serial', retries: 0 });
 
 test('처음 켜면 설정 카드가 뜨고, 이름과 폴더를 고르면 영상이 나타난다', async ({ page }) => {
-  await patchSettings(page, { workspaceName: '내 스튜디오', watchFolders: [], setupDone: false });
+  await patchSettings(page, { workspaceName: '내 스튜디오', watchFolders: [], setupDone: false, ai: { provider: 'none' } });
   fs.copyFileSync(path.join(FIXTURES, 'sample-5s.mp4'), path.join(VIDEOS, '햄스트링 패시브 스트레칭 풀버전.mp4'));
   fs.copyFileSync(path.join(FIXTURES, 'sample-silent-3s.mp4'), path.join(VIDEOS, '거북목 교정 2편 재촬영.mp4'));
 

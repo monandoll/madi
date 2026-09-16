@@ -1,0 +1,124 @@
+#!/usr/bin/env node
+/**
+ * 테스트용 가짜 `claude` CLI. 진짜처럼 --mcp-config 의 MCP 서버를 자식으로 띄워 도구를 부르고,
+ * `--output-format stream-json --include-partial-messages` 형식으로 stdout 에 쓴다.
+ * 시나리오는 프롬프트 마지막 줄("사용자 요청: …")의 낱말로 고른다.
+ *   세로   → apply_edit(vertical) + render
+ *   규칙   → update_style_rule
+ *   자막   → get_transcript (whisper 없으면 도구 오류를 그대로 전한다)
+ *   실패   → result is_error
+ *   느리게 → 8초 기다린다 (취소 테스트)
+ *   그 외  → 요청을 되풀이하는 답 한 마디
+ * MADI_CLAUDE_BIN=fixtures/fake-claude.mjs 로 끼운다.
+ */
+import fs from 'node:fs';
+import { spawn } from 'node:child_process';
+
+const args = process.argv.slice(2);
+if (args.includes('--version')) {
+  process.stdout.write('9.9.9 (fake Claude Code)\n');
+  process.exit(0);
+}
+const flag = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
+const mcpConfigPath = flag('--mcp-config');
+const system = flag('--append-system-prompt') ?? '';
+const prompt = await new Promise((resolve) => {
+  let s = '';
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', (d) => (s += d));
+  process.stdin.on('end', () => resolve(s));
+});
+const request = /사용자 요청: (.*)$/m.exec(prompt)?.[1] ?? '';
+const emit = (o) => process.stdout.write(`${JSON.stringify(o)}\n`);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---- MCP 클라이언트 (stdio JSON-RPC) ----
+const cfg = JSON.parse(fs.readFileSync(mcpConfigPath, 'utf8'));
+const srv = cfg.mcpServers.madi;
+const child = spawn(srv.command, srv.args, { env: { ...process.env, ...srv.env }, stdio: ['pipe', 'pipe', 'inherit'] });
+let nextId = 1;
+const waiting = new Map();
+let buf = '';
+child.stdout.setEncoding('utf8');
+child.stdout.on('data', (d) => {
+  buf += d;
+  let i;
+  while ((i = buf.indexOf('\n')) >= 0) {
+    const line = buf.slice(0, i).trim();
+    buf = buf.slice(i + 1);
+    if (!line) continue;
+    const msg = JSON.parse(line);
+    const w = waiting.get(msg.id);
+    if (w) {
+      waiting.delete(msg.id);
+      msg.error ? w.reject(new Error(msg.error.message)) : w.resolve(msg.result);
+    }
+  }
+});
+const rpc = (method, params) =>
+  new Promise((resolve, reject) => {
+    const id = nextId++;
+    waiting.set(id, { resolve, reject });
+    child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`);
+  });
+const notify = (method) => child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method })}\n`);
+
+await rpc('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'fake-claude', version: '0' } });
+notify('notifications/initialized');
+const { tools } = await rpc('tools/list');
+emit({ type: 'system', subtype: 'init', tools: tools.map((t) => `mcp__madi__${t.name}`), mcp_servers: [{ name: 'madi', status: 'connected' }] });
+
+let last = '';
+function say(text) {
+  // 글자 스트리밍처럼 두 조각으로, 그 다음 확정 assistant 메시지
+  const half = Math.ceil(text.length / 2);
+  emit({ type: 'stream_event', event: { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: text.slice(0, half) } } });
+  emit({ type: 'stream_event', event: { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: text.slice(half) } } });
+  emit({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }] } });
+  last = text;
+}
+async function call(name, input) {
+  emit({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id: `tu_${nextId}`, name: `mcp__madi__${name}`, input }] } });
+  const res = await rpc('tools/call', { name, arguments: input });
+  const text = res.content?.[0]?.text ?? '';
+  emit({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: `tu_${nextId}`, content: text, is_error: !!res.isError }] } });
+  if (res.isError) throw new Error(text);
+  return JSON.parse(text);
+}
+function finish(ok, resultText) {
+  emit(ok ? { type: 'result', subtype: 'success', is_error: false, result: resultText, num_turns: nextId } : { type: 'result', subtype: 'error_during_execution', is_error: true, result: resultText });
+  child.stdin.end();
+  child.kill();
+  process.exit(ok ? 0 : 1);
+}
+
+try {
+  if (request.includes('세로')) {
+    say('세로로 만들게요.');
+    const e = await call('apply_edit', { crop: 'vertical', title: 'AI 세로' });
+    const r = await call('render', { editId: e.editId });
+    say(`「${r.title}」 만들었어요. ${r.aspect} 이에요.`);
+  } else if (request.includes('규칙')) {
+    await call('update_style_rule', { rule: '숏폼은 30초 안쪽으로' });
+    say('앞으로 그렇게 할게요.');
+  } else if (request.includes('자막')) {
+    try {
+      const t = await call('get_transcript', {});
+      say(`자막 ${t.segments.length}줄을 봤어요.`);
+    } catch (err) {
+      say(`자막을 못 봤어요. ${err.message}`);
+    }
+  } else if (request.includes('실패')) {
+    finish(false, 'fake failure');
+  } else if (request.includes('느리게')) {
+    say('천천히 할게요.');
+    await sleep(8000);
+    say('다 했어요.');
+  } else {
+    say(`"${request}" 라고 하셨네요. 규칙 ${system.includes('편집 규칙') ? '읽었어요' : '못 읽었어요'}.`);
+  }
+  finish(true, last);
+} catch (err) {
+  say(`문제가 생겼어요: ${err.message}`);
+  finish(true, last);
+}

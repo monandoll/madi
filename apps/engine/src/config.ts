@@ -18,11 +18,17 @@ export interface EngineConfig {
   thumbsDir: string;
   outputsDir: string;
   modelsDir: string;
+  /** 에이전트 실행 임시 폴더 등 */
+  workDir: string;
+  /** StyleProfile (style.md, params.json, examples/) */
+  styleDir: string;
   rootDir: string;
   migrationsDir: string;
   webDir: string;
   binDir: string;
   fontsDir: string;
+  /** MCP 서버 진입점. 개발: src/mcp/index.ts (tsx), 패키징: resources/mcp.mjs */
+  mcpEntry: string;
   isDev: boolean;
 }
 
@@ -55,15 +61,18 @@ export function loadConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     thumbsDir: path.join(dataDir, 'thumbs'),
     outputsDir: path.join(dataDir, 'outputs'),
     modelsDir: path.join(dataDir, 'models'),
+    workDir: path.join(dataDir, 'work'),
+    styleDir: path.join(dataDir, 'style'),
     rootDir,
     migrationsDir: isDev ? path.join(rootDir, 'apps/engine/drizzle') : path.join(rootDir, 'drizzle'),
     webDir: isDev ? path.join(rootDir, 'apps/web/dist') : path.join(rootDir, 'web'),
     binDir: isDev ? path.join(rootDir, 'resources/bin') : path.join(rootDir, 'bin'),
     fontsDir: isDev ? path.join(rootDir, 'resources/fonts') : path.join(rootDir, 'fonts'),
+    mcpEntry: isDev ? path.join(rootDir, 'apps/engine/src/mcp/index.ts') : path.join(rootDir, 'mcp.mjs'),
     isDev,
     ...overrides,
   };
-  for (const dir of [cfg.dataDir, cfg.logsDir, cfg.proxiesDir, cfg.thumbsDir, cfg.outputsDir, cfg.modelsDir]) {
+  for (const dir of [cfg.dataDir, cfg.logsDir, cfg.proxiesDir, cfg.thumbsDir, cfg.outputsDir, cfg.modelsDir, cfg.workDir, cfg.styleDir]) {
     fs.mkdirSync(dir, { recursive: true });
   }
   return cfg;

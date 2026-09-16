@@ -25,6 +25,8 @@ extraResources:
     to: drizzle
   - from: ../../resources/fonts
     to: fonts
+  - from: dist/mcp.mjs
+    to: mcp.mjs
   - from: build/tray.png
     to: tray.png
   - from: build/trayTemplate.png

@@ -15,6 +15,7 @@ export function usePatchSettings() {
     onSuccess: (data) => {
       qc.setQueryData(queryKeys.settings, data);
       void qc.invalidateQueries({ queryKey: queryKeys.folders });
+      void qc.invalidateQueries({ queryKey: queryKeys.health });
       void qc.invalidateQueries({ queryKey: queryKeys.videos });
     },
   });

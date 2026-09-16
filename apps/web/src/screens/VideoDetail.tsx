@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ActionRequest } from '@madi/shared';
+import { type ActionRequest, isStreaming, type OutputCard } from '@madi/shared';
 import { type ActionKey, ActionBar } from '../components/ActionBar.js';
+import { ChatBar } from '../components/ChatBar.js';
 import { ChatFeed } from '../components/ChatFeed.js';
 import { ChevronIcon } from '../components/Icons.js';
 import { ScreenHeader } from '../components/ScreenHeader.js';
@@ -13,28 +14,50 @@ import { formatDate, formatDuration } from '../lib/format.js';
 
 /**
  * design/Mobile.dc.html '영상 상세 · 채팅 위, 프리뷰 접힘'.
- * AI 미연결: 입력창 대신 버튼 4개. 오류는 피드 안에 AI 말투로.
+ * AI 연결: 추천 칩 + 입력창(ChatBar). 미연결: 버튼 4개(ActionBar). 오류는 피드 안에 AI 말투로.
  */
 export function VideoDetail({ id }: { id: string }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: queryKeys.video(id), queryFn: () => api.video(id) });
+  const health = useQuery({ queryKey: queryKeys.health, queryFn: api.health, refetchInterval: 15_000 });
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [prefill, setPrefill] = useState<{ text: string; at: number } | undefined>(undefined);
+  const feedEnd = useRef<HTMLDivElement>(null);
 
+  const invalidate = () => void qc.invalidateQueries({ queryKey: queryKeys.video(id) });
+  const onError = (err: unknown) => setLocalError(errorMessage(err instanceof ApiError ? err.code : 'edit_failed'));
   const act = useMutation({
     mutationFn: (body: ActionRequest) => api.act(id, body),
     onSuccess: () => {
       setLocalError(null);
-      void qc.invalidateQueries({ queryKey: queryKeys.video(id) });
+      invalidate();
     },
-    onError: (err) => setLocalError(errorMessage(err instanceof ApiError ? err.code : 'edit_failed')),
+    onError,
   });
+  const chat = useMutation({
+    mutationFn: (text: string) => api.chat(id, text),
+    onSuccess: () => {
+      setLocalError(null);
+      invalidate();
+    },
+    onError,
+  });
+  const stop = useMutation({ mutationFn: () => api.cancelChat(id), onSuccess: invalidate });
+
+  const messageCount = q.data?.messages.length ?? 0;
+  const lastUpdated = q.data?.messages.at(-1)?.updatedAt ?? 0;
+  useEffect(() => {
+    feedEnd.current?.scrollIntoView({ block: 'end' });
+  }, [messageCount, lastUpdated]);
 
   if (q.isPending) return <Shell title="">{null}</Shell>;
   if (q.isError || !q.data) return <Shell title="">{copy.empty.disconnected}</Shell>;
-  const { video, outputs, messages, jobs } = q.data;
+  const { video, outputs, messages, jobs, aiBusy } = q.data;
+  const aiOn = health.data?.ai.connected ?? false;
   const busy = jobs.length > 0;
+  const chatBusy = aiBusy || messages.some(isStreaming) || chat.isPending;
   const hasAudio = video.hasAudio !== false;
 
   const onAction = (key: ActionKey) => {
@@ -44,9 +67,10 @@ export function VideoDetail({ id }: { id: string }) {
     }
     act.mutate({ type: key });
   };
+  const onRevise = (o: OutputCard) => setPrefill({ text: copy.detail.outputCard.revisePrefill(o.title), at: Date.now() });
 
   return (
-    <div className="flex h-full flex-col bg-surface" data-testid="video-detail">
+    <div className="flex h-full flex-col bg-surface" data-testid="video-detail" data-ai={aiOn ? 'on' : 'off'}>
       <ScreenHeader title={video.title} />
 
       {/* 프리뷰: 접힘(썸네일 + 메타) / 펼침(플레이어) */}
@@ -71,7 +95,7 @@ export function VideoDetail({ id }: { id: string }) {
       </div>
 
       <main className="mx-auto flex min-h-0 w-full max-w-[560px] flex-1 flex-col gap-2 overflow-y-auto px-3.5 py-3">
-        <ChatFeed messages={messages} outputs={outputs} jobs={jobs} />
+        <ChatFeed messages={messages} outputs={outputs} jobs={jobs} onRevise={aiOn ? onRevise : undefined} />
         {localError && (
           <div className="max-w-[80%] self-start rounded-[12px_12px_12px_4px] bg-bg px-[11px] py-2 text-13 leading-[1.55]" data-testid="chat-error">
             {localError}
@@ -90,9 +114,14 @@ export function VideoDetail({ id }: { id: string }) {
             }}
           />
         )}
+        <div ref={feedEnd} />
       </main>
 
-      <ActionBar hasAudio={hasAudio} busy={busy || act.isPending} disabled={video.status !== 'ready'} onAction={onAction} />
+      {aiOn ? (
+        <ChatBar busy={chatBusy} disabled={video.status !== 'ready'} prefill={prefill} onSend={(t) => chat.mutate(t)} onStop={() => stop.mutate()} />
+      ) : (
+        <ActionBar hasAudio={hasAudio} busy={busy || act.isPending} disabled={video.status !== 'ready'} onAction={onAction} />
+      )}
     </div>
   );
 }

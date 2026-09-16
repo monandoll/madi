@@ -20,6 +20,7 @@
 </helmet>
 <!--
   처음 켰을 때 설정 카드 + 설정 화면. Mobile.dc.html 과 같은 토큰·간격.
+  4단계에서 AI 항목(설치된 도구 고르기)과 밖에서 접속하기(터널)를 합쳤다. 영상 상세의 AI 연결 상태(칩+입력)는 Mobile.dc.html 그대로.
   - 카드: surface, 1px line, radius 12, padding 14. 그림자 없음.
   - 입력: 44px, radius 8, 1px line. 포커스 시 line → accent.
   - 폴더 후보: 엔진이 찾은 폴더 목록에서 고른다. 경로 타이핑 없음.
@@ -136,11 +137,41 @@
         <div style="padding:16px 14px 14px; display:flex; flex-direction:column; gap:6px; background:#FFFFFF; border-bottom:1px solid #E8E0D8;">
           <div style="font-size:12px; color:#6E635B;">AI</div>
           <div style="display:flex; align-items:center; gap:8px; height:44px;">
-            <div style="width:7px; height:7px; border-radius:999px; background:#E8E0D8;"></div>
-            <div style="flex:1; font-size:14px;">연결 안 됨</div>
-            <div style="font-size:12px; color:#8A7F76;">곧 연결할 수 있어요</div>
+            <div style="width:7px; height:7px; border-radius:999px; background:#7A9E7E;"></div>
+            <div style="flex:1; font-size:14px;">Claude Code로 연결됨</div>
+            <div style="font-size:12px; color:#6E635B;">연결 끊기</div>
           </div>
+          <div style="border:1px solid #E8E0D8; border-radius:8px; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; gap:10px; padding:0 12px; height:44px; background:#F5E7DF;">
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:1px;">
+                <div style="font-size:13px; font-weight:500;">Claude Code</div>
+                <div style="font-size:11px; color:#8A7F76;">설치됨 · 2.1.273</div>
+              </div>
+              <div style="font-size:12px; color:#C96A4B; flex:none;">쓰는 중</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; padding:0 12px; height:44px; border-top:1px solid #F1EAE2;">
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:1px;">
+                <div style="font-size:13px; font-weight:500;">Codex</div>
+                <div style="font-size:11px; color:#8A7F76;">설치 안 됨</div>
+              </div>
+              <div style="font-size:12px; color:#8A7F76; flex:none;">쓰기</div>
+            </div>
+          </div>
+          <div style="font-size:11px; color:#8A7F76; line-height:1.5;">이 PC에 설치된 도구 중 하나를 고르면 채팅으로 편집을 시킬 수 있어요. 본인 구독으로 돌아가요.</div>
           <div style="font-size:11px; color:#8A7F76; line-height:1.5;">AI 없이도 자막·무음 제거·규격 변환·숏폼 자르기는 돼요.</div>
+        </div>
+
+        <div style="padding:16px 14px 14px; display:flex; flex-direction:column; gap:6px; background:#FFFFFF; border-bottom:1px solid #E8E0D8;">
+          <div style="font-size:12px; color:#6E635B;">밖에서 접속하기</div>
+          <div style="display:flex; align-items:center; gap:8px; height:44px;">
+            <div style="width:7px; height:7px; border-radius:999px; background:#E8E0D8;"></div>
+            <div style="flex:1; font-size:14px;">연결 안 함</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <div style="flex:1; height:44px; box-sizing:border-box; border:1px solid #E8E0D8; border-radius:8px; padding:0 12px; display:flex; align-items:center; font-size:14px; color:#8A7F76;">토큰 붙여넣기</div>
+            <div style="height:44px; box-sizing:border-box; border:1px solid #E8E0D8; border-radius:8px; padding:0 14px; display:flex; align-items:center; font-size:14px; color:#8A7F76;">연결</div>
+          </div>
+          <div style="font-size:11px; color:#8A7F76; line-height:1.5;">Cloudflare Tunnel 토큰을 붙여 넣으면 폰이나 다른 PC에서도 이 마디에 들어올 수 있어요.</div>
         </div>
 
         <div style="padding:14px; font-size:11px; color:#8A7F76;">마디 0.1.0</div>
