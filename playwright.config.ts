@@ -10,6 +10,9 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = Number(process.env['MADI_E2E_PORT'] ?? 41521);
 const home = process.env['MADI_E2E_HOME'] ?? fs.mkdtempSync(path.join(os.tmpdir(), 'madi-pw-'));
 process.env['MADI_E2E_HOME'] = home;
+// 엔진이 "동영상/바탕화면/다운로드" 후보를 찾는 홈. 테스트용 폴더 두 개를 미리 만든다.
+const suggestRoot = path.join(home, 'suggest');
+for (const d of ['Videos', 'Desktop']) fs.mkdirSync(path.join(suggestRoot, d), { recursive: true });
 
 export default defineConfig({
   testDir: './e2e',
@@ -36,6 +39,7 @@ export default defineConfig({
       MADI_HOME: home,
       MADI_PORT: String(PORT),
       MADI_QUIET: '1',
+      MADI_SUGGEST_ROOT: suggestRoot,
     },
   },
 });

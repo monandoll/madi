@@ -12,6 +12,8 @@ export const Settings = z.object({
   ai: z.object({
     provider: AiProvider,
   }),
+  /** 처음 켰을 때 설정 카드를 끝냈는지. false 면 갤러리 위에 카드가 뜬다. */
+  setupDone: z.boolean().default(false),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -19,6 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   workspaceName: '내 스튜디오',
   watchFolders: [],
   ai: { provider: 'none' },
+  setupDone: false,
 };
 
 export const SettingsPatch = Settings.partial();

@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import WebSocket from 'ws';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { VideosResponse, WsEvent } from '@madi/shared';
+import { FoldersResponse, VideosResponse, WsEvent } from '@madi/shared';
 import { type Engine, startEngine } from '../src/engine.js';
 import { SAMPLE_5S, SAMPLE_SILENT, freePort, tempHome, waitFor } from './helpers.js';
 
@@ -145,6 +145,30 @@ describe('engine e2e', () => {
     });
     await engine.queue.idle();
     expect(engine.queue.list().length).toBe(jobsBefore);
+  });
+
+  it('폴더 후보: 흔한 폴더와 감시 중인 폴더를 영상 개수와 함께 준다', async () => {
+    const root = path.join(home, 'suggest');
+    fs.mkdirSync(path.join(root, 'Videos'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'Downloads', 'sub'), { recursive: true });
+    fs.copyFileSync(SAMPLE_SILENT, path.join(root, 'Downloads', 'sub', 'a.MOV'));
+    fs.writeFileSync(path.join(root, 'Downloads', 'note.txt'), '');
+    process.env['MADI_SUGGEST_ROOT'] = root;
+    try {
+      const { folders } = FoldersResponse.parse(await api('/api/folders/suggest'));
+      const byLabel = Object.fromEntries(folders.map((f) => [f.label, f]));
+      expect(byLabel['동영상']).toMatchObject({ path: path.join(root, 'Videos'), videoCount: 0, selected: false });
+      expect(byLabel['다운로드']).toMatchObject({ videoCount: 1, selected: false });
+      expect(byLabel['바탕화면']).toBeUndefined(); // 없는 폴더는 안 나온다
+      const watching = folders.find((f) => f.path === path.resolve(watchDir))!;
+      expect(watching.selected).toBe(true);
+      expect(watching.videoCount).toBeGreaterThanOrEqual(2);
+    } finally {
+      delete process.env['MADI_SUGGEST_ROOT'];
+    }
+    // 브라우저만 뜬 상태에선 시스템 선택창이 없다
+    const pick = await fetch(`${engine.url}/api/folders/pick`, { method: 'POST' });
+    expect(pick.status).toBe(501);
   });
 
   it('영상이 아닌 파일은 무시하고, 깨진 영상은 failed 로 표시한다', async () => {

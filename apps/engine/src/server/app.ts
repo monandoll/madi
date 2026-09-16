@@ -3,7 +3,9 @@ import path from 'node:path';
 import { Hono } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
 import {
+  type FoldersResponse,
   type HealthResponse,
+  type PickFolderResponse,
   type Job,
   type JobsResponse,
   SettingsPatch,
@@ -17,6 +19,7 @@ import type { EngineConfig } from '../config.js';
 import type { JobQueue } from '../queue/index.js';
 import type { SettingsStore } from '../settings.js';
 import type { VideoStore } from '../videos.js';
+import { describeFolder, suggestFolders } from '../folders.js';
 import { serveFile } from './media.js';
 
 export interface AppDeps {
@@ -26,6 +29,8 @@ export interface AppDeps {
   settings: SettingsStore;
   version: string;
   onSettingsChanged?: () => void;
+  /** 시스템 폴더 선택창. Electron 이 붙여 준다. 없으면 브라우저만 뜬 상태. */
+  pickFolder?: (() => Promise<string | null>) | undefined;
 }
 
 export function toCard(v: Video, deps: Pick<AppDeps, 'videos' | 'queue'>): VideoCard {
@@ -80,6 +85,18 @@ export function createApp(deps: AppDeps): Hono {
     const next = settings.patch(parsed.data);
     deps.onSettingsChanged?.();
     const body: SettingsResponse = { settings: next };
+    return c.json(body);
+  });
+
+  app.get('/api/folders/suggest', (c) => {
+    const body: FoldersResponse = { folders: suggestFolders(settings.get().watchFolders) };
+    return c.json(body);
+  });
+
+  app.post('/api/folders/pick', async (c) => {
+    if (!deps.pickFolder) return c.json({ error: { code: 'no_picker', message: 'folder picker unavailable' } }, 501);
+    const picked = await deps.pickFolder();
+    const body: PickFolderResponse = { folder: picked ? describeFolder(picked, settings.get().watchFolders) : null };
     return c.json(body);
   });
 
