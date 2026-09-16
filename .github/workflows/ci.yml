@@ -51,17 +51,22 @@ jobs:
           path: |
             ~/whisper/bin/whisper-cli
             ~/whisper/models/ggml-tiny.bin
-          key: whisper-${{ runner.os }}-${{ env.WHISPER_VERSION }}-tiny
+          # 정적 빌드(공유 라이브러리 없이 바이너리 하나) — 캐시에서 복원해도 그대로 돈다
+          key: whisper-${{ runner.os }}-${{ env.WHISPER_VERSION }}-static-tiny
 
       - name: Build whisper.cpp
         if: steps.whisper-cache.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 -b "$WHISPER_VERSION" https://github.com/ggml-org/whisper.cpp ~/whisper/src
-          cmake -S ~/whisper/src -B ~/whisper/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
+          cmake -S ~/whisper/src -B ~/whisper/build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
           cmake --build ~/whisper/build --config Release -j "$(nproc)" --target whisper-cli
           mkdir -p ~/whisper/bin ~/whisper/models
           cp ~/whisper/build/bin/whisper-cli ~/whisper/bin/whisper-cli
+          ldd ~/whisper/bin/whisper-cli | grep -E 'whisper|ggml' && { echo 'whisper-cli still links shared ggml/whisper libs'; exit 1; } || true
           curl -sSL -o ~/whisper/models/ggml-tiny.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
+
+      - name: Check whisper-cli runs
+        run: ~/whisper/bin/whisper-cli --help > /dev/null
 
       - name: E2E (engine + browser)
         run: pnpm e2e

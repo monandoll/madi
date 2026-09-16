@@ -13,7 +13,8 @@ const HOME = process.env['MADI_E2E_HOME']!;
 // gallery.spec 의 Videos 폴더는 건드리지 않는다 (개수 검증이 있음). 이 스펙은 Downloads 를 쓴다.
 const VIDEOS = path.join(HOME, 'suggest', 'Downloads');
 
-test.describe.configure({ mode: 'serial' });
+// 순차 + 상태를 쌓는 스펙이라 재시도하면 앞 테스트의 결과물이 남아 오히려 깨진다 → 재시도 없음
+test.describe.configure({ mode: 'serial', retries: 0 });
 
 test('상세: 인사말, 프리뷰 펼치기, 세로로 바꾸기 → 결과물 카드', async ({ page }) => {
   fs.mkdirSync(VIDEOS, { recursive: true });
