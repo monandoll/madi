@@ -169,9 +169,10 @@ describe('edit actions (AI off)', () => {
 
   it('무음 영상에 자막·쉬는 구간은 부드럽게 거절 (no_audio)', async () => {
     fs.copyFileSync(path.join(FIXTURES, 'sample-silent-3s.mp4'), path.join(watchDir, '무음.mp4'));
+    // 앞 테스트(자막)가 영상을 더 넣었을 수 있으니 '무음' 자체가 ready 될 때까지
     await waitFor(async () => {
       const { videos } = VideosResponse.parse(await api('/api/videos'));
-      return videos.length >= 2 && videos.every((v) => v.status === 'ready');
+      return videos.find((v) => v.title === '무음')?.status === 'ready';
     }, 60_000);
     const silent = VideosResponse.parse(await api('/api/videos')).videos.find((v) => v.title === '무음')!;
     const res = await fetch(`${engine.url}/api/videos/${silent.id}/actions`, {
