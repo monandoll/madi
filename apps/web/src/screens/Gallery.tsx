@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { DEFAULT_SETTINGS } from '@madi/shared';
 import { Header } from '../components/Header.js';
+import { SetupCard } from '../components/SetupCard.js';
 import { Tabs } from '../components/Tabs.js';
 import { VideoCard } from '../components/VideoCard.js';
 import { copy } from '../copy.js';
 import { api, queryKeys } from '../lib/api.js';
+import { useSettings } from '../lib/settings.js';
 import { useUi } from '../store.js';
 
 /**
@@ -14,10 +15,11 @@ import { useUi } from '../store.js';
 export function Gallery() {
   const tab = useUi((s) => s.tab);
   const health = useQuery({ queryKey: queryKeys.health, queryFn: api.health, refetchInterval: 15_000 });
-  const settings = useQuery({ queryKey: queryKeys.settings, queryFn: api.settings });
+  const settings = useSettings();
   const videos = useQuery({ queryKey: queryKeys.videos, queryFn: api.videos, refetchInterval: health.isError ? 3_000 : false });
 
-  const ws = settings.data?.settings ?? DEFAULT_SETTINGS;
+  const ws = settings.settings;
+  const showSetup = settings.isSuccess && !ws.setupDone;
   const list = videos.data?.videos ?? [];
   const inProgress = list.filter((v) => v.activeJob || v.status === 'preparing' || v.status === 'registered');
 
@@ -26,6 +28,11 @@ export function Gallery() {
       <Header workspaceName={ws.workspaceName} aiConnected={health.data?.ai.connected ?? false} engineOk={health.isSuccess} />
       <Tabs />
       <main className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-5">
+        {tab === 'videos' && showSetup && (
+          <div className="mx-auto w-full max-w-[480px] pt-0.5 pb-3">
+            <SetupCard initialName={ws.workspaceName} initialFolders={ws.watchFolders} />
+          </div>
+        )}
         {tab === 'videos' && (
           <Grid>
             {videos.isPending ? (
@@ -33,7 +40,7 @@ export function Gallery() {
             ) : videos.isError ? (
               <Empty>{copy.empty.disconnected}</Empty>
             ) : list.length === 0 ? (
-              <Empty>{ws.watchFolders.length === 0 ? copy.empty.noFolder : copy.empty.noVideos}</Empty>
+              <Empty>{showSetup ? copy.setup.belowCard : ws.watchFolders.length === 0 ? copy.empty.noFolder : copy.empty.noVideos}</Empty>
             ) : (
               list.map((v) => <VideoCard key={v.id} video={v} />)
             )}
@@ -56,7 +63,7 @@ function Grid({ children }: { children: React.ReactNode }) {
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <p className="col-span-full pt-16 text-center text-13 leading-relaxed whitespace-pre-line text-text-2" data-testid="empty">
+    <p className="col-span-full pt-9 text-center text-13 leading-relaxed whitespace-pre-line text-text-2" data-testid="empty">
       {children}
     </p>
   );

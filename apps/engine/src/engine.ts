@@ -25,6 +25,8 @@ export interface Engine {
   queue: JobQueue;
   watcher: FolderWatcher;
   url: string;
+  /** Electron 이 시스템 폴더 선택창을 붙인다. */
+  setFolderPicker(fn: (() => Promise<string | null>) | undefined): void;
   stop(): Promise<void>;
 }
 
@@ -45,14 +47,16 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   registerMediaWorkers({ cfg, queue, videos, ffmpeg, events, log });
   const watcher = new FolderWatcher({ videos, queue, events, log });
 
-  const app = createApp({
+  const deps = {
     cfg,
     videos,
     queue,
     settings,
     version: VERSION,
     onSettingsChanged: () => void watcher.setFolders(settings.get().watchFolders),
-  });
+    pickFolder: undefined as (() => Promise<string | null>) | undefined,
+  };
+  const app = createApp(deps);
   const ws = attachWs(app, VERSION);
   const webMounted = mountWeb(app, cfg);
   videos.on('video.added', (video) => ws.broadcast({ type: 'video.added', video }));
@@ -80,6 +84,9 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     queue,
     watcher,
     url,
+    setFolderPicker(fn) {
+      deps.pickFolder = fn;
+    },
     async stop() {
       await watcher.stop();
       await queue.stop();

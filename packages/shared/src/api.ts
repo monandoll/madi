@@ -34,6 +34,24 @@ export const HealthResponse = z.object({
 });
 export type HealthResponse = z.infer<typeof HealthResponse>;
 
+/** 영상 폴더 후보. 엔진이 PC에서 찾아 준다 — 사용자가 경로를 칠 일이 없게. */
+export const FolderSuggestion = z.object({
+  path: z.string(),
+  /** 사람이 읽는 이름: 동영상, 바탕화면, 다운로드, 또는 폴더 이름 */
+  label: z.string(),
+  videoCount: z.number().int(),
+  /** 이미 감시 중인 폴더인지 */
+  selected: z.boolean(),
+});
+export type FolderSuggestion = z.infer<typeof FolderSuggestion>;
+
+export const FoldersResponse = z.object({ folders: z.array(FolderSuggestion) });
+export type FoldersResponse = z.infer<typeof FoldersResponse>;
+
+/** 시스템 폴더 선택창 결과. 창을 못 띄우는 환경(브라우저만)이면 501. */
+export const PickFolderResponse = z.object({ folder: FolderSuggestion.nullable() });
+export type PickFolderResponse = z.infer<typeof PickFolderResponse>;
+
 export const ErrorResponse = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
 });
