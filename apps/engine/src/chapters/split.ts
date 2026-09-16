@@ -21,14 +21,25 @@ interface Boundary {
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
 /**
- * 경계 후보 점수: 문장 사이 쉼(초, 최대 4) + 장면 전환이 ±6초 안에 있으면 +2 + 무음 1.5초 이상이면 +1.
- * 자막이 없으면 장면 전환마다 후보 (점수 3 = 강한 경계).
+ * 자막을 믿고 쓸 수 있는지: 문장이 둘 이상이고 말한 시간이 전체의 15% 는 넘어야 한다.
+ * (음악·소음만 있는 영상에서 whisper 가 지어낸 몇 줄로 챕터를 나누지 않게)
  */
-export function candidateBoundaries(segments: Segment[], silences: TimeRange[], scenes: number[]): Boundary[] {
+export function transcriptUsable(segments: Segment[], durationSec: number): boolean {
+  if (segments.length < 2 || durationSec <= 0) return false;
+  const speech = segments.reduce((a, s) => a + Math.max(0, s.end - s.start), 0);
+  return speech / durationSec >= 0.15;
+}
+
+/**
+ * 경계 후보 점수: 문장 사이 쉼(초, 최대 4) + 장면 전환이 ±6초 안에 있으면 +2 + 무음 1.5초 이상이면 +1.
+ * 자막이 없거나 못 믿으면 장면 전환마다 후보 (점수 3 = 강한 경계).
+ */
+export function candidateBoundaries(segments: Segment[], silences: TimeRange[], scenes: number[], durationSec = Number.POSITIVE_INFINITY): Boundary[] {
   const out: Boundary[] = [];
   const nearScene = (t: number) => scenes.some((s) => Math.abs(s - t) <= 6);
   const silenceAt = (t: number) => silences.find((s) => t >= s.start - 0.3 && t <= s.end + 0.3);
-  if (segments.length >= 2) {
+  const usable = Number.isFinite(durationSec) ? transcriptUsable(segments, durationSec) : segments.length >= 2;
+  if (usable) {
     for (let i = 1; i < segments.length; i++) {
       const prev = segments[i - 1]!;
       const cur = segments[i]!;
@@ -61,7 +72,9 @@ export function splitChapters(
   const o = { ...SPLIT_DEFAULTS, ...opts };
   const { durationSec } = input;
   if (durationSec <= 0) return [];
-  const cands = candidateBoundaries(input.segments, input.silences, input.scenes).filter((c) => c.at > 0 && c.at < durationSec);
+  const usable = transcriptUsable(input.segments, durationSec);
+  const segments = usable ? input.segments : [];
+  const cands = candidateBoundaries(segments, input.silences, input.scenes, durationSec).filter((c) => c.at > 0 && c.at < durationSec);
   const cuts: number[] = [];
   let start = 0;
   let seen: Boundary[] = [];
@@ -90,7 +103,7 @@ export function splitChapters(
   for (let i = 0; i < bounds.length - 1; i++) {
     const s = bounds[i]!;
     const e = bounds[i + 1]!;
-    const inside = input.segments.filter((seg) => seg.start >= s - 0.2 && seg.start < e);
+    const inside = segments.filter((seg) => seg.start >= s - 0.2 && seg.start < e);
     chapters.push({
       index: i,
       title: chapterTitle(inside, i),

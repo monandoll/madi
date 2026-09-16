@@ -1,6 +1,7 @@
 /**
  * 6단계 e2e: 긴 영상(ffmpeg 로 만든 4장면 × 50초) → 챕터 나누기(장면·무음) → 챕터 카드 → 숏폼 자동 추출 → 세로 결과물들.
- * whisper 가 없으므로 자막 없이 장면·무음만으로 나뉘는 경로를 확인한다 (자막이 있으면 문장 경계가 더해질 뿐).
+ * 이 테스트는 whisper 를 일부러 끈다(MADI_WHISPER 를 없는 경로로): 톤 오디오에 whisper 가 지어내는 자막이 결과를 흔들지 않게.
+ * 자막이 있을 때의 문장 경계 로직은 chapters.test.ts 가 본다.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,6 +14,7 @@ import { makeLongformFixture } from './longform-fixture.js';
 let home: string;
 let engine: Engine;
 let videoId: string;
+let prevWhisper: string | undefined;
 
 const api = async <T>(p: string, init?: RequestInit): Promise<{ status: number; body: T }> => {
   const res = await fetch(`${engine.url}${p}`, init);
@@ -28,6 +30,8 @@ beforeAll(async () => {
   fs.mkdirSync(watchDir);
   makeLongformFixture(path.join(watchDir, '햄스트링 풀버전.mp4'), { scenes: 4, sceneSec: 50 });
   process.env['MADI_QUIET'] = '1';
+  prevWhisper = process.env['MADI_WHISPER'];
+  process.env['MADI_WHISPER'] = path.join(home, 'no-whisper-here');
   engine = await startEngine({ dataDir: home, dbPath: path.join(home, 'madi.db'), port: await freePort() });
   await api('/api/settings', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ watchFolders: [watchDir], setupDone: true }) });
   await waitFor(async () => {
@@ -38,6 +42,8 @@ beforeAll(async () => {
 }, 180_000);
 
 afterAll(async () => {
+  if (prevWhisper === undefined) delete process.env['MADI_WHISPER'];
+  else process.env['MADI_WHISPER'] = prevWhisper;
   await engine?.stop();
   fs.rmSync(home, { recursive: true, force: true });
 });
@@ -59,7 +65,7 @@ describe('롱폼', () => {
     await engine.queue.idle();
     const d = await detail();
     const ch = d.chapters!;
-    expect(ch.fromTranscript).toBe(false); // whisper 없음 → 장면·무음만
+    expect(ch.fromTranscript).toBe(false); // whisper 꺼짐 → 장면·무음만
     expect(ch.items).toHaveLength(4);
     expect(ch.items.map((c) => c.title)).toEqual(['1부', '2부', '3부', '4부']);
     for (const [i, c] of ch.items.entries()) {

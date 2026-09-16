@@ -2,7 +2,7 @@ import { parseScenes, parseSilences, sceneDetectArgs, silenceDetectArgs } from '
 import type { Chapters, Video } from '@madi/shared';
 import type { StyleProfile } from '../agent/style.js';
 import type { ChapterStore } from '../chapters/store.js';
-import { pickShorts, splitChapters } from '../chapters/split.js';
+import { pickShorts, splitChapters, transcriptUsable } from '../chapters/split.js';
 import type { EventLog } from '../events.js';
 import type { Library } from '../library.js';
 import type { Logger } from '../log.js';
@@ -94,8 +94,9 @@ export async function computeChapters(d: ChapterWorkerDeps, video: Video, signal
   setProgress?.(0.6);
   const scenes = parseScenes((await run(d.ffmpegBin, sceneDetectArgs(video.path, 0.4), { signal })).stderr);
   setProgress?.(0.9);
-  const items = splitChapters({ segments: transcript?.segments ?? [], silences, scenes, durationSec: duration });
-  return d.chapters.set(video.id, items, !!transcript);
+  const segments = transcript?.segments ?? [];
+  const items = splitChapters({ segments, silences, scenes, durationSec: duration });
+  return d.chapters.set(video.id, items, transcriptUsable(segments, duration));
 }
 
 async function waitJob(queue: JobQueue, jobId: string, signal: AbortSignal): Promise<void> {

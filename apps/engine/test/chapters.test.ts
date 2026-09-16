@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Segment } from '@madi/shared';
-import { candidateBoundaries, chapterTitle, pickHighlight, pickShorts, splitChapters } from '../src/chapters/split.js';
+import { candidateBoundaries, chapterTitle, pickHighlight, pickShorts, splitChapters, transcriptUsable } from '../src/chapters/split.js';
 
 /** t초부터 5초짜리 문장. gapAfter 만큼 쉬고 다음 문장. */
 function sentences(spec: { text: string; at: number; len?: number }[]): Segment[] {
@@ -28,8 +28,8 @@ describe('chapters', () => {
   });
 
   it('길이 규칙: min 미만은 안 자르고, 강한 경계는 자르고, max 를 넘으면 가장 좋은 경계에서 자른다', () => {
-    // 10분 영상, 문장이 60초마다 하나(쉼 56초 → 점수 4). 장면은 180, 360 근처.
-    const segs = sentences(Array.from({ length: 10 }, (_, i) => ({ text: `문장 ${i + 1}`, at: i * 60 })));
+    // 10분 영상, 50초짜리 문장이 60초마다 하나(쉼 10초 → 점수 4). 장면은 180, 360 근처.
+    const segs = sentences(Array.from({ length: 10 }, (_, i) => ({ text: `문장 ${i + 1}`, at: i * 60, len: 50 })));
     const ch = splitChapters({ segments: segs, silences: [], scenes: [180.5, 359.8], durationSec: 600 }, { minSec: 45, targetSec: 180, maxSec: 420 });
     // 60초 경계는 점수 4 → 강한 경계 → 60초마다 자른다 (min 45 넘음)
     expect(ch.map((c) => [c.start, c.end])).toEqual([
@@ -61,11 +61,28 @@ describe('chapters', () => {
     ]);
   });
 
+  it('자막이 드물면(말한 시간 15% 미만) 믿지 않고 장면으로만 나눈다', () => {
+    const sparse = sentences([
+      { text: '음악', at: 3, len: 2 },
+      { text: '박수', at: 150, len: 2 },
+    ]);
+    expect(transcriptUsable(sparse, 200)).toBe(false);
+    expect(transcriptUsable(sentences(Array.from({ length: 30 }, (_, i) => ({ text: `말 ${i}`, at: i * 6, len: 4 }))), 200)).toBe(true);
+    const ch = splitChapters({ segments: sparse, silences: [], scenes: [50, 100, 150], durationSec: 200 });
+    expect(ch.map((c) => [c.start, c.end])).toEqual([
+      [0, 50],
+      [50, 100],
+      [100, 150],
+      [150, 200],
+    ]);
+    expect(ch.map((c) => c.title)).toEqual(['1부', '2부', '3부', '4부']); // 지어낸 문장을 제목으로 쓰지 않는다
+  });
+
   it('마지막 조각이 짧으면 앞 챕터에 붙고, 짧은 영상은 챕터 하나', () => {
     const segs = sentences([
-      { text: '하나', at: 0 },
-      { text: '둘', at: 60 },
-      { text: '셋', at: 110 },
+      { text: '하나', at: 0, len: 40 },
+      { text: '둘', at: 60, len: 40 },
+      { text: '셋', at: 110, len: 15 },
     ]);
     const ch = splitChapters({ segments: segs, silences: [], scenes: [], durationSec: 130 }, { minSec: 45, targetSec: 180, maxSec: 420 });
     expect(ch.map((c) => [c.start, c.end])).toEqual([
