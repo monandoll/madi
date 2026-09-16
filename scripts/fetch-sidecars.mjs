@@ -29,7 +29,8 @@ const MANIFEST = {
   'win32-x64': [
     {
       name: 'ffmpeg',
-      url: 'https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-n7.1-latest-win64-gpl-7.1.zip',
+      // BtbN 의 "latest" 릴리스에는 master 빌드만 고정 이름으로 있다 (버전 고정 이름은 404).
+      url: 'https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip',
       pick: [
         { match: /\/bin\/ffmpeg\.exe$/, dest: 'ffmpeg.exe' },
         { match: /\/bin\/ffprobe\.exe$/, dest: 'ffprobe.exe' },
@@ -73,6 +74,15 @@ const FONT = {
   pick: [{ match: /public\/static\/Pretendard-(Regular|SemiBold|Bold)\.otf$/, dest: null }],
 };
 
+function hasBin(name) {
+  try {
+    execFileSync(process.platform === 'win32' ? 'where' : 'which', [name], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function arg(name, fallback) {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : fallback;
@@ -84,10 +94,17 @@ async function download(url, to) {
   fs.writeFileSync(to, Buffer.from(await res.arrayBuffer()));
 }
 
-/** zip/tgz 를 임시 폴더에 풀고 안의 파일 목록을 돌려준다. (bsdtar 는 zip 도 푼다) */
+/**
+ * zip/tgz 를 임시 폴더에 풀고 안의 파일 목록을 돌려준다.
+ * zip 은 unzip 이 있으면 unzip 으로 (GNU tar 는 zip 을 못 푼다), 없으면 tar 로 (Windows/macOS 의 bsdtar 는 zip 도 푼다).
+ */
 function extract(archive, into) {
   fs.mkdirSync(into, { recursive: true });
-  execFileSync('tar', ['-xf', archive, '-C', into], { stdio: 'inherit' });
+  if (archive.endsWith('.zip') && process.platform !== 'win32' && hasBin('unzip')) {
+    execFileSync('unzip', ['-q', '-o', archive, '-d', into], { stdio: 'inherit' });
+  } else {
+    execFileSync('tar', ['-xf', archive, '-C', into], { stdio: 'inherit' });
+  }
   const out = [];
   const walk = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -127,8 +144,9 @@ async function fetchItem(item, destDir, tmp) {
 
 const platform = arg('platform', `${process.platform}-${process.arch}`);
 const only = arg('only', '').split(',').filter(Boolean);
-const items = MANIFEST[platform];
-if (!items) {
+const fontsOnly = only.length > 0 && only.every((n) => n === 'fonts');
+const items = MANIFEST[platform] ?? [];
+if (!MANIFEST[platform] && !fontsOnly) {
   console.error(`unknown platform ${platform}; one of ${Object.keys(MANIFEST).join(', ')}`);
   process.exit(1);
 }

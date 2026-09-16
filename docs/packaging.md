@@ -50,7 +50,7 @@ app.asar.unpacked/    better-sqlite3 (네이티브)
 
 | 것 | Windows | macOS |
 |---|---|---|
-| ffmpeg/ffprobe | BtbN FFmpeg-Builds n7.1 gpl (NVENC 포함) | osxexperts (arm64) / evermeet (x64) 정적 빌드 |
+| ffmpeg/ffprobe | BtbN FFmpeg-Builds master-latest win64 gpl (NVENC 포함) | osxexperts (arm64) / evermeet (x64) 정적 빌드 |
 | whisper-cli | whisper.cpp 릴리스 `whisper-bin-x64.zip` (CPU) | 소스 빌드 (정적, Metal) |
 | cloudflared | cloudflared 릴리스 | cloudflared 릴리스 |
 | Pretendard | orioncactus/pretendard 릴리스 OTF | 같음 |
