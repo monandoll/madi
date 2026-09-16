@@ -53,11 +53,15 @@ export class JobQueue extends EventEmitter<QueueEvents> {
   enqueue(payload: JobPayload): Job {
     const videoId = 'videoId' in payload ? payload.videoId : null;
     if (videoId) {
+      // 같은 영상에 같은 종류의 잡이 이미 걸려 있으면 그것을 돌려준다.
+      // 렌더는 편집(editId)마다 다른 결과물이라 editId 까지 같아야 중복이다 (숏폼 여러 개 = 렌더 여러 개).
+      const editId = 'editId' in payload ? payload.editId : null;
       const dup = this.db
         .select()
         .from(jobs)
         .where(and(eq(jobs.type, payload.type), eq(jobs.videoId, videoId), inArray(jobs.status, ['queued', 'running'])))
-        .get();
+        .all()
+        .find((row) => editId === null || (row.payload as { editId?: string }).editId === editId);
       if (dup) return rowToJob(dup);
     }
     const row: typeof jobs.$inferInsert = {

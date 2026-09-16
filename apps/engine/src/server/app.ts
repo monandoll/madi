@@ -49,6 +49,7 @@ export interface AppDeps {
   agent: import('../agent/runner.js').AgentRunner;
   agentTools: import('../agent/tools.js').AgentTools;
   styleService: import('../style/service.js').StyleService;
+  chapters: import('../chapters/store.js').ChapterStore;
   version: string;
   onSettingsChanged?: () => void;
   /** 시스템 폴더 선택창. Electron 이 붙여 준다. 없으면 브라우저만 뜬 상태. */
@@ -120,6 +121,7 @@ export function createApp(deps: AppDeps): Hono {
       messages: deps.library.messagesOf(v.id),
       jobs: queue.list(['queued', 'running']).filter((j) => j.videoId === v.id),
       aiBusy: deps.agent.isBusy(v.id),
+      chapters: deps.chapters.get(v.id),
     };
     return c.json(body);
   });

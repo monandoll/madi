@@ -66,6 +66,12 @@ export const TOOL_DEFS = {
       remember: z.boolean().optional(),
     }),
   },
+  get_chapters: {
+    description: '긴 영상을 챕터로 나눠 돌려준다(제목·시각·숏폼으로 뽑기 좋은 하이라이트 구간). 없으면 지금 만든다(자막이 없으면 자막부터, 수 분). 숏폼을 여러 개 뽑거나 목차를 만들 때 먼저 부른다.',
+    input: z.object({
+      refresh: z.boolean().optional().describe('true 면 다시 나눈다'),
+    }),
+  },
   update_style_rule: {
     description: '사용자가 "앞으로도 이렇게" 라고 한 편집 규칙을 한 줄 저장한다. 반드시 사용자가 예라고 한 뒤에만 부른다.',
     input: z.object({ rule: z.string().trim().min(2).max(200) }),

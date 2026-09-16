@@ -35,6 +35,20 @@ describe('JobQueue', () => {
     expect(queue.get(job.id)?.progress).toBe(1);
   });
 
+  it('렌더는 editId 가 다르면 같은 영상이라도 따로 건다', async () => {
+    let calls = 0;
+    queue.register('render', async () => {
+      calls++;
+    });
+    const a = queue.enqueue({ type: 'render', videoId: 'v1', editId: 'e1' });
+    const b = queue.enqueue({ type: 'render', videoId: 'v1', editId: 'e2' });
+    const again = queue.enqueue({ type: 'render', videoId: 'v1', editId: 'e1' });
+    expect(b.id).not.toBe(a.id);
+    expect(again.id).toBe(a.id);
+    await queue.idle();
+    expect(calls).toBe(2);
+  });
+
   it('같은 (type, videoId) 는 중복으로 넣지 않는다', async () => {
     let calls = 0;
     let release!: () => void;

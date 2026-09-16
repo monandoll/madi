@@ -90,6 +90,20 @@ export function runAction(d: ActionDeps, video: Video, req: ActionRequest): Acti
       progress(job.id, 'progress.render', { step: 'render', action: 'short' });
       return { messages, job };
     }
+    case 'chapters': {
+      if (duration < 30) throw new ActionError('too_short_for_chapters');
+      user('action.chapters');
+      const job = d.queue.enqueue({ type: 'chapters', videoId: video.id, then: 'none', max: 3 });
+      progress(job.id, 'progress.chapters', { step: 'chapters', action: 'chapters', durationSec: Math.round(duration), hasAudio: video.hasAudio !== false });
+      return { messages, job };
+    }
+    case 'auto_shorts': {
+      if (duration < 30) throw new ActionError('too_short_for_chapters');
+      user('action.auto_shorts', { max: req.max });
+      const job = d.queue.enqueue({ type: 'chapters', videoId: video.id, then: 'shorts', max: req.max });
+      progress(job.id, 'progress.chapters', { step: 'chapters', action: 'auto_shorts', durationSec: Math.round(duration), hasAudio: video.hasAudio !== false, max: req.max });
+      return { messages, job };
+    }
   }
 }
 
