@@ -59,6 +59,6 @@ fs.writeFileSync(path.join(out, 'tray.png'), png(22, [0xc9, 0x6a, 0x4b]));
 fs.writeFileSync(path.join(out, 'tray@2x.png'), png(44, [0xc9, 0x6a, 0x4b]));
 fs.writeFileSync(path.join(out, 'trayTemplate.png'), png(22, [0, 0, 0]));
 fs.writeFileSync(path.join(out, 'trayTemplate@2x.png'), png(44, [0, 0, 0]));
-// 앱 아이콘 (설치 파일·독). 256px 점. 정식 아이콘은 디자인이 나오면 교체.
-fs.writeFileSync(path.join(out, 'icon.png'), png(256, [0xc9, 0x6a, 0x4b]));
+// 앱 아이콘 (설치 파일·독). electron-builder 는 512px 이상을 요구한다. 정식 아이콘은 디자인이 나오면 교체.
+fs.writeFileSync(path.join(out, 'icon.png'), png(1024, [0xc9, 0x6a, 0x4b]));
 console.log('tray icons → build/');
