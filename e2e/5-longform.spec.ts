@@ -49,7 +49,7 @@ test('긴 영상: 버튼 6개, 챕터 나누기 → 챕터 4개 카드 → 숏�
   // 장면 4개 → 챕터 4개
   await expect(chapters.getByTestId('chapter-row')).toHaveCount(4);
   await expect(chapters).toContainText('챕터 4개');
-  await expect(page.getByTestId('bubble-assistant').last()).toContainText('챕터 4개로 나눴어요');
+  await expect(page.getByTestId('bubble-assistant').last()).toContainText('챕터 4개로 나눴습니다');
 
   // 챕터 카드에서 바로 숏폼
   await chapters.getByTestId('chapter-short').nth(2).click();

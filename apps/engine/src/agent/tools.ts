@@ -48,9 +48,9 @@ export class AgentTools {
   async call(name: ToolName, ctx: ToolContext, rawInput: unknown): Promise<ToolOutcome> {
     const def = TOOL_DEFS[name];
     const parsed = def.input.safeParse(rawInput ?? {});
-    if (!parsed.success) return { ok: false, error: `입력이 잘못됐어요: ${z.prettifyError(parsed.error).slice(0, 300)}` };
+    if (!parsed.success) return { ok: false, error: `입력이 잘못됐습니다: ${z.prettifyError(parsed.error).slice(0, 300)}` };
     const video = this.d.videos.get(ctx.videoId);
-    if (!video) return { ok: false, error: '영상을 찾지 못했어요.' };
+    if (!video) return { ok: false, error: '영상을 찾지 못했습니다.' };
     const started = Date.now();
     try {
       const result = await this.dispatch(name, video, ctx, parsed.data);
@@ -58,7 +58,7 @@ export class AgentTools {
       return { ok: true, result };
     } catch (err) {
       this.d.events.record('ai.tool', { name, ok: false }, Date.now() - started);
-      const msg = err instanceof ToolError ? err.message : err instanceof Error ? `문제가 생겼어요: ${err.message.slice(0, 200)}` : String(err);
+      const msg = err instanceof ToolError ? err.message : err instanceof Error ? `문제가 생겼습니다: ${err.message.slice(0, 200)}` : String(err);
       this.d.log.warn({ tool: name, err: String(err) }, 'agent tool failed');
       return { ok: false, error: msg };
     }
@@ -95,7 +95,7 @@ export class AgentTools {
   private setSubtitleText(video: Video, input: ToolInput<'set_subtitle_text'>) {
     const existing = this.d.library.transcriptOf(video.id);
     const segments = mergeSubtitleLines(existing?.segments ?? [], input.lines, input.replaceAll ?? false);
-    if (segments.length === 0) throw new ToolError('넣을 문장이 없어요.');
+    if (segments.length === 0) throw new ToolError('넣을 문장이 없습니다.');
     const t = this.d.library.setTranscript(video.id, { language: existing?.language ?? 'ko', model: existing ? existing.model : 'manual', segments });
     this.d.events.record('transcript.edited', { lines: input.lines.length, replaceAll: !!input.replaceAll, total: segments.length });
     return { segments: t.segments.map((s, i) => ({ i, start: r2(s.start), end: r2(s.end), text: s.text })) };
@@ -104,7 +104,7 @@ export class AgentTools {
   private async getChapters(video: Video, ctx: ToolContext, input: ToolInput<'get_chapters'>) {
     let ch = input.refresh ? null : this.d.chapters.get(video.id);
     if (!ch) {
-      if ((video.durationSec ?? 0) < 30) throw new ToolError('이 영상은 너무 짧아서 챕터로 나눌 게 없어요.');
+      if ((video.durationSec ?? 0) < 30) throw new ToolError('영상이 짧아 나눌 챕터가 없습니다.');
       const controller = new AbortController();
       ctx.signal?.addEventListener('abort', () => controller.abort(), { once: true });
       ch = await computeChapters({ queue: this.d.queue, videos: this.d.videos, library: this.d.library, chapters: this.d.chapters, style: this.d.style, ffmpegBin: this.d.ffmpegBin, events: this.d.events, log: this.d.log }, video, controller.signal);
@@ -121,14 +121,14 @@ export class AgentTools {
   private async getTranscript(video: Video, ctx: ToolContext) {
     let t = this.d.library.transcriptOf(video.id);
     if (!t) {
-      if (video.hasAudio === false) throw new ToolError('이 영상은 소리가 없어서 자막을 자동으로 만들 수 없어요. 넣을 문장과 시각을 알면 set_subtitle_text 로 넣을 수 있어요.');
+      if (video.hasAudio === false) throw new ToolError('소리가 없어 자막을 자동으로 만들 수 없습니다. 넣을 문장과 시각을 알면 set_subtitle_text 로 넣을 수 있습니다.');
       const job = this.d.queue.enqueue({ type: 'transcribe', videoId: video.id });
       if (!this.d.library.messageForJob(job.id)) {
         this.d.library.say({ videoId: video.id, role: 'assistant', kind: 'progress', code: 'progress.transcribe', jobId: job.id, params: { step: 'transcribe', action: 'ai', durationSec: Math.round(video.durationSec ?? 0) } });
       }
       await this.waitJob(job.id, ctx.signal);
       t = this.d.library.transcriptOf(video.id);
-      if (!t) throw new ToolError('자막을 만들지 못했어요.');
+      if (!t) throw new ToolError('자막을 만들지 못했습니다.');
     }
     return {
       language: t.language,
@@ -138,7 +138,7 @@ export class AgentTools {
   }
 
   private async findSilences(video: Video, ctx: ToolContext, input: ToolInput<'find_silences'>) {
-    if (video.hasAudio === false) throw new ToolError('이 영상은 소리가 없어요.');
+    if (video.hasAudio === false) throw new ToolError('이 영상은 소리가 없습니다.');
     const { stderr } = await run(this.d.ffmpegBin, silenceDetectArgs(video.path, { minSec: input.minSec ?? this.d.style.params().silenceMinSec }), { signal: ctx.signal });
     const silences = parseSilences(stderr, video.durationSec ?? 0);
     return { silences: silences.map((s) => ({ start: r2(s.start), end: r2(s.end) })), totalSec: r2(silences.reduce((a, s) => a + s.end - s.start, 0)) };
@@ -151,7 +151,7 @@ export class AgentTools {
   }
 
   private async proposeCuts(video: Video, ctx: ToolContext, input: ToolInput<'propose_cuts'>) {
-    if (video.hasAudio === false) throw new ToolError('이 영상은 소리가 없어서 쉬는 구간을 찾을 수 없어요.');
+    if (video.hasAudio === false) throw new ToolError('소리가 없어 쉬는 구간을 찾을 수 없습니다.');
     const { stderr } = await run(this.d.ffmpegBin, silenceDetectArgs(video.path, { minSec: input.minSilenceSec ?? this.d.style.params().silenceMinSec }), { signal: ctx.signal });
     const silences = parseSilences(stderr, video.durationSec ?? 0);
     const cuts = silencesToCuts(silences, video.durationSec ?? 0, input.padSec ?? 0.2);
@@ -165,13 +165,13 @@ export class AgentTools {
     const clamp = (t: number) => Math.max(0, Math.min(video.durationSec ?? t, t));
     const cuts = input.cuts?.map((c) => ({ start: clamp(Math.min(c.start, c.end)), end: clamp(Math.max(c.start, c.end)), reason: c.reason ?? ('ai' as const) })).filter((c) => c.end > c.start);
     const keep = input.keep === undefined ? undefined : input.keep === null ? null : { start: clamp(Math.min(input.keep.start, input.keep.end)), end: clamp(Math.max(input.keep.start, input.keep.end)) };
-    if (keep && keep.end - keep.start < 1) throw new ToolError('구간이 너무 짧아요. 1초보다 길게 잡아 주세요.');
-    if (input.subtitles && video.hasAudio === false && !transcript) throw new ToolError('이 영상은 소리가 없어서 자막을 자동으로 만들 수 없어요. set_subtitle_text 로 문장을 먼저 넣어 주세요.');
+    if (keep && keep.end - keep.start < 1) throw new ToolError('구간이 너무 짧습니다. 1초보다 길게 정하세요.');
+    if (input.subtitles && video.hasAudio === false && !transcript) throw new ToolError('소리가 없어 자막을 자동으로 만들 수 없습니다. set_subtitle_text 로 문장을 먼저 넣으세요.');
 
     let edit: Edit;
     if (input.editId) {
       const existing = this.d.library.edit(input.editId);
-      if (!existing || existing.videoId !== video.id) throw new ToolError('그 편집을 찾지 못했어요.');
+      if (!existing || existing.videoId !== video.id) throw new ToolError('그 편집을 찾지 못했습니다.');
       edit = this.d.library.updateEdit(existing.id, {
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(keep !== undefined ? { keep } : {}),
@@ -199,7 +199,7 @@ export class AgentTools {
 
   private async render(video: Video, ctx: ToolContext, input: ToolInput<'render'>) {
     const edit = this.d.library.edit(input.editId);
-    if (!edit || edit.videoId !== video.id) throw new ToolError('그 편집을 찾지 못했어요. apply_edit 로 먼저 만들어 주세요.');
+    if (!edit || edit.videoId !== video.id) throw new ToolError('그 편집을 찾지 못했습니다. apply_edit 로 먼저 만드세요.');
     const output = await this.renderEdit(video, edit, ctx);
     return summarizeOutput(output);
   }
@@ -241,7 +241,7 @@ export class AgentTools {
     let style = { ...this.d.style.params().subtitleStyle, ...patch };
     if (input.editId) {
       const edit = this.d.library.edit(input.editId);
-      if (!edit || edit.videoId !== video.id) throw new ToolError('그 편집을 찾지 못했어요.');
+      if (!edit || edit.videoId !== video.id) throw new ToolError('그 편집을 찾지 못했습니다.');
       style = { ...edit.subtitleStyle, ...patch };
       this.d.library.updateEdit(edit.id, { subtitleStyle: style });
     }
@@ -266,31 +266,31 @@ export class AgentTools {
     await this.waitJob(job.id, ctx.signal);
     const m = this.d.library.messageForJob(job.id);
     const output = m?.outputId ? this.d.library.output(m.outputId) : null;
-    if (!output) throw new ToolError('결과 파일을 만들지 못했어요.');
+    if (!output) throw new ToolError('결과 파일을 만들지 못했습니다.');
     return output;
   }
 
   private async waitJob(jobId: string, signal?: AbortSignal): Promise<void> {
     const timeout = Date.now() + 30 * 60_000;
     while (Date.now() < timeout) {
-      if (signal?.aborted) throw new ToolError('취소됐어요.');
+      if (signal?.aborted) throw new ToolError('취소했습니다.');
       const j = this.d.queue.get(jobId);
-      if (!j) throw new ToolError('작업을 찾지 못했어요.');
+      if (!j) throw new ToolError('작업을 찾지 못했습니다.');
       if (j.status === 'done') return;
       if (j.status === 'failed' || j.status === 'canceled') throw new ToolError(jobFailureText(j.error));
       await new Promise((r) => setTimeout(r, 250));
     }
-    throw new ToolError('너무 오래 걸려서 멈췄어요.');
+    throw new ToolError('시간이 너무 오래 걸려 중단했습니다.');
   }
 }
 
 function jobFailureText(error: string | null): string {
   const e = error ?? '';
-  if (/no audio/i.test(e)) return '이 영상은 소리가 없어요.';
-  if (/whisper.*ENOENT|ENOENT.*whisper|whisper-cli/i.test(e)) return '자막 도구가 아직 설치되지 않았어요.';
-  if (/model download failed|fetch failed/i.test(e)) return '자막 모델을 받지 못했어요. 인터넷 연결을 봐 주세요.';
-  if (/nothing to render/i.test(e)) return '잘라내고 나니 남는 게 없어요.';
-  return `만들다가 문제가 생겼어요${e ? ` (${e.slice(0, 120)})` : ''}.`;
+  if (/no audio/i.test(e)) return '이 영상은 소리가 없습니다.';
+  if (/whisper.*ENOENT|ENOENT.*whisper|whisper-cli/i.test(e)) return '자막 도구가 아직 설치되지 않았습니다.';
+  if (/model download failed|fetch failed/i.test(e)) return '자막 모델을 내려받지 못했습니다. 인터넷 연결을 확인하세요.';
+  if (/nothing to render/i.test(e)) return '잘라내고 나면 남는 구간이 없습니다.';
+  return `만드는 중에 문제가 생겼습니다${e ? ` (${e.slice(0, 120)})` : ''}.`;
 }
 
 export function summarizeEdit(e: Edit) {
