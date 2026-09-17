@@ -145,6 +145,31 @@ export type AiInstallRequest = z.infer<typeof AiInstallRequest>;
 export const AiInstallResponse = z.object({ install: AiInstallState, providers: z.array(AiProviderInfo) });
 export type AiInstallResponse = z.infer<typeof AiInstallResponse>;
 
+/**
+ * 화면 안 터미널에서 열 수 있는 것. **이 목록이 전부다** — 셸도, 사용자가 친 명령도 없다.
+ * 짝지은 폰이 이 PC 를 마음대로 조종하지 못하게 하려는 것.
+ */
+export const TermKind = z.enum(['login-claude', 'login-codex', 'install-claude', 'install-codex']);
+export type TermKind = z.infer<typeof TermKind>;
+
+/** 브라우저 → 엔진 (터미널 소켓) */
+export const TermIn = z.union([
+  z.object({ t: z.literal('open'), kind: TermKind, cols: z.number(), rows: z.number() }),
+  z.object({ t: z.literal('in'), d: z.string().max(4096) }),
+  z.object({ t: z.literal('size'), cols: z.number(), rows: z.number() }),
+  z.object({ t: z.literal('kill') }),
+]);
+export type TermIn = z.infer<typeof TermIn>;
+
+/** 엔진 → 브라우저 */
+export const TermOut = z.union([
+  z.object({ t: z.literal('ready'), title: z.string(), line: z.string().nullable() }),
+  z.object({ t: z.literal('out'), d: z.string() }),
+  z.object({ t: z.literal('exit'), code: z.number() }),
+  z.object({ t: z.literal('error'), code: z.enum(['not_found', 'busy', 'bad_kind']) }),
+]);
+export type TermOut = z.infer<typeof TermOut>;
+
 /** 파일 고르기(트레이 앱의 파일 선택창). canceled 면 사용자가 창을 닫은 것. */
 export const AiPickResponse = z.object({
   canceled: z.boolean(),

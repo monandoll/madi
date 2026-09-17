@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Settings as SettingsSchema } from '@madi/shared';
+import { Settings as SettingsSchema, type TermKind } from '@madi/shared';
 import { FolderChooser } from '../components/FolderChooser.js';
 import { AiMark } from '../components/AiMark.js';
+// 터미널은 열 때만 받아 온다 (xterm 이 크다 — 첫 화면, 특히 폰에서 느려지지 않게)
+const Term = lazy(() => import('../components/Term.js').then((m) => ({ default: m.Term })));
 import { Qr } from '../components/Qr.js';
 import { Card, CardRow, GhostButton, PillButton, SectionTitle, Status } from '../components/Settings.js';
 import { StyleSection } from '../components/StyleSection.js';
@@ -38,6 +40,8 @@ export function SettingsScreen() {
   const [manual, setManual] = useState<'claude' | 'codex' | null>(null);
   const [copied, setCopied] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  // 화면 안 터미널 (로그인). 열려 있으면 그 종류.
+  const [term, setTerm] = useState<TermKind | null>(null);
   const install = useQuery({
     queryKey: queryKeys.aiInstall,
     queryFn: api.aiInstallState,
@@ -129,14 +133,11 @@ export function SettingsScreen() {
     api.aiInstallClear().then(applyInstall).catch(() => undefined);
   };
 
+  /** 로그인은 화면 안 터미널에서 한다 (폰에서도 되게). */
   const openLogin = (provider: 'claude' | 'codex') => {
     setLoginError(null);
-    api
-      .aiLogin(provider)
-      .catch(() => {
-        setLoginError(copy.settings.aiLoginFailed);
-        setManual(provider);
-      });
+    setManual(null);
+    setTerm(provider === 'claude' ? 'login-claude' : 'login-codex');
   };
 
   const copyLine = (line: string) => {
@@ -278,6 +279,21 @@ export function SettingsScreen() {
             <p className="text-12 text-error" data-testid="ai-path-error">
               {pathError}
             </p>
+          )}
+          {term && (
+            <Suspense fallback={<p className="text-12 text-text-3">{copy.settings.termOpening}</p>}>
+              <Term
+                kind={term}
+                onClose={() => setTerm(null)}
+                onFallback={() => {
+                  const provider = term === 'login-claude' ? 'claude' : 'codex';
+                  api.aiLogin(provider).catch(() => {
+                    setLoginError(copy.settings.aiLoginFailed);
+                    setManual(provider);
+                  });
+                }}
+              />
+            </Suspense>
           )}
           {manual && (
             <div className="flex flex-col gap-1.5 rounded-thumb border border-line px-3 py-2.5" data-testid="ai-manual-box">

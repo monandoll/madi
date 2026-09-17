@@ -168,13 +168,31 @@ test('아예 안 깔린 도구는 마디가 대신 깔아 준다', async ({ page
   await codex.getByRole('button', { name: '연결하기' }).click();
   await expect(ai.getByTestId('ai-status')).toHaveText('Codex 연결됨');
 
-  // 깔린 도구에는 로그인 창 열기가 붙는다 (리눅스 개발 환경에선 못 열어서 안내가 뜬다)
+  // 깔린 도구에는 로그인 버튼이 붙고, 누르면 화면 안 터미널이 열린다 (다음 스펙에서 자세히 본다)
   await expect(ai.getByTestId('ai-login-codex')).toBeVisible();
-  await ai.getByTestId('ai-login-codex').click();
-  await expect(ai.getByTestId('ai-login-error')).toContainText('로그인 창');
 
   // 뒷정리: 다음 스펙을 위해 연결을 끊는다
   await ai.getByTestId('ai-disconnect').click();
   await expect(ai.getByTestId('ai-status')).toHaveText('연결 안 됨');
 });
 
+
+test('로그인은 화면 안 터미널에서 한다 (폰에서도 되게)', async ({ page }) => {
+  await page.goto('/#/settings');
+  const ai = page.getByTestId('ai-section');
+  // 앞 스펙에서 codex 를 깔아 뒀다. 깔린 도구에는 로그인 버튼이 붙는다.
+  await ai.getByTestId('ai-login-codex').click();
+
+  const term = page.getByTestId('term');
+  await expect(term).toBeVisible();
+  await expect(term.getByTestId('term-title')).toHaveText('Codex 로그인', { timeout: 30_000 });
+  // 진짜 터미널 화면이 붙고, 도구가 낸 글이 그대로 보인다
+  await expect(term.locator('.xterm')).toBeVisible();
+  await expect(term).toContainText('브라우저에서 열기', { timeout: 30_000 });
+  await expect(term.getByTestId('term-done')).toContainText('다 됐어요', { timeout: 30_000 });
+  // 직접 치고 싶은 사람을 위한 한 줄도 같이 준다
+  await expect(term).toContainText('codex login');
+
+  await term.getByTestId('term-close').click();
+  await expect(page.getByTestId('term')).toHaveCount(0);
+});

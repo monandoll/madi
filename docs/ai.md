@@ -84,8 +84,30 @@ Windows 의 `claude.cmd` 는 `cmd.exe /d /s /c` 로 띄운다 (`provider.ts spaw
 - 실패 이유는 `network` / `permission` / `timeout` / `unsupported` / `failed` 다섯 가지로만 줄여서 화면에 사람 말로 보인다.
 - 끝나면 찾아 둔 기억을 지우고 다시 찾는다. 같은 응답에 찾은 결과가 실려 있어 화면이 바로 "연결하기"로 넘어간다.
 
-**로그인**은 자동으로 못 한다 — 브라우저가 떠야 하고 진짜 터미널이 필요하다. 그래서 창을 대신 열어 준다:
-macOS 는 Terminal.app(`osascript … do script "claude"`), Windows 는 새 명령 창(`cmd /k claude`). 리눅스(개발)는 못 연다.
+### 로그인: 화면 안 터미널
+
+로그인은 자동으로 못 한다 — 브라우저가 떠야 하고 진짜 터미널(PTY)이 필요하다.
+그래서 **마디 안에 터미널을 띄운다**. 검은 창을 따로 찾을 필요가 없고, 폰으로 들어와 있어도 똑같이 된다.
+
+```
+브라우저 (xterm)  ──WebSocket /api/term──▶  엔진  ──PTY──▶  claude setup-token / codex login
+```
+
+- `@lydell/node-pty` (프리빌트만, node-gyp 안 씀 → Electron 에서 재빌드 불필요). `asarUnpack` 에 넣는다.
+- `/api/term` 은 `/api/*` 라서 **짝짓기 가드가 그대로 걸린다** (밖에서 온 기기는 6자리 숫자를 맞혀야 붙는다).
+- 화면 쪽 xterm 은 열 때만 받아 온다 (`lazy`) — 첫 화면이 무거워지지 않게.
+- 한 번에 창 하나. 15분이 지나면 저절로 닫는다.
+
+**열 수 있는 것은 네 개뿐이다** (`TermKind`): `login-claude`, `login-codex`, `install-claude`, `install-codex`.
+셸도, 사용자가 친 명령도 열리지 않는다. 목록 밖이면 바로 `bad_kind` 로 거절한다.
+
+> 왜 `claude` 를 그냥 띄우지 않나: 대화형 claude 안에서는 `!` 로 아무 셸 명령이나 돌릴 수 있다.
+> 짝지은 폰이 그걸 열 수 있으면 그 폰이 곧 이 PC 의 조종간이 된다. 그래서 로그인만 하고 끝나는
+> `claude setup-token` 을 쓴다. codex 는 `codex login`.
+
+창을 못 띄우는 PC 를 위해 `POST /api/ai/login` (트레이 앱이 macOS Terminal.app / Windows 명령 창을 여는 옛 길)을
+"이 컴퓨터 창으로 열기" 폴백으로 남겨 뒀다. 그것도 안 되면 화면에 한 줄(`claude setup-token`)을 그대로 보여 준다.
+
 API 키 방식은 아직 안 쓴다 (사용자 본인 구독으로 돈다는 원칙).
 
 ### 못 찾을 때: 다시 찾기 · 직접 찾기
@@ -114,6 +136,8 @@ API 키 방식은 아직 안 쓴다 (사용자 본인 구독으로 돈다는 원
 - 단위 `test/detect.test.ts`: 직접 고른 파일 우선·사라졌을 때 되돌아가기·경로별 캐시·fresh.
 - 단위 `test/install.test.ts`: 플랫폼별 설치·로그인 명령(npm·node 안 씀), 설치 뒤 실행 확인, 실패 이유 줄이기.
 - 엔진 e2e `test/e2e.aiinstall.test.ts`: 가짜 설치기로 깔기 → 설치됨 → 연결까지, 동시 실행 409, 로그인 창 501/200.
+- 단위 `test/term.test.ts`: 열 수 있는 목록, 로그인이 도구를 통째로 띄우지 않음, 창 크기 이상값, 진짜 PTY 로 글이 나옴.
+- 엔진 e2e `test/e2e.term.test.ts`: 소켓으로 터미널 열기, 목록 밖 거절, 짝짓기 전 차단, 창 하나 제한.
 - 엔진 e2e `test/e2e.aipath.test.ts`: 엉뚱한 파일 거절, 고른 자리로 연결, 프로바이더를 바꿔도 남음, 파일 선택창 없음(501)·있음.
 
 진짜 CLI 로 손 테스트: `claude` 가 PATH 에 있으면 설정 → AI → Claude Code "쓰기". 로그는 `~/.madi/logs/engine.log` (`agent` 항목, debug).

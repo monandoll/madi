@@ -16,6 +16,8 @@ files:
 asar: true
 asarUnpack:
   - "**/node_modules/better-sqlite3/**"
+  # 화면 안 터미널. 네이티브 파일 + spawn-helper 는 asar 안에서 실행되지 않는다.
+  - "**/node_modules/@lydell/node-pty*/**"
 
 # 엔진이 MADI_ROOT=process.resourcesPath 아래에서 찾는 것들
 extraResources:

@@ -16,6 +16,13 @@ import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 
 const args = process.argv.slice(2);
+// `claude setup-token`: 진짜처럼 주소를 찍고 코드를 기다리는 척한다 (화면 안 터미널 테스트용)
+if (args[0] === 'setup-token') {
+  process.stdout.write('Claude Code 로그인\n');
+  process.stdout.write('브라우저에서 열기: https://example.invalid/oauth?code=FAKE\n');
+  process.stdout.write('로그인이 끝났어요.\n');
+  process.exit(0);
+}
 if (args.includes('--version')) {
   process.stdout.write('9.9.9 (fake Claude Code)\n');
   process.exit(0);

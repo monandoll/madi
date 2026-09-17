@@ -164,7 +164,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     openFolder: undefined as ((dir: string) => Promise<void>) | undefined,
   };
   const app = createApp(deps);
-  const ws = attachWs(app, VERSION);
+  const ws = attachWs(app, VERSION, log);
   const webMounted = mountWeb(app, cfg);
   videos.on('video.added', (video) => ws.broadcast({ type: 'video.added', video }));
   videos.on('video.updated', (video) => ws.broadcast({ type: 'video.updated', video }));

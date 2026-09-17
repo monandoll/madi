@@ -1,6 +1,6 @@
 {
   "name": "@madi/engine",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "private": true,
   "description": "마디 엔진 — 사용자 PC에서 돌아가는 편집 서버 (트레이 전용)",
   "productName": "madi-engine",
@@ -21,6 +21,7 @@
     "electron": "electron ."
   },
   "dependencies": {
+    "@lydell/node-pty": "1.2.0-beta.15",
     "better-sqlite3": "^13.0.3",
     "electron-updater": "^6.8.9"
   },
