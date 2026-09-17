@@ -53,7 +53,7 @@ test('상세: 인사말, 프리뷰 펼치기, 세로로 바꾸기 → 결과물 
   await expect(bar.locator('[data-action="vertical"]')).toBeDisabled(); // 돌아가는 동안은 잠김
   await expect(page.getByTestId('output-row')).toHaveCount(1, { timeout: 90_000 });
   await expect(page.getByTestId('progress-card')).toHaveCount(0);
-  await expect(page.getByTestId('bubble-assistant').last()).toContainText('세로로 바꿨어요');
+  await expect(page.getByTestId('bubble-assistant').last()).toContainText('세로로 바꿨습니다');
   await expect(page.getByTestId('output-row')).toContainText('9:16');
   await expect(page.getByText('결과물 1개').first()).toBeVisible();
 });
@@ -63,7 +63,7 @@ test('쉬는 구간 잘라내기 → 잘라낸 결과 문구, 결과물 2개', a
   await page.locator('[data-testid="video-card"]', { hasText: '어깨 가동성 루틴 3분' }).click();
   await page.getByTestId('action-bar').locator('[data-action="silence"]').click();
   await expect(page.getByTestId('output-row')).toHaveCount(2, { timeout: 90_000 });
-  await expect(page.getByTestId('bubble-assistant').last()).toContainText(/쉬는 구간 2곳.*잘라냈어요/);
+  await expect(page.getByTestId('bubble-assistant').last()).toContainText(/쉬는 구간 2곳.*잘라냈습니다/);
   // 갤러리 카드 배지
   await page.goto('/');
   await expect(page.locator('[data-testid="video-card"]', { hasText: '어깨 가동성 루틴 3분' })).toContainText('결과물 2개');
@@ -96,7 +96,7 @@ test('숏폼 자르기: 구간 고르고 만들기 → 결과물 화면 → 다�
   const out = page.getByTestId('output-detail');
   await expect(out.getByRole('heading', { name: /숏폼 1/ })).toBeVisible();
   await expect(out.getByTestId('output-video')).toBeVisible();
-  await expect(out.getByText('이 결과물엔 자막이 없어요.')).toBeVisible();
+  await expect(out.getByText('자막 없음')).toBeVisible();
   const dl = out.getByTestId('download');
   await expect(dl).toHaveAttribute('href', /\/media\/outputs\/.+\.mp4\?download=1/);
   const res = await page.request.head(await dl.getAttribute('href'));
@@ -118,7 +118,7 @@ test('자막 넣기 (whisper 있을 때만): 자막 결과물과 자막 목록',
   await expect(page.getByTestId('bubble-user').last()).toContainText('자막 넣어줘');
   await expect(page.getByTestId('progress-card')).toContainText('자막 만드는 중');
   await expect(page.getByTestId('output-row')).toHaveCount(4, { timeout: 180_000 });
-  await expect(page.getByTestId('bubble-assistant').last()).toContainText('자막을 넣었어요');
+  await expect(page.getByTestId('bubble-assistant').last()).toContainText('자막을 넣었습니다');
   await page.getByTestId('output-row').filter({ hasText: '자막' }).getByRole('button', { name: '자세히' }).click();
   await expect(page.getByTestId('output-detail')).toBeVisible();
 });
@@ -145,7 +145,7 @@ test('소리 없는 영상: "자막 직접 쓰기"로 원하는 자리에 자막
   await expect(editor).toHaveCount(0);
   await expect(page.getByTestId('bubble-user').last()).toContainText('자막 넣어줘');
   await expect(page.getByTestId('output-row')).toHaveCount(1, { timeout: 90_000 });
-  await expect(page.getByTestId('bubble-assistant').last()).toContainText('자막을 넣었어요');
+  await expect(page.getByTestId('bubble-assistant').last()).toContainText('자막을 넣었습니다');
   // 이제 자막 넣기 버튼도 살아 있다
   await expect(bar.locator('[data-action="subtitle"]')).toBeEnabled();
   // 결과물의 자막 목록에 그대로

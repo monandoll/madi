@@ -28,7 +28,7 @@ test('처음 켜면 설정 카드가 뜨고, 이름과 폴더를 고르면 영�
   // 설정 전에는 첫 실행 화면만 (design/v2 Desktop 첫 실행 카드)
   const card = page.getByTestId('setup-card');
   await expect(card).toBeVisible();
-  await expect(card.getByText('처음이시죠?')).toBeVisible();
+  await expect(card.getByText('스튜디오 설정')).toBeVisible();
   await expect(card.getByTestId('setup-name')).toHaveValue('내 스튜디오');
   await expect(page.getByTestId('video-card')).toHaveCount(0);
 
@@ -130,9 +130,9 @@ test('설정 화면: 톱니로 들어가서 이름을 바꾸고 폴더를 더하
 test('탭: 진행 중 · 결과물', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('tab', { name: '진행 중' }).click();
-  await expect(page.getByTestId('empty')).toContainText('하고 있는 일이 없어요');
+  await expect(page.getByTestId('empty')).toContainText('진행 중인 작업이 없습니다');
   await page.getByRole('tab', { name: '결과물' }).click();
-  await expect(page.getByTestId('empty')).toContainText('결과물이 없어요');
+  await expect(page.getByTestId('empty')).toContainText('결과물이 없습니다');
   await page.getByRole('tab', { name: '영상' }).click();
   await expect(page.getByTestId('video-card')).toHaveCount(2);
 });
@@ -192,7 +192,7 @@ test('폰(375)에서 "올리기"로 영상을 올리면 진행 줄이 뜨고 갤
   // 영상이 아닌 파일은 올리지 않고 이유를 말한다
   const [chooser2] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('upload-button').click()]);
   await chooser2.setFiles({ name: '메모.txt', mimeType: 'text/plain', buffer: Buffer.from('x') });
-  await expect(page.getByTestId('upload-status')).toHaveText('영상 파일만 올릴 수 있어요.');
+  await expect(page.getByTestId('upload-status')).toHaveText('영상 파일만 올릴 수 있습니다.');
   await page.getByTestId('upload-remove').click();
   await expect(page.getByTestId('upload-row')).toHaveCount(0);
   // 뒷정리: 올린 파일을 지우면 갤러리에서도 빠진다 (다음 스펙은 카드 2개를 기대한다)
@@ -206,7 +206,7 @@ test('PC 의 "폰에서 업로드"는 안내 카드를 열고, 거기서 이 브
   await page.getByTestId('upload-help-toggle').click();
   const help = page.getByTestId('upload-help');
   await expect(help).toBeVisible();
-  await expect(help).toContainText('폰에서 마디를 열면');
+  await expect(help).toContainText('휴대폰에서 마디를 열면');
   await expect(help.getByTestId('upload-remote')).toContainText('밖에서 접속하기');
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), help.getByTestId('upload-pick-here').click()]);
   await chooser.setFiles({ name: '데스크 업로드.mp4', mimeType: 'video/mp4', buffer: fs.readFileSync(path.join(FIXTURES, 'sample-5s.mp4')) });

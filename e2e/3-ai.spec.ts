@@ -58,7 +58,7 @@ test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지�
   // 도구가 만든 진행 카드 → 결과물 카드 (답 말풍선 아래에 붙는다)
   await expect(page.getByTestId('output-row')).toHaveCount(before + 1, { timeout: 90_000 });
   await expect(page.getByTestId('output-row').last()).toContainText('AI 세로');
-  await expect(page.getByTestId('bubble-assistant').filter({ hasText: '「AI 세로」 만들었어요' })).toHaveCount(2); // 답 + 카드 설명
+  await expect(page.getByTestId('bubble-assistant').filter({ hasText: '「AI 세로」' })).toHaveCount(2); // 답 + 카드 설명
   await expect(page.getByTestId('chat-send')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('bubble-streaming')).toHaveCount(0);
 
@@ -117,13 +117,13 @@ test('아이콘 · 다시 찾기 · 이 PC 에서 직접 찾기', async ({ page 
   const codex = ai.getByTestId('ai-provider-codex');
   await expect(codex).toContainText('설치 안 됨');
   await ai.getByTestId('ai-pick-codex').click();
-  await expect(ai.getByTestId('ai-path-error')).toContainText('파일 고르기 창');
+  await expect(ai.getByTestId('ai-path-error')).toContainText('파일 선택창');
 
   // 실행 파일을 알려 주면 그 자리로 연결된다
   const fake = path.join(FIXTURES, 'fake-codex.mjs');
   expect((await page.request.post('/api/ai/path', { data: { provider: 'codex', path: fake } })).status()).toBe(200);
   await page.reload();
-  await expect(ai.getByTestId('ai-custom-codex')).toContainText('직접 고른 파일');
+  await expect(ai.getByTestId('ai-custom-codex')).toContainText('직접 선택한 파일');
   await expect(codex).toContainText('설치됨');
 
   // 엉뚱한 파일은 거절한다
@@ -131,7 +131,7 @@ test('아이콘 · 다시 찾기 · 이 PC 에서 직접 찾기', async ({ page 
   expect(bad.status()).toBe(400);
 
   // 직접 고른 것 지우기 → 다시 알아서 찾는다 (여기선 없음)
-  await ai.getByTestId('ai-custom-codex').getByRole('button', { name: '직접 고른 것 지우기' }).click();
+  await ai.getByTestId('ai-custom-codex').getByRole('button', { name: '직접 선택 해제' }).click();
   await expect(ai.getByTestId('ai-custom-codex')).toHaveCount(0);
   await expect(codex).toContainText('설치 안 됨');
 
@@ -189,7 +189,7 @@ test('로그인은 화면 안 터미널에서 한다 (폰에서도 되게)', asy
   // 진짜 터미널 화면이 붙고, 도구가 낸 글이 그대로 보인다
   await expect(term.locator('.xterm')).toBeVisible();
   await expect(term).toContainText('브라우저에서 열기', { timeout: 30_000 });
-  await expect(term.getByTestId('term-done')).toContainText('다 됐어요', { timeout: 30_000 });
+  await expect(term.getByTestId('term-done')).toContainText('완료했습니다', { timeout: 30_000 });
   // 직접 치고 싶은 사람을 위한 한 줄도 같이 준다
   await expect(term).toContainText('codex login');
 

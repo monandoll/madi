@@ -40,7 +40,7 @@ export function termPlan(kind: TermKind): TermPlan | null {
     case 'install-codex': {
       const name = kind === 'install-claude' ? 'claude' : 'codex';
       const plan = installPlan(name);
-      return plan ? { ...plan, title: name === 'claude' ? 'Claude Code 깔기' : 'Codex 깔기' } : null;
+      return plan ? { ...plan, title: name === 'claude' ? 'Claude Code 설치' : 'Codex 설치' } : null;
     }
     default:
       return null;

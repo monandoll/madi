@@ -1,5 +1,5 @@
 /**
- * 밖에서 접속 브라우저 e2e: 설정에서 켜기 한 번 → QR·주소·잠금 숫자가 나온다 (가짜 cloudflared).
+ * 밖에서 접속 브라우저 e2e: 설정에서 켜기 한 번 → QR·주소·인증번호가 나온다 (가짜 cloudflared).
  * 폰이 밖에서 들어온 상황은 터널이 붙이는 헤더로 흉내 낸다 — 숫자 화면이 먼저 뜨고, 맞히면 갤러리가 열린다.
  */
 import { expect, test } from '@playwright/test';
@@ -9,7 +9,7 @@ test.describe.configure({ mode: 'serial', retries: 0 });
 /** 터널을 지나온 척 (cloudflared 가 늘 붙이는 헤더) */
 const REMOTE_HEADERS = { 'cf-connecting-ip': '203.0.113.9', 'cf-ray': '8a0f-ICN' };
 
-test('설정에서 켜기 한 번이면 QR 과 잠금 숫자가 나온다', async ({ page }) => {
+test('설정에서 켜기 한 번이면 QR 과 인증번호가 나온다', async ({ page }) => {
   await page.request.patch('/api/settings', { data: { setupDone: true } });
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/#/settings');
@@ -22,10 +22,10 @@ test('설정에서 켜기 한 번이면 QR 과 잠금 숫자가 나온다', asyn
   await expect(qr).toBeVisible();
   await expect(section.getByTestId('remote-url')).toHaveText('https://madi-e2e.trycloudflare.com', { timeout: 30_000 });
   await expect(qr.getByTestId('qr').locator('img')).toBeVisible();
-  await expect(section.getByTestId('remote-pin')).toHaveText(/잠금 숫자 \d{6}/);
+  await expect(section.getByTestId('remote-pin')).toHaveText(/인증번호 \d{6}/);
   await expect(section.getByTestId('remote-status')).toHaveText('연결됨', { timeout: 30_000 });
   await expect(qr).toContainText('들어온 기기 없음');
-  await expect(qr).toContainText('마디를 껐다 켜면 주소가 바뀌어요');
+  await expect(qr).toContainText('마디를 다시 시작하면 주소가 바뀝니다');
 
   // 토큰은 "고급" 안에 접혀 있다 (보통은 볼 일이 없다)
   await expect(section.getByTestId('remote-token')).toHaveCount(0);
@@ -46,8 +46,8 @@ test('갤러리의 "폰에서 올리기" 안내에도 같은 QR 이 뜬다', asy
   await page.getByTestId('upload-help-toggle').click();
   const help = page.getByTestId('upload-help');
   await expect(help.getByTestId('qr').locator('img')).toBeVisible({ timeout: 30_000 });
-  await expect(help.getByTestId('upload-remote')).toContainText('어디서든 올릴 수 있어요');
-  await expect(help.getByTestId('upload-pin')).toHaveText(/잠금 숫자 \d{6}/);
+  await expect(help.getByTestId('upload-remote')).toContainText('어디서든 올릴 수 있습니다');
+  await expect(help.getByTestId('upload-pin')).toHaveText(/인증번호 \d{6}/);
   await help.getByRole('button', { name: '닫기' }).click();
 });
 
@@ -110,6 +110,6 @@ test('끄면 주소가 사라지고 들어와 있던 폰도 끊긴다', async ({
   await expect(p.getByTestId('pair-screen')).toBeVisible();
   await p.getByTestId('pair-input').fill('123456');
   await p.getByTestId('pair-submit').click();
-  await expect(p.getByTestId('pair-error')).toContainText('밖에서 접속을 받지 않아요');
+  await expect(p.getByTestId('pair-error')).toContainText('먼저 켜세요');
   await phone.close();
 });
