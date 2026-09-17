@@ -1,12 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sidebar } from './components/Sidebar.js';
 import { TabBar } from './components/TabBar.js';
 import { copy } from './copy.js';
-import { api, queryKeys } from './lib/api.js';
+import { api, ApiError, queryKeys } from './lib/api.js';
 import { useRoute } from './lib/route.js';
 import { useSettings } from './lib/settings.js';
 import { useEngineEvents } from './lib/ws.js';
 import { FirstRun } from './screens/FirstRun.js';
+import { Pair } from './screens/Pair.js';
 import { Gallery } from './screens/Gallery.js';
 import { OutputDetail } from './screens/OutputDetail.js';
 import { OutputsScreen } from './screens/Outputs.js';
@@ -23,6 +24,7 @@ import { useIsPc } from './store.js';
  */
 export function App() {
   useEngineEvents();
+  const qc = useQueryClient();
   const route = useRoute();
   const pc = useIsPc();
   const settings = useSettings();
@@ -31,6 +33,10 @@ export function App() {
   const outputs = useQuery({ queryKey: queryKeys.outputs, queryFn: api.outputs, enabled: pc });
   const providers = useQuery({ queryKey: queryKeys.aiProviders, queryFn: () => api.aiProviders(), enabled: pc, staleTime: 60_000 });
   const ws = settings.settings;
+
+  // 밖에서 처음 들어온 기기: 6자리 숫자를 한 번 넣어야 한다 (QR 로 왔으면 저절로 지나간다)
+  const needsPair = settings.isError && settings.error instanceof ApiError && settings.error.code === 'needs_pair';
+  if (needsPair) return <Pair onDone={() => void qc.invalidateQueries()} />;
 
   if (settings.isSuccess && !ws.setupDone) return <FirstRun initialName={ws.workspaceName} initialFolders={ws.watchFolders} />;
 

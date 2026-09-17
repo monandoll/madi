@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { Qr } from '../components/Qr.js';
 import { HeaderButton, TopBar } from '../components/TopBar.js';
 import { VideoCard } from '../components/VideoCard.js';
 import { copy } from '../copy.js';
@@ -87,9 +88,7 @@ export function Gallery() {
       )}
       {picker}
       <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3.5 pt-3 pb-5 pc:px-6 pc:pt-5 pc:pb-10">
-        {pc && help && (
-          <UploadHelp remoteOn={health.data?.tunnel.status === 'running'} onPick={pick} onClose={() => setHelp(false)} />
-        )}
+        {pc && help && <UploadHelp onPick={pick} onClose={() => setHelp(false)} />}
         {uploads.items.length > 0 && (
           <div className="mb-3 flex flex-col overflow-hidden rounded-thumb border border-line pc:mb-4" data-testid="upload-list">
             {uploads.items.map((it, i) => (
@@ -115,8 +114,13 @@ export function Gallery() {
   );
 }
 
-/** PC "폰에서 업로드" 안내 카드: 폰에서 여는 법 · 밖에서 접속 상태 · 이 브라우저에서 바로 고르기. */
-function UploadHelp({ remoteOn, onPick, onClose }: { remoteOn: boolean; onPick(): void; onClose(): void }) {
+/** PC "폰에서 업로드" 안내 카드: QR · 밖에서 접속 상태 · 이 브라우저에서 바로 고르기. */
+function UploadHelp({ onPick, onClose }: { onPick(): void; onClose(): void }) {
+  const remote = useQuery({ queryKey: queryKeys.remote, queryFn: api.remote, refetchInterval: 3_000 });
+  const url = remote.data?.url ?? null;
+  const pin = remote.data?.pin ?? null;
+  const qrUrl = url && pin ? `${url}/?pin=${pin}` : url;
+  const on = !!url;
   return (
     <div className="mb-4 flex flex-col gap-2 rounded-thumb border border-line px-4 py-3" data-testid="upload-help">
       <div className="flex items-baseline justify-between gap-3">
@@ -125,15 +129,25 @@ function UploadHelp({ remoteOn, onPick, onClose }: { remoteOn: boolean; onPick()
           {copy.upload.close}
         </button>
       </div>
-      <p className="text-14 leading-[1.6] text-text-2" style={{ textWrap: 'pretty' }}>
-        {copy.upload.pcHelp}
-      </p>
+      <div className="flex items-start gap-3.5">
+        {qrUrl && <Qr value={qrUrl} size={132} />}
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <p className="text-14 leading-[1.6] text-text-2" style={{ textWrap: 'pretty' }}>
+            {on ? copy.settings.remoteQrHelp : copy.upload.pcHelp}
+          </p>
+          <span className="flex items-center gap-1.5 text-13 text-text-3" data-testid="upload-remote">
+            <span className="h-1.5 w-1.5 flex-none rounded-pill" style={{ background: on ? 'var(--color-ok)' : 'var(--color-off)' }} />
+            {on ? copy.upload.pcRemoteOn : copy.upload.pcRemoteOff}
+          </span>
+          {pin && (
+            <span className="text-13 font-semibold tracking-[0.12em]" data-testid="upload-pin">
+              {copy.settings.remotePin(pin)}
+            </span>
+          )}
+        </div>
+      </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-13">
-        <span className="flex items-center gap-1.5 text-text-3" data-testid="upload-remote">
-          <span className="h-1.5 w-1.5 flex-none rounded-pill" style={{ background: remoteOn ? 'var(--color-ok)' : 'var(--color-off)' }} />
-          {remoteOn ? copy.upload.pcRemoteOn : copy.upload.pcRemoteOff}
-        </span>
-        {!remoteOn && (
+        {!on && (
           <button type="button" onClick={() => go({ screen: 'settings' })} className="text-accent hover:text-accent-hover">
             {copy.upload.pcSettings}
           </button>

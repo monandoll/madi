@@ -8,6 +8,8 @@ import {
   FoldersResponse,
   HealthResponse,
   OpenFolderResponse,
+  PairResponse,
+  RemoteResponse,
   OutputDetailResponse,
   OutputsResponse,
   PickFolderResponse,
@@ -18,12 +20,6 @@ import {
   VideosResponse,
 } from '@madi/shared';
 
-async function get<T>(path: string, schema: z.ZodType<T>): Promise<T> {
-  const res = await fetch(path, { headers: { accept: 'application/json' } });
-  if (!res.ok) throw new Error(`${path} ${res.status}`);
-  return schema.parse(await res.json());
-}
-
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -33,16 +29,25 @@ export class ApiError extends Error {
   }
 }
 
+/** 엔진이 돌려준 오류 코드. 없으면 http_error. */
+async function errorOf(res: Response): Promise<ApiError> {
+  const body = (await res.json().catch(() => null)) as { error?: { code?: string } } | null;
+  return new ApiError(res.status, body?.error?.code ?? 'http_error');
+}
+
+async function get<T>(path: string, schema: z.ZodType<T>): Promise<T> {
+  const res = await fetch(path, { headers: { accept: 'application/json' } });
+  if (!res.ok) throw await errorOf(res);
+  return schema.parse(await res.json());
+}
+
 async function send<T>(method: 'PATCH' | 'POST' | 'DELETE' | 'PUT', path: string, body: unknown, schema: z.ZodType<T>): Promise<T> {
   const res = await fetch(path, {
     method,
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: body === undefined ? null : JSON.stringify(body),
   });
-  if (!res.ok) {
-    const code = (await res.json().catch(() => null))?.error?.code ?? 'http_error';
-    throw new ApiError(res.status, code);
-  }
+  if (!res.ok) throw await errorOf(res);
   return schema.parse(await res.json());
 }
 
@@ -68,6 +73,8 @@ export const api = {
   suggestFolders: () => get('/api/folders/suggest', FoldersResponse),
   pickFolder: () => send('POST', '/api/folders/pick', undefined, PickFolderResponse),
   openFolder: () => send('POST', '/api/folders/open', undefined, OpenFolderResponse),
+  remote: () => get('/api/remote', RemoteResponse),
+  pair: (pin: string) => send('POST', '/api/remote/pair', { pin }, PairResponse),
 };
 
 export const queryKeys = {
@@ -80,4 +87,5 @@ export const queryKeys = {
   output: (id: string) => ['output', id] as const,
   aiProviders: ['ai-providers'] as const,
   style: ['style'] as const,
+  remote: ['remote'] as const,
 };

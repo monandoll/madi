@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { serve, type ServerType } from '@hono/node-server';
 import { type EngineConfig, loadConfig } from './config.js';
@@ -18,6 +19,7 @@ import { registerEditWorkers } from './workers/edit.js';
 import { Whisper } from './workers/whisper.js';
 import { Library } from './library.js';
 import { Tunnel } from './tunnel.js';
+import { RemoteAuth } from './remote.js';
 import { ClaudeProvider } from './agent/claude.js';
 import { CodexProvider } from './agent/codex.js';
 import { detectCli } from './agent/detect.js';
@@ -54,6 +56,7 @@ export interface Engine {
   queue: JobQueue;
   library: Library;
   tunnel: Tunnel;
+  remoteAuth: RemoteAuth;
   watcher: FolderWatcher;
   agent: AgentRunner;
   style: StyleProfile;
@@ -103,7 +106,13 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   styleService.registerWorker();
 
   const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
+  const remoteAuth = new RemoteAuth(path.join(cfg.dataDir, 'pairs.json'));
   const url = `http://127.0.0.1:${cfg.port}`;
+  let remoteMode = settings.get().remoteMode;
+  const tunnelConfig = () => {
+    const s = settings.get();
+    return { mode: s.remoteMode, token: s.tunnelToken, localUrl: url };
+  };
   const agentTools = new AgentTools({ cfg, library, videos, queue, ffmpegBin, style, chapters, events, log });
   const agent = new AgentRunner({
     cfg,
@@ -126,6 +135,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     library,
     events,
     tunnel,
+    remoteAuth,
     agent,
     uploads,
     agentTools,
@@ -134,7 +144,12 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     version: VERSION,
     onSettingsChanged: () => {
       void watcher.setFolders(settings.get().watchFolders);
-      tunnel.apply(settings.get().tunnelToken);
+      const next = tunnelConfig();
+      // 밖에서 접속을 끄면 짝지은 폰도 전부 끊는다. 다시 켜면 숫자가 새로 생긴다.
+      if (next.mode === 'off' && remoteMode !== 'off') remoteAuth.forgetAll();
+      else if (next.mode !== 'off' && remoteMode === 'off') remoteAuth.resetPin();
+      remoteMode = next.mode;
+      tunnel.apply(next);
       styleService.refresh();
       const p = settings.get().ai.provider;
       if (p !== 'none') void detectCli(p, { fresh: true });
@@ -164,7 +179,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   events.record('engine.start', { version: VERSION });
 
   await watcher.setFolders(settings.get().watchFolders);
-  tunnel.apply(settings.get().tunnelToken);
+  tunnel.apply(tunnelConfig());
   styleService.refresh();
   // 링크로 배우기(yt-dlp)가 되는 PC 인지 — 몇 초 걸릴 수 있어 기다리지 않는다
   void styleService.detectDownloader();
@@ -180,6 +195,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     queue,
     library,
     tunnel,
+    remoteAuth,
     watcher,
     agent,
     style,
