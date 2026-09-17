@@ -7,16 +7,16 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { TermKind } from '@madi/shared';
 import { resetCliCache } from '../src/agent/detect.js';
-import { openTerm, termLine, termPlan } from '../src/server/term.js';
-import { FIXTURES, quietLogger, tempHome } from './helpers.js';
+import { openTerm, ptyTarget, termLine, termPlan } from '../src/server/term.js';
+import { fakeCli, quietLogger, tempHome } from './helpers.js';
 
 let home: string;
 
 beforeEach(() => {
   home = tempHome('madi-term-');
   resetCliCache();
-  process.env['MADI_CLAUDE_BIN'] = path.join(FIXTURES, 'fake-claude.mjs');
-  process.env['MADI_CODEX_BIN'] = path.join(FIXTURES, 'fake-codex.mjs');
+  process.env['MADI_CLAUDE_BIN'] = fakeCli('claude');
+  process.env['MADI_CODEX_BIN'] = fakeCli('codex');
 });
 afterEach(() => {
   resetCliCache();
@@ -28,7 +28,7 @@ afterEach(() => {
 describe('termPlan', () => {
   it('로그인은 도구를 통째로 띄우지 않는다 (그 안에서 아무 명령이나 돌릴 수 있으므로)', () => {
     const claude = termPlan('login-claude')!;
-    expect(claude.command).toBe(path.join(FIXTURES, 'fake-claude.mjs'));
+    expect(claude.command).toBe(fakeCli('claude'));
     expect(claude.args).toEqual(['setup-token']);
     const codex = termPlan('login-codex')!;
     expect(codex.args).toEqual(['login']);
@@ -58,6 +58,20 @@ describe('termPlan', () => {
     expect(termLine('login-claude')).toBe('claude setup-token');
     expect(termLine('login-codex')).toBe('codex login');
     expect(termLine('install-claude')).toBeNull();
+  });
+});
+
+describe('ptyTarget (윈도우)', () => {
+  it('npm 으로 깐 claude.cmd 는 cmd.exe 를 거쳐 띄운다 (그냥 띄우면 종료 코드 193)', () => {
+    const t = ptyTarget('C:\\Users\\Kim Eunjung\\AppData\\Roaming\\npm\\claude.cmd', ['setup-token'], 'win32');
+    expect(t.command).toMatch(/cmd\.exe$/i);
+    // 띄어쓰기가 있는 경로는 따옴표로 묶는다 (사용자 이름에 공백이 흔하다)
+    expect(t.args).toBe('/d /s /c ""C:\\Users\\Kim Eunjung\\AppData\\Roaming\\npm\\claude.cmd" setup-token"');
+  });
+
+  it('.exe 나 맥·리눅스 실행 파일은 그대로 띄운다', () => {
+    expect(ptyTarget('C:\\bin\\codex.exe', ['login'], 'win32')).toEqual({ command: 'C:\\bin\\codex.exe', args: ['login'] });
+    expect(ptyTarget('/usr/local/bin/codex', ['login'], 'darwin')).toEqual({ command: '/usr/local/bin/codex', args: ['login'] });
   });
 });
 

@@ -9,7 +9,7 @@ import { WebSocket } from 'ws';
 import { type TermOut } from '@madi/shared';
 import { resetCliCache } from '../src/agent/detect.js';
 import { type Engine, startEngine } from '../src/engine.js';
-import { FIXTURES, freePort, tempHome } from './helpers.js';
+import { fakeCli, freePort, tempHome } from './helpers.js';
 
 let home: string;
 let engine: Engine;
@@ -20,8 +20,8 @@ const REMOTE = { 'cf-connecting-ip': '203.0.113.9' };
 beforeAll(async () => {
   home = tempHome('madi-term-e2e-');
   process.env['MADI_QUIET'] = '1';
-  process.env['MADI_CLAUDE_BIN'] = path.join(FIXTURES, 'fake-claude.mjs');
-  process.env['MADI_CODEX_BIN'] = path.join(FIXTURES, 'fake-codex.mjs');
+  process.env['MADI_CLAUDE_BIN'] = fakeCli('claude');
+  process.env['MADI_CODEX_BIN'] = fakeCli('codex');
   resetCliCache();
   engine = await startEngine({ dataDir: home, dbPath: path.join(home, 'madi.db'), port: await freePort() });
 });

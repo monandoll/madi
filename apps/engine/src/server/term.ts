@@ -4,6 +4,7 @@ import { spawn as ptySpawn } from '@lydell/node-pty';
 import type { TermKind } from '@madi/shared';
 import { withKnownDirs, findCli } from '../agent/detect.js';
 import { installPlan, loginLine } from '../agent/install.js';
+import { quoteWin } from '../agent/provider.js';
 import type { Logger } from '../log.js';
 
 /**
@@ -77,8 +78,9 @@ export function openTerm(kind: TermKind, size: { cols: number; rows: number }, h
   const plan = termPlan(kind);
   if (!plan) return null;
   let child: IPty;
+  const target = ptyTarget(plan.command, plan.args);
   try {
-    child = ptySpawn(plan.command, plan.args, {
+    child = ptySpawn(target.command, target.args, {
       name: 'xterm-256color',
       cols: clamp(size.cols, COLS.min, COLS.max),
       rows: clamp(size.rows, ROWS.min, ROWS.max),
@@ -130,6 +132,17 @@ export function openTerm(kind: TermKind, size: { cols: number; rows: number }, h
       }
     },
   };
+}
+
+/**
+ * 윈도우에서 npm 으로 깐 도구는 `claude.cmd` 다. `.cmd` 는 실행 파일이 아니라 cmd.exe 가 읽는 대본이라
+ * 그대로 띄우면 CreateProcess 가 거절한다 (종료 코드 193). cmd.exe 를 거쳐 띄운다.
+ * (자식 CLI 를 띄우는 `spawnCli` 와 같은 방식. 여기서는 pty 라 명령줄을 통째로 넘긴다.)
+ */
+export function ptyTarget(command: string, args: string[], platform: NodeJS.Platform = process.platform): { command: string; args: string[] | string } {
+  if (platform !== 'win32' || !/\.(cmd|bat)$/i.test(command)) return { command, args };
+  const line = [command, ...args].map(quoteWin).join(' ');
+  return { command: process.env['ComSpec'] ?? 'cmd.exe', args: `/d /s /c "${line}"` };
 }
 
 function clamp(n: number, lo: number, hi: number): number {
