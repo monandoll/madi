@@ -14,14 +14,14 @@ const DESKTOP = path.join(process.env['MADI_E2E_HOME']!, 'suggest', 'Desktop');
 test.describe.configure({ mode: 'serial', retries: 0 });
 
 test('편집 스타일: 규칙을 더하고 뺀다', async ({ page }) => {
-  await page.request.patch('/api/settings', { data: { referenceFolders: [], ai: { provider: 'none' } } });
+  await page.request.patch('/api/settings', { data: { referenceFolders: [], ai: { provider: 'none' }, setupDone: true } });
   await page.goto('/#/settings');
   const section = page.getByTestId('style-section');
   await expect(section).toBeVisible();
   const before = await section.getByTestId('style-rule').count();
   expect(before).toBeGreaterThan(0);
   await section.getByTestId('style-rule-input').fill('인트로는 3초만');
-  await section.getByRole('button', { name: '추가', exact: true }).click();
+  await section.getByTestId('style-rule-add').click();
   await expect(section.getByTestId('style-rule')).toHaveCount(before + 1);
   const added = section.getByTestId('style-rule').filter({ hasText: '인트로는 3초만' });
   await expect(added).toHaveAttribute('data-learned', 'false');
@@ -89,4 +89,24 @@ test('링크를 붙여 넣으면 받아서 배운다 (가짜 yt-dlp)', async ({ 
   await refs.getByTestId('link-row').first().getByTestId('link-remove').click();
   await expect(refs.getByTestId('link-row')).toHaveCount(0);
   await expect(learned).toHaveCount(0);
+});
+
+test('AI 가 기억한 것: 직접 한 줄 쓰고, 빼면 사라진다', async ({ page }) => {
+  await page.request.patch('/api/settings', { data: { ai: { provider: 'none' }, setupDone: true } });
+  await page.goto('/#/settings');
+  const mem = page.getByTestId('memory-section');
+  await expect(mem).toBeVisible();
+  await expect(mem.getByTestId('memory-list')).toContainText('아직 기억한 것이 없습니다');
+  await mem.getByTestId('memory-input').fill('도입은 질문으로 연다');
+  await mem.getByTestId('memory-add').click();
+  const row = mem.getByTestId('memory-row').filter({ hasText: '도입은 질문으로 연다' });
+  await expect(row).toBeVisible();
+  await expect(row).toHaveAttribute('data-scope', 'all');
+  await expect(row).toContainText('모든 영상 · 직접');
+  await row.getByTestId('memory-remove').click();
+  await expect(mem.getByTestId('memory-row')).toHaveCount(0);
+  // 전문 용어 금지
+  for (const banned of ['인사이트', '임베딩', '메모리', '프롬프트']) {
+    await expect(page.getByText(banned, { exact: false })).toHaveCount(0);
+  }
 });

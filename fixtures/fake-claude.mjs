@@ -40,6 +40,53 @@ const request = /사용자 요청: (.*)$/m.exec(prompt)?.[1] ?? '';
 const emit = (o) => process.stdout.write(`${JSON.stringify(o)}\n`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// ---- 분석 모드 (MCP 없이 한 턴): 완성본 읽기 · 기억 정리 ----
+// 진짜 답처럼 코드펜스와 앞말을 붙여서 준다 (파서가 그걸 벗겨야 한다).
+if (mcpConfigPath === '{"mcpServers":{}}') {
+  const answer = (obj) => {
+    const text = `정리했습니다.\n\`\`\`json\n${JSON.stringify(obj, null, 2)}\n\`\`\``;
+    emit({ type: 'system', subtype: 'init', tools: [], mcp_servers: [] });
+    emit({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }] } });
+    emit({ type: 'result', subtype: 'success', is_error: false, result: text, num_turns: 1 });
+    process.exit(0);
+  };
+  if (prompt.includes('## 완성본 분석')) {
+    const title = /^제목: (.*)$/m.exec(prompt)?.[1] ?? '';
+    const times = [...prompt.matchAll(/^\[(\d+):(\d+)–(\d+):(\d+)\]/gm)].map((m) => [Number(m[1]) * 60 + Number(m[2]), Number(m[3]) * 60 + Number(m[4])]);
+    const end = times.length ? times[times.length - 1][1] : 5;
+    const part = /어깨|shoulder/i.test(title) ? '어깨' : /햄스트링|hamstring/i.test(title) ? '햄스트링' : '몸';
+    answer({
+      purpose: `${part} 불편한 사람을 위한 ${title}`,
+      audience: '운동 초보',
+      hook: '불편함을 먼저 말하고 동작으로 넘어간다',
+      tone: '존댓말 설명조',
+      sections: [
+        { title: '도입', start: 0, end: Math.min(1, end), kind: 'intro' },
+        { title: '시범', start: Math.min(1, end), end, kind: 'demo' },
+      ],
+      keyPoints: ['천천히 호흡하면서'],
+      keepRanges: [{ start: Math.min(1, end), end, why: '동작 시범 — 말이 없어도 남긴다' }],
+      cutCandidates: [],
+      shortCandidates: [{ start: 0, end, title: `${part} 한 동작`, why: '설명과 시범이 한 번에 완결된다' }],
+      terms: ['견갑골', '외회전'],
+      subtitleNotes: '한 줄 12자 안팎',
+      tags: [part, '스트레칭'],
+    });
+  }
+  if (prompt.includes('## 기억 정리')) {
+    const ids = [...prompt.matchAll(/\(id: ([^)]+)\)/g)].map((m) => m[1]);
+    answer({
+      items: [
+        { text: '도입은 시청자의 불편함을 먼저 말하고 동작으로 넘어간다', kind: 'style', scope: 'all', topics: [], evidence: ids },
+        { text: '동작 시범 중 말이 없는 구간은 잘라내지 않는다', kind: 'keep', scope: 'all', topics: [], evidence: ids },
+        { text: '어깨는 견갑골 움직임이 보이게 잡는다', kind: 'style', scope: 'topic', topics: ['어깨'], evidence: ids.slice(0, 1) },
+        { text: '견갑골', kind: 'term', scope: 'all', topics: [], evidence: ids },
+      ],
+    });
+  }
+  answer({});
+}
+
 // ---- MCP 클라이언트 (stdio JSON-RPC) ----
 const cfg = JSON.parse(fs.readFileSync(mcpConfigPath, 'utf8'));
 const srv = cfg.mcpServers.madi;
@@ -128,7 +175,7 @@ try {
     await sleep(8000);
     say('다 했어요.');
   } else {
-    say(`"${request}" 라고 하셨네요. 규칙 ${system.includes('편집 규칙') ? '읽었어요' : '못 읽었어요'}. 지침 ${system.includes('제작 지침') ? '있어요' : '없어요'}.`);
+    say(`"${request}" 라고 하셨네요. 규칙 ${system.includes('편집 규칙') ? '읽었어요' : '못 읽었어요'}. 지침 ${system.includes('제작 지침') ? '있어요' : '없어요'}. 기억 ${system.includes('# 기억') ? '있어요' : '없어요'}.`);
   }
   finish(true, last);
 } catch (err) {

@@ -27,6 +27,8 @@ export interface RunnerDeps {
   mcpCommand: () => { command: string; args: string[]; env: Record<string, string> };
   /** 엔진 URL (MCP 서버가 도구 호출을 보낼 곳) */
   engineUrl: () => string;
+  /** 이 영상에 붙일 "# 기억" 블록 (완성본 · 지난 편집에서 배운 것). 없으면 빈 문자열. */
+  recall?: (video: Video) => string;
 }
 
 export class AgentError extends Error {
@@ -198,12 +200,15 @@ export class AgentRunner {
       '- 마크다운(#, **, 표, 코드블록) 쓰지 않는다. 짧은 문장 몇 개면 된다.',
       '- 해달라는 게 분명하면 되묻지 말고 바로 한다. 정말 모호할 때만 짧게 하나 되묻는다.',
       '- 사용자가 결과를 고쳐 달라고 하면 고친 뒤, 그 방식이 앞으로도 적용될 만하면 "앞으로도 이렇게 할까요?" 라고 한 번만 묻는다. 사용자가 예라고 하면 그때 update_style_rule 로 한 줄 저장한다. 묻지 않고 저장하지 않는다.',
+      '- 저장할 때 범위를 고른다: 사용자가 "이 영상만"이라 하면 scope=video, "어깨 영상은"처럼 주제를 말하면 scope=topic + topics, 아니면 scope=all. 부위 · 동작 · 표기 같은 용어면 kind=term.',
       '- 도구가 실패하면 그 이유를 쉬운 말로 알린다. 같은 도구를 무의미하게 반복하지 않는다.',
       '',
-      // 도메인 기본값. 아래 style.md 가 이것을 덮는다.
+      // 도메인 기본값. 아래 기억과 style.md 가 이것을 덮는다.
       playbook({ format, hasAudio: video?.hasAudio !== false }),
       '',
-      '사용자의 편집 규칙(style.md) — 위 지침과 어긋나면 이쪽을 따른다:',
+      // 이 제작자의 완성본 · 지난 편집에서 배운 것 (관련 있는 것만)
+      ...(video && this.d.recall ? [this.d.recall(video), ''] : []),
+      '사용자의 편집 규칙(style.md) — 위 지침 · 기억과 어긋나면 이쪽을 따른다:',
       this.d.style.rules().trim(),
     ].join('\n');
   }

@@ -10,6 +10,7 @@ import {
   type ActionResponse,
   AddLinkRequest,
   AddRuleRequest,
+  RememberRequest,
   type StyleResponse,
   AiInstallRequest,
   type AiInstallResponse,
@@ -68,6 +69,8 @@ export interface AppDeps {
   agent: import('../agent/runner.js').AgentRunner;
   agentTools: import('../agent/tools.js').AgentTools;
   styleService: import('../style/service.js').StyleService;
+  /** 제작자 기억 (설정에서 보고 지운다). */
+  memory: import('../style/memory.js').MemoryStore;
   chapters: import('../chapters/store.js').ChapterStore;
   version: string;
   onSettingsChanged?: () => void;
@@ -455,6 +458,22 @@ export function createApp(deps: AppDeps): Hono {
       if (err instanceof LinkError) return c.json({ error: { code: err.code, message: err.code } }, err.code === 'no_downloader' ? 501 : 400);
       throw err;
     }
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  /** 기억 한 줄 빼기 (완성본에서 추린 것 · 편집 중 남긴 것 · 직접 쓴 것 모두). */
+  app.delete('/api/style/memory/:id', (c) => {
+    if (!deps.memory.remove(c.req.param('id'))) return c.json({ error: { code: 'not_found', message: 'memory not found' } }, 404);
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  /** 기억 한 줄 직접 쓰기 (범위 · 종류 포함). */
+  app.post('/api/style/memory', async (c) => {
+    const parsed = RememberRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    deps.memory.add({ ...parsed.data, source: 'user' });
     const body: StyleResponse = deps.styleService.response();
     return c.json(body);
   });

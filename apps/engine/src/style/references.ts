@@ -3,7 +3,7 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { asc, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { linkSiteLabel, Reference, type ReferenceStats, type ReferenceStatus, type Segment, titleFromFileName } from '@madi/shared';
+import { linkSiteLabel, Reference, type ReferenceInsight, type ReferenceStats, type ReferenceStatus, type Segment, titleFromFileName } from '@madi/shared';
 import type { Db } from '../db/index.js';
 import { references } from '../db/schema.js';
 
@@ -38,6 +38,11 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
     return row ? toRef(row) : null;
   }
 
+  /** 뜻까지 읽은 완성본들 (기억 정리 · 검색 재료). */
+  withInsight(): Reference[] {
+    return this.list().filter((r) => r.status === 'done' && r.insight);
+  }
+
   segmentsOf(id: string): Segment[] | null {
     const row = this.db.select({ segments: references.segments }).from(references).where(eq(references.id, id)).get();
     return (row?.segments as Segment[] | null) ?? null;
@@ -55,7 +60,7 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
     if (existing) {
       const needs = existing.sizeBytes !== size || existing.status === 'missing';
       if (!needs) return { ref: existing, changed: false };
-      const ref = this.update(existing.id, { sizeBytes: size, status: 'queued', stats: null, segments: null, error: null });
+      const ref = this.update(existing.id, { sizeBytes: size, status: 'queued', stats: null, segments: null, insight: null, error: null });
       return { ref, changed: true };
     }
     const fileName = path.basename(abs);
@@ -70,6 +75,7 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
       url: null,
       stats: null,
       segments: null,
+      insight: null,
       error: null,
       createdAt: now,
       updatedAt: now,
@@ -88,7 +94,7 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
     const existing = this.getByUrl(url);
     if (existing) {
       if (existing.status !== 'failed' && existing.status !== 'missing') return { ref: existing, changed: false };
-      const ref = this.update(existing.id, { status: 'queued', stats: null, segments: null, error: null });
+      const ref = this.update(existing.id, { status: 'queued', stats: null, segments: null, insight: null, error: null });
       return { ref, changed: true };
     }
     const id = nanoid();
@@ -105,6 +111,7 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
       url,
       stats: null,
       segments: null,
+      insight: null,
       error: null,
       createdAt: now,
       updatedAt: now,
@@ -126,7 +133,17 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
 
   update(
     id: string,
-    patch: Partial<{ path: string; fileName: string; title: string; sizeBytes: number; status: ReferenceStatus; stats: ReferenceStats | null; segments: Segment[] | null; error: string | null }>,
+    patch: Partial<{
+      path: string;
+      fileName: string;
+      title: string;
+      sizeBytes: number;
+      status: ReferenceStatus;
+      stats: ReferenceStats | null;
+      segments: Segment[] | null;
+      insight: ReferenceInsight | null;
+      error: string | null;
+    }>,
   ): Reference {
     this.db
       .update(references)
@@ -149,5 +166,5 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
 }
 
 function toRef(row: Row): Reference {
-  return Reference.parse({ ...row, stats: row.stats ?? null });
+  return Reference.parse({ ...row, stats: row.stats ?? null, insight: row.insight ?? null });
 }

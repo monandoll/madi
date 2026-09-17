@@ -47,6 +47,91 @@ export const ReferenceStats = z.object({
 });
 export type ReferenceStats = z.infer<typeof ReferenceStats>;
 
+/** 시각 구간 + 이유. 에이전트가 읽고 사람도 읽는다. */
+const WhyRange = z.object({
+  start: z.number().min(0),
+  end: z.number().min(0),
+  why: z.string().max(200),
+});
+
+export const InsightSectionKind = z.enum(['intro', 'setup', 'demo', 'qa', 'closing', 'other']);
+export type InsightSectionKind = z.infer<typeof InsightSectionKind>;
+
+/**
+ * 영상별 기억 — 완성본 하나를 AI 가 자막으로 읽고 남긴 메모.
+ * 숫자(ReferenceStats)가 아니라 뜻이다: 무슨 영상인지, 어떻게 짜였는지, 어디가 지우면 안 되는 곳인지.
+ * 처음 한 번 넉넉히 읽고 저장해 두면, 편집할 때는 이 메모만 꺼내 쓴다 (영상을 매번 다시 읽지 않는다).
+ */
+export const ReferenceInsight = z.object({
+  /** 이 영상이 전하려는 것 한두 문장 */
+  purpose: z.string().max(300),
+  /** 누구를 위한 영상인지 · 어떤 고민을 푸는지 */
+  audience: z.string().max(200).default(''),
+  /** 처음 몇 초를 어떻게 여는지 (질문·동작 먼저·결론 먼저 …) */
+  hook: z.string().max(200).default(''),
+  /** 말투 (존댓말·반말, 설명조·대화조, 쓰는 표현) */
+  tone: z.string().max(200).default(''),
+  /** 이야기 순서 */
+  sections: z
+    .array(z.object({ title: z.string().max(60), start: z.number().min(0), end: z.number().min(0), kind: InsightSectionKind.default('other') }))
+    .default([]),
+  /** 핵심 설명 문장 (그대로 옮긴 것) */
+  keyPoints: z.array(z.string().max(200)).default([]),
+  /** 지우면 안 되는 구간 — 동작 시범, 시범 중 침묵, 주의사항 */
+  keepRanges: z.array(WhyRange).default([]),
+  /** 반복 설명 · NG 후보 */
+  cutCandidates: z.array(WhyRange).default([]),
+  /** 독립된 숏폼이 될 만한 구간 + 이유 */
+  shortCandidates: z.array(WhyRange.extend({ title: z.string().max(60) })).default([]),
+  /** 운동 · 해부학 용어 (자막 오인식 교정에 쓴다) */
+  terms: z.array(z.string().max(40)).default([]),
+  /** 자막 길이 · 강조 방식 */
+  subtitleNotes: z.string().max(200).default(''),
+  /** 검색용 태그 — 부위 · 동작 · 고민 (예: 어깨, 견갑골, 거북목) */
+  tags: z.array(z.string().max(30)).default([]),
+  /** 어느 도구가 읽었는지 */
+  provider: z.enum(['claude', 'codex']),
+  createdAt: z.number().int(),
+});
+export type ReferenceInsight = z.infer<typeof ReferenceInsight>;
+
+export const MemoryKind = z.enum(['style', 'keep', 'avoid', 'term']);
+export type MemoryKind = z.infer<typeof MemoryKind>;
+/** all = 앞으로 모든 영상, topic = 비슷한 주제(topics)에서만, video = 그 영상에서만 */
+export const MemoryScope = z.enum(['all', 'topic', 'video']);
+export type MemoryScope = z.infer<typeof MemoryScope>;
+/** reference = 완성본들에서 AI 가 추린 것, feedback = 편집 중 사용자가 고쳐 달라고 한 것, user = 사용자가 직접 쓴 것 */
+export const MemorySource = z.enum(['reference', 'feedback', 'user']);
+export type MemorySource = z.infer<typeof MemorySource>;
+
+/**
+ * 제작자 기억 한 줄. 여러 완성본에 반복해서 나타나는 것만 남긴다.
+ * 사용자가 목록에서 보고 지울 수 있다 — 승인하지 않은 것을 영구 취향으로 굳히지 않는다.
+ */
+export const MemoryItem = z.object({
+  id: z.string(),
+  text: z.string().min(1).max(300),
+  kind: MemoryKind,
+  scope: MemoryScope,
+  topics: z.array(z.string().max(30)).default([]),
+  /** scope = video 일 때 */
+  videoId: z.string().nullable().default(null),
+  source: MemorySource,
+  /** 근거가 된 완성본 id 들 */
+  evidence: z.array(z.string()).default([]),
+  createdAt: z.number().int(),
+});
+export type MemoryItem = z.infer<typeof MemoryItem>;
+
+/** 에이전트가 편집 중에 남기는 기억 (update_style_rule 의 범위 있는 버전). */
+export const RememberRequest = z.object({
+  text: z.string().trim().min(2).max(300),
+  kind: MemoryKind.default('style'),
+  scope: MemoryScope.default('all'),
+  topics: z.array(z.string().trim().min(1).max(30)).max(8).default([]),
+});
+export type RememberRequest = z.infer<typeof RememberRequest>;
+
 /** downloading 은 링크 완성본만 (yt-dlp 로 받는 중). */
 export const ReferenceStatus = z.enum(['queued', 'downloading', 'analyzing', 'done', 'failed', 'missing']);
 export type ReferenceStatus = z.infer<typeof ReferenceStatus>;
@@ -66,6 +151,8 @@ export const Reference = z.object({
   /** source = link 일 때 원래 링크 */
   url: z.string().nullable(),
   stats: ReferenceStats.nullable(),
+  /** AI 가 자막을 읽고 남긴 메모. AI 가 연결돼 있고 소리가 있을 때만 생긴다. */
+  insight: ReferenceInsight.nullable().default(null),
   error: z.string().nullable(),
   createdAt: z.number().int(),
   updatedAt: z.number().int(),
@@ -96,6 +183,10 @@ export const StyleResponse = z.object({
   silenceMinSec: z.number(),
   /** 링크로 배우기가 되는지 (이 PC 에 yt-dlp 가 있는지). 설치본은 항상 true. */
   linkImport: z.boolean(),
+  /** 제작자 기억 (완성본에서 추린 것 + 편집 중 남긴 것). 사용자가 보고 지운다. */
+  memory: z.array(MemoryItem).default([]),
+  /** AI 가 연결돼 있어 완성본의 뜻까지 읽는지. 아니면 숫자만 배운다. */
+  insightOn: z.boolean().default(false),
 });
 export type StyleResponse = z.infer<typeof StyleResponse>;
 

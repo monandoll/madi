@@ -29,6 +29,32 @@
 - 무음 잘라내기(버튼·`propose_cuts`·`find_silences`)의 기본 `minSec`
 - 에이전트 프롬프트의 "(배움) …" 줄 → 숏폼 길이·비율·컷 빈도 판단
 
+## 완성본의 뜻 읽기 · 기억 (기획안 §7 · §8)
+
+숫자(길이 · 비율 · 무음)만으로는 "어디를 왜 잘랐는지"를 모른다. AI 가 연결돼 있으면 완성본마다 자막을 읽고 메모를 남기고,
+여러 편에서 반복되는 것만 제작자 기억으로 굳힌다. 처음 한 번 넉넉히 읽고 저장하며, 편집할 때는 저장한 것만 꺼낸다 — 영상을 매번 다시 읽지 않는다.
+
+```
+완성본 → analyze (숫자 + 자막은 항상 뜬다)
+       → insight 잡 (AI 한 턴, 도구 없음) → references.insight   ← 영상별 기억
+       → 2초 뒤 rememory (AI 한 턴)      → memory (source=reference) ← 제작자 기억
+새 영상 편집 → recall(video) → 태그가 겹치는 기억 + 비슷한 완성본 요약 2개 → 시스템 프롬프트 "# 기억"
+```
+
+- **영상별 기억** `ReferenceInsight` (`packages/shared/src/style.ts`): 취지 · 대상 · 도입 방식 · 말투 · 구성(구간 + 종류) · 핵심 문장 ·
+  **지우면 안 되는 구간**(시범 · 시범 중 침묵 · 주의사항) · 반복/NG 후보 · 숏폼 후보(+이유) · 용어 · 자막 특징 · 태그.
+  프롬프트 · 파서는 `src/style/insight.ts` (순수 함수). 답이 코드펜스에 싸여 있거나 시각이 "1:23" 이어도 받고, 길이 밖 구간은 버리고, 취지가 없으면 null (지어내지 않는다).
+- **제작자 기억** `MemoryItem`: `kind`(style · keep · avoid · term) · `scope`(all · topic+topics · video) · `source`(reference · feedback · user) · 근거 완성본 id.
+  `src/style/memory.ts`. 완성본에서 온 것은 다시 정리할 때 통째로 바뀌고, 편집 중 남긴 것과 직접 쓴 것은 그대로.
+- **검색** `retrieve()`: 새 영상의 제목 · 자막에 나온 태그로 topic 기억과 비슷한 완성본을 고른다. 벡터 없이 낱말 겹침 (기획안 §11 초기 범위).
+- **범위 있는 규칙**: `update_style_rule(rule, scope, topics, kind)`. scope=all · kind=style 이면 전처럼 `style.md` 에, 그 밖은 기억에 (source=feedback).
+- **세기**: 제작 지침 < 기억 < 사용자가 쓴 규칙(style.md). 시스템 프롬프트에 그 순서로 들어간다.
+- **사용자 통제** (§12): 설정 → 기존 영상으로 배우기의 완성본 줄마다 "메모" 로 취지 · 구성 · 숏폼 후보를 본다. "AI 가 기억한 것" 목록에서 한 줄씩 빼고, 직접 한 줄 쓴다.
+- AI 를 나중에 연결했으면 **다시 배우기** 가 메모 없는 완성본을 읽는다.
+- 분석 모드는 `AgentProvider.analyze()`: claude 는 `-p --mcp-config '{"mcpServers":{}}' --strict-mcp-config --max-turns 1`, codex 는 `exec` 에 MCP 설정 없이.
+
+미룬 것: 대표 프레임 보기(§10 — 부위가 보이는 크롭 판단에 필요), 롱폼 편집안 표 화면(§4), 벡터 검색(§11).
+
 ## 피드백 루프
 
 - 채팅에서 수정 요청 → 에이전트가 고친 뒤 "앞으로도 이렇게 할까요?" → 예 → `update_style_rule` 로 한 줄 추가.
@@ -47,6 +73,9 @@
 | `DELETE /api/style/references/:id` | 완성본 빼기 (링크면 받은 파일도) |
 
 ## 테스트
+
+- 단위 `test/insight.test.ts`: 자막 줄이기, JSON 꺼내기, 메모 파싱(시각 clamp · 중복), 기억 파싱(모르는 근거 버림), 검색 · 기억 블록.
+- 엔진 e2e `test/e2e.style.test.ts` 마지막 describe: AI 연결 → 다시 배우기 → 완성본마다 메모 → 기억, 관련 기억만 붙음, 직접 쓰기 · 빼기, 완성본 다 빼면 비움.
 
 - 단위 `test/learn.test.ts`: 비율, aggregate, 문장 생성, 제목 정규화, pairDiff(LCS), StyleProfile 블록, 스캔. `test/link.test.ts`: 주소 고르기, yt-dlp 인자·출력, 오류 분류.
 - 엔진 e2e `test/e2e.style.test.ts`: 폴더 지정 → 진짜 ffmpeg 분석 → 배운 줄·무음 기준, 폴더 제거 → 원복, 다시 배우기, 링크(가짜 yt-dlp) → 받아서 배움·실패 코드·빼기.

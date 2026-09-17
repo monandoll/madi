@@ -115,6 +115,12 @@ describe('AI 연결', () => {
     const sys = String((await waitReply()).params['text']);
     expect(sys).toContain('규칙 읽었어요');
     expect(sys).toContain('지침 있어요');
+    expect(sys).toContain('기억 없어요');
+    // 기억을 한 줄 넣으면 다음 요청부터 같이 간다
+    expect((await api('/api/style/memory', json({ text: '도입은 질문으로 연다' }))).status).toBe(200);
+    const r3 = await chat('안녕');
+    expect(r3.status).toBe(200);
+    expect(String((await waitReply()).params['text'])).toContain('기억 있어요');
   });
 
   it('set_subtitle_text: 사용자 문장이 자막이 된다 (자막이 없어도)', async () => {

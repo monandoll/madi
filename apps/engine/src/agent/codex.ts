@@ -97,4 +97,16 @@ export class CodexProvider implements AgentProvider {
     const prompt = `${opts.system}\n\n---\n\n${opts.prompt}`;
     return runCli(bin, codexArgs({ mcp: opts.mcp, cwd: opts.cwd, prompt }), null, new CodexStream(), opts);
   }
+
+  /** 도구 없이 한 턴 (MCP 설정을 안 준다). */
+  async analyze(opts: AnalyzeOptions): Promise<AgentResult> {
+    const bin = opts.bin ?? this.bin();
+    if (!bin) return { text: '', toolCalls: 0, ok: false, error: 'not_installed' };
+    const prompt = `${opts.system}\n\n---\n\n${opts.prompt}`;
+    return runCli(bin, codexAnalyzeArgs({ cwd: opts.cwd, prompt }), null, new CodexStream(), { cwd: opts.cwd, signal: opts.signal, onText: () => undefined, onTool: () => undefined, onLog: opts.onLog });
+  }
+}
+
+export function codexAnalyzeArgs(opts: { cwd: string; prompt: string }): string[] {
+  return ['exec', '--json', '--skip-git-repo-check', '-C', opts.cwd, '-s', 'read-only', opts.prompt];
 }

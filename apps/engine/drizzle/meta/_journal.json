@@ -36,6 +36,13 @@
       "when": 1789569283801,
       "tag": "0004_link_references",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789663651426,
+      "tag": "0005_memory",
+      "breakpoints": true
     }
   ]
 }

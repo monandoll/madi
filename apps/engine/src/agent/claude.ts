@@ -128,4 +128,31 @@ export class ClaudeProvider implements AgentProvider {
     const args = claudeArgs({ mcpConfigPath, toolNames: opts.toolNames, system: opts.system });
     return runCli(bin, args, opts.prompt, new ClaudeStream(), opts);
   }
+
+  /** 도구 없이 한 턴. --strict-mcp-config 에 빈 설정을 줘서 사용자 PC 의 MCP 서버가 끼어들지 않게 한다. */
+  async analyze(opts: AnalyzeOptions): Promise<AgentResult> {
+    const bin = opts.bin ?? this.bin();
+    if (!bin) return { text: '', toolCalls: 0, ok: false, error: 'not_installed' };
+    return runCli(bin, claudeAnalyzeArgs({ system: opts.system }), opts.prompt, new ClaudeStream(), { cwd: opts.cwd, signal: opts.signal, onText: () => undefined, onTool: () => undefined, onLog: opts.onLog });
+  }
+}
+
+/** 분석 모드 인자: MCP 없음, 내장 도구 전부 막음, 한 턴. */
+export function claudeAnalyzeArgs(opts: { system: string }): string[] {
+  return [
+    '-p',
+    '--output-format',
+    'stream-json',
+    '--verbose',
+    '--include-partial-messages',
+    '--mcp-config',
+    '{"mcpServers":{}}',
+    '--strict-mcp-config',
+    '--disallowedTools',
+    ...CLAUDE_DISALLOWED,
+    '--append-system-prompt',
+    opts.system,
+    '--max-turns',
+    '1',
+  ];
 }
