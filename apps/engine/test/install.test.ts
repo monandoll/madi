@@ -10,7 +10,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiInstaller, installLine, installPlan, loginLine, loginPlan } from '../src/agent/install.js';
 import { resetCliCache } from '../src/agent/detect.js';
-import { FIXTURES, quietLogger, tempHome } from './helpers.js';
+import { fakeCli, quietLogger, tempHome } from './helpers.js';
 
 let home: string;
 
@@ -97,7 +97,7 @@ function fakeChild() {
 describe('AiInstaller', () => {
   it('깔고 나서 진짜 도는지 확인한다 — 되면 다 됐어요', async () => {
     // 설치기가 "깔아 놓은" 자리를 환경변수로 가리킨다
-    process.env['MADI_CLAUDE_BIN'] = path.join(FIXTURES, 'fake-claude.mjs');
+    process.env['MADI_CLAUDE_BIN'] = fakeCli('claude');
     const children: ReturnType<typeof fakeChild>[] = [];
     const spawnImpl = vi.fn(() => {
       const c = fakeChild();

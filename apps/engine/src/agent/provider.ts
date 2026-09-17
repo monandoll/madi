@@ -149,7 +149,8 @@ export function spawnCli(bin: string, args: string[], opts: { cwd: string; env: 
   return spawn(bin, args, { cwd: opts.cwd, env: opts.env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
 }
 
-function quoteWin(s: string): string {
+/** 윈도우 명령줄 한 조각 따옴표 씌우기 (cmd.exe 를 거쳐 갈 때). */
+export function quoteWin(s: string): string {
   if (s === '') return '""';
   if (!/[\s"]/.test(s)) return s;
   return `"${s.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1')}"`;

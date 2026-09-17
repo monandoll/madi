@@ -6,10 +6,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cliVersion, detectCli, findCli, resetCliCache } from '../src/agent/detect.js';
-import { FIXTURES, tempHome } from './helpers.js';
+import { exeName, fakeCli, tempHome } from './helpers.js';
 
 let home: string;
-const FAKE = path.join(FIXTURES, 'fake-claude.mjs');
+const FAKE = fakeCli('claude');
 
 beforeEach(() => {
   home = tempHome('madi-detect-');
@@ -73,7 +73,7 @@ describe('detectCli', () => {
   });
 
   it('fresh 면 캐시를 버리고 처음부터 다시 찾는다 (다시 찾기 버튼)', async () => {
-    const later = path.join(home, 'claude-나중에');
+    const later = path.join(home, exeName('claude-나중에'));
     // 아직 없으니 직접 고른 파일로는 못 잡는다 (평소 자리로 넘어간다)
     expect((await detectCli('claude', { custom: later })).custom).toBe(false);
     fs.copyFileSync(FAKE, later);
