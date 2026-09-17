@@ -26,7 +26,8 @@ export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   fontSize: 56,
   color: '#2B2622',
   boxColor: '#E8C33F',
-  bottom: 0.14,
+  // 9:16 은 화면 아래에 앱 UI(더보기 · 프로필 · 음원)가 겹친다. 그 위로 올린다.
+  bottom: 0.18,
 };
 
 /**

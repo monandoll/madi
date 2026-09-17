@@ -91,6 +91,7 @@ resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리
 - 에이전트는 파일을 직접 만지지 않는다. MCP 도구만 호출한다.
 - 도구 목록 (`apps/engine/src/mcp/tools.ts`): `get_transcript`, `find_silences`, `find_scenes`, `propose_cuts`, `apply_edit`, `render`, `extract_shorts`, `get_chapters`, `set_subtitle_style`, `set_subtitle_text`, `update_style_rule`
 - 에이전트 컨텍스트에 `StyleProfile.style.md`를 항상 주입한다.
+- 그 위에 **제작 지침**(`src/agent/playbook.ts`)을 같이 넣는다. 운동·재활 숏폼을 어디서 시작하고 어디서 끝낼지에 대한 도메인 기본값이다. 세기 순서는 사용자가 쓴 규칙 > 완성본에서 배운 값 > 제작 지침.
 - 수정 요청이 오면 고친 뒤 **"앞으로도 이렇게 할까요?"** 를 한 번 묻고, 예일 때만 `update_style_rule`.
 - 에이전트 응답은 채팅에 스트리밍. 도구 호출 내부는 사용자에게 보이지 않는다.
 - AI 미연결 상태에서는 러너를 아예 스폰하지 않는다. 버튼 4개는 워커를 직접 호출한다.

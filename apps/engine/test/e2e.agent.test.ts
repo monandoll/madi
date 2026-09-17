@@ -109,10 +109,12 @@ describe('AI 연결', () => {
     // 진행 카드가 결과 카드로 바뀌어 있다 (도구가 만든 것)
     const card = d.messages.find((m) => m.kind === 'output');
     expect(card).toMatchObject({ outputId: d.outputs[0]!.id, params: expect.objectContaining({ action: 'ai', title: 'AI 세로' }) });
-    // 시스템 프롬프트에 style.md 가 들어갔다
+    // 시스템 프롬프트에 style.md 와 제작 지침이 같이 들어갔다
     const r2 = await chat('안녕');
     expect(r2.status).toBe(200);
-    expect(String((await waitReply()).params['text'])).toContain('규칙 읽었어요');
+    const sys = String((await waitReply()).params['text']);
+    expect(sys).toContain('규칙 읽었어요');
+    expect(sys).toContain('지침 있어요');
   });
 
   it('set_subtitle_text: 사용자 문장이 자막이 된다 (자막이 없어도)', async () => {

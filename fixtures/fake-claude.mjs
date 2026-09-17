@@ -128,7 +128,7 @@ try {
     await sleep(8000);
     say('다 했어요.');
   } else {
-    say(`"${request}" 라고 하셨네요. 규칙 ${system.includes('편집 규칙') ? '읽었어요' : '못 읽었어요'}.`);
+    say(`"${request}" 라고 하셨네요. 규칙 ${system.includes('편집 규칙') ? '읽었어요' : '못 읽었어요'}. 지침 ${system.includes('제작 지침') ? '있어요' : '없어요'}.`);
   }
   finish(true, last);
 } catch (err) {

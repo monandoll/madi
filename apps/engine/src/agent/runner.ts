@@ -12,6 +12,7 @@ import { TOOL_NAMES } from '../mcp/tools.js';
 import { detectCli, resetCliCache } from './detect.js';
 import type { AgentProvider, AgentRunOptions } from './provider.js';
 import type { StyleProfile } from './style.js';
+import { formatLine, formatOf, playbook } from './playbook.js';
 
 export interface RunnerDeps {
   cfg: EngineConfig;
@@ -136,7 +137,7 @@ export class AgentRunner {
       const result = await provider.run({
         bin: provider.bin(this.customPath(providerId)),
         prompt: this.buildPrompt(video, text, run.messageId),
-        system: this.systemPrompt(),
+        system: this.systemPrompt(video),
         mcp,
         toolNames: TOOL_NAMES,
         cwd,
@@ -178,7 +179,8 @@ export class AgentRunner {
     }
   }
 
-  systemPrompt(): string {
+  systemPrompt(video?: Video): string {
+    const format = formatOf(video ?? {});
     return [
       "너는 '마디'의 편집 도우미다. 운동·재활 영상 크리에이터를 돕는다. 사용자는 편집 지식이 없다.",
       '',
@@ -198,7 +200,10 @@ export class AgentRunner {
       '- 사용자가 결과를 고쳐 달라고 하면 고친 뒤, 그 방식이 앞으로도 적용될 만하면 "앞으로도 이렇게 할까요?" 라고 한 번만 묻는다. 사용자가 예라고 하면 그때 update_style_rule 로 한 줄 저장한다. 묻지 않고 저장하지 않는다.',
       '- 도구가 실패하면 그 이유를 쉬운 말로 알린다. 같은 도구를 무의미하게 반복하지 않는다.',
       '',
-      '사용자의 편집 규칙(style.md) — 항상 따른다:',
+      // 도메인 기본값. 아래 style.md 가 이것을 덮는다.
+      playbook({ format, hasAudio: video?.hasAudio !== false }),
+      '',
+      '사용자의 편집 규칙(style.md) — 위 지침과 어긋나면 이쪽을 따른다:',
       this.d.style.rules().trim(),
     ].join('\n');
   }
@@ -217,6 +222,7 @@ export class AgentRunner {
       `영상: ${video.title}`,
       `길이: ${fmtDuration(video.durationSec ?? 0)} (${Math.round(video.durationSec ?? 0)}초) · ${video.width ?? '?'}x${video.height ?? '?'} · 소리 ${video.hasAudio === false ? '없음' : '있음'}`,
       `자막: ${transcript ? `있음 (${transcript.segments.length}줄)` : '아직 없음 (get_transcript 로 만들 수 있음)'}`,
+      `기본 포맷: ${formatLine(formatOf(video))}`,
       outputs.length
         ? `지금까지 만든 결과물:\n${outputs
             .slice(0, 10)
