@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Settings as SettingsSchema } from '@madi/shared';
 import { FolderChooser } from '../components/FolderChooser.js';
+import { Qr } from '../components/Qr.js';
 import { Card, CardRow, GhostButton, PillButton, SectionTitle, Status } from '../components/Settings.js';
 import { StyleSection } from '../components/StyleSection.js';
 import { TopBar } from '../components/TopBar.js';
@@ -26,9 +27,14 @@ export function SettingsScreen() {
   const [name, setName] = useState(settings.workspaceName);
   const [adding, setAdding] = useState(false);
   const [token, setToken] = useState('');
+  const [advanced, setAdvanced] = useState(false);
+  // 켜져 있으면 주소·숫자를 계속 지켜본다 (주소가 몇 초 뒤에 나온다)
+  const remote = useQuery({ queryKey: queryKeys.remote, queryFn: api.remote, refetchInterval: settings.remoteMode === 'off' ? false : 3_000 });
   useEffect(() => setName(settings.workspaceName), [settings.workspaceName]);
   const tunnel = health.data?.tunnel;
-  const tunnelOn = !!settings.tunnelToken;
+  const remoteOn = settings.remoteMode !== 'off';
+  const remoteUrl = remote.data?.url ?? null;
+  const qrUrl = remoteUrl && remote.data?.pin ? `${remoteUrl}/?pin=${remote.data.pin}` : remoteUrl;
   const aiOn = ai?.connected ?? false;
   const aiStatus = !ai || ai.provider === 'none' ? copy.settings.aiOff : ai.connected ? copy.settings.aiOn(labelOfProvider(ai.provider)) : copy.settings.aiMissing(labelOfProvider(ai.provider));
 
@@ -157,39 +163,76 @@ export function SettingsScreen() {
                   <span className="text-14">{copy.settings.remoteLabel}</span>
                   <span className="text-12 text-text-3">{copy.settings.remoteHelp}</span>
                 </span>
-                <Status on={tunnel?.status === 'running'} busy={tunnelOn && tunnel?.status !== 'running'} testId="remote-status">
-                  {copy.settings.remoteStatus[tunnelOn ? (tunnel?.status ?? 'starting') : 'off']}
+                <Status on={tunnel?.status === 'running'} busy={remoteOn && tunnel?.status !== 'running'} testId="remote-status">
+                  {copy.settings.remoteStatus[remoteOn ? (tunnel?.status ?? 'starting') : 'off']}
                 </Status>
-                {tunnelOn && (
-                  <PillButton onClick={() => patch.mutate({ tunnelToken: null })} disabled={patch.isPending}>
+                {remoteOn ? (
+                  <PillButton onClick={() => patch.mutate({ remoteMode: 'off', tunnelToken: null })} disabled={patch.isPending} testId="remote-stop">
                     {copy.settings.remoteClear}
+                  </PillButton>
+                ) : (
+                  <PillButton primary onClick={() => patch.mutate({ remoteMode: 'quick' })} disabled={patch.isPending} testId="remote-start">
+                    {copy.settings.remoteStart}
                   </PillButton>
                 )}
               </CardRow>
-              {!tunnelOn && (
-                <div className="flex gap-2 border-t border-line-soft px-3 py-2.5">
-                  <input
-                    data-testid="remote-token"
-                    className="min-w-0 flex-1 rounded-thumb border border-input bg-surface px-3 py-2 text-13 outline-none placeholder:text-text-3 focus:border-accent"
-                    value={token}
-                    placeholder={copy.settings.remotePlaceholder}
-                    autoComplete="off"
-                    spellCheck={false}
-                    onChange={(e) => setToken(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    disabled={!token.trim() || patch.isPending}
-                    onClick={() => {
-                      patch.mutate({ tunnelToken: token.trim() });
-                      setToken('');
-                    }}
-                    className="rounded-thumb border border-line px-3.5 text-13 font-medium hover:bg-hover disabled:text-text-3"
-                  >
-                    {copy.settings.remoteSave}
-                  </button>
+              {remoteOn && (
+                <div className="flex flex-col gap-2.5 border-t border-line-soft px-3 py-3" data-testid="remote-qr">
+                  {qrUrl ? (
+                    <div className="flex items-start gap-3.5">
+                      <Qr value={qrUrl} size={148} />
+                      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                        <span className="text-14 font-medium">{copy.settings.remoteQrTitle}</span>
+                        <span className="text-12 leading-normal text-text-3">{copy.settings.remoteQrHelp}</span>
+                        <a href={remoteUrl ?? undefined} target="_blank" rel="noreferrer" className="truncate text-12 text-accent" data-testid="remote-url">
+                          {remoteUrl}
+                        </a>
+                        {remote.data?.pin && (
+                          <span className="text-13 font-semibold tracking-[0.12em]" data-testid="remote-pin">
+                            {copy.settings.remotePin(remote.data.pin)}
+                          </span>
+                        )}
+                        <span className="text-12 text-text-3">{copy.settings.remoteDevices(remote.data?.devices ?? 0)}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-13 text-text-3">{copy.settings.remoteStarting}</span>
+                  )}
+                  <p className="text-12 text-text-3">{copy.settings.remoteWarn}</p>
                 </div>
               )}
+              <div className="border-t border-line-soft px-3 py-2.5">
+                <button type="button" onClick={() => setAdvanced((v) => !v)} className="text-13 text-text-2 hover:text-accent" data-testid="remote-advanced-toggle">
+                  {copy.settings.remoteAdvanced}
+                </button>
+                {advanced && (
+                  <div className="flex flex-col gap-2 pt-2.5">
+                    <p className="text-12 text-text-3">{copy.settings.remoteAdvancedHelp}</p>
+                    <div className="flex gap-2">
+                      <input
+                        data-testid="remote-token"
+                        className="min-w-0 flex-1 rounded-thumb border border-input bg-surface px-3 py-2 text-13 outline-none placeholder:text-text-3 focus:border-accent"
+                        value={token}
+                        placeholder={copy.settings.remotePlaceholder}
+                        autoComplete="off"
+                        spellCheck={false}
+                        onChange={(e) => setToken(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        disabled={!token.trim() || patch.isPending}
+                        onClick={() => {
+                          patch.mutate({ remoteMode: 'token', tunnelToken: token.trim() });
+                          setToken('');
+                        }}
+                        className="rounded-thumb border border-line px-3.5 text-13 font-medium hover:bg-hover disabled:text-text-3"
+                      >
+                        {copy.settings.remoteSave}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <CardRow>
               <span className="flex-1 text-14">{copy.settings.versionLabel}</span>

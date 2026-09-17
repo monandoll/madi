@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import type { HttpBindings } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { RESPONSE_ALREADY_SENT } from '@hono/node-server/utils/response';
@@ -16,6 +16,9 @@ import {
   type FoldersResponse,
   type HealthResponse,
   type OpenFolderResponse,
+  PairRequest,
+  type PairResponse,
+  type RemoteResponse,
   type Output,
   type OutputCard,
   type OutputDetailResponse,
@@ -43,6 +46,7 @@ import { detectCli } from '../agent/detect.js';
 import { TOOL_NAMES, type ToolName } from '../mcp/tools.js';
 import { describeFolder, openFolderWithSystem, suggestFolders } from '../folders.js';
 import { LinkError } from '../style/service.js';
+import { isDirectRequest, PAIR_COOKIE, readCookie } from '../remote.js';
 import { mergeSubtitleLines } from '../agent/subtitles.js';
 import { serveFile } from './media.js';
 
@@ -66,6 +70,8 @@ export interface AppDeps {
   openFolder?: ((dir: string) => Promise<void>) | undefined;
   /** 폰에서 올리기 (tus). node 의 req/res 를 그대로 넘긴다. */
   uploads: import('@tus/server').Server;
+  /** 밖에서 들어온 기기 잠금 (6자리 숫자 → 기기 표). */
+  remoteAuth: import('../remote.js').RemoteAuth;
 }
 
 export function toCard(v: Video, deps: Pick<AppDeps, 'videos' | 'queue' | 'library'>): VideoCard {
@@ -95,13 +101,63 @@ export function createApp(deps: AppDeps): Hono {
   const { cfg, videos, queue, settings } = deps;
   const app = new Hono();
 
+  /**
+   * 밖에서 들어온 요청은 짝지은 기기만 통과. 이 PC 에서 직접 연 브라우저는 늘 통과.
+   * 화면(정적 파일)은 막지 않는다 — 폰이 숫자 넣는 화면을 봐야 하니까.
+   */
+  const allowed = (c: Context): boolean => {
+    const { incoming } = c.env as unknown as HttpBindings;
+    if (isDirectRequest(incoming.socket?.remoteAddress, incoming.headers)) return true;
+    return deps.remoteAuth.has(readCookie(c.req.header('cookie'), PAIR_COOKIE));
+  };
+  app.use('/api/*', async (c, next) => {
+    // 숫자를 넣는 곳 자체는 열려 있어야 한다
+    if (c.req.path === '/api/remote/pair') return next();
+    if (allowed(c)) return next();
+    return c.json({ error: { code: 'needs_pair', message: 'pair with the 6-digit code' } }, 401);
+  });
+  // 영상 파일과 실시간 알림도 같이 막는다
+  app.use('/media/*', async (c, next) => (allowed(c) ? next() : c.text('needs_pair', 401)));
+  app.use('/ws', async (c, next) => (allowed(c) ? next() : c.text('needs_pair', 401)));
+
+  // ---- 밖에서 접속하기 ----
+  app.get('/api/remote', (c) => {
+    const { incoming } = c.env as unknown as HttpBindings;
+    const direct = isDirectRequest(incoming.socket?.remoteAddress, incoming.headers);
+    const s = settings.get();
+    const body: RemoteResponse = {
+      mode: s.remoteMode,
+      status: deps.tunnel.state.status,
+      url: deps.tunnel.state.url,
+      error: deps.tunnel.state.error,
+      // 숫자는 이 PC 화면에서만 보여 준다
+      pin: direct && s.remoteMode !== 'off' ? deps.remoteAuth.currentPin : null,
+      devices: deps.remoteAuth.deviceCount,
+    };
+    return c.json(body);
+  });
+
+  /** 폰이 6자리 숫자를 넣는 곳. 맞으면 이 기기 표를 쿠키로 준다. */
+  app.post('/api/remote/pair', async (c) => {
+    if (settings.get().remoteMode === 'off') return c.json({ error: { code: 'remote_off', message: 'remote access is off' } }, 409);
+    const parsed = PairRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_pin', message: 'bad pin' } }, 400);
+    const token = deps.remoteAuth.pair(parsed.data.pin);
+    if (!token) return c.json({ error: { code: 'bad_pin', message: 'wrong pin' } }, 403);
+    // 터널은 https 라 Secure 를 붙여도 되지만, 개발 중 http 로도 짝지을 수 있어야 해서 붙이지 않는다.
+    c.header('set-cookie', `${PAIR_COOKIE}=${token}; Path=/; Max-Age=${60 * 60 * 24 * 365}; SameSite=Lax; HttpOnly`);
+    deps.events.record('remote.paired');
+    const body: PairResponse = { ok: true };
+    return c.json(body);
+  });
+
   app.get('/api/health', async (c) => {
     const ai = await deps.agent.status();
     const body: HealthResponse = {
       ok: true,
       version: deps.version,
       ai,
-      tunnel: { status: deps.tunnel.state.status, error: deps.tunnel.state.error },
+      tunnel: { status: deps.tunnel.state.status, error: deps.tunnel.state.error, url: deps.tunnel.state.url },
     };
     return c.json(body);
   });

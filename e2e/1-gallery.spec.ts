@@ -106,16 +106,18 @@ test('설정 화면: 톱니로 들어가서 이름을 바꾸고 폴더를 더하
   // AI 는 조용히
   await expect(screen.getByText('연결 안 됨')).toBeVisible();
 
-  // 밖에서 접속: 토큰을 넣으면 '연결하는 중', 끊으면 다시 입력창 (cloudflared 는 없으니 running 은 안 된다)
+  // 밖에서 접속: 고정 주소(토큰)는 '고급' 안에 접혀 있다. 넣으면 저장되고, 끊으면 원래대로.
   const remote = screen.getByTestId('remote-section');
   await expect(remote.getByTestId('remote-status')).toHaveText('연결 안 함');
+  await expect(remote.getByTestId('remote-token')).toHaveCount(0);
+  await remote.getByTestId('remote-advanced-toggle').click();
   await remote.getByTestId('remote-token').fill('eyJhIjoiZmFrZSJ9');
   await remote.getByRole('button', { name: '연결' }).click();
   await expect(remote.getByTestId('remote-status')).not.toHaveText('연결 안 함');
   await expect.poll(async () => (await (await page.request.get('/api/settings')).json()).settings.tunnelToken).toBe('eyJhIjoiZmFrZSJ9');
   await remote.getByRole('button', { name: '끊기' }).click();
   await expect(remote.getByTestId('remote-status')).toHaveText('연결 안 함');
-  await expect(remote.getByTestId('remote-token')).toBeVisible();
+  await expect.poll(async () => (await (await page.request.get('/api/settings')).json()).settings.remoteMode).toBe('off');
   await expect(screen.getByText(/^마디 \d+\.\d+\.\d+$/)).toBeVisible();
 
   // 사이드바 '영상' → 갤러리, 사이드바 맨 위에 새 이름

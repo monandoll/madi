@@ -119,9 +119,12 @@ Windows 는 서명이 없어도 "추가 정보 → 실행" 두 번 누르면 되
 
 GPU 자막(CUDA)은 CUDA 런타임 DLL 까지 동봉해야 해서 뒤로 뒀다. 엔진은 어느 빌드든 같은 인자로 부른다.
 
-## 밖에서 접속 (Cloudflare Tunnel)
+## 밖에서 접속
+
+보통은 설정 → 밖에서 접속하기 → **켜기** 하나로 끝난다 (계정·토큰 없는 빠른 터널). 자세한 건 `docs/remote.md`.
+아래는 주소가 바뀌지 않기를 바라는 사람만 쓰는 고급 길이다.
 
 1. Cloudflare Zero Trust → Networks → Tunnels 에서 터널을 만들고 토큰을 복사한다.
 2. Public hostname 을 `http://localhost:41520` 으로 잡는다.
 3. Access → Applications 에서 그 호스트에 이메일 OTP 정책을 건다 (앱엔 로그인이 없다).
-4. 마디 설정 → 밖에서 접속하기에 토큰을 붙여 넣는다. 엔진이 `cloudflared tunnel run --token` 을 띄우고 죽으면 다시 띄운다.
+4. 마디 설정 → 밖에서 접속하기 → "고정 주소 쓰기 (고급)"에 토큰을 붙여 넣는다. 엔진이 `cloudflared tunnel run --token` 을 띄우고 죽으면 다시 띄운다.

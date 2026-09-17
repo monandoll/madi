@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Video } from './video.js';
 import { Job } from './job.js';
-import { AiProvider, Settings } from './settings.js';
+import { AiProvider, RemoteMode, Settings } from './settings.js';
 import { Transcript, TimeRange } from './transcript.js';
 import { Edit } from './edit.js';
 import { Output } from './output.js';
@@ -117,12 +117,32 @@ export type SettingsResponse = z.infer<typeof SettingsResponse>;
 export const TunnelStatus = z.enum(['off', 'starting', 'running', 'error']);
 export type TunnelStatus = z.infer<typeof TunnelStatus>;
 
+/**
+ * 밖에서 접속하기 상태. `url` 은 폰이 들어올 주소 (QR 로 보여 준다).
+ * `pin` 은 이 PC 화면에서만 보인다 — 폰에서 부르면 null.
+ */
+export const RemoteResponse = z.object({
+  mode: RemoteMode,
+  status: TunnelStatus,
+  url: z.string().nullable(),
+  error: z.string().nullable(),
+  pin: z.string().nullable(),
+  /** 짝지어 둔 기기 수 */
+  devices: z.number().int().min(0),
+});
+export type RemoteResponse = z.infer<typeof RemoteResponse>;
+
+export const PairRequest = z.object({ pin: z.string().trim().min(4).max(12) });
+export type PairRequest = z.infer<typeof PairRequest>;
+export const PairResponse = z.object({ ok: z.literal(true) });
+export type PairResponse = z.infer<typeof PairResponse>;
+
 export const HealthResponse = z.object({
   ok: z.literal(true),
   version: z.string(),
   /** connected = 프로바이더를 골랐고 그 도구가 이 PC 에 있다. */
   ai: z.object({ connected: z.boolean(), provider: AiProvider, installed: z.boolean() }),
-  tunnel: z.object({ status: TunnelStatus, error: z.string().nullable() }),
+  tunnel: z.object({ status: TunnelStatus, error: z.string().nullable(), url: z.string().nullable().default(null) }),
 });
 export type HealthResponse = z.infer<typeof HealthResponse>;
 
