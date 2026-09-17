@@ -20,6 +20,7 @@ import { Whisper } from './workers/whisper.js';
 import { Library } from './library.js';
 import { Tunnel } from './tunnel.js';
 import { RemoteAuth } from './remote.js';
+import { AiInstaller } from './agent/install.js';
 import { ClaudeProvider } from './agent/claude.js';
 import { CodexProvider } from './agent/codex.js';
 import { detectCli } from './agent/detect.js';
@@ -109,6 +110,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
 
   const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
   const remoteAuth = new RemoteAuth(path.join(cfg.dataDir, 'pairs.json'));
+  const aiInstaller = new AiInstaller(log);
   const url = `http://127.0.0.1:${cfg.port}`;
   let remoteMode = settings.get().remoteMode;
   const tunnelConfig = () => {
@@ -138,6 +140,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     events,
     tunnel,
     remoteAuth,
+    aiInstaller,
     agent,
     uploads,
     agentTools,
@@ -220,6 +223,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     },
     async stop() {
       agent.stopAll();
+      aiInstaller.stop();
       tunnel.stop();
       await watcher.stop();
       await queue.stop();

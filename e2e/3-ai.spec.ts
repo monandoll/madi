@@ -140,3 +140,41 @@ test('아이콘 · 다시 찾기 · 이 PC 에서 직접 찾기', async ({ page 
     await expect(page.getByText(banned, { exact: false })).toHaveCount(0);
   }
 });
+
+test('못 깔아 주는 PC 를 위해 터미널 한 줄도 준다', async ({ page }) => {
+  await page.goto('/#/settings');
+  const ai = page.getByTestId('ai-section');
+  // 아직 안 깔린 줄에만 붙는다
+  await ai.getByTestId('ai-manual-codex').click();
+  await expect(ai.getByTestId('ai-manual-box')).toBeVisible();
+  await expect(ai.getByTestId('ai-manual-line')).toContainText('install');
+  await expect(ai.getByTestId('ai-manual-line')).not.toContainText('npm');
+});
+
+test('아예 안 깔린 도구는 마디가 대신 깔아 준다', async ({ page }) => {
+  await page.goto('/#/settings');
+  const ai = page.getByTestId('ai-section');
+  const codex = ai.getByTestId('ai-provider-codex');
+  await expect(codex).toContainText('설치 안 됨');
+
+  // 안 깔렸으면 "연결하기" 자리에 "이 컴퓨터에 깔기"가 온다
+  await expect(codex.getByRole('button', { name: '연결하기' })).toHaveCount(0);
+  await ai.getByTestId('ai-install-codex').click();
+
+  // 받는 중 → 다 되면 설치됨, 그리고 바로 연결할 수 있다
+  await expect(ai.getByTestId('ai-installing-codex')).toBeVisible();
+  await expect(codex).toContainText('설치됨', { timeout: 60_000 });
+  await expect(ai.getByTestId('ai-install-codex')).toHaveCount(0);
+  await codex.getByRole('button', { name: '연결하기' }).click();
+  await expect(ai.getByTestId('ai-status')).toHaveText('Codex 연결됨');
+
+  // 깔린 도구에는 로그인 창 열기가 붙는다 (리눅스 개발 환경에선 못 열어서 안내가 뜬다)
+  await expect(ai.getByTestId('ai-login-codex')).toBeVisible();
+  await ai.getByTestId('ai-login-codex').click();
+  await expect(ai.getByTestId('ai-login-error')).toContainText('로그인 창');
+
+  // 뒷정리: 다음 스펙을 위해 연결을 끊는다
+  await ai.getByTestId('ai-disconnect').click();
+  await expect(ai.getByTestId('ai-status')).toHaveText('연결 안 됨');
+});
+

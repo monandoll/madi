@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { type Context, Hono } from 'hono';
@@ -10,6 +11,8 @@ import {
   AddLinkRequest,
   AddRuleRequest,
   type StyleResponse,
+  AiInstallRequest,
+  type AiInstallResponse,
   AiPathRequest,
   type AiPickResponse,
   type AiProviderInfo,
@@ -46,6 +49,7 @@ import type { Library } from '../library.js';
 import { ActionError, greetIfEmpty, runAction } from '../actions.js';
 import { AgentError } from '../agent/runner.js';
 import { cliVersion, detectCli } from '../agent/detect.js';
+import { installLine, loginPlan } from '../agent/install.js';
 import { TOOL_NAMES, type ToolName } from '../mcp/tools.js';
 import { describeFolder, openFolderWithSystem, suggestFolders } from '../folders.js';
 import { LinkError } from '../style/service.js';
@@ -77,6 +81,8 @@ export interface AppDeps {
   uploads: import('@tus/server').Server;
   /** 밖에서 들어온 기기 잠금 (6자리 숫자 → 기기 표). */
   remoteAuth: import('../remote.js').RemoteAuth;
+  /** AI 도구가 없을 때 마디가 대신 깔아 주는 것. */
+  aiInstaller: import('../agent/install.js').AiInstaller;
 }
 
 export function toCard(v: Video, deps: Pick<AppDeps, 'videos' | 'queue' | 'library'>): VideoCard {
@@ -172,14 +178,24 @@ export function createApp(deps: AppDeps): Hono {
   /** 한 도구를 이 PC 에서 찾아 본다. 사용자가 직접 골라 준 파일이 있으면 그것부터. */
   const lookUpProvider = async (id: 'claude' | 'codex', fresh: boolean): Promise<AiProviderInfo> => {
     const info = await detectCli(id, { fresh, custom: settings.get().ai.paths?.[id] ?? null });
-    return { id, label: AI_LABELS[id], installed: info.installed, version: info.version, path: info.path, custom: info.custom };
+    return {
+      id,
+      label: AI_LABELS[id],
+      installed: info.installed,
+      version: info.version,
+      path: info.path,
+      custom: info.custom,
+      canInstall: deps.aiInstaller.canInstall(id),
+      installLine: installLine(id),
+    };
   };
+
+  const bothProviders = async (fresh: boolean) => Promise.all([lookUpProvider('claude', fresh), lookUpProvider('codex', fresh)]);
 
   /** 설치 여부. `?fresh=1` 이면 캐시를 버리고 처음부터 다시 찾는다 (화면의 "다시 찾기"). */
   app.get('/api/ai/providers', async (c) => {
     const fresh = c.req.query('fresh') === '1';
-    const providers = await Promise.all([lookUpProvider('claude', fresh), lookUpProvider('codex', fresh)]);
-    const body: AiProvidersResponse = { providers };
+    const body: AiProvidersResponse = { providers: await bothProviders(fresh) };
     return c.json(body);
   });
 
@@ -198,7 +214,7 @@ export function createApp(deps: AppDeps): Hono {
     settings.patch({ ai: { ...now, paths: { ...now.paths, [provider]: picked } } });
     deps.onSettingsChanged?.();
     deps.events.record('ai.path.set', { provider, cleared: picked === null });
-    const body: AiProvidersResponse = { providers: await Promise.all([lookUpProvider('claude', true), lookUpProvider('codex', true)]) };
+    const body: AiProvidersResponse = { providers: await bothProviders(true) };
     return c.json(body);
   });
 
@@ -220,6 +236,49 @@ export function createApp(deps: AppDeps): Hono {
     deps.events.record('ai.path.set', { provider: id, picked: true });
     const body: AiPickResponse = { canceled: false, provider: await lookUpProvider(id, true) };
     return c.json(body);
+  });
+
+  /**
+   * 아예 안 깔린 PC: 마디가 공식 설치기를 대신 돌린다 (node·관리자 권한 필요 없음).
+   * 상태를 계속 물어보며 "받는 중 → 다 됐어요"만 보여 준다.
+   */
+  app.get('/api/ai/install', async (c) => {
+    const body: AiInstallResponse = { install: deps.aiInstaller.state, providers: await bothProviders(deps.aiInstaller.state.status === 'done') };
+    return c.json(body);
+  });
+
+  app.post('/api/ai/install', async (c) => {
+    const parsed = AiInstallRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: 'provider required' } }, 400);
+    const id = parsed.data.provider;
+    if (!deps.aiInstaller.canInstall(id)) return c.json({ error: { code: 'ai_install_unsupported', message: 'no installer for this OS' } }, 501);
+    if (!deps.aiInstaller.start(id)) return c.json({ error: { code: 'ai_install_busy', message: 'already installing' } }, 409);
+    deps.events.record('ai.install.start', { provider: id });
+    const body: AiInstallResponse = { install: deps.aiInstaller.state, providers: await bothProviders(false) };
+    return c.json(body);
+  });
+
+  /** 오류를 닫을 때 (다음 시도를 위해 비운다). */
+  app.delete('/api/ai/install', async (c) => {
+    deps.aiInstaller.clear();
+    const body: AiInstallResponse = { install: deps.aiInstaller.state, providers: await bothProviders(false) };
+    return c.json(body);
+  });
+
+  /** 로그인 창(터미널) 열기. 거기서 브라우저가 열리고 구독 계정으로 로그인한다. */
+  app.post('/api/ai/login', async (c) => {
+    const parsed = AiInstallRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: 'provider required' } }, 400);
+    const plan = loginPlan(parsed.data.provider);
+    if (!plan) return c.json({ error: { code: 'ai_login_unsupported', message: 'cannot open a terminal here' } }, 501);
+    try {
+      const child = spawn(plan.command, plan.args, { stdio: 'ignore', detached: true, windowsHide: false });
+      child.unref();
+    } catch (err) {
+      return c.json({ error: { code: 'ai_login_failed', message: err instanceof Error ? err.message : String(err) } }, 500);
+    }
+    deps.events.record('ai.login.open', { provider: parsed.data.provider });
+    return c.json({ opened: true });
   });
 
   app.get('/api/videos', (c) => {

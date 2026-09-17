@@ -45,6 +45,10 @@ export default defineConfig({
       MADI_CLAUDE_BIN: path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'fake-claude.mjs'),
       // 링크로 배우기 e2e: 진짜 yt-dlp 대신 fixtures/fake-ytdlp.mjs (URL 로 샘플을 고른다)
       MADI_YTDLP: path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'fake-ytdlp.mjs'),
+      // AI 깔기 e2e: 진짜 설치기 대신 가짜 codex 를 자리에 놓는 한 줄 (인터넷을 타지 않는다)
+      MADI_INSTALL_CODEX: `mkdir -p "${path.join(home, 'aibin')}" && cp "${path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'fake-codex.mjs')}" "${path.join(home, 'aibin', 'codex')}" && chmod +x "${path.join(home, 'aibin', 'codex')}"`,
+      // 설치기가 놓는 자리를 엔진 PATH 에 넣어 둔다 (진짜 설치기도 PATH 자리에 놓는다)
+      PATH: `${path.join(home, 'aibin')}${path.delimiter}${process.env['PATH'] ?? ''}`,
       // 밖에서 접속 e2e: 진짜 cloudflared 대신 fixtures/fake-cloudflared.mjs (주소 한 줄을 찍고 살아 있는다)
       MADI_CLOUDFLARED: path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'fake-cloudflared.mjs'),
       MADI_FAKE_TUNNEL_HOST: 'madi-e2e',

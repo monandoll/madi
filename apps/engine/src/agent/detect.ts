@@ -42,7 +42,9 @@ export function knownDirs(): string[] {
   const home = os.homedir();
   const out = [
     path.join(home, '.claude', 'local'),
+    // 두 공식 설치기가 놓는 자리 (mac·windows 둘 다 홈 아래 .local/bin)
     path.join(home, '.local', 'bin'),
+    path.join(home, '.codex', 'bin'),
     path.join(home, '.npm-global', 'bin'),
     path.join(home, '.volta', 'bin'),
     path.join(home, '.bun', 'bin'),

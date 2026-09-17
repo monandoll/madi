@@ -106,6 +106,10 @@ export const AiProviderInfo = z.object({
   path: z.string().nullable().default(null),
   /** 사용자가 직접 골라 준 파일인가 (PC 마다 설치 위치가 달라서). */
   custom: z.boolean().default(false),
+  /** 이 PC 에서 마디가 대신 깔아 줄 수 있는가 (공식 설치기가 있는 OS). */
+  canInstall: z.boolean().default(false),
+  /** 터미널에 직접 칠 사람을 위한 한 줄. 못 깔아 주는 OS 면 null. */
+  installLine: z.string().nullable().default(null),
 });
 export type AiProviderInfo = z.infer<typeof AiProviderInfo>;
 
@@ -121,6 +125,25 @@ export const AiPathRequest = z.object({
   path: z.string().trim().min(1).max(4096).nullable(),
 });
 export type AiPathRequest = z.infer<typeof AiPathRequest>;
+
+/**
+ * 마디가 대신 깔기. 한 번에 하나만.
+ * step 은 사용자에게 보여 줄 단계, error 는 왜 안 됐는지 (network/permission/unsupported/…).
+ */
+export const AiInstallState = z.object({
+  provider: AiProvider.exclude(['none']).nullable(),
+  status: z.enum(['idle', 'running', 'done', 'failed']),
+  step: z.enum(['downloading', 'checking']).nullable().default(null),
+  error: z.string().nullable().default(null),
+});
+export type AiInstallState = z.infer<typeof AiInstallState>;
+
+export const AiInstallRequest = z.object({ provider: AiProvider.exclude(['none']) });
+export type AiInstallRequest = z.infer<typeof AiInstallRequest>;
+
+/** 깔기 상태 + 지금 찾은 결과 (끝나면 바로 연결까지 이어지게). */
+export const AiInstallResponse = z.object({ install: AiInstallState, providers: z.array(AiProviderInfo) });
+export type AiInstallResponse = z.infer<typeof AiInstallResponse>;
 
 /** 파일 고르기(트레이 앱의 파일 선택창). canceled 면 사용자가 창을 닫은 것. */
 export const AiPickResponse = z.object({

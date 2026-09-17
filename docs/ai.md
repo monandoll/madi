@@ -59,6 +59,35 @@ claude -p --output-format stream-json --mcp-config mcp.json --strict-mcp-config 
 
 Windows 의 `claude.cmd` 는 `cmd.exe /d /s /c` 로 띄운다 (`provider.ts spawnCli`).
 
+### 아예 안 깔렸을 때: 마디가 대신 깐다
+
+두 회사 다 **공식 설치기**가 있다. node 도, npm 도, 관리자 권한도 필요 없고 사용자 폴더(`~/.local/bin`)에 깔린다.
+그래서 설정의 "이 컴퓨터에 깔기" 한 번이면 끝난다 — 1차 사용자는 터미널을 열 사람이 아니다.
+
+| OS | Claude Code | Codex |
+|---|---|---|
+| macOS · Linux | `curl -fsSL https://claude.ai/install.sh \| bash` | `curl -fsSL https://chatgpt.com/codex/install.sh \| sh` |
+| Windows | `irm https://claude.ai/install.ps1 \| iex` (powershell) | `irm https://chatgpt.com/codex/install.ps1 \| iex` |
+
+`agent/install.ts` 가 이 한 줄들을 만든다 (`installLine` = 사람이 직접 칠 줄, `installPlan` = 우리가 띄울 명령).
+`MADI_INSTALL_CLAUDE` / `MADI_INSTALL_CODEX` 로 갈아 끼울 수 있다 (테스트가 이걸 쓴다).
+
+| 길 | 하는 일 |
+|---|---|
+| `GET /api/ai/install` | 지금 깔고 있는지 + 찾은 결과 (화면이 2초마다 본다) |
+| `POST /api/ai/install` | 시작. 이미 하고 있으면 409 `ai_install_busy`, 못 깔아 주는 OS 면 501 `ai_install_unsupported` |
+| `DELETE /api/ai/install` | 실패 표시 닫기 (다시 누를 수 있게) |
+| `POST /api/ai/login` | 로그인 창(터미널) 열기. 못 여는 OS 면 501 `ai_login_unsupported` |
+
+- 한 번에 하나만. 5분 넘으면 멈춘다.
+- 설치기가 0 을 돌려줘도 **직접 실행해 봐야**(`--version`) 다 됐다고 본다. 반대로 exit 코드가 이상해도 실행되면 성공.
+- 실패 이유는 `network` / `permission` / `timeout` / `unsupported` / `failed` 다섯 가지로만 줄여서 화면에 사람 말로 보인다.
+- 끝나면 찾아 둔 기억을 지우고 다시 찾는다. 같은 응답에 찾은 결과가 실려 있어 화면이 바로 "연결하기"로 넘어간다.
+
+**로그인**은 자동으로 못 한다 — 브라우저가 떠야 하고 진짜 터미널이 필요하다. 그래서 창을 대신 열어 준다:
+macOS 는 Terminal.app(`osascript … do script "claude"`), Windows 는 새 명령 창(`cmd /k claude`). 리눅스(개발)는 못 연다.
+API 키 방식은 아직 안 쓴다 (사용자 본인 구독으로 돈다는 원칙).
+
 ### 못 찾을 때: 다시 찾기 · 직접 찾기
 
 설치 자리는 PC 마다 다르다(npm 전역, nvm, winget, 직접 받은 파일…). 그래서 화면에 두 가지를 둔다.
@@ -83,6 +112,8 @@ Windows 의 `claude.cmd` 는 `cmd.exe /d /s /c` 로 띄운다 (`provider.ts spaw
 - 엔진 e2e `test/e2e.agent.test.ts`: `fixtures/fake-claude.mjs` 가 진짜 claude 처럼 `--mcp-config` 의 서버를 띄우고 stdio 로 도구를 부른 뒤 stream-json 을 낸다. 그래서 MCP 서버 프로세스·도구 API·렌더까지 실제로 돈다.
 - 브라우저 e2e `e2e/3-ai.spec.ts`: 설정에서 고르기 → 칩·입력 → 스트리밍 답 → 결과물 카드 → 멈추기 → 연결 끊기 → 아이콘·다시 찾기·직접 찾기.
 - 단위 `test/detect.test.ts`: 직접 고른 파일 우선·사라졌을 때 되돌아가기·경로별 캐시·fresh.
+- 단위 `test/install.test.ts`: 플랫폼별 설치·로그인 명령(npm·node 안 씀), 설치 뒤 실행 확인, 실패 이유 줄이기.
+- 엔진 e2e `test/e2e.aiinstall.test.ts`: 가짜 설치기로 깔기 → 설치됨 → 연결까지, 동시 실행 409, 로그인 창 501/200.
 - 엔진 e2e `test/e2e.aipath.test.ts`: 엉뚱한 파일 거절, 고른 자리로 연결, 프로바이더를 바꿔도 남음, 파일 선택창 없음(501)·있음.
 
 진짜 CLI 로 손 테스트: `claude` 가 PATH 에 있으면 설정 → AI → Claude Code "쓰기". 로그는 `~/.madi/logs/engine.log` (`agent` 항목, debug).

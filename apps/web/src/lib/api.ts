@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   type ActionRequest,
   ActionResponse,
+  AiInstallResponse,
   AiPickResponse,
   AiProvidersResponse,
   ChatResponse,
@@ -67,6 +68,12 @@ export const api = {
   aiSetPath: (provider: 'claude' | 'codex', path: string | null) => send('POST', '/api/ai/path', { provider, path }, AiProvidersResponse),
   /** 트레이 앱의 파일 선택창 열기 */
   aiPickPath: (provider: 'claude' | 'codex') => send('POST', '/api/ai/pick', { provider }, AiPickResponse),
+  /** 마디가 대신 깔기 */
+  aiInstallState: () => get('/api/ai/install', AiInstallResponse),
+  aiInstall: (provider: 'claude' | 'codex') => send('POST', '/api/ai/install', { provider }, AiInstallResponse),
+  aiInstallClear: () => send('DELETE', '/api/ai/install', undefined, AiInstallResponse),
+  /** 로그인 창(터미널) 열기 */
+  aiLogin: (provider: 'claude' | 'codex') => send('POST', '/api/ai/login', { provider }, z.object({ opened: z.literal(true) })),
   style: () => get('/api/style', StyleResponse),
   addRule: (rule: string) => send('POST', '/api/style/rules', { rule }, StyleResponse),
   removeRule: (index: number) => send('DELETE', `/api/style/rules/${index}`, undefined, StyleResponse),
@@ -91,6 +98,7 @@ export const queryKeys = {
   outputs: ['outputs'] as const,
   output: (id: string) => ['output', id] as const,
   aiProviders: ['ai-providers'] as const,
+  aiInstall: ['ai-install'] as const,
   style: ['style'] as const,
   remote: ['remote'] as const,
 };
