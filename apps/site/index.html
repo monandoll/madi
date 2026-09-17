@@ -52,13 +52,13 @@
 
     <!-- PC -->
     <div id="pc">
-      <h1 id="title">이 컴퓨터에 편집 엔진을 설치합니다</h1>
+      <h1 id="title">마디 설치</h1>
       <p class="sub">영상은 이 컴퓨터 안에서만 편집됩니다. 어디에도 올라가지 않습니다.</p>
     </div>
     <!-- 폰·다른 OS -->
     <div id="not-pc" class="hide">
-      <h1>이 페이지를 PC 에서 여세요</h1>
-      <p class="sub">마디는 영상이 있는 PC(Windows 또는 Mac)에 설치합니다. 설치가 끝나면 폰에서도 그 PC 를 볼 수 있습니다.</p>
+      <h1>PC 에서 열어 주세요</h1>
+      <p class="sub">마디는 영상이 있는 PC(Windows 또는 Mac)에 설치합니다. 설치 후에는 휴대폰에서도 볼 수 있습니다.</p>
     </div>
 
     <div class="cta">
@@ -77,8 +77,8 @@
     <div class="facts">
       <div class="fact"><div class="k">필요한 것</div><div class="v" id="need">Windows 10 이상 · 64비트 / macOS 13 이상 · Apple 실리콘 · 인텔</div></div>
       <div class="fact"><div class="k">계정</div><div class="v">필요 없습니다. 설치하면 바로 쓸 수 있습니다.</div></div>
-      <div class="fact"><div class="k">AI 연결</div><div class="v">나중에 설정에서 해도 됩니다. 자막 · 쉬는 구간 자르기 · 규격 변환은 AI 없이도 됩니다.</div></div>
-      <div class="fact" id="warn-row"><div class="k">처음 열 때</div><div class="v" id="warn">Mac 은 Apple 서명·공증이 되어 있어 바로 열립니다. Windows 는 아직 서명이 없어 파란 창이 뜨면 <b>추가 정보 → 실행</b>. 설치가 끝나면 브라우저가 자동으로 열립니다.</div></div>
+      <div class="fact"><div class="k">AI 연결</div><div class="v">나중에 해도 됩니다. 자막 · 쉬는 구간 자르기 · 규격 변환은 AI 없이도 됩니다.</div></div>
+      <div class="fact" id="warn-row"><div class="k">처음 열 때</div><div class="v" id="warn">Mac 은 서명·공증이 되어 있어 바로 열립니다. Windows 는 파란 창이 뜨면 <b>추가 정보 → 실행</b>.</div></div>
     </div>
 
     <div class="steps"><div class="dot on"></div><div class="dot"></div><div class="dot"></div><span>설치</span><span style="padding-left:0">· 다음은 영상 폴더 정하기</span></div>
@@ -123,8 +123,8 @@
   }
 
   // 처음 열 때 안내. Mac 은 서명·공증됨(v0.2.2~). Windows 는 아직 서명이 없어 SmartScreen 을 넘어가는 길을 적는다.
-  var WARN_WIN = '파란 「Windows의 PC 보호」 창이 뜨면 <b>추가 정보 → 실행</b>. 아직 Microsoft 서명이 없어서 나오는 창입니다. 설치가 끝나면 브라우저가 자동으로 열립니다.';
-  var WARN_MAC = 'Apple 서명·공증이 되어 있어 경고 없이 열립니다. 받은 파일을 더블클릭 → 계속 → 설치. 끝나면 브라우저가 자동으로 열립니다.';
+  var WARN_WIN = '파란 「Windows의 PC 보호」 창이 뜨면 <b>추가 정보 → 실행</b>. 설치가 끝나면 브라우저가 열립니다.';
+  var WARN_MAC = '받은 파일을 더블클릭 → 계속 → 설치. 끝나면 브라우저가 열립니다.';
   var OS = {
     win: { name: 'Windows', match: /-win-x64\.exe$/, need: 'Windows 10 이상 · 64비트', warn: WARN_WIN },
     'mac-arm64': { name: 'macOS', match: /-mac-arm64\.pkg$/, need: 'macOS 13 이상 · Apple 실리콘 (M1 이후)', warn: WARN_MAC },
@@ -158,7 +158,7 @@
     } else {
       btn.href = RELEASES;
       btn.removeAttribute('download');
-      $('btn-label').textContent = state.rel ? '아직 ' + os.name + ' 파일이 없습니다 — 릴리스 보기' : os.name + '용 다운로드';
+      $('btn-label').textContent = state.rel ? os.name + ' 파일 없음 — 릴리스 보기' : os.name + '용 다운로드';
       $('meta').innerHTML = state.rel ? '' : '목록을 불러오지 못했습니다. <a href="' + RELEASES + '">릴리스 페이지</a>에서 받으세요.';
     }
     btn.setAttribute('aria-disabled', 'false');

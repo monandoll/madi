@@ -96,7 +96,7 @@ test('숏폼 자르기: 구간 고르고 만들기 → 결과물 화면 → 다�
   const out = page.getByTestId('output-detail');
   await expect(out.getByRole('heading', { name: /숏폼 1/ })).toBeVisible();
   await expect(out.getByTestId('output-video')).toBeVisible();
-  await expect(out.getByText('이 결과물에는 자막이 없습니다.')).toBeVisible();
+  await expect(out.getByText('자막 없음')).toBeVisible();
   const dl = out.getByTestId('download');
   await expect(dl).toHaveAttribute('href', /\/media\/outputs\/.+\.mp4\?download=1/);
   const res = await page.request.head(await dl.getAttribute('href'));

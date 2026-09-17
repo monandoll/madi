@@ -189,7 +189,7 @@ test('로그인은 화면 안 터미널에서 한다 (폰에서도 되게)', asy
   // 진짜 터미널 화면이 붙고, 도구가 낸 글이 그대로 보인다
   await expect(term.locator('.xterm')).toBeVisible();
   await expect(term).toContainText('브라우저에서 열기', { timeout: 30_000 });
-  await expect(term.getByTestId('term-done')).toContainText('끝났습니다', { timeout: 30_000 });
+  await expect(term.getByTestId('term-done')).toContainText('완료했습니다', { timeout: 30_000 });
   // 직접 치고 싶은 사람을 위한 한 줄도 같이 준다
   await expect(term).toContainText('codex login');
 

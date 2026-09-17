@@ -28,7 +28,7 @@ test('처음 켜면 설정 카드가 뜨고, 이름과 폴더를 고르면 영�
   // 설정 전에는 첫 실행 화면만 (design/v2 Desktop 첫 실행 카드)
   const card = page.getByTestId('setup-card');
   await expect(card).toBeVisible();
-  await expect(card.getByText('두 가지만 정하면 시작합니다')).toBeVisible();
+  await expect(card.getByText('스튜디오 설정')).toBeVisible();
   await expect(card.getByTestId('setup-name')).toHaveValue('내 스튜디오');
   await expect(page.getByTestId('video-card')).toHaveCount(0);
 
@@ -206,7 +206,7 @@ test('PC 의 "폰에서 업로드"는 안내 카드를 열고, 거기서 이 브
   await page.getByTestId('upload-help-toggle').click();
   const help = page.getByTestId('upload-help');
   await expect(help).toBeVisible();
-  await expect(help).toContainText('폰에서 마디를 열면');
+  await expect(help).toContainText('휴대폰에서 마디를 열면');
   await expect(help.getByTestId('upload-remote')).toContainText('밖에서 접속하기');
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), help.getByTestId('upload-pick-here').click()]);
   await chooser.setFiles({ name: '데스크 업로드.mp4', mimeType: 'video/mp4', buffer: fs.readFileSync(path.join(FIXTURES, 'sample-5s.mp4')) });
