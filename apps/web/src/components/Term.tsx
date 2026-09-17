@@ -46,7 +46,18 @@ export function Term({ kind, onClose, onFallback }: { kind: TermKind; onClose():
         setLine(msg.line);
       } else if (msg.t === 'out') term.write(msg.d);
       else if (msg.t === 'exit') setDone(msg.code);
-      else if (msg.t === 'error') setError(msg.code === 'busy' ? copy.settings.termBusy : msg.code === 'bad_kind' ? copy.settings.termFailed : copy.settings.termMissing);
+      else if (msg.t === 'error') {
+        if (msg.line) setLine(msg.line);
+        setError(
+          msg.code === 'busy'
+            ? copy.settings.termBusy
+            : msg.code === 'no_pty'
+              ? copy.settings.termNoPty
+              : msg.code === 'bad_kind'
+                ? copy.settings.termFailed
+                : copy.settings.termMissing,
+        );
+      }
     };
     ws.onclose = () => setDone((d) => d ?? 0);
     ws.onerror = () => setError(copy.settings.termFailed);

@@ -24,6 +24,8 @@ export function Gallery() {
   const list = videos.data?.videos ?? [];
   const engineOk = health.isSuccess;
   const [help, setHelp] = useState(false);
+  // 맥·윈도우에서 가장 자연스러운 가져오기: Finder/탐색기에서 갤러리로 끌어다 놓기
+  const [dropping, setDropping] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const uploads = useUploads();
   // PC 헤더 "폴더 열기": 이 PC 의 영상 폴더를 탐색기/Finder 로. 폴더가 아직 없으면 설정으로 보낸다.
@@ -87,7 +89,31 @@ export function Gallery() {
         />
       )}
       {picker}
-      <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3.5 pt-3 pb-5 pc:px-6 pc:pt-5 pc:pb-10">
+      <main
+        className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3.5 pt-3 pb-5 pc:px-6 pc:pt-5 pc:pb-10"
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes('Files')) return;
+          e.preventDefault();
+          setDropping(true);
+        }}
+        onDragLeave={(e) => {
+          // 자식 위로 지나갈 때도 leave 가 뜬다. 진짜로 밖으로 나갔을 때만 끈다.
+          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+          setDropping(false);
+        }}
+        onDrop={(e) => {
+          if (!e.dataTransfer.files.length) return;
+          e.preventDefault();
+          setDropping(false);
+          uploads.start(e.dataTransfer.files);
+        }}
+        data-testid="gallery-main"
+      >
+        {dropping && (
+          <div className="pointer-events-none absolute inset-2 z-10 flex items-center justify-center rounded-panel border-2 border-dashed border-accent bg-accent-faint/90 text-14 font-medium text-accent" data-testid="drop-hint">
+            {copy.upload.dropping}
+          </div>
+        )}
         {pc && help && <UploadHelp onPick={pick} onClose={() => setHelp(false)} />}
         {uploads.items.length > 0 && (
           <div className="mb-3 flex flex-col overflow-hidden rounded-thumb border border-line pc:mb-4" data-testid="upload-list">
@@ -129,7 +155,13 @@ function UploadHelp({ onPick, onClose }: { onPick(): void; onClose(): void }) {
           {copy.upload.close}
         </button>
       </div>
-      <div className="flex items-start gap-3.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <button type="button" onClick={onPick} className="rounded-thumb bg-accent px-3 py-1.5 text-13 font-medium text-white hover:bg-accent-hover" data-testid="upload-pick-here">
+          {copy.upload.pickHere}
+        </button>
+        <span className="text-13 text-text-3">{copy.upload.dropHint}</span>
+      </div>
+      <div className="flex items-start gap-3.5 border-t border-line-faint pt-2.5">
         {qrUrl && <Qr value={qrUrl} size={132} />}
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <p className="text-14 leading-[1.6] text-text-2" style={{ textWrap: 'pretty' }}>
@@ -153,9 +185,6 @@ function UploadHelp({ onPick, onClose }: { onPick(): void; onClose(): void }) {
           </button>
         )}
         <span className="flex-1" />
-        <button type="button" onClick={onPick} className="rounded-thumb border border-line px-3 py-1.5 font-medium text-text-2 hover:bg-hover" data-testid="upload-pick-here">
-          {copy.upload.pickHere}
-        </button>
       </div>
     </div>
   );

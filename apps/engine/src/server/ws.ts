@@ -52,14 +52,14 @@ export function attachWs(app: Hono, version: string, log: Logger) {
           const parsed = TermIn.safeParse(raw);
           if (!parsed.success) {
             // 목록 밖을 열려고 하면 바로 아니라고 말해 준다 (기다리게 두지 않는다)
-            if (typeof raw === 'object' && raw !== null && (raw as { t?: unknown }).t === 'open') send({ t: 'error', code: 'bad_kind' }, ws);
+            if (typeof raw === 'object' && raw !== null && (raw as { t?: unknown }).t === 'open') send({ t: 'error', code: 'bad_kind', line: null }, ws);
             return;
           }
           const msg = parsed.data;
           if (msg.t === 'open') {
             if (mine) return;
-            if (term) return send({ t: 'error', code: 'busy' }, ws);
-            if (!termPlan(msg.kind)) return send({ t: 'error', code: 'not_found' }, ws);
+            if (term) return send({ t: 'error', code: 'busy', line: null }, ws);
+            if (!termPlan(msg.kind)) return send({ t: 'error', code: 'not_found', line: termLine(msg.kind) }, ws);
             const session = openTerm(
               msg.kind,
               { cols: msg.cols, rows: msg.rows },
@@ -73,7 +73,8 @@ export function attachWs(app: Hono, version: string, log: Logger) {
               },
               log,
             );
-            if (!session) return send({ t: 'error', code: 'not_found' }, ws);
+            // 도구는 찾았는데 터미널이 안 떴다 (네이티브 모듈·권한). 직접 칠 줄을 같이 준다.
+            if (!session) return send({ t: 'error', code: 'no_pty', line: termLine(msg.kind) }, ws);
             mine = session;
             term = session;
             send({ t: 'ready', title: termPlan(msg.kind)!.title, line: termLine(msg.kind) }, ws);
