@@ -117,12 +117,12 @@ export class ClaudeProvider implements AgentProvider {
 
   constructor(private readonly writeMcpConfig: (mcp: AgentRunOptions['mcp'], cwd: string) => string) {}
 
-  bin(): string | null {
-    return findCli('claude');
+  bin(custom?: string | null): string | null {
+    return findCli('claude', custom);
   }
 
   async run(opts: AgentRunOptions): Promise<AgentResult> {
-    const bin = this.bin();
+    const bin = opts.bin ?? this.bin();
     if (!bin) return { text: '', toolCalls: 0, ok: false, error: 'not_installed' };
     const mcpConfigPath = this.writeMcpConfig(opts.mcp, opts.cwd);
     const args = claudeArgs({ mcpConfigPath, toolNames: opts.toolNames, system: opts.system });

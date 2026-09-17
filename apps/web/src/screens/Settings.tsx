@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Settings as SettingsSchema } from '@madi/shared';
 import { FolderChooser } from '../components/FolderChooser.js';
+import { AiMark } from '../components/AiMark.js';
 import { Qr } from '../components/Qr.js';
 import { Card, CardRow, GhostButton, PillButton, SectionTitle, Status } from '../components/Settings.js';
 import { StyleSection } from '../components/StyleSection.js';
 import { TopBar } from '../components/TopBar.js';
 import { copy } from '../copy.js';
-import { api, queryKeys } from '../lib/api.js';
+import { api, ApiError, queryKeys } from '../lib/api.js';
 import { usePatchSettings, useSettings } from '../lib/settings.js';
 
 /**
@@ -17,6 +18,7 @@ import { usePatchSettings, useSettings } from '../lib/settings.js';
 export function SettingsScreen() {
   const { settings } = useSettings();
   const patch = usePatchSettings();
+  const qc = useQueryClient();
   const health = useQuery({ queryKey: queryKeys.health, queryFn: api.health, refetchInterval: 5_000 });
   // 설치된 AI 도구. 설정 화면을 열 때마다 새로 찾는다 (설치 직후 바로 보이게).
   const providers = useQuery({ queryKey: queryKeys.aiProviders, queryFn: () => api.aiProviders(true), staleTime: 30_000 });
@@ -28,6 +30,10 @@ export function SettingsScreen() {
   const [adding, setAdding] = useState(false);
   const [token, setToken] = useState('');
   const [advanced, setAdvanced] = useState(false);
+  // AI 도구 다시 찾기 / 이 PC 에서 실행 파일 직접 고르기
+  const [rechecking, setRechecking] = useState(false);
+  const [pathBusy, setPathBusy] = useState<'claude' | 'codex' | null>(null);
+  const [pathError, setPathError] = useState<string | null>(null);
   // 켜져 있으면 주소·숫자를 계속 지켜본다 (주소가 몇 초 뒤에 나온다)
   const remote = useQuery({ queryKey: queryKeys.remote, queryFn: api.remote, refetchInterval: settings.remoteMode === 'off' ? false : 3_000 });
   useEffect(() => setName(settings.workspaceName), [settings.workspaceName]);
@@ -37,6 +43,49 @@ export function SettingsScreen() {
   const qrUrl = remoteUrl && remote.data?.pin ? `${remoteUrl}/?pin=${remote.data.pin}` : remoteUrl;
   const aiOn = ai?.connected ?? false;
   const aiStatus = !ai || ai.provider === 'none' ? copy.settings.aiOff : ai.connected ? copy.settings.aiOn(labelOfProvider(ai.provider)) : copy.settings.aiMissing(labelOfProvider(ai.provider));
+
+  /** 다시 찾기: 캐시를 버리고 처음부터 찾은 다음 연결 상태도 새로 본다. */
+  const recheck = async () => {
+    setRechecking(true);
+    setPathError(null);
+    try {
+      qc.setQueryData(queryKeys.aiProviders, await api.aiProviders(true));
+      await qc.invalidateQueries({ queryKey: queryKeys.health });
+    } finally {
+      setRechecking(false);
+    }
+  };
+
+  /** 이 PC 의 실행 파일을 파일 선택창에서 고른다. 트레이 앱이 아니면 창을 못 연다. */
+  const pickPath = async (provider: 'claude' | 'codex') => {
+    setPathBusy(provider);
+    setPathError(null);
+    try {
+      const res = await api.aiPickPath(provider);
+      if (!res.canceled) {
+        qc.setQueryData(queryKeys.aiProviders, await api.aiProviders(true));
+        await qc.invalidateQueries({ queryKey: queryKeys.health });
+      }
+    } catch (err) {
+      setPathError(err instanceof ApiError && err.code === 'ai_path_bad' ? copy.settings.aiPickBad : copy.settings.aiPickFailed);
+    } finally {
+      setPathBusy(null);
+    }
+  };
+
+  /** 직접 고른 파일 지우기 (다시 자동으로 찾게). */
+  const setPath = (provider: 'claude' | 'codex', value: string | null) => {
+    setPathBusy(provider);
+    setPathError(null);
+    api
+      .aiSetPath(provider, value)
+      .then((res) => {
+        qc.setQueryData(queryKeys.aiProviders, res);
+        return qc.invalidateQueries({ queryKey: queryKeys.health });
+      })
+      .catch((err: unknown) => setPathError(err instanceof ApiError && err.code === 'ai_path_bad' ? copy.settings.aiPickBad : copy.settings.aiPickFailed))
+      .finally(() => setPathBusy(null));
+  };
 
   const commitName = () => {
     const parsed = SettingsSchema.shape.workspaceName.safeParse(name);
@@ -80,19 +129,40 @@ export function SettingsScreen() {
               const on = selected && aiOn;
               return (
                 <CardRow key={p.id} first={i === 0} active={selected} testId={`ai-provider-${p.id}`}>
-                  <span className="flex h-7 w-7 flex-none items-center justify-center rounded-thumb bg-track text-11 font-bold text-text-4">{p.label.charAt(0)}</span>
+                  <span className="flex h-7 w-7 flex-none items-center justify-center rounded-thumb bg-track text-text-2">
+                    <AiMark id={p.id} />
+                  </span>
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="text-14 font-medium">{p.label}</span>
                     <Status on={on} busy={selected && !on}>
                       {selected ? aiStatus : p.installed ? copy.settings.aiInstalled(p.version) : copy.settings.aiNotInstalled}
                     </Status>
+                    {p.custom && (
+                      <span className="text-12 text-text-3" data-testid={`ai-custom-${p.id}`}>
+                        {copy.settings.aiCustom} ·{' '}
+                        <button type="button" className="text-accent hover:text-accent-hover" onClick={() => setPath(p.id, null)} disabled={pathBusy !== null}>
+                          {copy.settings.aiCustomClear}
+                        </button>
+                      </span>
+                    )}
+                    {!p.installed && (
+                      <button
+                        type="button"
+                        className="self-start text-12 text-accent hover:text-accent-hover disabled:text-text-3"
+                        onClick={() => void pickPath(p.id)}
+                        disabled={pathBusy !== null}
+                        data-testid={`ai-pick-${p.id}`}
+                      >
+                        {pathBusy === p.id ? copy.settings.aiPicking : copy.settings.aiPick}
+                      </button>
+                    )}
                   </span>
                   {selected ? (
-                    <PillButton onClick={() => patch.mutate({ ai: { provider: 'none' } })} disabled={patch.isPending} testId="ai-disconnect">
+                    <PillButton onClick={() => patch.mutate({ ai: { ...settings.ai, provider: 'none' } })} disabled={patch.isPending} testId="ai-disconnect">
                       {copy.settings.aiDisconnect}
                     </PillButton>
                   ) : (
-                    <PillButton primary onClick={() => patch.mutate({ ai: { provider: p.id } })} disabled={!p.installed || patch.isPending}>
+                    <PillButton primary onClick={() => patch.mutate({ ai: { ...settings.ai, provider: p.id } })} disabled={!p.installed || patch.isPending}>
                       {copy.settings.aiUse}
                     </PillButton>
                   )}
@@ -104,10 +174,22 @@ export function SettingsScreen() {
                 <span className="text-13 text-text-3">{copy.settings.aiChecking}</span>
               </CardRow>
             )}
+            <CardRow>
+              <span className="flex-1 text-12 text-text-3">{copy.settings.aiRetryHelp}</span>
+              <PillButton onClick={() => void recheck()} disabled={rechecking || pathBusy !== null} testId="ai-recheck">
+                {rechecking ? copy.settings.aiRetrying : copy.settings.aiRetry}
+              </PillButton>
+            </CardRow>
           </Card>
+          {pathError && (
+            <p className="text-12 text-error" data-testid="ai-path-error">
+              {pathError}
+            </p>
+          )}
           <p className="text-12 text-text-3">
             <span data-testid="ai-status">{aiStatus}</span> · {copy.settings.aiHelp}
           </p>
+          <p className="text-12 text-text-3">{copy.settings.aiPickHelp}</p>
         </section>
 
         <StyleSection aiOn={aiOn} />

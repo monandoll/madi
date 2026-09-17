@@ -14,6 +14,16 @@ export const Settings = z.object({
   watchFolders: z.array(z.string()),
   ai: z.object({
     provider: AiProvider,
+    /**
+     * 이 PC 에서 도구를 못 찾았을 때 사용자가 직접 골라 준 실행 파일.
+     * 설치 위치는 PC 마다 다르다 (npm 전역·nvm·winget·직접 받은 파일…). 이 값이 있으면 먼저 쓴다.
+     */
+    paths: z
+      .object({
+        claude: z.string().nullable().default(null),
+        codex: z.string().nullable().default(null),
+      })
+      .default({ claude: null, codex: null }),
   }),
   /** 처음 켰을 때 설정 카드를 끝냈는지. false 면 갤러리 위에 카드가 뜬다. */
   setupDone: z.boolean().default(false),
@@ -34,7 +44,7 @@ export type Settings = z.infer<typeof Settings>;
 export const DEFAULT_SETTINGS: Settings = {
   workspaceName: '내 스튜디오',
   watchFolders: [],
-  ai: { provider: 'none' },
+  ai: { provider: 'none', paths: { claude: null, codex: null } },
   setupDone: false,
   remoteMode: 'off',
   tunnelToken: null,

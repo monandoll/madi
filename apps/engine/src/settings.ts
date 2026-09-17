@@ -21,7 +21,10 @@ export class SettingsStore {
   }
 
   patch(patch: SettingsPatch): Settings {
-    const next = Settings.parse({ ...this.get(), ...patch });
+    const now = this.get();
+    // ai 는 한 겹 더 깊게 합친다 — 프로바이더만 바꿀 때 직접 골라 둔 실행 파일 경로가 날아가면 안 된다
+    const ai = patch.ai ? { ...now.ai, ...patch.ai, paths: { ...now.ai.paths, ...(patch.ai.paths ?? {}) } } : now.ai;
+    const next = Settings.parse({ ...now, ...patch, ai });
     this.db
       .insert(kv)
       .values({ key: KEY, value: next, updatedAt: Date.now() })

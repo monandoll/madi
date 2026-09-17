@@ -9,7 +9,7 @@ import type { Logger } from '../log.js';
 import type { SettingsStore } from '../settings.js';
 import type { VideoStore } from '../videos.js';
 import { TOOL_NAMES } from '../mcp/tools.js';
-import { detectCli } from './detect.js';
+import { detectCli, resetCliCache } from './detect.js';
 import type { AgentProvider, AgentRunOptions } from './provider.js';
 import type { StyleProfile } from './style.js';
 
@@ -66,11 +66,16 @@ export class AgentRunner {
     return undefined;
   }
 
-  /** 지금 고른 프로바이더가 이 PC 에 있는지. */
-  async status(): Promise<{ provider: AiProvider; installed: boolean; connected: boolean }> {
+  /** 사용자가 이 PC 에서 직접 골라 준 실행 파일 (없으면 null). */
+  private customPath(provider: Exclude<AiProvider, 'none'>): string | null {
+    return this.d.settings.get().ai.paths?.[provider] ?? null;
+  }
+
+  /** 지금 고른 프로바이더가 이 PC 에 있는지. fresh 면 캐시를 버리고 다시 찾는다 (다시 찾기 버튼). */
+  async status(opts: { fresh?: boolean } = {}): Promise<{ provider: AiProvider; installed: boolean; connected: boolean }> {
     const provider = this.d.settings.get().ai.provider;
     if (provider === 'none') return { provider, installed: false, connected: false };
-    const info = await detectCli(provider);
+    const info = await detectCli(provider, { fresh: opts.fresh ?? false, custom: this.customPath(provider) });
     return { provider, installed: info.installed, connected: info.installed };
   }
 
@@ -129,6 +134,7 @@ export class AgentRunner {
         },
       };
       const result = await provider.run({
+        bin: provider.bin(this.customPath(providerId)),
         prompt: this.buildPrompt(video, text, run.messageId),
         system: this.systemPrompt(),
         mcp,
@@ -155,6 +161,8 @@ export class AgentRunner {
         if (finalText) update({ text: finalText, streaming: false });
         else this.d.library.updateMessage(run.messageId, { code: 'ai.stopped', params: { streaming: false } });
       } else if (result.error === 'not_installed') {
+        // 찾아 둔 게 사라졌다 — 다음 확인 때 처음부터 다시 찾는다
+        resetCliCache();
         this.d.library.updateMessage(run.messageId, { kind: 'error', code: 'ai_missing', params: { streaming: false, provider: providerId } });
       } else {
         this.d.library.updateMessage(run.messageId, { kind: 'error', code: classifyAgentError(result.error ?? ''), params: { streaming: false, detail: (result.error ?? '').slice(0, 300) } });

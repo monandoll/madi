@@ -68,6 +68,8 @@ export interface Engine {
   setFolderPicker(fn: (() => Promise<string | null>) | undefined): void;
   /** Electron 이 shell.openPath 를 붙인다 (갤러리의 "폴더 열기"). */
   setFolderOpener(fn: ((dir: string) => Promise<void>) | undefined): void;
+  /** Electron 이 파일 선택창을 붙인다 (AI 도구 실행 파일 직접 고르기). */
+  setFilePicker(fn: (() => Promise<string | null>) | undefined): void;
   stop(): Promise<void>;
 }
 
@@ -151,10 +153,11 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
       remoteMode = next.mode;
       tunnel.apply(next);
       styleService.refresh();
-      const p = settings.get().ai.provider;
-      if (p !== 'none') void detectCli(p, { fresh: true });
+      const ai = settings.get().ai;
+      if (ai.provider !== 'none') void detectCli(ai.provider, { fresh: true, custom: ai.paths?.[ai.provider] ?? null });
     },
     pickFolder: undefined as (() => Promise<string | null>) | undefined,
+    pickFile: undefined as (() => Promise<string | null>) | undefined,
     openFolder: undefined as ((dir: string) => Promise<void>) | undefined,
   };
   const app = createApp(deps);
@@ -185,7 +188,10 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   void styleService.detectDownloader();
   queue.tick();
   // AI 도구 설치 여부는 미리 봐 둔다 (--version 이 몇 초 걸릴 수 있다)
-  if (settings.get().ai.provider !== 'none') void detectCli(settings.get().ai.provider as 'claude' | 'codex');
+  {
+    const ai = settings.get().ai;
+    if (ai.provider !== 'none') void detectCli(ai.provider, { custom: ai.paths?.[ai.provider] ?? null });
+  }
 
   return {
     cfg,
@@ -208,6 +214,9 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     },
     setFolderOpener(fn) {
       deps.openFolder = fn;
+    },
+    setFilePicker(fn) {
+      deps.pickFile = fn;
     },
     async stop() {
       agent.stopAll();

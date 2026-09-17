@@ -52,6 +52,15 @@ app.whenReady().then(async () => {
     const err = await shell.openPath(dir);
     if (err) throw new Error(err);
   });
+  // AI 도구 실행 파일 직접 고르기 — 설치 위치가 PC 마다 달라서 못 찾을 때 쓴다
+  engine.setFilePicker(async () => {
+    const res = await dialog.showOpenDialog({
+      properties: ['openFile', 'dontAddToRecent'],
+      // 확장자 없는 실행 파일(macOS/Linux)도 보여야 한다
+      filters: process.platform === 'win32' ? [{ name: '실행 파일', extensions: ['cmd', 'exe', 'bat', 'ps1'] }, { name: '모두', extensions: ['*'] }] : [],
+    });
+    return res.canceled ? null : (res.filePaths[0] ?? null);
+  });
   engine.setFolderPicker(async () => {
     const res = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] });
     const picked = res.canceled ? null : (res.filePaths[0] ?? null);

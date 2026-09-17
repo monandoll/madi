@@ -102,11 +102,32 @@ export const AiProviderInfo = z.object({
   label: z.string(),
   installed: z.boolean(),
   version: z.string().nullable(),
+  /** 이 PC 에서 찾은 실행 파일. 못 찾았으면 null. */
+  path: z.string().nullable().default(null),
+  /** 사용자가 직접 골라 준 파일인가 (PC 마다 설치 위치가 달라서). */
+  custom: z.boolean().default(false),
 });
 export type AiProviderInfo = z.infer<typeof AiProviderInfo>;
 
 export const AiProvidersResponse = z.object({ providers: z.array(AiProviderInfo) });
 export type AiProvidersResponse = z.infer<typeof AiProvidersResponse>;
+
+/**
+ * 도구를 이 PC 어디에 뒀는지 직접 알려 주기. path 가 null 이면 직접 고른 것을 지우고 다시 찾는다.
+ * 실행해 보고 안 되면 400 `ai_path_bad`.
+ */
+export const AiPathRequest = z.object({
+  provider: AiProvider.exclude(['none']),
+  path: z.string().trim().min(1).max(4096).nullable(),
+});
+export type AiPathRequest = z.infer<typeof AiPathRequest>;
+
+/** 파일 고르기(트레이 앱의 파일 선택창). canceled 면 사용자가 창을 닫은 것. */
+export const AiPickResponse = z.object({
+  canceled: z.boolean(),
+  provider: AiProviderInfo.nullable(),
+});
+export type AiPickResponse = z.infer<typeof AiPickResponse>;
 
 export const JobsResponse = z.object({ jobs: z.array(Job) });
 export type JobsResponse = z.infer<typeof JobsResponse>;

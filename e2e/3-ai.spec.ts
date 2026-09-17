@@ -101,3 +101,42 @@ test('설정에서 연결을 끊으면 다시 버튼 4개', async ({ page }) => 
   await expect(page.getByTestId('action-bar').getByRole('button')).toHaveCount(4);
   await expect(page.getByTestId('chat-bar')).toHaveCount(0);
 });
+
+test('아이콘 · 다시 찾기 · 이 PC 에서 직접 찾기', async ({ page }) => {
+  await page.goto('/#/settings');
+  const ai = page.getByTestId('ai-section');
+  // 두 도구 다 제 마크를 달고 나온다 (글자 대신)
+  await expect(ai.getByTestId('ai-mark-claude')).toBeVisible();
+  await expect(ai.getByTestId('ai-mark-codex')).toBeVisible();
+
+  // 다시 찾기: 눌러도 찾은 결과는 그대로 (방금 깐 사람을 위한 버튼)
+  await ai.getByTestId('ai-recheck').click();
+  await expect(ai.getByTestId('ai-provider-claude')).toContainText('설치됨 · 9.9.9');
+
+  // 이 PC 에 없는 도구에는 "직접 찾기"가 붙는다. 트레이 앱이 아니면 창을 못 연다고 말해 준다.
+  const codex = ai.getByTestId('ai-provider-codex');
+  await expect(codex).toContainText('설치 안 됨');
+  await ai.getByTestId('ai-pick-codex').click();
+  await expect(ai.getByTestId('ai-path-error')).toContainText('파일 고르기 창');
+
+  // 실행 파일을 알려 주면 그 자리로 연결된다
+  const fake = path.join(FIXTURES, 'fake-codex.mjs');
+  expect((await page.request.post('/api/ai/path', { data: { provider: 'codex', path: fake } })).status()).toBe(200);
+  await page.reload();
+  await expect(ai.getByTestId('ai-custom-codex')).toContainText('직접 고른 파일');
+  await expect(codex).toContainText('설치됨');
+
+  // 엉뚱한 파일은 거절한다
+  const bad = await page.request.post('/api/ai/path', { data: { provider: 'codex', path: path.join(FIXTURES, 'sample-5s.mp4') } });
+  expect(bad.status()).toBe(400);
+
+  // 직접 고른 것 지우기 → 다시 알아서 찾는다 (여기선 없음)
+  await ai.getByTestId('ai-custom-codex').getByRole('button', { name: '직접 고른 것 지우기' }).click();
+  await expect(ai.getByTestId('ai-custom-codex')).toHaveCount(0);
+  await expect(codex).toContainText('설치 안 됨');
+
+  // 전문 용어 금지
+  for (const banned of ['CLI', '바이너리', 'PATH', '실행 파일 경로']) {
+    await expect(page.getByText(banned, { exact: false })).toHaveCount(0);
+  }
+});

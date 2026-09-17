@@ -52,16 +52,38 @@ claude -p --output-format stream-json --mcp-config mcp.json --strict-mcp-config 
 
 ## CLI 찾기 (`agent/detect.ts`)
 
-`MADI_CLAUDE_BIN` / `MADI_CODEX_BIN` → PATH → 흔한 설치 위치(`~/.claude/local`, `~/.local/bin`, npm 전역, nvm, homebrew …).
-트레이 앱은 로그인 셸 PATH 를 못 받으므로 후보 폴더가 중요하다. `--version` 이 8초 안에 답해야 설치된 것으로 본다. 60초 캐시.
+`MADI_CLAUDE_BIN` / `MADI_CODEX_BIN` → **사용자가 직접 골라 준 파일**(`settings.ai.paths`) → PATH →
+흔한 설치 위치(`~/.claude/local`, `~/.local/bin`, npm 전역, nvm, homebrew …).
+트레이 앱은 로그인 셸 PATH 를 못 받으므로 후보 폴더가 중요하다. `--version` 이 8초 안에 답해야 설치된 것으로 본다.
+60초 캐시이고, 캐시는 `이름 + 직접 고른 경로` 별로 따로 센다.
 
 Windows 의 `claude.cmd` 는 `cmd.exe /d /s /c` 로 띄운다 (`provider.ts spawnCli`).
+
+### 못 찾을 때: 다시 찾기 · 직접 찾기
+
+설치 자리는 PC 마다 다르다(npm 전역, nvm, winget, 직접 받은 파일…). 그래서 화면에 두 가지를 둔다.
+
+| 화면 | 하는 일 | API |
+|---|---|---|
+| 다시 찾기 | 캐시를 버리고 처음부터 다시 찾는다 (방금 깔았거나 껐다 켠 경우) | `GET /api/ai/providers?fresh=1` |
+| 직접 찾기 | 트레이 앱의 파일 선택창으로 실행 파일을 고른다 | `POST /api/ai/pick {provider}` |
+| 직접 고른 것 지우기 | 그 값을 비우고 다시 알아서 찾게 한다 | `POST /api/ai/path {provider, path: null}` |
+
+- 고른 파일은 저장 전에 `--version` 으로 한 번 돌려 본다. 안 돌면 400 `ai_path_bad` → "그 파일로는 안 되네요."
+- 파일 선택창은 트레이 앱에만 있다 (`engine.setFilePicker`). 브라우저만 있는 개발 환경에서는 501 `no_picker`.
+- 저장된 경로는 `settings.ai.paths.{claude,codex}` 이고 이 PC 의 DB 에만 남는다. 파일이 옮겨지거나 지워지면 자동으로 평소 자리들을 다시 뒤진다.
+- 프로바이더만 바꿔도 이 경로는 날아가지 않는다 (설정 저장이 `ai` 를 한 겹 더 깊게 합친다).
+- 채팅 도중 `not_installed` 로 죽으면 캐시를 비워서 다음 확인 때 처음부터 다시 찾는다.
+
+아이콘은 각 회사 마크를 그대로 쓴다 (`apps/web/src/components/AiMark.tsx`). 경로 데이터는 `@lobehub/icons-static-svg`(MIT) 에서 가져와 인라인으로 박았다 — 아이콘 두 개 때문에 의존성을 더하지 않는다.
 
 ## 테스트
 
 - 단위: 스트림 파서 두 개, 인자 조립, StyleProfile, MCP 서버(가짜 call).
 - 엔진 e2e `test/e2e.agent.test.ts`: `fixtures/fake-claude.mjs` 가 진짜 claude 처럼 `--mcp-config` 의 서버를 띄우고 stdio 로 도구를 부른 뒤 stream-json 을 낸다. 그래서 MCP 서버 프로세스·도구 API·렌더까지 실제로 돈다.
-- 브라우저 e2e `e2e/3-ai.spec.ts`: 설정에서 고르기 → 칩·입력 → 스트리밍 답 → 결과물 카드 → 멈추기 → 연결 끊기.
+- 브라우저 e2e `e2e/3-ai.spec.ts`: 설정에서 고르기 → 칩·입력 → 스트리밍 답 → 결과물 카드 → 멈추기 → 연결 끊기 → 아이콘·다시 찾기·직접 찾기.
+- 단위 `test/detect.test.ts`: 직접 고른 파일 우선·사라졌을 때 되돌아가기·경로별 캐시·fresh.
+- 엔진 e2e `test/e2e.aipath.test.ts`: 엉뚱한 파일 거절, 고른 자리로 연결, 프로바이더를 바꿔도 남음, 파일 선택창 없음(501)·있음.
 
 진짜 CLI 로 손 테스트: `claude` 가 PATH 에 있으면 설정 → AI → Claude Code "쓰기". 로그는 `~/.madi/logs/engine.log` (`agent` 항목, debug).
 

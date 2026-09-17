@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   type ActionRequest,
   ActionResponse,
+  AiPickResponse,
   AiProvidersResponse,
   ChatResponse,
   StyleResponse,
@@ -62,6 +63,10 @@ export const api = {
   chat: (id: string, text: string) => send('POST', `/api/videos/${id}/chat`, { text }, ChatResponse),
   cancelChat: (id: string) => send('POST', `/api/videos/${id}/chat/cancel`, undefined, z.object({ canceled: z.boolean() })),
   aiProviders: (fresh = false) => get(`/api/ai/providers${fresh ? '?fresh=1' : ''}`, AiProvidersResponse),
+  /** 이 PC 에서 도구를 어디에 뒀는지 직접 알려 주기. path 가 null 이면 직접 고른 것을 지운다. */
+  aiSetPath: (provider: 'claude' | 'codex', path: string | null) => send('POST', '/api/ai/path', { provider, path }, AiProvidersResponse),
+  /** 트레이 앱의 파일 선택창 열기 */
+  aiPickPath: (provider: 'claude' | 'codex') => send('POST', '/api/ai/pick', { provider }, AiPickResponse),
   style: () => get('/api/style', StyleResponse),
   addRule: (rule: string) => send('POST', '/api/style/rules', { rule }, StyleResponse),
   removeRule: (index: number) => send('DELETE', `/api/style/rules/${index}`, undefined, StyleResponse),
