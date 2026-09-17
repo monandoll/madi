@@ -2,6 +2,8 @@ import { z } from 'zod';
 import {
   type ActionRequest,
   ActionResponse,
+  AiInstallResponse,
+  AiPickResponse,
   AiProvidersResponse,
   ChatResponse,
   StyleResponse,
@@ -62,6 +64,16 @@ export const api = {
   chat: (id: string, text: string) => send('POST', `/api/videos/${id}/chat`, { text }, ChatResponse),
   cancelChat: (id: string) => send('POST', `/api/videos/${id}/chat/cancel`, undefined, z.object({ canceled: z.boolean() })),
   aiProviders: (fresh = false) => get(`/api/ai/providers${fresh ? '?fresh=1' : ''}`, AiProvidersResponse),
+  /** 이 PC 에서 도구를 어디에 뒀는지 직접 알려 주기. path 가 null 이면 직접 고른 것을 지운다. */
+  aiSetPath: (provider: 'claude' | 'codex', path: string | null) => send('POST', '/api/ai/path', { provider, path }, AiProvidersResponse),
+  /** 트레이 앱의 파일 선택창 열기 */
+  aiPickPath: (provider: 'claude' | 'codex') => send('POST', '/api/ai/pick', { provider }, AiPickResponse),
+  /** 마디가 대신 깔기 */
+  aiInstallState: () => get('/api/ai/install', AiInstallResponse),
+  aiInstall: (provider: 'claude' | 'codex') => send('POST', '/api/ai/install', { provider }, AiInstallResponse),
+  aiInstallClear: () => send('DELETE', '/api/ai/install', undefined, AiInstallResponse),
+  /** 로그인 창(터미널) 열기 */
+  aiLogin: (provider: 'claude' | 'codex') => send('POST', '/api/ai/login', { provider }, z.object({ opened: z.literal(true) })),
   style: () => get('/api/style', StyleResponse),
   addRule: (rule: string) => send('POST', '/api/style/rules', { rule }, StyleResponse),
   removeRule: (index: number) => send('DELETE', `/api/style/rules/${index}`, undefined, StyleResponse),
@@ -86,6 +98,7 @@ export const queryKeys = {
   outputs: ['outputs'] as const,
   output: (id: string) => ['output', id] as const,
   aiProviders: ['ai-providers'] as const,
+  aiInstall: ['ai-install'] as const,
   style: ['style'] as const,
   remote: ['remote'] as const,
 };

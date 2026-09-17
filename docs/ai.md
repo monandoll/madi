@@ -52,16 +52,93 @@ claude -p --output-format stream-json --mcp-config mcp.json --strict-mcp-config 
 
 ## CLI 찾기 (`agent/detect.ts`)
 
-`MADI_CLAUDE_BIN` / `MADI_CODEX_BIN` → PATH → 흔한 설치 위치(`~/.claude/local`, `~/.local/bin`, npm 전역, nvm, homebrew …).
-트레이 앱은 로그인 셸 PATH 를 못 받으므로 후보 폴더가 중요하다. `--version` 이 8초 안에 답해야 설치된 것으로 본다. 60초 캐시.
+`MADI_CLAUDE_BIN` / `MADI_CODEX_BIN` → **사용자가 직접 골라 준 파일**(`settings.ai.paths`) → PATH →
+흔한 설치 위치(`~/.claude/local`, `~/.local/bin`, npm 전역, nvm, homebrew …).
+트레이 앱은 로그인 셸 PATH 를 못 받으므로 후보 폴더가 중요하다. `--version` 이 8초 안에 답해야 설치된 것으로 본다.
+60초 캐시이고, 캐시는 `이름 + 직접 고른 경로` 별로 따로 센다.
 
 Windows 의 `claude.cmd` 는 `cmd.exe /d /s /c` 로 띄운다 (`provider.ts spawnCli`).
+
+### 아예 안 깔렸을 때: 마디가 대신 깐다
+
+두 회사 다 **공식 설치기**가 있다. node 도, npm 도, 관리자 권한도 필요 없고 사용자 폴더(`~/.local/bin`)에 깔린다.
+그래서 설정의 "이 컴퓨터에 깔기" 한 번이면 끝난다 — 1차 사용자는 터미널을 열 사람이 아니다.
+
+| OS | Claude Code | Codex |
+|---|---|---|
+| macOS · Linux | `curl -fsSL https://claude.ai/install.sh \| bash` | `curl -fsSL https://chatgpt.com/codex/install.sh \| sh` |
+| Windows | `irm https://claude.ai/install.ps1 \| iex` (powershell) | `irm https://chatgpt.com/codex/install.ps1 \| iex` |
+
+`agent/install.ts` 가 이 한 줄들을 만든다 (`installLine` = 사람이 직접 칠 줄, `installPlan` = 우리가 띄울 명령).
+`MADI_INSTALL_CLAUDE` / `MADI_INSTALL_CODEX` 로 갈아 끼울 수 있다 (테스트가 이걸 쓴다).
+
+| 길 | 하는 일 |
+|---|---|
+| `GET /api/ai/install` | 지금 깔고 있는지 + 찾은 결과 (화면이 2초마다 본다) |
+| `POST /api/ai/install` | 시작. 이미 하고 있으면 409 `ai_install_busy`, 못 깔아 주는 OS 면 501 `ai_install_unsupported` |
+| `DELETE /api/ai/install` | 실패 표시 닫기 (다시 누를 수 있게) |
+| `POST /api/ai/login` | 로그인 창(터미널) 열기. 못 여는 OS 면 501 `ai_login_unsupported` |
+
+- 한 번에 하나만. 5분 넘으면 멈춘다.
+- 설치기가 0 을 돌려줘도 **직접 실행해 봐야**(`--version`) 다 됐다고 본다. 반대로 exit 코드가 이상해도 실행되면 성공.
+- 실패 이유는 `network` / `permission` / `timeout` / `unsupported` / `failed` 다섯 가지로만 줄여서 화면에 사람 말로 보인다.
+- 끝나면 찾아 둔 기억을 지우고 다시 찾는다. 같은 응답에 찾은 결과가 실려 있어 화면이 바로 "연결하기"로 넘어간다.
+
+### 로그인: 화면 안 터미널
+
+로그인은 자동으로 못 한다 — 브라우저가 떠야 하고 진짜 터미널(PTY)이 필요하다.
+그래서 **마디 안에 터미널을 띄운다**. 검은 창을 따로 찾을 필요가 없고, 폰으로 들어와 있어도 똑같이 된다.
+
+```
+브라우저 (xterm)  ──WebSocket /api/term──▶  엔진  ──PTY──▶  claude setup-token / codex login
+```
+
+- `@lydell/node-pty` (프리빌트만, node-gyp 안 씀 → Electron 에서 재빌드 불필요). `asarUnpack` 에 넣는다.
+- `/api/term` 은 `/api/*` 라서 **짝짓기 가드가 그대로 걸린다** (밖에서 온 기기는 6자리 숫자를 맞혀야 붙는다).
+- 화면 쪽 xterm 은 열 때만 받아 온다 (`lazy`) — 첫 화면이 무거워지지 않게.
+- 한 번에 창 하나. 15분이 지나면 저절로 닫는다.
+
+**열 수 있는 것은 네 개뿐이다** (`TermKind`): `login-claude`, `login-codex`, `install-claude`, `install-codex`.
+셸도, 사용자가 친 명령도 열리지 않는다. 목록 밖이면 바로 `bad_kind` 로 거절한다.
+
+> 왜 `claude` 를 그냥 띄우지 않나: 대화형 claude 안에서는 `!` 로 아무 셸 명령이나 돌릴 수 있다.
+> 짝지은 폰이 그걸 열 수 있으면 그 폰이 곧 이 PC 의 조종간이 된다. 그래서 로그인만 하고 끝나는
+> `claude setup-token` 을 쓴다. codex 는 `codex login`.
+
+창을 못 띄우는 PC 를 위해 `POST /api/ai/login` (트레이 앱이 macOS Terminal.app / Windows 명령 창을 여는 옛 길)을
+"이 컴퓨터 창으로 열기" 폴백으로 남겨 뒀다. 그것도 안 되면 화면에 한 줄(`claude setup-token`)을 그대로 보여 준다.
+
+API 키 방식은 아직 안 쓴다 (사용자 본인 구독으로 돈다는 원칙).
+
+### 못 찾을 때: 다시 찾기 · 직접 찾기
+
+설치 자리는 PC 마다 다르다(npm 전역, nvm, winget, 직접 받은 파일…). 그래서 화면에 두 가지를 둔다.
+
+| 화면 | 하는 일 | API |
+|---|---|---|
+| 다시 찾기 | 캐시를 버리고 처음부터 다시 찾는다 (방금 깔았거나 껐다 켠 경우) | `GET /api/ai/providers?fresh=1` |
+| 직접 찾기 | 트레이 앱의 파일 선택창으로 실행 파일을 고른다 | `POST /api/ai/pick {provider}` |
+| 직접 고른 것 지우기 | 그 값을 비우고 다시 알아서 찾게 한다 | `POST /api/ai/path {provider, path: null}` |
+
+- 고른 파일은 저장 전에 `--version` 으로 한 번 돌려 본다. 안 돌면 400 `ai_path_bad` → "그 파일로는 안 되네요."
+- 파일 선택창은 트레이 앱에만 있다 (`engine.setFilePicker`). 브라우저만 있는 개발 환경에서는 501 `no_picker`.
+- 저장된 경로는 `settings.ai.paths.{claude,codex}` 이고 이 PC 의 DB 에만 남는다. 파일이 옮겨지거나 지워지면 자동으로 평소 자리들을 다시 뒤진다.
+- 프로바이더만 바꿔도 이 경로는 날아가지 않는다 (설정 저장이 `ai` 를 한 겹 더 깊게 합친다).
+- 채팅 도중 `not_installed` 로 죽으면 캐시를 비워서 다음 확인 때 처음부터 다시 찾는다.
+
+아이콘은 각 회사 마크를 그대로 쓴다 (`apps/web/src/components/AiMark.tsx`). 경로 데이터는 `@lobehub/icons-static-svg`(MIT) 에서 가져와 인라인으로 박았다 — 아이콘 두 개 때문에 의존성을 더하지 않는다.
 
 ## 테스트
 
 - 단위: 스트림 파서 두 개, 인자 조립, StyleProfile, MCP 서버(가짜 call).
 - 엔진 e2e `test/e2e.agent.test.ts`: `fixtures/fake-claude.mjs` 가 진짜 claude 처럼 `--mcp-config` 의 서버를 띄우고 stdio 로 도구를 부른 뒤 stream-json 을 낸다. 그래서 MCP 서버 프로세스·도구 API·렌더까지 실제로 돈다.
-- 브라우저 e2e `e2e/3-ai.spec.ts`: 설정에서 고르기 → 칩·입력 → 스트리밍 답 → 결과물 카드 → 멈추기 → 연결 끊기.
+- 브라우저 e2e `e2e/3-ai.spec.ts`: 설정에서 고르기 → 칩·입력 → 스트리밍 답 → 결과물 카드 → 멈추기 → 연결 끊기 → 아이콘·다시 찾기·직접 찾기.
+- 단위 `test/detect.test.ts`: 직접 고른 파일 우선·사라졌을 때 되돌아가기·경로별 캐시·fresh.
+- 단위 `test/install.test.ts`: 플랫폼별 설치·로그인 명령(npm·node 안 씀), 설치 뒤 실행 확인, 실패 이유 줄이기.
+- 엔진 e2e `test/e2e.aiinstall.test.ts`: 가짜 설치기로 깔기 → 설치됨 → 연결까지, 동시 실행 409, 로그인 창 501/200.
+- 단위 `test/term.test.ts`: 열 수 있는 목록, 로그인이 도구를 통째로 띄우지 않음, 창 크기 이상값, 진짜 PTY 로 글이 나옴.
+- 엔진 e2e `test/e2e.term.test.ts`: 소켓으로 터미널 열기, 목록 밖 거절, 짝짓기 전 차단, 창 하나 제한.
+- 엔진 e2e `test/e2e.aipath.test.ts`: 엉뚱한 파일 거절, 고른 자리로 연결, 프로바이더를 바꿔도 남음, 파일 선택창 없음(501)·있음.
 
 진짜 CLI 로 손 테스트: `claude` 가 PATH 에 있으면 설정 → AI → Claude Code "쓰기". 로그는 `~/.madi/logs/engine.log` (`agent` 항목, debug).
 

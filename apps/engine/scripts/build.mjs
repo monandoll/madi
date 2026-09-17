@@ -16,7 +16,7 @@ await build({
   platform: 'node',
   format: 'esm',
   target: 'node22',
-  external: ['electron', 'better-sqlite3', 'electron-updater', '@ffmpeg-installer/ffmpeg', '@ffprobe-installer/ffprobe'],
+  external: ['electron', 'better-sqlite3', '@lydell/node-pty', 'electron-updater', '@ffmpeg-installer/ffmpeg', '@ffprobe-installer/ffprobe'],
   banner: { js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);" },
   sourcemap: true,
 });

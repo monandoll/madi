@@ -87,12 +87,12 @@ export class CodexProvider implements AgentProvider {
   readonly id = 'codex' as const;
   readonly label = 'Codex';
 
-  bin(): string | null {
-    return findCli('codex');
+  bin(custom?: string | null): string | null {
+    return findCli('codex', custom);
   }
 
   async run(opts: AgentRunOptions): Promise<AgentResult> {
-    const bin = this.bin();
+    const bin = opts.bin ?? this.bin();
     if (!bin) return { text: '', toolCalls: 0, ok: false, error: 'not_installed' };
     const prompt = `${opts.system}\n\n---\n\n${opts.prompt}`;
     return runCli(bin, codexArgs({ mcp: opts.mcp, cwd: opts.cwd, prompt }), null, new CodexStream(), opts);

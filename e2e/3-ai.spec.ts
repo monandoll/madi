@@ -101,3 +101,98 @@ test('설정에서 연결을 끊으면 다시 버튼 4개', async ({ page }) => 
   await expect(page.getByTestId('action-bar').getByRole('button')).toHaveCount(4);
   await expect(page.getByTestId('chat-bar')).toHaveCount(0);
 });
+
+test('아이콘 · 다시 찾기 · 이 PC 에서 직접 찾기', async ({ page }) => {
+  await page.goto('/#/settings');
+  const ai = page.getByTestId('ai-section');
+  // 두 도구 다 제 마크를 달고 나온다 (글자 대신)
+  await expect(ai.getByTestId('ai-mark-claude')).toBeVisible();
+  await expect(ai.getByTestId('ai-mark-codex')).toBeVisible();
+
+  // 다시 찾기: 눌러도 찾은 결과는 그대로 (방금 깐 사람을 위한 버튼)
+  await ai.getByTestId('ai-recheck').click();
+  await expect(ai.getByTestId('ai-provider-claude')).toContainText('설치됨 · 9.9.9');
+
+  // 이 PC 에 없는 도구에는 "직접 찾기"가 붙는다. 트레이 앱이 아니면 창을 못 연다고 말해 준다.
+  const codex = ai.getByTestId('ai-provider-codex');
+  await expect(codex).toContainText('설치 안 됨');
+  await ai.getByTestId('ai-pick-codex').click();
+  await expect(ai.getByTestId('ai-path-error')).toContainText('파일 고르기 창');
+
+  // 실행 파일을 알려 주면 그 자리로 연결된다
+  const fake = path.join(FIXTURES, 'fake-codex.mjs');
+  expect((await page.request.post('/api/ai/path', { data: { provider: 'codex', path: fake } })).status()).toBe(200);
+  await page.reload();
+  await expect(ai.getByTestId('ai-custom-codex')).toContainText('직접 고른 파일');
+  await expect(codex).toContainText('설치됨');
+
+  // 엉뚱한 파일은 거절한다
+  const bad = await page.request.post('/api/ai/path', { data: { provider: 'codex', path: path.join(FIXTURES, 'sample-5s.mp4') } });
+  expect(bad.status()).toBe(400);
+
+  // 직접 고른 것 지우기 → 다시 알아서 찾는다 (여기선 없음)
+  await ai.getByTestId('ai-custom-codex').getByRole('button', { name: '직접 고른 것 지우기' }).click();
+  await expect(ai.getByTestId('ai-custom-codex')).toHaveCount(0);
+  await expect(codex).toContainText('설치 안 됨');
+
+  // 전문 용어 금지
+  for (const banned of ['CLI', '바이너리', 'PATH', '실행 파일 경로']) {
+    await expect(page.getByText(banned, { exact: false })).toHaveCount(0);
+  }
+});
+
+test('못 깔아 주는 PC 를 위해 터미널 한 줄도 준다', async ({ page }) => {
+  await page.goto('/#/settings');
+  const ai = page.getByTestId('ai-section');
+  // 아직 안 깔린 줄에만 붙는다
+  await ai.getByTestId('ai-manual-codex').click();
+  await expect(ai.getByTestId('ai-manual-box')).toBeVisible();
+  await expect(ai.getByTestId('ai-manual-line')).toContainText('install');
+  await expect(ai.getByTestId('ai-manual-line')).not.toContainText('npm');
+});
+
+test('아예 안 깔린 도구는 마디가 대신 깔아 준다', async ({ page }) => {
+  await page.goto('/#/settings');
+  const ai = page.getByTestId('ai-section');
+  const codex = ai.getByTestId('ai-provider-codex');
+  await expect(codex).toContainText('설치 안 됨');
+
+  // 안 깔렸으면 "연결하기" 자리에 "이 컴퓨터에 깔기"가 온다
+  await expect(codex.getByRole('button', { name: '연결하기' })).toHaveCount(0);
+  await ai.getByTestId('ai-install-codex').click();
+
+  // 받는 중 → 다 되면 설치됨, 그리고 바로 연결할 수 있다
+  await expect(ai.getByTestId('ai-installing-codex')).toBeVisible();
+  await expect(codex).toContainText('설치됨', { timeout: 60_000 });
+  await expect(ai.getByTestId('ai-install-codex')).toHaveCount(0);
+  await codex.getByRole('button', { name: '연결하기' }).click();
+  await expect(ai.getByTestId('ai-status')).toHaveText('Codex 연결됨');
+
+  // 깔린 도구에는 로그인 버튼이 붙고, 누르면 화면 안 터미널이 열린다 (다음 스펙에서 자세히 본다)
+  await expect(ai.getByTestId('ai-login-codex')).toBeVisible();
+
+  // 뒷정리: 다음 스펙을 위해 연결을 끊는다
+  await ai.getByTestId('ai-disconnect').click();
+  await expect(ai.getByTestId('ai-status')).toHaveText('연결 안 됨');
+});
+
+
+test('로그인은 화면 안 터미널에서 한다 (폰에서도 되게)', async ({ page }) => {
+  await page.goto('/#/settings');
+  const ai = page.getByTestId('ai-section');
+  // 앞 스펙에서 codex 를 깔아 뒀다. 깔린 도구에는 로그인 버튼이 붙는다.
+  await ai.getByTestId('ai-login-codex').click();
+
+  const term = page.getByTestId('term');
+  await expect(term).toBeVisible();
+  await expect(term.getByTestId('term-title')).toHaveText('Codex 로그인', { timeout: 30_000 });
+  // 진짜 터미널 화면이 붙고, 도구가 낸 글이 그대로 보인다
+  await expect(term.locator('.xterm')).toBeVisible();
+  await expect(term).toContainText('브라우저에서 열기', { timeout: 30_000 });
+  await expect(term.getByTestId('term-done')).toContainText('다 됐어요', { timeout: 30_000 });
+  // 직접 치고 싶은 사람을 위한 한 줄도 같이 준다
+  await expect(term).toContainText('codex login');
+
+  await term.getByTestId('term-close').click();
+  await expect(page.getByTestId('term')).toHaveCount(0);
+});

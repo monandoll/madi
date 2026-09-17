@@ -9,12 +9,20 @@ export type CliName = 'claude' | 'codex';
 /**
  * 에이전트 CLI 찾기. 우선순위:
  * 1. MADI_CLAUDE_BIN / MADI_CODEX_BIN
- * 2. PATH
- * 3. 흔한 설치 위치 (트레이 앱은 로그인 셸 PATH 를 물려받지 못한다)
+ * 2. 사용자가 설정에서 직접 골라 준 파일 (PC 마다 설치 위치가 다르다)
+ * 3. PATH
+ * 4. 흔한 설치 위치 (트레이 앱은 로그인 셸 PATH 를 물려받지 못한다)
  */
-export function findCli(name: CliName): string | null {
+export function findCli(name: CliName, custom?: string | null): string | null {
   const fromEnv = process.env[`MADI_${name.toUpperCase()}_BIN`];
   if (fromEnv) return fs.existsSync(fromEnv) ? fromEnv : null;
+  if (custom) {
+    try {
+      if (fs.statSync(custom).isFile()) return custom;
+    } catch {
+      /* 지워졌거나 옮겨졌다 — 아래에서 다시 찾아 본다 */
+    }
+  }
   const candidates = process.platform === 'win32' ? [`${name}.cmd`, `${name}.exe`, name] : [name];
   const dirs = [...(process.env['PATH'] ?? '').split(path.delimiter), ...knownDirs()].filter(Boolean);
   for (const dir of dirs) {
@@ -34,7 +42,9 @@ export function knownDirs(): string[] {
   const home = os.homedir();
   const out = [
     path.join(home, '.claude', 'local'),
+    // 두 공식 설치기가 놓는 자리 (mac·windows 둘 다 홈 아래 .local/bin)
     path.join(home, '.local', 'bin'),
+    path.join(home, '.codex', 'bin'),
     path.join(home, '.npm-global', 'bin'),
     path.join(home, '.volta', 'bin'),
     path.join(home, '.bun', 'bin'),
@@ -63,25 +73,33 @@ export interface CliInfo {
   installed: boolean;
   path: string | null;
   version: string | null;
+  /** 사용자가 직접 골라 준 파일로 찾았는가 */
+  custom: boolean;
 }
 
-const cache = new Map<CliName, { at: number; info: CliInfo }>();
+const cache = new Map<string, { at: number; info: CliInfo }>();
 
-/** 설치 여부 + 버전. 60초 캐시. `--version` 이 8초 안에 안 끝나면 설치 안 된 것으로 본다. */
-export async function detectCli(name: CliName, opts: { fresh?: boolean } = {}): Promise<CliInfo> {
-  const hit = cache.get(name);
+/**
+ * 설치 여부 + 버전. 60초 캐시 (직접 고른 경로가 바뀌면 따로 센다).
+ * `--version` 이 8초 안에 안 끝나면 설치 안 된 것으로 본다. fresh 면 캐시를 건너뛰고 다시 찾는다.
+ */
+export async function detectCli(name: CliName, opts: { fresh?: boolean; custom?: string | null } = {}): Promise<CliInfo> {
+  const custom = opts.custom ?? null;
+  const key = `${name}\u0000${custom ?? ''}`;
+  const hit = cache.get(key);
   if (hit && !opts.fresh && Date.now() - hit.at < 60_000) return hit.info;
-  const bin = findCli(name);
-  let info: CliInfo = { installed: false, path: bin, version: null };
+  const bin = findCli(name, custom);
+  let info: CliInfo = { installed: false, path: bin, version: null, custom: !!custom && bin === custom };
   if (bin) {
     const version = await cliVersion(bin);
-    info = { installed: version !== null, path: bin, version };
+    info = { ...info, installed: version !== null, version };
   }
-  cache.set(name, { at: Date.now(), info });
+  cache.set(key, { at: Date.now(), info });
   return info;
 }
 
-function cliVersion(bin: string): Promise<string | null> {
+/** 이 파일이 정말 그 도구인지 한 번 실행해 본다 (사용자가 직접 고른 파일 확인용). */
+export function cliVersion(bin: string): Promise<string | null> {
   return new Promise((resolve) => {
     let out = '';
     let child;

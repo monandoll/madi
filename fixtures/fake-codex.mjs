@@ -9,6 +9,13 @@ if (args.includes('--version')) {
   process.stdout.write('codex-cli 0.0.0 (fake)\n');
   process.exit(0);
 }
+// `codex login`: 진짜처럼 주소를 한 줄 찍고 끝낸다 (화면 안 터미널 테스트용)
+if (args[0] === 'login') {
+  process.stdout.write('Codex 로그인\n');
+  process.stdout.write('브라우저에서 열기: https://example.invalid/device?code=FAKE-1234\n');
+  process.stdout.write('로그인이 끝났어요.\n');
+  process.exit(0);
+}
 if (process.env['MADI_FAKE_CODEX'] === 'login') {
   process.stderr.write('Error: Not logged in. Run `codex login` to authenticate.\n');
   process.exit(1);

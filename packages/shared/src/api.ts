@@ -102,11 +102,80 @@ export const AiProviderInfo = z.object({
   label: z.string(),
   installed: z.boolean(),
   version: z.string().nullable(),
+  /** 이 PC 에서 찾은 실행 파일. 못 찾았으면 null. */
+  path: z.string().nullable().default(null),
+  /** 사용자가 직접 골라 준 파일인가 (PC 마다 설치 위치가 달라서). */
+  custom: z.boolean().default(false),
+  /** 이 PC 에서 마디가 대신 깔아 줄 수 있는가 (공식 설치기가 있는 OS). */
+  canInstall: z.boolean().default(false),
+  /** 터미널에 직접 칠 사람을 위한 한 줄. 못 깔아 주는 OS 면 null. */
+  installLine: z.string().nullable().default(null),
 });
 export type AiProviderInfo = z.infer<typeof AiProviderInfo>;
 
 export const AiProvidersResponse = z.object({ providers: z.array(AiProviderInfo) });
 export type AiProvidersResponse = z.infer<typeof AiProvidersResponse>;
+
+/**
+ * 도구를 이 PC 어디에 뒀는지 직접 알려 주기. path 가 null 이면 직접 고른 것을 지우고 다시 찾는다.
+ * 실행해 보고 안 되면 400 `ai_path_bad`.
+ */
+export const AiPathRequest = z.object({
+  provider: AiProvider.exclude(['none']),
+  path: z.string().trim().min(1).max(4096).nullable(),
+});
+export type AiPathRequest = z.infer<typeof AiPathRequest>;
+
+/**
+ * 마디가 대신 깔기. 한 번에 하나만.
+ * step 은 사용자에게 보여 줄 단계, error 는 왜 안 됐는지 (network/permission/unsupported/…).
+ */
+export const AiInstallState = z.object({
+  provider: AiProvider.exclude(['none']).nullable(),
+  status: z.enum(['idle', 'running', 'done', 'failed']),
+  step: z.enum(['downloading', 'checking']).nullable().default(null),
+  error: z.string().nullable().default(null),
+});
+export type AiInstallState = z.infer<typeof AiInstallState>;
+
+export const AiInstallRequest = z.object({ provider: AiProvider.exclude(['none']) });
+export type AiInstallRequest = z.infer<typeof AiInstallRequest>;
+
+/** 깔기 상태 + 지금 찾은 결과 (끝나면 바로 연결까지 이어지게). */
+export const AiInstallResponse = z.object({ install: AiInstallState, providers: z.array(AiProviderInfo) });
+export type AiInstallResponse = z.infer<typeof AiInstallResponse>;
+
+/**
+ * 화면 안 터미널에서 열 수 있는 것. **이 목록이 전부다** — 셸도, 사용자가 친 명령도 없다.
+ * 짝지은 폰이 이 PC 를 마음대로 조종하지 못하게 하려는 것.
+ */
+export const TermKind = z.enum(['login-claude', 'login-codex', 'install-claude', 'install-codex']);
+export type TermKind = z.infer<typeof TermKind>;
+
+/** 브라우저 → 엔진 (터미널 소켓) */
+export const TermIn = z.union([
+  z.object({ t: z.literal('open'), kind: TermKind, cols: z.number(), rows: z.number() }),
+  z.object({ t: z.literal('in'), d: z.string().max(4096) }),
+  z.object({ t: z.literal('size'), cols: z.number(), rows: z.number() }),
+  z.object({ t: z.literal('kill') }),
+]);
+export type TermIn = z.infer<typeof TermIn>;
+
+/** 엔진 → 브라우저 */
+export const TermOut = z.union([
+  z.object({ t: z.literal('ready'), title: z.string(), line: z.string().nullable() }),
+  z.object({ t: z.literal('out'), d: z.string() }),
+  z.object({ t: z.literal('exit'), code: z.number() }),
+  z.object({ t: z.literal('error'), code: z.enum(['not_found', 'busy', 'bad_kind']) }),
+]);
+export type TermOut = z.infer<typeof TermOut>;
+
+/** 파일 고르기(트레이 앱의 파일 선택창). canceled 면 사용자가 창을 닫은 것. */
+export const AiPickResponse = z.object({
+  canceled: z.boolean(),
+  provider: AiProviderInfo.nullable(),
+});
+export type AiPickResponse = z.infer<typeof AiPickResponse>;
 
 export const JobsResponse = z.object({ jobs: z.array(Job) });
 export type JobsResponse = z.infer<typeof JobsResponse>;

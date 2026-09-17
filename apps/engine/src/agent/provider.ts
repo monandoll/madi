@@ -14,6 +14,8 @@ export interface AgentRunOptions {
   toolNames: string[];
   /** 빈 임시 폴더. 에이전트 CLI 의 작업 폴더 (프로젝트 설정이 끼어들지 않게). */
   cwd: string;
+  /** 러너가 이미 찾아 둔 실행 파일. 없으면 프로바이더가 직접 찾는다. */
+  bin?: string | null;
   signal?: AbortSignal | undefined;
   /** 지금까지의 답 전체 (턴 사이는 빈 줄) */
   onText(text: string): void;
@@ -33,8 +35,8 @@ export interface AgentResult {
 export interface AgentProvider {
   id: Exclude<AiProvider, 'none'>;
   label: string;
-  /** CLI 경로. 없으면 null. */
-  bin(): string | null;
+  /** CLI 경로. custom 은 사용자가 이 PC 에서 직접 골라 준 파일. 없으면 null. */
+  bin(custom?: string | null): string | null;
   run(opts: AgentRunOptions): Promise<AgentResult>;
 }
 

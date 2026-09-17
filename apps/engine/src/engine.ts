@@ -20,6 +20,7 @@ import { Whisper } from './workers/whisper.js';
 import { Library } from './library.js';
 import { Tunnel } from './tunnel.js';
 import { RemoteAuth } from './remote.js';
+import { AiInstaller } from './agent/install.js';
 import { ClaudeProvider } from './agent/claude.js';
 import { CodexProvider } from './agent/codex.js';
 import { detectCli } from './agent/detect.js';
@@ -68,6 +69,8 @@ export interface Engine {
   setFolderPicker(fn: (() => Promise<string | null>) | undefined): void;
   /** Electron 이 shell.openPath 를 붙인다 (갤러리의 "폴더 열기"). */
   setFolderOpener(fn: ((dir: string) => Promise<void>) | undefined): void;
+  /** Electron 이 파일 선택창을 붙인다 (AI 도구 실행 파일 직접 고르기). */
+  setFilePicker(fn: (() => Promise<string | null>) | undefined): void;
   stop(): Promise<void>;
 }
 
@@ -107,6 +110,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
 
   const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
   const remoteAuth = new RemoteAuth(path.join(cfg.dataDir, 'pairs.json'));
+  const aiInstaller = new AiInstaller(log);
   const url = `http://127.0.0.1:${cfg.port}`;
   let remoteMode = settings.get().remoteMode;
   const tunnelConfig = () => {
@@ -136,6 +140,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     events,
     tunnel,
     remoteAuth,
+    aiInstaller,
     agent,
     uploads,
     agentTools,
@@ -151,14 +156,15 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
       remoteMode = next.mode;
       tunnel.apply(next);
       styleService.refresh();
-      const p = settings.get().ai.provider;
-      if (p !== 'none') void detectCli(p, { fresh: true });
+      const ai = settings.get().ai;
+      if (ai.provider !== 'none') void detectCli(ai.provider, { fresh: true, custom: ai.paths?.[ai.provider] ?? null });
     },
     pickFolder: undefined as (() => Promise<string | null>) | undefined,
+    pickFile: undefined as (() => Promise<string | null>) | undefined,
     openFolder: undefined as ((dir: string) => Promise<void>) | undefined,
   };
   const app = createApp(deps);
-  const ws = attachWs(app, VERSION);
+  const ws = attachWs(app, VERSION, log);
   const webMounted = mountWeb(app, cfg);
   videos.on('video.added', (video) => ws.broadcast({ type: 'video.added', video }));
   videos.on('video.updated', (video) => ws.broadcast({ type: 'video.updated', video }));
@@ -185,7 +191,10 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   void styleService.detectDownloader();
   queue.tick();
   // AI 도구 설치 여부는 미리 봐 둔다 (--version 이 몇 초 걸릴 수 있다)
-  if (settings.get().ai.provider !== 'none') void detectCli(settings.get().ai.provider as 'claude' | 'codex');
+  {
+    const ai = settings.get().ai;
+    if (ai.provider !== 'none') void detectCli(ai.provider, { custom: ai.paths?.[ai.provider] ?? null });
+  }
 
   return {
     cfg,
@@ -209,8 +218,12 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     setFolderOpener(fn) {
       deps.openFolder = fn;
     },
+    setFilePicker(fn) {
+      deps.pickFile = fn;
+    },
     async stop() {
       agent.stopAll();
+      aiInstaller.stop();
       tunnel.stop();
       await watcher.stop();
       await queue.stop();
