@@ -1,6 +1,6 @@
 import { findCli } from './detect.js';
 import { MCP_SERVER_NAME } from './claude.js';
-import { type AgentProvider, type AgentResult, type AgentRunOptions, runCli, type StreamEvent, type StreamParser } from './provider.js';
+import { type AgentProvider, type AgentResult, type AgentRunOptions, type AnalyzeOptions, runCli, type StreamEvent, type StreamParser } from './provider.js';
 
 /**
  * `codex exec --json` 출력 파서 (JSONL).
@@ -103,7 +103,7 @@ export class CodexProvider implements AgentProvider {
     const bin = opts.bin ?? this.bin();
     if (!bin) return { text: '', toolCalls: 0, ok: false, error: 'not_installed' };
     const prompt = `${opts.system}\n\n---\n\n${opts.prompt}`;
-    return runCli(bin, codexAnalyzeArgs({ cwd: opts.cwd, prompt }), null, new CodexStream(), { cwd: opts.cwd, signal: opts.signal, onText: () => undefined, onTool: () => undefined, onLog: opts.onLog });
+    return runCli(bin, codexAnalyzeArgs({ cwd: opts.cwd, prompt }), null, new CodexStream(), { cwd: opts.cwd, onText: () => undefined, onTool: () => undefined, ...(opts.signal ? { signal: opts.signal } : {}), ...(opts.onLog ? { onLog: opts.onLog } : {}) });
   }
 }
 

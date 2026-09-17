@@ -184,8 +184,8 @@ describe('완성본의 뜻 읽기 · 기억', () => {
       if (!engine.refs.segmentsOf(r.id)) {
         engine.refs.update(r.id, {
           segments: [
-            { start: 0, end: 1.5, text: '안녕하세요 오늘은 스트레칭입니다', words: [] },
-            { start: 1.5, end: 4, text: '천천히 호흡하면서 열 번 반복하세요', words: [] },
+            { id: 's1', start: 0, end: 1.5, text: '안녕하세요 오늘은 스트레칭입니다', words: [] },
+            { id: 's2', start: 1.5, end: 4, text: '천천히 호흡하면서 열 번 반복하세요', words: [] },
           ],
         });
       }

@@ -119,13 +119,14 @@ export function parseInsight(text: string, opts: { provider: 'claude' | 'codex';
   if (!raw || !Loose.safeParse(raw).success) return null;
   const obj = raw as Record<string, unknown>;
   const dur = Math.max(0, opts.durationSec);
-  const range = (v: unknown) => {
+  // 구간 하나: 시각은 길이 안으로, 뒤집힌 것은 버린다. 나머지 필드는 raw 에 그대로.
+  const range = (v: unknown): { raw: Record<string, unknown>; start: number; end: number } | null => {
     if (typeof v !== 'object' || v === null) return null;
     const o = v as Record<string, unknown>;
     const start = Math.max(0, Math.min(dur, num(o['start'])));
     const end = Math.max(0, Math.min(dur, num(o['end'])));
     if (!(end > start)) return null;
-    return { ...o, start: r1(start), end: r1(end) };
+    return { raw: o, start: r1(start), end: r1(end) };
   };
   const arr = (v: unknown) => (Array.isArray(v) ? v : []);
   const strArr = (v: unknown, max: number) =>
@@ -141,23 +142,23 @@ export function parseInsight(text: string, opts: { provider: 'claude' | 'codex';
     sections: arr(obj['sections'])
       .map(range)
       .filter((x): x is NonNullable<typeof x> => !!x)
-      .map((o) => ({ title: str(o['title'], 60) || '구간', start: o.start, end: o.end, kind: sectionKind(o['kind']) }))
+      .map((o) => ({ title: str(o.raw['title'], 60) || '구간', start: o.start, end: o.end, kind: sectionKind(o.raw['kind']) }))
       .slice(0, 30),
     keyPoints: strArr(obj['keyPoints'], 200).slice(0, 20),
     keepRanges: arr(obj['keepRanges'])
       .map(range)
       .filter((x): x is NonNullable<typeof x> => !!x)
-      .map((o) => ({ start: o.start, end: o.end, why: str(o['why'], 200) }))
+      .map((o) => ({ start: o.start, end: o.end, why: str(o.raw['why'], 200) }))
       .slice(0, 30),
     cutCandidates: arr(obj['cutCandidates'])
       .map(range)
       .filter((x): x is NonNullable<typeof x> => !!x)
-      .map((o) => ({ start: o.start, end: o.end, why: str(o['why'], 200) }))
+      .map((o) => ({ start: o.start, end: o.end, why: str(o.raw['why'], 200) }))
       .slice(0, 30),
     shortCandidates: arr(obj['shortCandidates'])
       .map(range)
       .filter((x): x is NonNullable<typeof x> => !!x)
-      .map((o) => ({ start: o.start, end: o.end, title: str(o['title'], 60) || '숏폼', why: str(o['why'], 200) }))
+      .map((o) => ({ start: o.start, end: o.end, title: str(o.raw['title'], 60) || '숏폼', why: str(o.raw['why'], 200) }))
       .slice(0, 12),
     terms: uniq(strArr(obj['terms'], 40)).slice(0, 40),
     subtitleNotes: str(obj['subtitleNotes'], 200),

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { MemoryItem, Reference, Segment } from '@madi/shared';
 import { extractJson, insightPrompt, insightSummary, memoryBlock, memoryPrompt, parseInsight, parseMemory, retrieve, transcriptText } from '../src/style/insight.js';
 
-const seg = (start: number, end: number, text: string): Segment => ({ start, end, text, words: [] });
+const seg = (start: number, end: number, text: string): Segment => ({ id: `s${start}`, start, end, text, words: [] });
 const SEGS = [seg(0, 3, '안녕하세요 오늘은 어깨 스트레칭입니다'), seg(3, 8, '견갑골을 뒤로 모으고'), seg(8, 15, '열 번 반복하세요 통증이 있으면 멈추세요')];
 
 const ref = (over: Partial<Reference> = {}): Reference => ({

@@ -1,5 +1,5 @@
 import { findCli } from './detect.js';
-import { type AgentProvider, type AgentResult, type AgentRunOptions, runCli, type StreamEvent, type StreamParser } from './provider.js';
+import { type AgentProvider, type AgentResult, type AgentRunOptions, type AnalyzeOptions, runCli, type StreamEvent, type StreamParser } from './provider.js';
 
 export const MCP_SERVER_NAME = 'madi';
 
@@ -133,7 +133,7 @@ export class ClaudeProvider implements AgentProvider {
   async analyze(opts: AnalyzeOptions): Promise<AgentResult> {
     const bin = opts.bin ?? this.bin();
     if (!bin) return { text: '', toolCalls: 0, ok: false, error: 'not_installed' };
-    return runCli(bin, claudeAnalyzeArgs({ system: opts.system }), opts.prompt, new ClaudeStream(), { cwd: opts.cwd, signal: opts.signal, onText: () => undefined, onTool: () => undefined, onLog: opts.onLog });
+    return runCli(bin, claudeAnalyzeArgs({ system: opts.system }), opts.prompt, new ClaudeStream(), { cwd: opts.cwd, onText: () => undefined, onTool: () => undefined, ...(opts.signal ? { signal: opts.signal } : {}), ...(opts.onLog ? { onLog: opts.onLog } : {}) });
   }
 }
 
