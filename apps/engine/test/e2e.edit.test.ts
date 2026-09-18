@@ -112,6 +112,17 @@ describe('edit actions (AI off)', () => {
     expect(msg.params['cuts']).toBe(2);
   });
 
+  it('AI 가 없으면 편집안은 409 ai_off, 편집안 없이 만들기는 409 plan_missing', async () => {
+    const post = (body: unknown) => fetch(`${engine.url}/api/videos/${videoId}/actions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const a = await post({ type: 'plan' });
+    expect(a.status).toBe(409);
+    expect(((await a.json()) as { error: { code: string } }).error.code).toBe('ai_off');
+    const b = await post({ type: 'apply_plan' });
+    expect(b.status).toBe(409);
+    expect(((await b.json()) as { error: { code: string } }).error.code).toBe('plan_missing');
+    expect((await detail()).plan).toBeNull();
+  });
+
   it('동작 시범 중의 침묵은 남긴다 (말 없이 움직이는 구간은 자르지 않는다)', { timeout: 120_000 }, async () => {
     makeDemoSilenceFixture(path.join(watchDir, '햄스트링 시범.mp4'));
     await waitFor(async () => VideosResponse.parse(await api('/api/videos')).videos.some((v) => v.title === '햄스트링 시범' && v.status === 'ready'), 60_000);

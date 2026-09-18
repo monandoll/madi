@@ -41,7 +41,7 @@ export const jobs = sqliteTable(
   'jobs',
   {
     id: text('id').primaryKey(),
-    type: text('type', { enum: ['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze', 'chapters', 'download', 'insight'] }).notNull(),
+    type: text('type', { enum: ['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze', 'chapters', 'download', 'insight', 'plan'] }).notNull(),
     status: text('status', { enum: ['queued', 'running', 'done', 'failed', 'canceled'] })
       .notNull()
       .default('queued'),
@@ -134,7 +134,7 @@ export const messages = sqliteTable(
       .notNull()
       .references(() => videos.id, { onDelete: 'cascade' }),
     role: text('role', { enum: ['assistant', 'user'] }).notNull(),
-    kind: text('kind', { enum: ['text', 'progress', 'output', 'error', 'chapters'] }).notNull(),
+    kind: text('kind', { enum: ['text', 'progress', 'output', 'error', 'chapters', 'plan'] }).notNull(),
     code: text('code').notNull(),
     params: text('params', { mode: 'json' }).notNull(),
     jobId: text('job_id'),
@@ -181,6 +181,15 @@ export const chapters = sqliteTable('chapters', {
     .references(() => videos.id, { onDelete: 'cascade' }),
   items: text('items', { mode: 'json' }).notNull(),
   fromTranscript: integer('from_transcript', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at').notNull(),
+});
+
+/** 촬영본 편집안 (EditPlan). 영상당 하나, 다시 만들면 덮어쓴다. */
+export const plans = sqliteTable('plans', {
+  videoId: text('video_id')
+    .primaryKey()
+    .references(() => videos.id, { onDelete: 'cascade' }),
+  plan: text('plan', { mode: 'json' }).notNull(),
   createdAt: integer('created_at').notNull(),
 });
 

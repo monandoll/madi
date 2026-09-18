@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const JobType = z.enum(['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze', 'chapters', 'download', 'insight']);
+export const JobType = z.enum(['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze', 'chapters', 'download', 'insight', 'plan']);
 export type JobType = z.infer<typeof JobType>;
 
 export const JobStatus = z.enum(['queued', 'running', 'done', 'failed', 'canceled']);
@@ -24,6 +24,8 @@ export const AnalyzeJobPayload = z.object({ type: z.literal('analyze'), referenc
 export const DownloadJobPayload = z.object({ type: z.literal('download'), referenceId: z.string() });
 /** 완성본의 뜻 읽기 (AI 가 자막을 읽고 메모). analyze 뒤에, AI 가 연결돼 있을 때만. */
 export const InsightJobPayload = z.object({ type: z.literal('insight'), referenceId: z.string() });
+/** 촬영본 편집안 (AI 한 턴, 도구 없음). 자막이 없고 소리가 있으면 먼저 만든다. */
+export const PlanJobPayload = z.object({ type: z.literal('plan'), videoId: z.string() });
 /** 롱폼 챕터 나누기. then='shorts' 면 챕터마다 숏폼 렌더까지. */
 export const ChaptersJobPayload = z.object({
   type: z.literal('chapters'),
@@ -43,6 +45,7 @@ export const JobPayload = z.discriminatedUnion('type', [
   ChaptersJobPayload,
   DownloadJobPayload,
   InsightJobPayload,
+  PlanJobPayload,
 ]);
 export type JobPayload = z.infer<typeof JobPayload>;
 
@@ -75,4 +78,6 @@ export const JOB_CONCURRENCY: Record<JobType, number> = {
   download: 1,
   // AI 한 턴 (완성본 하나 읽기). 동시에 여러 개 띄우지 않는다.
   insight: 1,
+  // AI 한 턴 (촬영본 편집안)
+  plan: 1,
 };

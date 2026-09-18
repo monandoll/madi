@@ -25,6 +25,23 @@ claude -p --output-format stream-json --mcp-config mcp.json --strict-mcp-config 
 - 영상당 동시 1. 돌아가는 동안 또 보내면 409 `ai_busy`. `POST /chat/cancel` 로 멈춤.
 - AI 미연결(`settings.ai.provider === 'none'`)이면 러너를 아예 스폰하지 않는다 (409 `ai_off`). 버튼 4개는 그대로 워커 직접 호출.
 
+## 편집안 (기획안 §4 · §13)
+
+촬영본을 넣으면 편집안이 나온다. AI 가 골라져 있으면 상세를 처음 열 때(인사와 함께) `plan` 잡이 걸리고, "편집안 만들기" 버튼으로 다시 읽을 수 있다.
+
+```
+plan 잡 (workers/plan.ts, AI 한 턴 · 도구 없음)
+  자막 (없고 소리 있으면 먼저 만든다) + 무음을 가만히/동작 중으로 나눔(motion) + 장면 전환 + "# 기억"(recall)
+  → plan/prompt.ts planPrompt → provider.analyze → parsePlan → plans 테이블 (EditPlan)
+  → 채팅에 plan 카드: 취지 · 시작 · 구성(시간 · 내용 · 편집 초안) · 남길 곳 · 잘라낼 후보 · 숏폼 후보(채널 · 이유) · 용어
+```
+
+- 편집안은 **파일을 만들지 않는다**. 사용자가 후보를 눌러야 렌더가 걸린다 (§6 초안 → 확인 → 확정 → 내보내기):
+  숏폼 후보 "숏폼으로" → `short` 액션, "잘라낼 후보 N곳을 빼고 롱폼 만들기" → `apply_plan` (`planCuts`: 남길 구간과 겹치는 부분은 컷에서 뺀다).
+- 다음 채팅 요청의 프롬프트에 `planBlock` 이 "# 이 영상의 편집안" 으로 들어간다 — 에이전트가 숏폼 · 컷을 고를 때 여기서 시작한다.
+- AI 가 없으면 `plan` 은 409 `ai_off`. 편집안 없이 `apply_plan` 은 409 `plan_missing`. 읽기 실패는 채팅에 `plan_failed` (큐 재시도 없음 — 토큰).
+- 단위 `test/plan.test.ts`, 엔진 e2e `test/e2e.agent.test.ts` (편집안 → 프롬프트 → 롱폼 만들기), 브라우저 `e2e/3-ai.spec.ts` (처음 열면 카드).
+
 ## 도구 (`apps/engine/src/mcp/tools.ts`)
 
 | 이름 | 하는 일 |

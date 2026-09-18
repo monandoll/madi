@@ -1,6 +1,8 @@
 import { type ActionRequest, type ActionResponse, DEFAULT_SUBTITLE_STYLE, type Edit, type Video } from '@madi/shared';
 import type { EventLog } from './events.js';
 import type { Library } from './library.js';
+import type { PlanStore } from './plan/store.js';
+import { planCuts } from './plan/prompt.js';
 import type { JobQueue } from './queue/index.js';
 import type { VideoStore } from './videos.js';
 
@@ -9,6 +11,9 @@ export interface ActionDeps {
   videos: VideoStore;
   library: Library;
   events: EventLog;
+  plans: PlanStore;
+  /** AI 가 골라져 있는지 (편집안은 AI 한 턴이라 없으면 못 한다) */
+  aiOn: () => boolean;
 }
 
 export class ActionError extends Error {
@@ -105,17 +110,60 @@ export function runAction(d: ActionDeps, video: Video, req: ActionRequest): Acti
       progress(job.id, 'progress.chapters', { step: 'chapters', action: 'auto_shorts', durationSec: Math.round(duration), hasAudio: video.hasAudio !== false, max: req.max });
       return { messages, job };
     }
+    case 'plan': {
+      if (!d.aiOn()) throw new ActionError('ai_off');
+      const job = enqueuePlan(d, video, messages, 'user');
+      return { messages, job };
+    }
+    case 'apply_plan': {
+      const plan = d.plans.get(video.id);
+      if (!plan) throw new ActionError('plan_missing');
+      const cuts = planCuts(plan, duration);
+      user('action.apply_plan', { cuts: cuts.length });
+      const edit = d.library.createEdit({ ...baseEdit(`${video.title} · 편집안`), cuts, subtitles: !!transcript });
+      const job = d.queue.enqueue({ type: 'render', videoId: video.id, editId: edit.id });
+      const removed = Math.round(cuts.reduce((a, c) => a + (c.end - c.start), 0));
+      progress(job.id, 'progress.render', { step: 'render', action: 'plan', cuts: cuts.length, removedSec: removed, title: edit.title });
+      return { messages, job };
+    }
   }
 }
 
-/** 상세 화면을 처음 열 때 인사. 한 번만. */
-export function greetIfEmpty(library: Library, video: Video): void {
-  if (library.messagesOf(video.id).length > 0) return;
-  library.say({
+/**
+ * 편집안 잡 걸기. who='auto' 는 상세를 처음 열 때 (사용자 말풍선 없이 진행 카드만), 'user' 는 버튼.
+ * 이미 걸려 있으면 다시 걸지 않는다.
+ */
+export function enqueuePlan(d: Pick<ActionDeps, 'queue' | 'library' | 'events'>, video: Video, messages: ActionResponse['messages'], who: 'auto' | 'user') {
+  const running = d.queue.list(['queued', 'running']).find((j) => j.type === 'plan' && j.videoId === video.id);
+  if (running) return running;
+  if (who === 'user') messages.push(d.library.say({ videoId: video.id, role: 'user', kind: 'text', code: 'action.plan', params: {} }));
+  const job = d.queue.enqueue({ type: 'plan', videoId: video.id });
+  messages.push(
+    d.library.say({
+      videoId: video.id,
+      role: 'assistant',
+      kind: 'progress',
+      code: 'progress.plan',
+      jobId: job.id,
+      params: { step: 'plan', action: 'plan', durationSec: Math.round(video.durationSec ?? 0), hasAudio: video.hasAudio !== false, auto: who === 'auto' },
+    }),
+  );
+  d.events.record('action', { type: 'plan', kind: video.kind, auto: who === 'auto' });
+  return job;
+}
+
+/**
+ * 상세 화면을 처음 열 때 인사. 한 번만.
+ * AI 가 골라져 있으면 그 자리에서 편집안도 읽기 시작한다 (기획안 §4: 넣으면 편집안이 나온다). 안 골라져 있으면 인사만.
+ */
+export function greetIfEmpty(d: Pick<ActionDeps, 'queue' | 'library' | 'events' | 'plans' | 'aiOn'>, video: Video): void {
+  if (d.library.messagesOf(video.id).length > 0) return;
+  d.library.say({
     videoId: video.id,
     role: 'assistant',
     kind: 'text',
     code: 'greeting',
-    params: { durationSec: Math.round(video.durationSec ?? 0), hasAudio: video.hasAudio ?? true },
+    params: { durationSec: Math.round(video.durationSec ?? 0), hasAudio: video.hasAudio ?? true, plan: d.aiOn() },
   });
+  if (d.aiOn() && !d.plans.get(video.id)) enqueuePlan(d, video, [], 'auto');
 }

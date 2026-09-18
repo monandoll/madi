@@ -93,7 +93,7 @@ export function VideoDetail({ id, panelOutputId }: Props) {
 
   if (q.isPending) return <Shell title="">{null}</Shell>;
   if (q.isError || !q.data) return <Shell title="">{copy.empty.disconnected}</Shell>;
-  const { video, outputs, messages, jobs, aiBusy, chapters, transcript } = q.data;
+  const { video, outputs, messages, jobs, aiBusy, chapters, transcript, plan } = q.data;
   const aiOn = health.data?.ai.connected ?? false;
   const busy = jobs.length > 0;
   const chatBusy = aiBusy || messages.some(isStreaming) || chat.isPending;
@@ -114,6 +114,7 @@ export function VideoDetail({ id, panelOutputId }: Props) {
   };
   // 챕터 카드의 숏폼은 되묻지 않는다: 자막이 이미 있으면 넣고, 없으면 자막 없이 (자막을 새로 만들지 않는다)
   const onShortFromChapter = (range: { start: number; end: number }) => act.mutate({ type: 'short', range, subtitles: !!transcript && transcript.segments.length > 0 });
+  const planBusy = jobs.some((j) => j.type === 'plan');
   const ask = (text: string) => setPrefill({ text, at: Date.now() });
   const onRevise = (o: OutputCard) => ask(copy.detail.outputCard.revisePrefill(o.title));
   const openOutput = (o: OutputCard) => go({ screen: 'output', id: o.id });
@@ -182,16 +183,33 @@ export function VideoDetail({ id, panelOutputId }: Props) {
           )}
         </div>
 
-        {/* 자막 직접 쓰기 — 소리가 없는 영상에도, AI 없이도 */}
+        {/* 자막 직접 쓰기 — 소리가 없는 영상에도, AI 없이도. AI 가 있으면 편집안 (다시) 만들기 */}
         {!editingSubs && video.status === 'ready' && (
-          <button type="button" onClick={() => setEditingSubs(true)} className="mb-1 self-start text-13 font-medium text-accent hover:text-accent-hover" data-testid="subtitle-editor-open">
-            {transcript && transcript.segments.length ? copy.subtitleEditor.edit : copy.subtitleEditor.open}
-          </button>
+          <div className="mb-1 flex gap-4">
+            <button type="button" onClick={() => setEditingSubs(true)} className="self-start text-13 font-medium text-accent hover:text-accent-hover" data-testid="subtitle-editor-open">
+              {transcript && transcript.segments.length ? copy.subtitleEditor.edit : copy.subtitleEditor.open}
+            </button>
+            {aiOn && (
+              <button type="button" onClick={() => act.mutate({ type: 'plan' })} disabled={planBusy || act.isPending} className="self-start text-13 font-medium text-accent hover:text-accent-hover disabled:text-text-3" data-testid="plan-make">
+                {plan ? copy.detail.planRemake : copy.detail.planMake}
+              </button>
+            )}
+          </div>
         )}
         {editingSubs && (
           <SubtitleEditor segments={transcript?.segments ?? []} durationSec={video.durationSec ?? 0} saving={saveSubs.isPending} onSave={(lines) => saveSubs.mutate(lines)} onCancel={() => setEditingSubs(false)} />
         )}
-        <ChatFeed messages={messages} outputs={outputs} jobs={jobs} onRevise={aiOn ? onRevise : undefined} chapters={chapters} onShortFromChapter={busy || act.isPending ? undefined : onShortFromChapter} onOpenOutput={openOutput} />
+        <ChatFeed
+          messages={messages}
+          outputs={outputs}
+          jobs={jobs}
+          onRevise={aiOn ? onRevise : undefined}
+          chapters={chapters}
+          onShortFromChapter={busy || act.isPending ? undefined : onShortFromChapter}
+          onOpenOutput={openOutput}
+          plan={plan}
+          onApplyPlan={busy || act.isPending ? undefined : () => act.mutate({ type: 'apply_plan' })}
+        />
         {localError && (
           <div className="rounded-thumb bg-accent-faint px-3 py-2 text-13 leading-normal" data-testid="chat-error">
             {localError}

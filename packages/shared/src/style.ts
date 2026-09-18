@@ -48,7 +48,7 @@ export const ReferenceStats = z.object({
 export type ReferenceStats = z.infer<typeof ReferenceStats>;
 
 /** 시각 구간 + 이유. 에이전트가 읽고 사람도 읽는다. */
-const WhyRange = z.object({
+export const WhyRange = z.object({
   start: z.number().min(0),
   end: z.number().min(0),
   why: z.string().max(200),

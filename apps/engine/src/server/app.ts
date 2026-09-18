@@ -75,6 +75,8 @@ export interface AppDeps {
   /** 제작자 기억 (설정에서 보고 지운다). */
   memory: import('../style/memory.js').MemoryStore;
   chapters: import('../chapters/store.js').ChapterStore;
+  /** 촬영본 편집안 */
+  plans: import('../plan/store.js').PlanStore;
   version: string;
   onSettingsChanged?: () => void;
   /** 시스템 폴더 선택창. Electron 이 붙여 준다. 없으면 브라우저만 뜬 상태. */
@@ -287,6 +289,9 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ opened: true });
   });
 
+  // 버튼 액션 · 인사 · 자동 편집안이 같이 쓰는 것. AI 는 "골라져 있는지"만 본다 (설치 확인은 잡이 돌 때).
+  const actionDeps = { queue, videos, library: deps.library, events: deps.events, plans: deps.plans, aiOn: () => settings.get().ai.provider !== 'none' };
+
   app.get('/api/videos', (c) => {
     const body: VideosResponse = { videos: videos.listVisible().map((v) => toCard(v, deps)) };
     return c.json(body);
@@ -295,7 +300,7 @@ export function createApp(deps: AppDeps): Hono {
   app.get('/api/videos/:id', (c) => {
     const v = videos.get(c.req.param('id'));
     if (!v) return c.json({ error: { code: 'not_found', message: 'video not found' } }, 404);
-    if (v.status === 'ready') greetIfEmpty(deps.library, v);
+    if (v.status === 'ready') greetIfEmpty(actionDeps, v);
     const body: VideoDetailResponse = {
       video: toCard(v, deps),
       transcript: deps.library.transcriptOf(v.id),
@@ -304,6 +309,7 @@ export function createApp(deps: AppDeps): Hono {
       jobs: queue.list(['queued', 'running']).filter((j) => j.videoId === v.id),
       aiBusy: deps.agent.isBusy(v.id),
       chapters: deps.chapters.get(v.id),
+      plan: deps.plans.get(v.id),
     };
     return c.json(body);
   });
@@ -363,7 +369,7 @@ export function createApp(deps: AppDeps): Hono {
     const parsed = ActionRequest.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
     try {
-      const body: ActionResponse = runAction({ queue, videos, library: deps.library, events: deps.events }, v, parsed.data);
+      const body: ActionResponse = runAction(actionDeps, v, parsed.data);
       return c.json(body);
     } catch (err) {
       if (err instanceof ActionError) return c.json({ error: { code: err.code, message: err.code } }, 409);

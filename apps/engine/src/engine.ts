@@ -31,6 +31,9 @@ import { writeMcpConfig } from './agent/mcp-config.js';
 import { ReferenceStore } from './style/references.js';
 import { MemoryStore } from './style/memory.js';
 import { ChapterStore } from './chapters/store.js';
+import { PlanStore } from './plan/store.js';
+import { registerPlanWorker } from './workers/plan.js';
+import { planBlock } from './plan/prompt.js';
 import { registerChapterWorkers } from './workers/chapters.js';
 import { StyleService } from './style/service.js';
 import { createUploadServer } from './server/upload.js';
@@ -66,6 +69,7 @@ export interface Engine {
   refs: ReferenceStore;
   memory: MemoryStore;
   chapters: ChapterStore;
+  plans: PlanStore;
   url: string;
   /** Electron 이 시스템 폴더 선택창을 붙인다. */
   setFolderPicker(fn: (() => Promise<string | null>) | undefined): void;
@@ -111,6 +115,8 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   const providers = { claude: new ClaudeProvider(writeMcpConfig), codex: new CodexProvider() };
   const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, ytdlpBin, whisper, events, log, memory, providers });
   styleService.registerWorker();
+  const plans = new PlanStore(db);
+  registerPlanWorker({ cfg, queue, videos, library, plans, style, settings, providers, recall: (video) => styleService.recall(video), ffmpegBin, events, log });
 
   const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
   const remoteAuth = new RemoteAuth(path.join(cfg.dataDir, 'pairs.json'));
@@ -134,6 +140,10 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     mcpCommand: () => mcpCommand(cfg),
     engineUrl: () => url,
     recall: (video) => styleService.recall(video),
+    plan: (video) => {
+      const p = plans.get(video.id);
+      return p ? planBlock(p) : '';
+    },
   });
   const uploads = createUploadServer({ cfg, settings, events, log });
   const deps = {
@@ -152,6 +162,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     styleService,
     memory,
     chapters,
+    plans,
     version: VERSION,
     onSettingsChanged: () => {
       void watcher.setFolders(settings.get().watchFolders);
@@ -219,6 +230,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     refs,
     memory,
     chapters,
+    plans,
     url,
     setFolderPicker(fn) {
       deps.pickFolder = fn;
