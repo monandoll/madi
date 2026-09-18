@@ -20,6 +20,7 @@ const ref = (over: Partial<Reference> = {}): Reference => ({
   url: null,
   stats: { durationSec: 15, width: 1080, height: 1920, hasAudio: true, aspect: '9:16', silenceCount: 0, maxSilenceSec: 0, sceneCount: 3, cutsPerMin: 12, pair: null },
   insight: null,
+  excluded: false,
   error: null,
   createdAt: 1,
   updatedAt: 1,
@@ -134,7 +135,7 @@ describe('memoryPrompt / parseMemory', () => {
 });
 
 describe('retrieve / memoryBlock', () => {
-  const mem = (over: Partial<MemoryItem>): MemoryItem => ({ id: 'm', text: 't', kind: 'style', scope: 'all', topics: [], videoId: null, source: 'reference', evidence: [], createdAt: 1, ...over });
+  const mem = (over: Partial<MemoryItem>): MemoryItem => ({ id: 'm', text: 't', kind: 'style', scope: 'all', topics: [], videoId: null, source: 'reference', status: 'approved', evidence: [], createdAt: 1, ...over });
   const memory = [
     mem({ id: '1', text: '도입은 질문으로', scope: 'all' }),
     mem({ id: '2', text: '어깨는 시범을 두 번', scope: 'topic', topics: ['어깨'] }),

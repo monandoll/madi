@@ -30,9 +30,9 @@ claude -p --output-format stream-json --mcp-config mcp.json --strict-mcp-config 
 | 이름 | 하는 일 |
 |---|---|
 | `get_transcript` | 자막(문장·시각). 없으면 whisper 로 만들고 기다린다 |
-| `find_silences` | 무음 구간 |
+| `find_silences` | 무음 구간. `moving=true` 는 말은 없지만 동작이 이어지는 침묵(시범) |
 | `find_scenes` | 장면 전환 시각 + 구간 |
-| `propose_cuts` | 무음 → 잘라낼 구간 제안 |
+| `propose_cuts` | 무음 → 잘라낼 구간 제안. 동작이 이어지는 침묵은 `kept` 로 따로 (자르지 않는다) |
 | `apply_edit` | Edit 생성/수정 (keep, cuts, crop, subtitles) |
 | `render` | Edit → 결과 파일. 끝날 때까지 기다림 |
 | `extract_shorts` | 구간 여러 개 → 9:16 숏폼 파일들 |
@@ -180,6 +180,10 @@ API 키 방식은 아직 안 쓴다 (사용자 본인 구독으로 돈다는 원
 롱폼일 때만 챕터 지침이 붙는다 — 읽을 게 적을수록 잘 따른다.
 
 `DEFAULT_SUBTITLE_STYLE.bottom` 은 0.18 이다 (릴스·틱톡 화면 아래 UI 위로).
+
+**동작 시범 중의 침묵** (기획안 §5.1) — 무음이라는 이유만으로 시범을 잘라 내지 않는다. `ffmpeg-presets/motion.ts`: 화면을 160px 로 줄여 초당 4장의
+앞 장과의 밝기 차이(`signalstats` YDIF)를 재고, **말하던 동안**의 중간값보다 1.4배 이상(바닥 2) 움직인 침묵은 남긴다. 절대값이 아니라 같은 영상 안에서 견주므로
+카메라 · 조명이 달라도 된다. 처음부터 끝까지 똑같이 흔들리는 영상(손떨림)은 전처럼 다 자른다. 버튼(`silence` 잡) · `propose_cuts` · `find_silences` 가 같은 판단을 쓴다.
 
 - 단위 `test/playbook.test.ts`: 포맷 고르기, 빠지면 안 되는 기준, 롱폼에만 붙는 챕터 지침, 소리 없는 영상.
 - 엔진 e2e `test/e2e.agent.test.ts`: 가짜 CLI 가 시스템 프롬프트에서 style.md 와 제작 지침을 둘 다 받았는지.

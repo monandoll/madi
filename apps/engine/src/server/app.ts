@@ -11,6 +11,9 @@ import {
   AddLinkRequest,
   AddRuleRequest,
   RememberRequest,
+  MemoryPatchRequest,
+  MemoryApproveRequest,
+  ReferencePatchRequest,
   type StyleResponse,
   AiInstallRequest,
   type AiInstallResponse,
@@ -469,11 +472,48 @@ export function createApp(deps: AppDeps): Hono {
     return c.json(body);
   });
 
-  /** 기억 한 줄 직접 쓰기 (범위 · 종류 포함). */
+  /** 기억 한 줄 직접 쓰기 (범위 · 종류 포함). 직접 쓴 것은 바로 확인된 것. */
   app.post('/api/style/memory', async (c) => {
     const parsed = RememberRequest.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
     deps.memory.add({ ...parsed.data, source: 'user' });
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  /** 기억 한 줄 고치기: 글을 바꾸거나 제안을 확인한다. */
+  app.patch('/api/style/memory/:id', async (c) => {
+    const parsed = MemoryPatchRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    const id = c.req.param('id');
+    if (!deps.memory.get(id)) return c.json({ error: { code: 'not_found', message: 'memory not found' } }, 404);
+    if (parsed.data.text !== undefined) deps.memory.updateText(id, parsed.data.text);
+    if (parsed.data.status === 'approved') deps.memory.approve([id]);
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  /** 제안 확인 — ids 가 없으면 제안 전부. */
+  app.post('/api/style/memory/approve', async (c) => {
+    const parsed = MemoryApproveRequest.safeParse((await c.req.json().catch(() => null)) ?? {});
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    deps.memory.approve(parsed.data.ids);
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  /** 기억 전부 지우기 (?only=proposed 면 제안만). 완성본에서 온 글은 다시 제안하지 않는다. */
+  app.delete('/api/style/memory', (c) => {
+    deps.memory.removeAll({ onlyProposed: c.req.query('only') === 'proposed' });
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  /** 완성본 하나를 학습에서 빼거나 다시 넣기. */
+  app.patch('/api/style/references/:id', async (c) => {
+    const parsed = ReferencePatchRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    if (!deps.styleService.setExcluded(c.req.param('id'), parsed.data.excluded)) return c.json({ error: { code: 'not_found', message: 'reference not found' } }, 404);
     const body: StyleResponse = deps.styleService.response();
     return c.json(body);
   });

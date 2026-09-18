@@ -165,6 +165,8 @@ export const references = sqliteTable(
     segments: text('segments', { mode: 'json' }),
     /** AI 가 자막을 읽고 남긴 메모 (ReferenceInsight) */
     insight: text('insight', { mode: 'json' }),
+    /** 사용자가 학습에서 뺀 것. 숫자 · 기억 어디에도 안 쓴다. */
+    excluded: integer('excluded', { mode: 'boolean' }).notNull().default(false),
     error: text('error'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
@@ -184,7 +186,8 @@ export const chapters = sqliteTable('chapters', {
 
 /**
  * 제작자 기억. 완성본들에서 AI 가 추린 것(reference), 편집 중 사용자가 남긴 것(feedback), 직접 쓴 것(user).
- * 사용자가 설정에서 보고 지운다. reference 것은 다시 배울 때 통째로 바뀐다.
+ * 사용자가 설정에서 보고 고치고 지운다. reference 것은 제안(proposed)으로 들어오고 다시 배울 때 통째로 바뀐다 —
+ * 이미 확인한 글은 확인 상태를 이어받고, 사용자가 뺀 글(kv memory.dismissed)은 다시 제안하지 않는다.
  */
 export const memory = sqliteTable(
   'memory',
@@ -196,6 +199,8 @@ export const memory = sqliteTable(
     topics: text('topics', { mode: 'json' }).notNull().default('[]'),
     videoId: text('video_id'),
     source: text('source', { enum: ['reference', 'feedback', 'user'] }).notNull(),
+    /** proposed = AI 제안 (편집에 안 쓴다) · approved = 사용자가 확인한 것 */
+    status: text('status', { enum: ['proposed', 'approved'] }).notNull().default('approved'),
     evidence: text('evidence', { mode: 'json' }).notNull().default('[]'),
     createdAt: integer('created_at').notNull(),
   },

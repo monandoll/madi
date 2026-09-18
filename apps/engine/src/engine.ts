@@ -64,6 +64,7 @@ export interface Engine {
   style: StyleProfile;
   styleService: StyleService;
   refs: ReferenceStore;
+  memory: MemoryStore;
   chapters: ChapterStore;
   url: string;
   /** Electron 이 시스템 폴더 선택창을 붙인다. */
@@ -216,6 +217,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     style,
     styleService,
     refs,
+    memory,
     chapters,
     url,
     setFolderPicker(fn) {

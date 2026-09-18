@@ -97,9 +97,9 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
       }
     }
     this.d.refs.markMissingExcept(present);
-    // AI 를 나중에 연결한 경우: 숫자만 배운 완성본의 뜻을 이제 읽는다
+    // AI 를 나중에 연결한 경우: 숫자만 배운 완성본의 뜻을 이제 읽는다 (학습에서 뺀 것은 말고)
     if (this.insightOn()) {
-      for (const ref of this.d.refs.list()) {
+      for (const ref of this.d.refs.learnable()) {
         if (ref.status === 'done' && !ref.insight && (this.d.refs.segmentsOf(ref.id)?.length ?? 0) > 0) this.d.queue.enqueue({ type: 'insight', referenceId: ref.id });
       }
     }
@@ -139,6 +139,22 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
     return true;
   }
 
+  /**
+   * 완성본 하나를 학습에서 빼거나 다시 넣는다 (기획안 §12). 파일 · 메모는 그대로 두고 숫자 · 기억에서만 뺀다.
+   * 다시 넣을 때 메모가 없으면(뺀 채로 AI 를 연결한 경우) 그때 읽는다.
+   */
+  setExcluded(id: string, excluded: boolean): Reference | null {
+    const ref = this.d.refs.get(id);
+    if (!ref) return null;
+    if (ref.excluded === excluded) return ref;
+    const next = this.d.refs.update(id, { excluded });
+    this.relearn();
+    if (next.insight) this.scheduleRememory();
+    else if (!excluded && this.insightOn() && next.status === 'done' && (this.d.refs.segmentsOf(id)?.length ?? 0) > 0) this.d.queue.enqueue({ type: 'insight', referenceId: id });
+    this.d.events.record('reference.excluded', { excluded });
+    return next;
+  }
+
   /** AI 가 연결돼 있어 완성본의 뜻까지 읽는지. (설치 여부는 잡이 돌 때 다시 본다.) */
   insightOn(): boolean {
     return this.d.settings.get().ai.provider !== 'none';
@@ -147,14 +163,15 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
   /** 새 영상을 편집할 때 붙일 "# 기억" 블록. 없으면 빈 문자열. */
   recall(video: Pick<Video, 'id' | 'title'>): string {
     const transcript = this.d.library.transcriptOf(video.id);
-    const r = retrieve({ videoId: video.id, title: video.title, transcript: transcript?.segments ?? null }, this.d.memory.list(), this.d.refs.withInsight());
+    // 사용자가 확인한 기억만 (제안은 설정 화면에만 보인다)
+    const r = retrieve({ videoId: video.id, title: video.title, transcript: transcript?.segments ?? null }, this.d.memory.listApproved(), this.d.refs.withInsight());
     return memoryBlock(r);
   }
 
   /** 분석이 끝난 완성본들을 합쳐 style.md 의 학습 블록과 params 를 갱신한다. */
   relearn(): void {
     const stats = this.d.refs
-      .list()
+      .learnable()
       .filter((r) => r.status === 'done' && r.stats)
       .map((r) => r.stats!);
     const learned = aggregate(stats);
@@ -222,8 +239,8 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
         this.d.refs.update(ref.id, { status: 'done', stats, error: null });
         this.d.events.record('reference.analyzed', { aspect: stats.aspect, durationSec: stats.durationSec, paired: !!stats.pair }, Date.now() - started);
         this.relearn();
-        // 자막이 있고 AI 가 연결돼 있으면 뜻까지 읽는다 (기획안 §7 · §10)
-        if (this.insightOn() && (this.d.refs.segmentsOf(ref.id)?.length ?? 0) > 0) this.d.queue.enqueue({ type: 'insight', referenceId: ref.id });
+        // 자막이 있고 AI 가 연결돼 있으면 뜻까지 읽는다 (기획안 §7 · §10). 학습에서 뺀 것은 읽지 않는다.
+        if (this.insightOn() && !ref.excluded && (this.d.refs.segmentsOf(ref.id)?.length ?? 0) > 0) this.d.queue.enqueue({ type: 'insight', referenceId: ref.id });
       } catch (err) {
         this.d.refs.update(ref.id, { status: 'failed', error: (err instanceof Error ? err.message : String(err)).slice(0, 200) });
         throw err;
@@ -237,7 +254,7 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
       const payload = job.payload as { type: 'insight'; referenceId: string };
       const ref = this.d.refs.get(payload.referenceId);
       const segments = ref ? this.d.refs.segmentsOf(ref.id) : null;
-      if (!ref || ref.status !== 'done' || !segments?.length) return;
+      if (!ref || ref.status !== 'done' || ref.excluded || !segments?.length) return;
       const providerId = this.d.settings.get().ai.provider;
       if (providerId === 'none') return;
       const provider = this.d.providers[providerId];

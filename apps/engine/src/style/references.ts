@@ -38,9 +38,14 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
     return row ? toRef(row) : null;
   }
 
-  /** 뜻까지 읽은 완성본들 (기억 정리 · 검색 재료). */
+  /** 학습에 쓰는 완성본들 — 사용자가 뺀 것(excluded)은 빠진다. */
+  learnable(): Reference[] {
+    return this.list().filter((r) => !r.excluded);
+  }
+
+  /** 뜻까지 읽은 완성본들 (기억 정리 · 검색 재료). 학습에서 뺀 것은 빠진다. */
   withInsight(): Reference[] {
-    return this.list().filter((r) => r.status === 'done' && r.insight);
+    return this.learnable().filter((r) => r.status === 'done' && r.insight);
   }
 
   segmentsOf(id: string): Segment[] | null {
@@ -76,6 +81,7 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
       stats: null,
       segments: null,
       insight: null,
+      excluded: false,
       error: null,
       createdAt: now,
       updatedAt: now,
@@ -112,6 +118,7 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
       stats: null,
       segments: null,
       insight: null,
+      excluded: false,
       error: null,
       createdAt: now,
       updatedAt: now,
@@ -142,6 +149,7 @@ export class ReferenceStore extends EventEmitter<ReferenceEvents> {
       stats: ReferenceStats | null;
       segments: Segment[] | null;
       insight: ReferenceInsight | null;
+      excluded: boolean;
       error: string | null;
     }>,
   ): Reference {

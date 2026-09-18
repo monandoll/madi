@@ -37,9 +37,20 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
     onError: (err) => setLinkError(err instanceof ApiError && err.code === 'no_downloader' ? copy.settings.linksOff : copy.settings.linkBad),
   });
   const removeRef = useMutation({ mutationFn: (id: string) => api.removeReference(id), onSuccess: put });
+  const excludeRef = useMutation({ mutationFn: (v: { id: string; excluded: boolean }) => api.patchReference(v.id, v.excluded), onSuccess: put });
   const removeMemory = useMutation({ mutationFn: (id: string) => api.removeMemory(id), onSuccess: put });
+  const approveMemory = useMutation({ mutationFn: (ids?: string[]) => api.approveMemory(ids), onSuccess: put });
+  const editMemory = useMutation({ mutationFn: (v: { id: string; text: string }) => api.patchMemory(v.id, { text: v.text }), onSuccess: put });
+  const clearMemory = useMutation({
+    mutationFn: () => api.clearMemory(false),
+    onSuccess: (data) => {
+      put(data);
+      setClearing(false);
+    },
+  });
   const addMemory = useMutation({ mutationFn: (text: string) => api.addMemory({ text }), onSuccess: (data) => { put(data); setMemoryDraft(''); } });
   const [memoryDraft, setMemoryDraft] = useState('');
+  const [clearing, setClearing] = useState(false);
   const [openInsight, setOpenInsight] = useState<string | null>(null);
 
   const rules = style.data?.rules ?? [];
@@ -47,6 +58,8 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
   const links = refs.filter((r) => r.source === 'link');
   const folderRefs = refs.filter((r) => r.source === 'folder');
   const memory = style.data?.memory ?? [];
+  const proposed = memory.filter((m) => m.status === 'proposed');
+  const approved = memory.filter((m) => m.status !== 'proposed');
   const insightOn = style.data?.insightOn ?? false;
   const done = refs.filter((r) => r.status === 'done').length;
   const busy = refs.filter((r) => r.status === 'queued' || r.status === 'downloading' || r.status === 'analyzing').length;
@@ -182,7 +195,15 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
         {folderRefs.length > 0 && (
           <Card testId="reference-list">
             {folderRefs.map((r, i) => (
-              <ReferenceRow key={r.id} reference={r} first={i === 0} open={openInsight === r.id} onToggle={() => setOpenInsight(openInsight === r.id ? null : r.id)} insightOn={insightOn} />
+              <ReferenceRow
+                key={r.id}
+                reference={r}
+                first={i === 0}
+                open={openInsight === r.id}
+                onToggle={() => setOpenInsight(openInsight === r.id ? null : r.id)}
+                insightOn={insightOn}
+                onExclude={() => excludeRef.mutate({ id: r.id, excluded: !r.excluded })}
+              />
             ))}
           </Card>
         )}
@@ -198,6 +219,7 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
                 open={openInsight === r.id}
                 onToggle={() => setOpenInsight(openInsight === r.id ? null : r.id)}
                 insightOn={insightOn}
+                onExclude={() => excludeRef.mutate({ id: r.id, excluded: !r.excluded })}
               />
             ))}
           </Card>
@@ -214,18 +236,42 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
         </div>
       </div>
 
-      {/* AI 가 기억한 것 — 사용자가 보고 지운다 (기획안 §12) */}
+      {/* AI 가 기억한 것 — 완성본에서 찾은 것은 확인해야 쓰이고, 사용자가 보고 고치고 지운다 (기획안 §12) */}
       <div className="flex flex-col gap-[9px] pt-3" data-testid="memory-section">
         <SectionTitle>{copy.settings.memoryLabel}</SectionTitle>
         <p className="text-12 text-text-3">{aiOn || memory.length ? copy.settings.memoryIntro : copy.settings.memoryOff}</p>
+        {proposed.length > 0 && (
+          <div className="flex flex-col gap-[7px]" data-testid="memory-proposed">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-13 font-medium">{copy.settings.memoryProposedLabel(proposed.length)}</span>
+              <button type="button" onClick={() => approveMemory.mutate(undefined)} disabled={approveMemory.isPending} className="text-13 text-accent hover:text-accent-hover" data-testid="memory-approve-all">
+                {copy.settings.memoryApproveAll}
+              </button>
+            </div>
+            <Card testId="memory-proposed-list">
+              {proposed.map((m, i) => (
+                <MemoryRow
+                  key={m.id}
+                  item={m}
+                  first={i === 0}
+                  onRemove={() => removeMemory.mutate(m.id)}
+                  removing={removeMemory.isPending}
+                  onApprove={() => approveMemory.mutate([m.id])}
+                  approving={approveMemory.isPending}
+                />
+              ))}
+            </Card>
+            <p className="text-12 text-text-3">{copy.settings.memoryProposedHelp}</p>
+          </div>
+        )}
         <Card testId="memory-list">
-          {memory.length === 0 && (
+          {approved.length === 0 && (
             <CardRow first>
               <span className="text-13 text-text-3">{copy.settings.memoryEmpty}</span>
             </CardRow>
           )}
-          {memory.map((m, i) => (
-            <MemoryRow key={m.id} item={m} first={i === 0} onRemove={() => removeMemory.mutate(m.id)} removing={removeMemory.isPending} />
+          {approved.map((m, i) => (
+            <MemoryRow key={m.id} item={m} first={i === 0} onRemove={() => removeMemory.mutate(m.id)} removing={removeMemory.isPending} onEdit={(text) => editMemory.mutate({ id: m.id, text })} />
           ))}
         </Card>
         <form
@@ -249,30 +295,63 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
             {copy.settings.memoryAdd}
           </button>
         </form>
+        {memory.length > 0 &&
+          (clearing ? (
+            <div className="flex flex-wrap items-center gap-3 text-13" data-testid="memory-clear-confirm">
+              <span className="text-text-2">{copy.settings.memoryClearConfirm}</span>
+              <button type="button" onClick={() => clearMemory.mutate()} disabled={clearMemory.isPending} className="font-medium text-accent hover:text-accent-hover" data-testid="memory-clear-yes">
+                {copy.settings.memoryClearYes}
+              </button>
+              <button type="button" onClick={() => setClearing(false)} className="text-text-2 hover:text-accent">
+                {copy.settings.memoryClearNo}
+              </button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setClearing(true)} className="self-start text-13 text-text-2 hover:text-accent" data-testid="memory-clear">
+              {copy.settings.memoryClearAll}
+            </button>
+          ))}
       </div>
     </section>
   );
 }
 
-/** 폴더 완성본 한 줄: 제목 · 상태 · 메모 펼치기. */
-function ReferenceRow({ reference: r, first, open, onToggle, insightOn }: { reference: Reference; first: boolean; open: boolean; onToggle(): void; insightOn: boolean }) {
+/** 폴더 완성본 한 줄: 제목 · 상태 · 메모 펼치기 · 학습에서 빼기. */
+function ReferenceRow({
+  reference: r,
+  first,
+  open,
+  onToggle,
+  insightOn,
+  onExclude,
+}: {
+  reference: Reference;
+  first: boolean;
+  open: boolean;
+  onToggle(): void;
+  insightOn: boolean;
+  onExclude(): void;
+}) {
   return (
     <>
-      <CardRow first={first} testId="reference-row">
-        <span className="flex min-w-0 flex-1 flex-col gap-px">
+      <CardRow first={first} testId="reference-row" data-excluded={r.excluded ? 'true' : 'false'}>
+        <span className={`flex min-w-0 flex-1 flex-col gap-px ${r.excluded ? 'text-text-3' : ''}`}>
           <span className="truncate text-14 font-medium">{r.title}</span>
-          <span className="truncate text-12 text-text-3">{r.insight ? r.insight.purpose : insightOn && r.status === 'done' ? copy.settings.insightPending : ''}</span>
+          <span className="truncate text-12 text-text-3">{r.excluded ? copy.settings.referenceExcluded : r.insight ? r.insight.purpose : insightOn && r.status === 'done' ? copy.settings.insightPending : ''}</span>
         </span>
-        <Status on={r.status === 'done'} busy={r.status === 'queued' || r.status === 'analyzing'} testId="reference-status">
-          {copy.settings.linkStatus[r.status] ?? r.status}
+        <Status on={r.status === 'done' && !r.excluded} busy={r.status === 'queued' || r.status === 'analyzing'} testId="reference-status">
+          {r.excluded ? copy.settings.referenceExcluded : (copy.settings.linkStatus[r.status] ?? r.status)}
         </Status>
-        {r.insight && (
+        {r.insight && !r.excluded && (
           <button type="button" onClick={onToggle} className="flex-none text-13 text-accent hover:text-accent-hover" data-testid="insight-toggle">
             {open ? copy.settings.insightClose : copy.settings.insightOpen}
           </button>
         )}
+        <button type="button" onClick={onExclude} className="flex-none text-13 text-text-2 hover:text-accent" data-testid="reference-exclude">
+          {r.excluded ? copy.settings.referenceInclude : copy.settings.referenceExclude}
+        </button>
       </CardRow>
-      {open && r.insight && <InsightView insight={r.insight} />}
+      {open && r.insight && !r.excluded && <InsightView insight={r.insight} />}
     </>
   );
 }
@@ -300,20 +379,73 @@ function InsightView({ insight: i }: { insight: ReferenceInsight }) {
   );
 }
 
-/** 기억 한 줄: 종류 · 글 · 범위 · 출처 · 빼기. */
-function MemoryRow({ item: m, first, onRemove, removing }: { item: MemoryItem; first: boolean; onRemove(): void; removing: boolean }) {
+/** 기억 한 줄: 종류 · 글(고치기) · 범위 · 출처 · (제안이면 쓰기) · 빼기. */
+function MemoryRow({
+  item: m,
+  first,
+  onRemove,
+  removing,
+  onApprove,
+  approving = false,
+  onEdit,
+}: {
+  item: MemoryItem;
+  first: boolean;
+  onRemove(): void;
+  removing: boolean;
+  onApprove?: (() => void) | undefined;
+  approving?: boolean;
+  onEdit?: ((text: string) => void) | undefined;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(m.text);
   const scope = m.scope === 'topic' ? m.topics.join(', ') : copy.settings.memoryScope[m.scope];
+  const save = () => {
+    const t = text.trim();
+    setEditing(false);
+    if (t.length >= 2 && t !== m.text && onEdit) onEdit(t);
+    else setText(m.text);
+  };
   return (
-    <CardRow first={first} testId="memory-row" data-kind={m.kind} data-scope={m.scope}>
+    <CardRow first={first} testId="memory-row" data-kind={m.kind} data-scope={m.scope} data-status={m.status}>
       <span className="flex-none rounded-pill bg-accent-soft px-2 py-0.5 text-11 font-medium text-accent">{copy.settings.memoryKind[m.kind]}</span>
       <span className="flex min-w-0 flex-1 flex-col gap-px">
-        <span className="text-13 leading-normal pc:text-14" style={{ textWrap: 'pretty' }}>
-          {m.text}
-        </span>
+        {editing ? (
+          <input
+            autoFocus
+            data-testid="memory-edit-input"
+            className="min-w-0 rounded-thumb border border-input bg-surface px-2 py-1 text-13 outline-none focus:border-accent pc:text-14"
+            value={text}
+            maxLength={300}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={save}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') save();
+              if (e.key === 'Escape') {
+                setText(m.text);
+                setEditing(false);
+              }
+            }}
+          />
+        ) : (
+          <span className="text-13 leading-normal pc:text-14" style={{ textWrap: 'pretty' }}>
+            {m.text}
+          </span>
+        )}
         <span className="text-12 text-text-3">
           {scope} · {copy.settings.memorySource[m.source]}
         </span>
       </span>
+      {onApprove && (
+        <button type="button" onClick={onApprove} disabled={approving} className="flex-none text-13 font-medium text-accent hover:text-accent-hover" data-testid="memory-approve">
+          {copy.settings.memoryApprove}
+        </button>
+      )}
+      {onEdit && !editing && (
+        <button type="button" onClick={() => setEditing(true)} className="flex-none text-13 text-text-2 hover:text-accent" data-testid="memory-edit">
+          {copy.settings.memoryEdit}
+        </button>
+      )}
       <button type="button" onClick={onRemove} disabled={removing} className="flex-none text-13 text-text-2 hover:text-accent" data-testid="memory-remove">
         {copy.settings.memoryRemove}
       </button>
@@ -330,6 +462,7 @@ function LinkRow({
   open,
   onToggle,
   insightOn,
+  onExclude,
 }: {
   reference: Reference;
   first: boolean;
@@ -338,32 +471,38 @@ function LinkRow({
   open: boolean;
   onToggle(): void;
   insightOn: boolean;
+  onExclude(): void;
 }) {
   const failedText = r.status === 'failed' ? (copy.settings.linkErrors[r.error ?? ''] ?? copy.settings.linkErrors['link_failed']) : null;
-  const sub = failedText ?? (r.insight ? r.insight.purpose : insightOn && r.status === 'done' ? copy.settings.insightPending : r.url);
+  const sub = r.excluded ? copy.settings.referenceExcluded : (failedText ?? (r.insight ? r.insight.purpose : insightOn && r.status === 'done' ? copy.settings.insightPending : r.url));
   return (
     <>
-      <CardRow first={first} testId="link-row">
-        <span className="flex min-w-0 flex-1 flex-col gap-px">
+      <CardRow first={first} testId="link-row" data-excluded={r.excluded ? 'true' : 'false'}>
+        <span className={`flex min-w-0 flex-1 flex-col gap-px ${r.excluded ? 'text-text-3' : ''}`}>
           <span className="truncate text-14 font-medium">
             <span className="text-text-3">{linkSiteLabel(r.url ?? '')} · </span>
             {r.title}
           </span>
           <span className="truncate text-12 text-text-3">{sub}</span>
         </span>
-        <Status on={r.status === 'done'} busy={r.status === 'queued' || r.status === 'downloading' || r.status === 'analyzing'} testId="link-status">
-          {copy.settings.linkStatus[r.status] ?? r.status}
+        <Status on={r.status === 'done' && !r.excluded} busy={r.status === 'queued' || r.status === 'downloading' || r.status === 'analyzing'} testId="link-status">
+          {r.excluded ? copy.settings.referenceExcluded : (copy.settings.linkStatus[r.status] ?? r.status)}
         </Status>
-        {r.insight && (
+        {r.insight && !r.excluded && (
           <button type="button" onClick={onToggle} className="flex-none text-13 text-accent hover:text-accent-hover" data-testid="insight-toggle">
             {open ? copy.settings.insightClose : copy.settings.insightOpen}
+          </button>
+        )}
+        {r.status === 'done' && (
+          <button type="button" onClick={onExclude} className="flex-none text-13 text-text-2 hover:text-accent" data-testid="reference-exclude">
+            {r.excluded ? copy.settings.referenceInclude : copy.settings.referenceExclude}
           </button>
         )}
         <button type="button" onClick={onRemove} disabled={removing} className="flex-none text-13 text-text-2 hover:text-accent" data-testid="link-remove">
           {copy.folders.remove}
         </button>
       </CardRow>
-      {open && r.insight && <InsightView insight={r.insight} />}
+      {open && r.insight && !r.excluded && <InsightView insight={r.insight} />}
     </>
   );
 }
