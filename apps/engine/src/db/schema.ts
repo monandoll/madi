@@ -41,7 +41,7 @@ export const jobs = sqliteTable(
   'jobs',
   {
     id: text('id').primaryKey(),
-    type: text('type', { enum: ['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze', 'chapters', 'download'] }).notNull(),
+    type: text('type', { enum: ['probe', 'proxy', 'thumbnail', 'transcribe', 'silence', 'render', 'analyze', 'chapters', 'download', 'insight'] }).notNull(),
     status: text('status', { enum: ['queued', 'running', 'done', 'failed', 'canceled'] })
       .notNull()
       .default('queued'),
@@ -161,8 +161,10 @@ export const references = sqliteTable(
     source: text('source', { enum: ['folder', 'link'] }).notNull().default('folder'),
     url: text('url'),
     stats: text('stats', { mode: 'json' }),
-    /** 짝 맞추기용 자막 (있을 때만) */
+    /** 자막 (소리가 있으면 항상 뜬다 — 뜻을 읽는 재료) */
     segments: text('segments', { mode: 'json' }),
+    /** AI 가 자막을 읽고 남긴 메모 (ReferenceInsight) */
+    insight: text('insight', { mode: 'json' }),
     error: text('error'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
@@ -179,3 +181,23 @@ export const chapters = sqliteTable('chapters', {
   fromTranscript: integer('from_transcript', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at').notNull(),
 });
+
+/**
+ * 제작자 기억. 완성본들에서 AI 가 추린 것(reference), 편집 중 사용자가 남긴 것(feedback), 직접 쓴 것(user).
+ * 사용자가 설정에서 보고 지운다. reference 것은 다시 배울 때 통째로 바뀐다.
+ */
+export const memory = sqliteTable(
+  'memory',
+  {
+    id: text('id').primaryKey(),
+    text: text('text').notNull(),
+    kind: text('kind', { enum: ['style', 'keep', 'avoid', 'term'] }).notNull().default('style'),
+    scope: text('scope', { enum: ['all', 'topic', 'video'] }).notNull().default('all'),
+    topics: text('topics', { mode: 'json' }).notNull().default('[]'),
+    videoId: text('video_id'),
+    source: text('source', { enum: ['reference', 'feedback', 'user'] }).notNull(),
+    evidence: text('evidence', { mode: 'json' }).notNull().default('[]'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (t) => [index('memory_scope_idx').on(t.scope, t.videoId)],
+);

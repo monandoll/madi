@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import type React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { linkSiteLabel, normalizeVideoUrl, type Reference, type StyleResponse } from '@madi/shared';
+import { linkSiteLabel, normalizeVideoUrl, type MemoryItem, type Reference, type ReferenceInsight, type StyleResponse } from '@madi/shared';
 import { copy } from '../copy.js';
 import { api, ApiError, queryKeys } from '../lib/api.js';
 import { usePatchSettings, useSettings } from '../lib/settings.js';
@@ -36,10 +37,17 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
     onError: (err) => setLinkError(err instanceof ApiError && err.code === 'no_downloader' ? copy.settings.linksOff : copy.settings.linkBad),
   });
   const removeRef = useMutation({ mutationFn: (id: string) => api.removeReference(id), onSuccess: put });
+  const removeMemory = useMutation({ mutationFn: (id: string) => api.removeMemory(id), onSuccess: put });
+  const addMemory = useMutation({ mutationFn: (text: string) => api.addMemory({ text }), onSuccess: (data) => { put(data); setMemoryDraft(''); } });
+  const [memoryDraft, setMemoryDraft] = useState('');
+  const [openInsight, setOpenInsight] = useState<string | null>(null);
 
   const rules = style.data?.rules ?? [];
   const refs = style.data?.references ?? [];
   const links = refs.filter((r) => r.source === 'link');
+  const folderRefs = refs.filter((r) => r.source === 'folder');
+  const memory = style.data?.memory ?? [];
+  const insightOn = style.data?.insightOn ?? false;
   const done = refs.filter((r) => r.status === 'done').length;
   const busy = refs.filter((r) => r.status === 'queued' || r.status === 'downloading' || r.status === 'analyzing').length;
   const failed = refs.filter((r) => r.status === 'failed').length;
@@ -87,7 +95,7 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
           placeholder={copy.settings.styleAddPlaceholder}
           onChange={(e) => setDraft(e.target.value)}
         />
-        <button type="submit" disabled={draft.trim().length < 2 || add.isPending} className="rounded-thumb border border-line px-3.5 text-13 font-medium hover:bg-hover disabled:text-text-3">
+        <button type="submit" data-testid="style-rule-add" disabled={draft.trim().length < 2 || add.isPending} className="rounded-thumb border border-line px-3.5 text-13 font-medium hover:bg-hover disabled:text-text-3">
           {copy.settings.styleAdd}
         </button>
       </form>
@@ -171,10 +179,26 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
             {copy.settings.linksAdd}
           </button>
         </form>
+        {folderRefs.length > 0 && (
+          <Card testId="reference-list">
+            {folderRefs.map((r, i) => (
+              <ReferenceRow key={r.id} reference={r} first={i === 0} open={openInsight === r.id} onToggle={() => setOpenInsight(openInsight === r.id ? null : r.id)} insightOn={insightOn} />
+            ))}
+          </Card>
+        )}
         {links.length > 0 && (
           <Card testId="link-list">
             {links.map((r, i) => (
-              <LinkRow key={r.id} reference={r} first={i === 0} onRemove={() => removeRef.mutate(r.id)} removing={removeRef.isPending} />
+              <LinkRow
+                key={r.id}
+                reference={r}
+                first={i === 0}
+                onRemove={() => removeRef.mutate(r.id)}
+                removing={removeRef.isPending}
+                open={openInsight === r.id}
+                onToggle={() => setOpenInsight(openInsight === r.id ? null : r.id)}
+                insightOn={insightOn}
+              />
             ))}
           </Card>
         )}
@@ -189,29 +213,158 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
           )}
         </div>
       </div>
+
+      {/* AI 가 기억한 것 — 사용자가 보고 지운다 (기획안 §12) */}
+      <div className="flex flex-col gap-[9px] pt-3" data-testid="memory-section">
+        <SectionTitle>{copy.settings.memoryLabel}</SectionTitle>
+        <p className="text-12 text-text-3">{aiOn || memory.length ? copy.settings.memoryIntro : copy.settings.memoryOff}</p>
+        <Card testId="memory-list">
+          {memory.length === 0 && (
+            <CardRow first>
+              <span className="text-13 text-text-3">{copy.settings.memoryEmpty}</span>
+            </CardRow>
+          )}
+          {memory.map((m, i) => (
+            <MemoryRow key={m.id} item={m} first={i === 0} onRemove={() => removeMemory.mutate(m.id)} removing={removeMemory.isPending} />
+          ))}
+        </Card>
+        <form
+          className="flex gap-2"
+          data-testid="memory-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (memoryDraft.trim().length < 2 || addMemory.isPending) return;
+            addMemory.mutate(memoryDraft.trim());
+          }}
+        >
+          <input
+            data-testid="memory-input"
+            className="min-w-0 flex-1 rounded-thumb border border-input bg-surface px-3 py-[9px] text-14 outline-none placeholder:text-text-3 focus:border-accent"
+            value={memoryDraft}
+            maxLength={300}
+            placeholder={copy.settings.memoryAddPlaceholder}
+            onChange={(e) => setMemoryDraft(e.target.value)}
+          />
+          <button type="submit" disabled={memoryDraft.trim().length < 2 || addMemory.isPending} className="rounded-thumb border border-line px-3.5 text-13 font-medium hover:bg-hover disabled:text-text-3" data-testid="memory-add">
+            {copy.settings.memoryAdd}
+          </button>
+        </form>
+      </div>
     </section>
   );
 }
 
-/** 링크 완성본 한 줄: 출처 · 제목 · 상태 점 · 빼기. 못 읽었으면 이유를 AI 말투로. */
-function LinkRow({ reference: r, first, onRemove, removing }: { reference: Reference; first: boolean; onRemove(): void; removing: boolean }) {
-  const failedText = r.status === 'failed' ? (copy.settings.linkErrors[r.error ?? ''] ?? copy.settings.linkErrors['link_failed']) : null;
+/** 폴더 완성본 한 줄: 제목 · 상태 · 메모 펼치기. */
+function ReferenceRow({ reference: r, first, open, onToggle, insightOn }: { reference: Reference; first: boolean; open: boolean; onToggle(): void; insightOn: boolean }) {
   return (
-    <CardRow first={first} testId="link-row">
-      <span className="flex min-w-0 flex-1 flex-col gap-px">
-        <span className="truncate text-14 font-medium">
-          <span className="text-text-3">{linkSiteLabel(r.url ?? '')} · </span>
-          {r.title}
+    <>
+      <CardRow first={first} testId="reference-row">
+        <span className="flex min-w-0 flex-1 flex-col gap-px">
+          <span className="truncate text-14 font-medium">{r.title}</span>
+          <span className="truncate text-12 text-text-3">{r.insight ? r.insight.purpose : insightOn && r.status === 'done' ? copy.settings.insightPending : ''}</span>
         </span>
-        <span className="truncate text-12 text-text-3">{failedText ?? r.url}</span>
+        <Status on={r.status === 'done'} busy={r.status === 'queued' || r.status === 'analyzing'} testId="reference-status">
+          {copy.settings.linkStatus[r.status] ?? r.status}
+        </Status>
+        {r.insight && (
+          <button type="button" onClick={onToggle} className="flex-none text-13 text-accent hover:text-accent-hover" data-testid="insight-toggle">
+            {open ? copy.settings.insightClose : copy.settings.insightOpen}
+          </button>
+        )}
+      </CardRow>
+      {open && r.insight && <InsightView insight={r.insight} />}
+    </>
+  );
+}
+
+/** 완성본 메모 — 취지 · 도입 · 구성 · 남긴 것 · 숏폼 후보 · 용어. */
+function InsightView({ insight: i }: { insight: ReferenceInsight }) {
+  const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+  const row = (label: string, body: React.ReactNode) => (
+    <div className="flex gap-3 text-13 leading-normal">
+      <span className="w-14 flex-none text-text-3">{label}</span>
+      <span className="min-w-0 flex-1 text-text-2" style={{ textWrap: 'pretty' }}>
+        {body}
       </span>
-      <Status on={r.status === 'done'} busy={r.status === 'queued' || r.status === 'downloading' || r.status === 'analyzing'} testId="link-status">
-        {copy.settings.linkStatus[r.status] ?? r.status}
-      </Status>
-      <button type="button" onClick={onRemove} disabled={removing} className="flex-none text-13 text-text-2 hover:text-accent" data-testid="link-remove">
-        {copy.folders.remove}
+    </div>
+  );
+  return (
+    <div className="flex flex-col gap-1.5 border-t border-line-faint bg-surface-2 px-3 py-2.5" data-testid="insight-view">
+      {row(copy.settings.insightPurpose, i.purpose)}
+      {i.hook && row(copy.settings.insightHook, i.hook)}
+      {i.sections.length > 0 && row(copy.settings.insightSections, i.sections.map((s) => `${s.title} ${clock(s.start)}~${clock(s.end)}`).join(' → '))}
+      {i.keepRanges.length > 0 && row(copy.settings.insightKeep, i.keepRanges.map((k) => `${clock(k.start)}~${clock(k.end)} ${k.why}`).join(' · '))}
+      {i.shortCandidates.length > 0 && row(copy.settings.insightShorts, i.shortCandidates.map((k) => `${k.title} (${clock(k.start)}~${clock(k.end)}) — ${k.why}`).join(' · '))}
+      {i.terms.length > 0 && row(copy.settings.insightTerms, i.terms.join(', '))}
+    </div>
+  );
+}
+
+/** 기억 한 줄: 종류 · 글 · 범위 · 출처 · 빼기. */
+function MemoryRow({ item: m, first, onRemove, removing }: { item: MemoryItem; first: boolean; onRemove(): void; removing: boolean }) {
+  const scope = m.scope === 'topic' ? m.topics.join(', ') : copy.settings.memoryScope[m.scope];
+  return (
+    <CardRow first={first} testId="memory-row" data-kind={m.kind} data-scope={m.scope}>
+      <span className="flex-none rounded-pill bg-accent-soft px-2 py-0.5 text-11 font-medium text-accent">{copy.settings.memoryKind[m.kind]}</span>
+      <span className="flex min-w-0 flex-1 flex-col gap-px">
+        <span className="text-13 leading-normal pc:text-14" style={{ textWrap: 'pretty' }}>
+          {m.text}
+        </span>
+        <span className="text-12 text-text-3">
+          {scope} · {copy.settings.memorySource[m.source]}
+        </span>
+      </span>
+      <button type="button" onClick={onRemove} disabled={removing} className="flex-none text-13 text-text-2 hover:text-accent" data-testid="memory-remove">
+        {copy.settings.memoryRemove}
       </button>
     </CardRow>
+  );
+}
+
+/** 링크 완성본 한 줄: 출처 · 제목 · 상태 점 · 빼기. 못 읽었으면 이유를 AI 말투로. */
+function LinkRow({
+  reference: r,
+  first,
+  onRemove,
+  removing,
+  open,
+  onToggle,
+  insightOn,
+}: {
+  reference: Reference;
+  first: boolean;
+  onRemove(): void;
+  removing: boolean;
+  open: boolean;
+  onToggle(): void;
+  insightOn: boolean;
+}) {
+  const failedText = r.status === 'failed' ? (copy.settings.linkErrors[r.error ?? ''] ?? copy.settings.linkErrors['link_failed']) : null;
+  const sub = failedText ?? (r.insight ? r.insight.purpose : insightOn && r.status === 'done' ? copy.settings.insightPending : r.url);
+  return (
+    <>
+      <CardRow first={first} testId="link-row">
+        <span className="flex min-w-0 flex-1 flex-col gap-px">
+          <span className="truncate text-14 font-medium">
+            <span className="text-text-3">{linkSiteLabel(r.url ?? '')} · </span>
+            {r.title}
+          </span>
+          <span className="truncate text-12 text-text-3">{sub}</span>
+        </span>
+        <Status on={r.status === 'done'} busy={r.status === 'queued' || r.status === 'downloading' || r.status === 'analyzing'} testId="link-status">
+          {copy.settings.linkStatus[r.status] ?? r.status}
+        </Status>
+        {r.insight && (
+          <button type="button" onClick={onToggle} className="flex-none text-13 text-accent hover:text-accent-hover" data-testid="insight-toggle">
+            {open ? copy.settings.insightClose : copy.settings.insightOpen}
+          </button>
+        )}
+        <button type="button" onClick={onRemove} disabled={removing} className="flex-none text-13 text-text-2 hover:text-accent" data-testid="link-remove">
+          {copy.folders.remove}
+        </button>
+      </CardRow>
+      {open && r.insight && <InsightView insight={r.insight} />}
+    </>
   );
 }
 

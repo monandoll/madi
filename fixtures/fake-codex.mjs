@@ -23,6 +23,17 @@ if (process.env['MADI_FAKE_CODEX'] === 'login') {
 const prompt = args[args.length - 1] ?? '';
 const request = /사용자 요청: (.*)$/m.exec(prompt)?.[1] ?? '';
 const emit = (o) => process.stdout.write(`${JSON.stringify(o)}\n`);
+// 분석 모드: 완성본 읽기 · 기억 정리 (도구 없이 한 턴)
+if (prompt.includes('## 완성본 분석') || prompt.includes('## 기억 정리')) {
+  const obj = prompt.includes('## 완성본 분석')
+    ? { purpose: '코덱스가 읽은 완성본', tags: ['몸'], shortCandidates: [{ start: 0, end: 3, title: '한 동작', why: '완결' }] }
+    : { items: [{ text: '코덱스 기억 한 줄', kind: 'style', scope: 'all', topics: [], evidence: [] }] };
+  emit({ type: 'thread.started', thread_id: 'fake-thread' });
+  emit({ type: 'turn.started' });
+  emit({ type: 'item.completed', item: { id: 'item_1', type: 'agent_message', text: JSON.stringify(obj) } });
+  emit({ type: 'turn.completed', usage: { input_tokens: 1, output_tokens: 1 } });
+  process.exit(0);
+}
 emit({ type: 'thread.started', thread_id: 'fake-thread' });
 emit({ type: 'turn.started' });
 emit({ type: 'item.completed', item: { id: 'item_0', type: 'reasoning', text: '생각 중' } });

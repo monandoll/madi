@@ -32,12 +32,24 @@ export interface AgentResult {
   error?: string;
 }
 
+/** 분석 모드: 도구 없이 한 턴, 글로 답만 받는다 (완성본 읽기 · 기억 정리). */
+export interface AnalyzeOptions {
+  system: string;
+  prompt: string;
+  cwd: string;
+  bin?: string | null;
+  signal?: AbortSignal | undefined;
+  onLog?: (line: string) => void;
+}
+
 export interface AgentProvider {
   id: Exclude<AiProvider, 'none'>;
   label: string;
   /** CLI 경로. custom 은 사용자가 이 PC 에서 직접 골라 준 파일. 없으면 null. */
   bin(custom?: string | null): string | null;
   run(opts: AgentRunOptions): Promise<AgentResult>;
+  /** MCP 도구 없이 한 턴. 결과 text 에 답 전체. */
+  analyze(opts: AnalyzeOptions): Promise<AgentResult>;
 }
 
 /** 스트림 파서가 내는 사건. 프로바이더 둘이 같은 모양으로 낸다. */

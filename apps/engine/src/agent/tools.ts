@@ -13,6 +13,7 @@ import type { ToolOutcome } from '../mcp/server.js';
 import type { ChapterStore } from '../chapters/store.js';
 import { computeChapters } from '../workers/chapters.js';
 import type { StyleProfile } from './style.js';
+import type { MemoryStore } from '../style/memory.js';
 import { mergeSubtitleLines } from './subtitles.js';
 
 export interface AgentToolDeps {
@@ -25,6 +26,8 @@ export interface AgentToolDeps {
   chapters: ChapterStore;
   events: EventLog;
   log: Logger;
+  /** 범위(주제 · 이 영상만)가 있는 규칙은 style.md 대신 여기에 */
+  memory: MemoryStore;
 }
 
 export interface ToolContext {
@@ -87,7 +90,7 @@ export class AgentTools {
       case 'get_chapters':
         return this.getChapters(video, ctx, input as ToolInput<'get_chapters'>);
       case 'update_style_rule':
-        return Promise.resolve(this.updateStyleRule(input as ToolInput<'update_style_rule'>));
+        return Promise.resolve(this.updateStyleRule(video, input as ToolInput<'update_style_rule'>));
     }
   }
 
@@ -249,10 +252,21 @@ export class AgentTools {
     return { subtitleStyle: style, remembered: !!input.remember };
   }
 
-  private updateStyleRule(input: ToolInput<'update_style_rule'>) {
-    const rules = this.d.style.appendRule(input.rule);
-    this.d.events.record('style.rule', { rules });
-    return { ok: true, rules };
+  /**
+   * "앞으로도 이렇게": 모든 영상이면 style.md 에 한 줄 (설정의 규칙 목록에 보인다),
+   * 주제 · 이 영상만이면 기억(memory)에 범위와 함께 (설정의 기억 목록에 보인다). 둘 다 사용자가 지울 수 있다.
+   */
+  private updateStyleRule(video: Video, input: ToolInput<'update_style_rule'>) {
+    const scope = input.scope ?? 'all';
+    const kind = input.kind ?? 'style';
+    if (scope === 'all' && kind === 'style') {
+      const rules = this.d.style.appendRule(input.rule);
+      this.d.events.record('style.rule', { rules, scope });
+      return { ok: true, rules, scope };
+    }
+    const item = this.d.memory.add({ text: input.rule, kind, scope, topics: input.topics ?? [], videoId: video.id, source: 'feedback' });
+    this.d.events.record('style.rule', { scope, kind, topics: item.topics.length });
+    return { ok: true, scope, kind, memoryId: item.id };
   }
 
   // ---- 공통 ----

@@ -29,6 +29,7 @@ import { StyleProfile } from './agent/style.js';
 import { AgentTools } from './agent/tools.js';
 import { writeMcpConfig } from './agent/mcp-config.js';
 import { ReferenceStore } from './style/references.js';
+import { MemoryStore } from './style/memory.js';
 import { ChapterStore } from './chapters/store.js';
 import { registerChapterWorkers } from './workers/chapters.js';
 import { StyleService } from './style/service.js';
@@ -104,8 +105,10 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   registerChapterWorkers({ queue, videos, library, chapters, style, ffmpegBin, events, log });
   const watcher = new FolderWatcher({ videos, queue, events, log });
   const refs = new ReferenceStore(db);
+  const memory = new MemoryStore(db);
   const ytdlpBin = resolveSidecar('ytdlp', cfg.binDir);
-  const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, ytdlpBin, whisper, events, log });
+  const providers = { claude: new ClaudeProvider(writeMcpConfig), codex: new CodexProvider() };
+  const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, ytdlpBin, whisper, events, log, memory, providers });
   styleService.registerWorker();
 
   const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
@@ -117,7 +120,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     const s = settings.get();
     return { mode: s.remoteMode, token: s.tunnelToken, localUrl: url };
   };
-  const agentTools = new AgentTools({ cfg, library, videos, queue, ffmpegBin, style, chapters, events, log });
+  const agentTools = new AgentTools({ cfg, library, videos, queue, ffmpegBin, style, chapters, events, log, memory });
   const agent = new AgentRunner({
     cfg,
     settings,
@@ -126,9 +129,10 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     events,
     log,
     style,
-    providers: { claude: new ClaudeProvider(writeMcpConfig), codex: new CodexProvider() },
+    providers,
     mcpCommand: () => mcpCommand(cfg),
     engineUrl: () => url,
+    recall: (video) => styleService.recall(video),
   });
   const uploads = createUploadServer({ cfg, settings, events, log });
   const deps = {
@@ -145,6 +149,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     uploads,
     agentTools,
     styleService,
+    memory,
     chapters,
     version: VERSION,
     onSettingsChanged: () => {
@@ -175,6 +180,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   library.on('output.added', (output) => ws.broadcast({ type: 'output.added', output }));
   refs.on('reference.updated', (reference) => ws.broadcast({ type: 'reference.updated', reference }));
   styleService.on('style.updated', () => ws.broadcast({ type: 'style.updated' }));
+  memory.on('memory.updated', () => ws.broadcast({ type: 'style.updated' }));
 
   const server: ServerType = await new Promise((resolve, reject) => {
     const s = serve({ fetch: app.fetch, port: cfg.port, hostname: '127.0.0.1' }, () => resolve(s));
@@ -224,6 +230,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     async stop() {
       agent.stopAll();
       aiInstaller.stop();
+      styleService.stop();
       tunnel.stop();
       await watcher.stop();
       await queue.stop();

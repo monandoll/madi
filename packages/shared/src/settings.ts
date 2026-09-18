@@ -38,6 +38,11 @@ export const Settings = z.object({
   tunnelToken: z.string().nullable().default(null),
   /** 완성본(예전에 만든 결과물) 폴더. 여기 영상을 분석해 편집 스타일을 배운다. 갤러리엔 안 뜬다. */
   referenceFolders: z.array(z.string()).default([]),
+  /**
+   * 마지막으로 띄운 마디 버전. 설치·업데이트를 알아채는 데만 쓴다 (사용자에게 보이지 않는다).
+   * 이 값이 지금 버전과 다르면 방금 깔린 것이므로 브라우저를 열어 준다.
+   */
+  lastVersion: z.string().nullable().default(null),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -49,6 +54,7 @@ export const DEFAULT_SETTINGS: Settings = {
   remoteMode: 'off',
   tunnelToken: null,
   referenceFolders: [],
+  lastVersion: null,
 };
 
 export const SettingsPatch = Settings.partial();

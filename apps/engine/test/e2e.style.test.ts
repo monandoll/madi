@@ -10,6 +10,7 @@ import { type Engine, startEngine } from '../src/engine.js';
 import { FIXTURES, freePort, tempHome, waitFor } from './helpers.js';
 
 const FAKE_YTDLP = path.join(FIXTURES, 'fake-ytdlp.mjs');
+const FAKE_CLAUDE = path.join(FIXTURES, 'fake-claude.mjs');
 
 let home: string;
 let refDir: string;
@@ -28,11 +29,13 @@ beforeAll(async () => {
   fs.mkdirSync(refDir);
   process.env['MADI_QUIET'] = '1';
   process.env['MADI_YTDLP'] = FAKE_YTDLP;
+  process.env['MADI_CLAUDE_BIN'] = FAKE_CLAUDE;
   engine = await startEngine({ dataDir: home, dbPath: path.join(home, 'madi.db'), port: await freePort() });
 });
 
 afterAll(async () => {
   await engine?.stop();
+  delete process.env['MADI_CLAUDE_BIN'];
   fs.rmSync(home, { recursive: true, force: true });
 });
 
@@ -161,5 +164,96 @@ describe('스타일 학습', () => {
     s = await style();
     expect(s.references.filter((r) => r.source === 'link')).toHaveLength(0);
     expect(s.learned?.count).toBe(3);
+  });
+});
+
+/**
+ * 기획안 §7 · §8 · §12: AI 가 연결되면 완성본의 뜻을 읽어 메모하고, 여러 편에서 반복되는 것만 기억으로 남기며,
+ * 사용자가 그 기억을 보고 지울 수 있다. AI 없이 배운 것(숫자)은 그대로.
+ */
+describe('완성본의 뜻 읽기 · 기억', () => {
+  it('AI 를 연결하고 다시 배우기 → 완성본마다 메모, 반복되는 것만 기억', { timeout: 150_000 }, async () => {
+    const before = await style();
+    expect(before.insightOn).toBe(false);
+    expect(before.references.every((r) => r.insight === null)).toBe(true);
+
+    await api('/api/settings', json('PATCH', { ai: { provider: 'claude' } }));
+    expect((await style()).insightOn).toBe(true);
+    // 자막은 analyze 가 whisper 로 뜬다. whisper 가 없는 PC(이 샌드박스)에서도 뜻 읽기를 검사하려고 자막을 직접 넣어 둔다.
+    for (const r of before.references.filter((x) => x.stats?.hasAudio)) {
+      if (!engine.refs.segmentsOf(r.id)) {
+        engine.refs.update(r.id, {
+          segments: [
+            { id: 's1', start: 0, end: 1.5, text: '안녕하세요 오늘은 스트레칭입니다', words: [] },
+            { id: 's2', start: 1.5, end: 4, text: '천천히 호흡하면서 열 번 반복하세요', words: [] },
+          ],
+        });
+      }
+    }
+    // 숫자만 배운 완성본(자막 있음)을 이제 읽는다
+    await api('/api/style/relearn', { method: 'POST' });
+    await waitFor(async () => {
+      const s = await style();
+      const withAudio = s.references.filter((r) => r.stats?.hasAudio);
+      return withAudio.length > 0 && withAudio.every((r) => r.insight);
+    }, 90_000);
+    const s = await style();
+    const one = s.references.find((r) => r.title === '햄스트링 완성')!;
+    expect(one.insight).toMatchObject({ provider: 'claude', tags: expect.arrayContaining(['햄스트링']) });
+    expect(one.insight!.purpose).toContain('햄스트링');
+    expect(one.insight!.shortCandidates[0]).toMatchObject({ title: '햄스트링 한 동작' });
+    // 시각은 영상 길이 안
+    for (const k of one.insight!.keepRanges) expect(k.end).toBeLessThanOrEqual(one.stats!.durationSec);
+    // 소리 없는 완성본은 읽을 게 없다
+    expect(s.references.find((r) => r.title === '무음 완성')!.insight).toBeNull();
+
+    // 완성본 메모들 → 제작자 기억 (2초 뒤 한 번)
+    await waitFor(async () => (await style()).memory.some((m) => m.source === 'reference'), 30_000);
+    const mem = (await style()).memory;
+    expect(mem.map((m) => m.text)).toContain('동작 시범 중 말이 없는 구간은 잘라내지 않는다');
+    const topic = mem.find((m) => m.scope === 'topic')!;
+    expect(topic).toMatchObject({ topics: ['어깨'], kind: 'style', source: 'reference' });
+    expect(mem.find((m) => m.kind === 'term')?.text).toBe('견갑골');
+    // 근거는 아는 완성본 id 만
+    for (const m of mem) for (const id of m.evidence) expect(s.references.some((r) => r.id === id)).toBe(true);
+  });
+
+  it('편집할 때는 관련 기억만 붙는다 (어깨 영상엔 어깨 기억, 다른 영상엔 안 붙음)', async () => {
+    const shoulder = { id: 'v-shoulder', title: '어깨 가동성 루틴' } as never;
+    const knee = { id: 'v-knee', title: '무릎 재활 1단계' } as never;
+    const a = engine.styleService.recall(shoulder);
+    const b = engine.styleService.recall(knee);
+    expect(a).toContain('# 기억');
+    expect(a).toContain('[방식 · 어깨] 어깨는 견갑골 움직임이 보이게 잡는다');
+    expect(a).toContain('[용어] 이 채널이 쓰는 표기: 견갑골');
+    expect(a).toContain('### 비슷한 완성본: 어깨 루틴_final');
+    expect(b).toContain('# 기억');
+    expect(b).not.toContain('어깨는 견갑골');
+    expect(b).not.toContain('비슷한 완성본');
+    // 시스템 프롬프트에도 그대로
+    expect(engine.agent.systemPrompt(shoulder)).toContain('[방식 · 어깨]');
+  });
+
+  it('직접 쓴 기억은 추가되고, 어느 것이든 빼면 사라진다 (승인 안 한 것을 굳히지 않는다)', async () => {
+    const added = StyleResponse.parse((await api('/api/style/memory', json('POST', { text: '도입은 3초 안에 동작', scope: 'all' }))).body);
+    const mine = added.memory.find((m) => m.source === 'user')!;
+    expect(mine).toMatchObject({ text: '도입은 3초 안에 동작', kind: 'style', scope: 'all' });
+    expect((await api('/api/style/memory', json('POST', { text: 'x' }))).status).toBe(400);
+    const ref = added.memory.find((m) => m.source === 'reference')!;
+    const after = StyleResponse.parse((await api(`/api/style/memory/${ref.id}`, { method: 'DELETE' })).body);
+    expect(after.memory.some((m) => m.id === ref.id)).toBe(false);
+    expect((await api('/api/style/memory/없음', { method: 'DELETE' })).status).toBe(404);
+    expect(engine.styleService.recall({ id: 'v', title: '아무 영상' } as never)).toContain('도입은 3초 안에 동작');
+  });
+
+  it('완성본을 다 빼면 완성본에서 온 기억도 비운다', async () => {
+    for (const r of (await style()).references.filter((x) => x.source === 'link')) await api(`/api/style/references/${r.id}`, { method: 'DELETE' });
+    await api('/api/settings', json('PATCH', { referenceFolders: [] }));
+    await waitFor(async () => {
+      const s = await style();
+      return s.references.length === 0 && !s.memory.some((m) => m.source === 'reference');
+    }, 15_000);
+    // 직접 쓴 것은 남는다
+    expect((await style()).memory.some((m) => m.source === 'user')).toBe(true);
   });
 });

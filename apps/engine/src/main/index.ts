@@ -76,8 +76,18 @@ app.whenReady().then(async () => {
   tray.setContextMenu(buildMenu());
   tray.on('click', () => tray?.popUpContextMenu());
 
-  // 설치 직후(첫 실행, 설정 전) 브라우저를 바로 연다. 설치 파일을 누른 사람이 트레이를 찾아다니지 않게.
-  if (app.isPackaged && !engine.settings.get().setupDone) void shell.openExternal(engine.url);
+  // 방금 깔렸으면 브라우저를 열어 준다. 설치 파일을 누른 사람이 트레이를 찾아다니지 않게.
+  //
+  // 처음 설치만 보면 안 된다: 이미 쓰던 사람이 새 버전을 깔면 setupDone 이 true 라 아무 일도 안 일어나고,
+  // "설치했는데 마디가 안 뜬다"가 된다. 그래서 마지막으로 띄운 버전과 다를 때도 연다.
+  // 로그인 시 자동 시작으로 뜬 것은 제외한다 (컴퓨터 켤 때마다 브라우저가 열리면 성가시다).
+  if (app.isPackaged) {
+    const s = engine.settings.get();
+    const fresh = !s.setupDone || s.lastVersion !== app.getVersion();
+    const atLogin = app.getLoginItemSettings().wasOpenedAtLogin === true;
+    if (s.lastVersion !== app.getVersion()) engine.settings.patch({ lastVersion: app.getVersion() });
+    if (fresh && !atLogin) void shell.openExternal(engine.url);
+  }
 
   if (app.isPackaged) {
     // GitHub Releases 에서 새 버전을 받아 다음 실행 때 적용한다. 6시간마다 다시 본다.

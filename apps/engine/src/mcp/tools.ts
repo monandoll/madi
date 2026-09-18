@@ -84,8 +84,14 @@ export const TOOL_DEFS = {
     }),
   },
   update_style_rule: {
-    description: '사용자가 "앞으로도 이렇게" 라고 한 편집 규칙을 한 줄 저장한다. 반드시 사용자가 예라고 한 뒤에만 부른다.',
-    input: z.object({ rule: z.string().trim().min(2).max(200) }),
+    description:
+      '사용자가 "앞으로도 이렇게" 라고 한 편집 규칙을 한 줄 저장한다. 반드시 사용자가 예라고 한 뒤에만 부른다. scope: all=앞으로 모든 영상(기본), topic=topics 에 적은 주제(부위 · 동작)의 영상만, video=이 영상만. kind: style(방식) · keep(반드시 남김) · avoid(피함) · term(용어 표기 — rule 은 용어 자체).',
+    input: z.object({
+      rule: z.string().trim().min(2).max(200),
+      scope: z.enum(['all', 'topic', 'video']).optional(),
+      topics: z.array(z.string().trim().min(1).max(30)).max(8).optional(),
+      kind: z.enum(['style', 'keep', 'avoid', 'term']).optional(),
+    }),
   },
 } as const;
 

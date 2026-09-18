@@ -166,7 +166,8 @@ export const TermOut = z.union([
   z.object({ t: z.literal('ready'), title: z.string(), line: z.string().nullable() }),
   z.object({ t: z.literal('out'), d: z.string() }),
   z.object({ t: z.literal('exit'), code: z.number() }),
-  z.object({ t: z.literal('error'), code: z.enum(['not_found', 'busy', 'bad_kind']) }),
+  // no_pty: 도구는 있는데 이 PC 에서 터미널을 못 띄웠다. line 은 사용자가 직접 칠 한 줄 (막다른 길을 만들지 않는다).
+  z.object({ t: z.literal('error'), code: z.enum(['not_found', 'busy', 'bad_kind', 'no_pty']), line: z.string().nullable().default(null) }),
 ]);
 export type TermOut = z.infer<typeof TermOut>;
 
