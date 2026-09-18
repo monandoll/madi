@@ -123,6 +123,26 @@ describe('AI 연결', () => {
     expect(String((await waitReply()).params['text'])).toContain('기억 있어요');
   });
 
+  it('extract_shorts 의 parts: 뒤 조각을 앞에 — 순서대로 이어 붙인 숏폼, focus 는 Edit 에 남는다', { timeout: 120_000 }, async () => {
+    const before = (await detail()).outputs.length;
+    expect((await chat('조각으로 숏폼 만들어줘')).status).toBe(200);
+    const reply = await waitReply();
+    expect(String(reply.params['text'])).toContain('「AI 조각」 만들었어요');
+    const d = await detail();
+    expect(d.outputs).toHaveLength(before + 1);
+    const out = d.outputs.find((o) => o.title === 'AI 조각')!;
+    expect(out).toMatchObject({ width: 1080, height: 1920 });
+    expect(Math.abs(out.durationSec - 4)).toBeLessThan(0.4);
+    const od = OutputDetailResponse.parse(await api(`/api/outputs/${out.id}`).then((r) => r.body));
+    expect(od.edit.parts).toEqual([
+      { start: 3, end: 5 },
+      { start: 0, end: 2 },
+    ]);
+    expect(od.edit.cropFocus).toBe(0);
+    // 결과물 자막 목록도 조각 순서를 따른다 (자막이 없으니 비어 있지만, 시각 재배치는 keepSegments 가 같이 쓴다)
+    expect(od.edit.keep).toEqual({ start: 0, end: 5 });
+  });
+
   it('set_subtitle_text: 사용자 문장이 자막이 된다 (자막이 없어도)', async () => {
     await chat('이 문장 고쳐줘: 안녕하세요 앱 소개합니다');
     const m = await waitReply();

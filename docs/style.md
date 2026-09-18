@@ -12,7 +12,7 @@
 **완성본 폴더** — 폴더를 고르면(`settings.referenceFolders`):
 
 1. `style/scan.ts` 가 폴더(하위 2단계)를 훑어 영상 파일을 `references` 테이블에 넣는다. 감시(chokidar)는 안 한다 — 설정이 바뀌거나 "다시 배우기"를 누를 때 다시 훑는다.
-2. 파일마다 `analyze` 잡: ffprobe(길이·비율·소리), silencedetect(완성본에 **남아 있는** 무음 — 가장 긴 것이 "이 정도는 참는다"), 장면 전환 수(분당 컷).
+2. 파일마다 `analyze` 잡: ffprobe(길이·비율·소리), silencedetect(완성본에 **남아 있는** 무음 — 가장 긴 것이 "이 정도는 참는다"), 장면 전환 수(분당 컷)와 시각(`sceneTimes`, 앞 200개).
 3. 제목이 갤러리의 원본과 같아 보이고(`looksLikeSameVideo`: 완성/final/v2/숏폼N 등을 뗀 뒤 비교) 그 원본에 자막이 있으면, 완성본도 whisper 로 자막을 만들어 문장 LCS 로 맞춘다(`pairDiff`): 남긴 비율, 앞·뒤 잘라낸 길이, 중간 컷 수. whisper 가 없으면 조용히 건너뛴다.
 4. `aggregate` 가 합친다: 비율 다수결(70%), 길이 중앙값, 무음 기준 = 남아 있는 최대 무음의 90분위 + 0.1초(0.4~3초), 분당 컷 중앙값, 짝이 있으면 남긴 비율·인트로 길이.
 5. `StyleProfile.setLearned` 가 학습 블록과 `params.learned`/`silenceMinSec` 를 바꾼다. WS `style.updated`.
@@ -42,7 +42,8 @@
 ```
 
 - **영상별 기억** `ReferenceInsight` (`packages/shared/src/style.ts`): 취지 · 대상 · 도입 방식 · 말투 · 구성(구간 + 종류) · 핵심 문장 ·
-  **지우면 안 되는 구간**(시범 · 시범 중 침묵 · 주의사항) · 반복/NG 후보 · 숏폼 후보(+이유) · 용어 · 자막 특징 · 태그.
+  **지우면 안 되는 구간**(시범 · 시범 중 침묵 · 주의사항) · 반복/NG 후보 · 숏폼 후보(+이유) · 용어 · 자막 특징 · **제목과 내용의 관계**(`titleNote`, 기획안 §8.1) · 태그.
+  프롬프트에는 자막과 함께 장면 전환 시각이 들어간다 — 말이 이어지는데 화면이 바뀌면 앵글 전환, 말이 멈추고 바뀌면 동작 전환 (§7).
   프롬프트 · 파서는 `src/style/insight.ts` (순수 함수). 답이 코드펜스에 싸여 있거나 시각이 "1:23" 이어도 받고, 길이 밖 구간은 버리고, 취지가 없으면 null (지어내지 않는다).
 - **제작자 기억** `MemoryItem`: `kind`(style · keep · avoid · term) · `scope`(all · topic+topics · video) · `source`(reference · feedback · user) · `status`(proposed · approved) · 근거 완성본 id.
   `src/style/memory.ts`. 완성본에서 온 것은 **제안(proposed)** 으로 들어오고 사용자가 "쓰기"를 눌러야 편집에 쓰인다 (`recall()` 은 approved 만 본다).

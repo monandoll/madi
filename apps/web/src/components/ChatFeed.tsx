@@ -19,6 +19,8 @@ interface Props {
   onOpenOutput?: ((output: OutputCard) => void) | undefined;
   /** 편집안 (plan 카드가 읽는다) */
   plan?: EditPlan | null | undefined;
+  /** 편집안 카드의 숏폼 후보 "만들기" */
+  onShortFromPlan?: ((range: TimeRange, title: string) => void) | undefined;
   /** 편집안 카드의 "롱폼 만들기" */
   onApplyPlan?: (() => void) | undefined;
 }
@@ -27,7 +29,7 @@ interface Props {
  * design/v2 영상 상세 피드: 아바타(마/나) · 이름 · 시각 · 글. 결과물 카드(왼쪽 3px accent 선), 챕터 카드, 진행 카드가 글 아래에 붙는다.
  * 에이전트가 쓰는 중이면 "마디가 보고 있어요…" 줄.
  */
-export function ChatFeed({ messages, outputs, jobs, onRevise, chapters, onShortFromChapter, onOpenOutput, plan, onApplyPlan }: Props) {
+export function ChatFeed({ messages, outputs, jobs, onRevise, chapters, onShortFromChapter, onOpenOutput, plan, onShortFromPlan, onApplyPlan }: Props) {
   const outputById = new Map(outputs.map((o) => [o.id, o]));
   const jobById = new Map(jobs.map((j) => [j.id, j]));
   return (
@@ -64,7 +66,7 @@ export function ChatFeed({ messages, outputs, jobs, onRevise, chapters, onShortF
         if (m.kind === 'plan') {
           return (
             <Row key={m.id} role="assistant" at={m.createdAt} text={chatText(m.code, m.params)}>
-              {plan && <PlanCard plan={plan} onShort={onShortFromChapter} onApply={onApplyPlan} />}
+              {plan && <PlanCard plan={plan} onShort={onShortFromPlan} onApply={onApplyPlan} />}
             </Row>
           );
         }

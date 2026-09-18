@@ -17,7 +17,7 @@ export interface RenderPlan {
 export interface RenderInput {
   input: string;
   output: string;
-  edit: Pick<Edit, 'keep' | 'cuts' | 'crop' | 'subtitles' | 'subtitleStyle'>;
+  edit: Pick<Edit, 'keep' | 'cuts' | 'crop' | 'subtitles' | 'subtitleStyle'> & Partial<Pick<Edit, 'parts' | 'cropFocus'>>;
   durationSec: number;
   width: number;
   height: number;
@@ -77,8 +77,9 @@ export function renderPlan(r: RenderInput): RenderPlan {
 
   const post: string[] = [];
   if (vertical) {
-    // 가운데 9:16 만큼 잘라서 1080x1920 으로. 원본이 이미 세로면 그냥 맞춘다.
-    post.push(`crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)'`, `scale=${SHORT_WIDTH}:${SHORT_HEIGHT}:flags=lanczos`);
+    // 9:16 만큼 잘라서 1080x1920 으로. 어디를 잡을지는 cropFocus (0 왼쪽 · 0.5 가운데 · 1 오른쪽). 원본이 이미 세로면 그냥 맞춘다.
+    const focus = Math.max(0, Math.min(1, r.edit.cropFocus ?? 0.5));
+    post.push(`crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)':x='(iw-min(iw,ih*9/16))*${focus.toFixed(3)}':y='(ih-min(ih,iw*16/9))/2'`, `scale=${SHORT_WIDTH}:${SHORT_HEIGHT}:flags=lanczos`);
   }
   if (r.edit.subtitles && r.subtitleFile) {
     const fonts = r.fontsDir ? `:fontsdir='${escapeFilterPath(r.fontsDir)}'` : '';

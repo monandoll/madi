@@ -60,6 +60,27 @@ describe('renderPlan', () => {
     expect(plan.width).toBe(1080);
     expect(plan.durationSec).toBe(3);
   });
+  it('세로 초점: 0.5 면 가운데, 1 이면 오른쪽 끝을 잡는다', () => {
+    const at = (focus: number | null) => {
+      const plan = renderPlan({ ...base, edit: { keep: null, cuts: [], crop: 'vertical', cropFocus: focus, subtitles: false, subtitleStyle: DEFAULT_SUBTITLE_STYLE } });
+      return plan.args[plan.args.indexOf('-filter_complex') + 1]!;
+    };
+    expect(at(null)).toContain("x='(iw-min(iw,ih*9/16))*0.500'");
+    expect(at(1)).toContain("x='(iw-min(iw,ih*9/16))*1.000'");
+    expect(at(0)).toContain("*0.000'");
+  });
+  it('조각(parts)은 준 순서대로 이어 붙인다 — 시범을 먼저, 설명을 뒤에', () => {
+    const plan = renderPlan({ ...base, edit: { keep: null, parts: [{ start: 6, end: 9 }, { start: 1, end: 3 }], cuts: [{ start: 7, end: 7.5, reason: 'ai' }], crop: 'none', subtitles: false, subtitleStyle: DEFAULT_SUBTITLE_STYLE } });
+    const fc = plan.args[plan.args.indexOf('-filter_complex') + 1]!;
+    expect(fc.indexOf('trim=start=6.000:end=7.000')).toBeLessThan(fc.indexOf('trim=start=1.000:end=3.000'));
+    expect(fc).toContain('concat=n=3:v=1:a=1');
+    expect(plan.durationSec).toBe(4.5);
+    expect(plan.segments).toEqual([
+      { start: 6, end: 7 },
+      { start: 7.5, end: 9 },
+      { start: 1, end: 3 },
+    ]);
+  });
   it('자막 파일 경로를 이스케이프해서 subtitles 필터에 넣는다', () => {
     const plan = renderPlan({ ...base, subtitleFile: 'C:\\madi\\a:b.ass', edit: { keep: null, cuts: [], crop: 'none', subtitles: true, subtitleStyle: DEFAULT_SUBTITLE_STYLE } });
     const fc = plan.args[plan.args.indexOf('-filter_complex') + 1]!;

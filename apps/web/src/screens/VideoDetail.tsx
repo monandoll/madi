@@ -113,7 +113,9 @@ export function VideoDetail({ id, panelOutputId }: Props) {
     act.mutate({ type: key });
   };
   // 챕터 카드의 숏폼은 되묻지 않는다: 자막이 이미 있으면 넣고, 없으면 자막 없이 (자막을 새로 만들지 않는다)
-  const onShortFromChapter = (range: { start: number; end: number }) => act.mutate({ type: 'short', range, subtitles: !!transcript && transcript.segments.length > 0 });
+  const onShortFrom = (from: 'chapter' | 'plan') => (range: { start: number; end: number }) => act.mutate({ type: 'short', range, subtitles: !!transcript && transcript.segments.length > 0, from });
+  const onShortFromChapter = onShortFrom('chapter');
+  const onShortFromPlan = onShortFrom('plan');
   const planBusy = jobs.some((j) => j.type === 'plan');
   const ask = (text: string) => setPrefill({ text, at: Date.now() });
   const onRevise = (o: OutputCard) => ask(copy.detail.outputCard.revisePrefill(o.title));
@@ -206,6 +208,7 @@ export function VideoDetail({ id, panelOutputId }: Props) {
           onRevise={aiOn ? onRevise : undefined}
           chapters={chapters}
           onShortFromChapter={busy || act.isPending ? undefined : onShortFromChapter}
+          onShortFromPlan={busy || act.isPending ? undefined : onShortFromPlan}
           onOpenOutput={openOutput}
           plan={plan}
           onApplyPlan={busy || act.isPending ? undefined : () => act.mutate({ type: 'apply_plan' })}
@@ -224,7 +227,7 @@ export function VideoDetail({ id, panelOutputId }: Props) {
             onCancel={() => setPicking(false)}
             onMake={(range, subtitles) => {
               setPicking(false);
-              act.mutate({ type: 'short', range, subtitles });
+              act.mutate({ type: 'short', range, subtitles, from: 'manual' });
             }}
           />
         )}

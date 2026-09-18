@@ -10,7 +10,7 @@ import { ActionResponse, OutputDetailResponse, OutputsResponse, VideoDetailRespo
 import { type Engine, startEngine } from '../src/engine.js';
 import { resolveSidecar, resolveWhisperModel } from '../src/main/sidecar.js';
 import { FIXTURES, SAMPLE_5S, freePort, tempHome, waitFor } from './helpers.js';
-import { makeDemoSilenceFixture } from './longform-fixture.js';
+import { makeDemoSilenceFixture, makeMotionPatchFixture } from './longform-fixture.js';
 
 let home: string;
 let watchDir: string;
@@ -239,5 +239,59 @@ describe('edit actions (AI off)', () => {
     expect(t2.segments[0].id).toBe(t.segments[0].id);
     expect(t2.segments[1].id).not.toBe(t.segments[1].id);
     expect((await fetch(`${engine.url}/api/videos/${silent.id}/transcript`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ segments: [] }) })).status).toBe(400);
+  });
+
+  const ready = async (title: string) => {
+    await waitFor(async () => VideosResponse.parse(await api('/api/videos')).videos.find((v) => v.title === title)?.status === 'ready', 60_000);
+    return VideosResponse.parse(await api('/api/videos')).videos.find((v) => v.title === title)!;
+  };
+  const actOn = (id: string, body: unknown) =>
+    api<ActionResponse>(`/api/videos/${id}/actions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+  it('세로로 바꾸기: 화면 오른쪽에서만 움직이면 오른쪽을 잡고, 그 결정이 Edit 에 남는다 (§5.4)', { timeout: 120_000 }, async () => {
+    makeMotionPatchFixture(path.join(watchDir, '오른쪽 시범.mp4'), { x: 0.66, y: 0, w: 0.34, h: 1 });
+    const v = await ready('오른쪽 시범');
+    const res = await actOn(v.id, { type: 'vertical' });
+    await waitJob(res.job!.id);
+    const d = VideoDetailResponse.parse(await api(`/api/videos/${v.id}`));
+    const out = d.outputs[0]!;
+    expect(out).toMatchObject({ width: 1080, height: 1920 });
+    const od = OutputDetailResponse.parse(await api(`/api/outputs/${out.id}`));
+    expect(od.edit.cropFocus).toBe(1);
+    const card = d.messages.find((m) => m.kind === 'output')!;
+    expect(card.params['focus']).toBe('right');
+    // 같은 Edit 로 다시 만들어도 같은 결정 (렌더는 Edit 로부터 재현)
+    const again = engine.queue.enqueue({ type: 'render', videoId: v.id, editId: od.edit.id });
+    await waitJob(again.id);
+    expect(OutputDetailResponse.parse(await api(`/api/outputs/${out.id}`)).edit.cropFocus).toBe(1);
+  });
+
+  it('자막 넣기: 아래쪽에서 동작이 움직이면 자막을 위에 두고, 그 뒤로는 자동으로 바꾸지 않는다 (§5.5)', { timeout: 120_000 }, async () => {
+    makeMotionPatchFixture(path.join(watchDir, '아래 동작.mp4'), { x: 0, y: 0.64, w: 1, h: 0.36 });
+    const v = await ready('아래 동작');
+    await fetch(`${engine.url}/api/videos/${v.id}/transcript`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ segments: [{ start: 0, end: 2, text: '무릎을 펴고' }, { start: 2, end: 4, text: '천천히' }] }),
+    });
+    const res = await actOn(v.id, { type: 'subtitle' });
+    await waitJob(res.job!.id);
+    const d = VideoDetailResponse.parse(await api(`/api/videos/${v.id}`));
+    const od = OutputDetailResponse.parse(await api(`/api/outputs/${d.outputs[0]!.id}`));
+    expect(od.edit.subtitleAuto).toBe(false);
+    expect(od.edit.subtitleStyle.bottom).toBe(0.7);
+    expect(d.messages.find((m) => m.kind === 'output')!.params['subtitleTop']).toBe(true);
+
+    // 가만히 있는 화면(회색)이면 자막은 아래 그대로 — 그래도 "정했다"는 표시는 남는다
+    makeMotionPatchFixture(path.join(watchDir, '가만히.mp4'), { x: 0, y: 0, w: 0.02, h: 0.02 });
+    const still = await ready('가만히');
+    await fetch(`${engine.url}/api/videos/${still.id}/transcript`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ segments: [{ start: 0, end: 3, text: '설명' }] }) });
+    const r2 = await actOn(still.id, { type: 'subtitle' });
+    await waitJob(r2.job!.id);
+    const d2 = VideoDetailResponse.parse(await api(`/api/videos/${still.id}`));
+    const od2 = OutputDetailResponse.parse(await api(`/api/outputs/${d2.outputs[0]!.id}`));
+    expect(od2.edit.subtitleAuto).toBe(false);
+    expect(od2.edit.subtitleStyle.bottom).toBe(0.18);
+    expect(d2.messages.find((m) => m.kind === 'output')!.params['subtitleTop']).toBeUndefined();
   });
 });

@@ -94,11 +94,17 @@ export const edits = sqliteTable('edits', {
     .references(() => videos.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   keep: text('keep', { mode: 'json' }),
+  /** 순서대로 이어 붙일 조각들 (비어 있지 않으면 keep 대신) */
+  parts: text('parts', { mode: 'json' }).notNull().default('[]'),
   cuts: text('cuts', { mode: 'json' }).notNull(),
   crop: text('crop', { enum: ['none', 'vertical'] }).notNull().default('none'),
+  /** 세로 크롭 가로 초점 0..1. null 이면 렌더할 때 움직임을 보고 고른 뒤 적는다 */
+  cropFocus: real('crop_focus'),
   subtitles: integer('subtitles', { mode: 'boolean' }).notNull().default(false),
   transcriptId: text('transcript_id'),
   subtitleStyle: text('subtitle_style', { mode: 'json' }).notNull(),
+  /** 렌더할 때 자막 위치(아래/위)를 동작을 피해 고른다 */
+  subtitleAuto: integer('subtitle_auto', { mode: 'boolean' }).notNull().default(true),
   speed: text('speed', { mode: 'json' }).notNull(),
   createdAt: integer('created_at').notNull(),
 });

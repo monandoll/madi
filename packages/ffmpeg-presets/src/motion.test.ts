@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { motionDetectArgs, motionLevel, parseMotion, splitSilencesByMotion } from './motion.js';
+import { chooseCropFocus, chooseSubtitleSide, motionDetectArgs, motionLevel, motionLevelIn, motionRegionsArgs, parseMotion, regionsFor, splitSilencesByMotion } from './motion.js';
 
 const stderr = (rows: [number, number][]) =>
   rows.map(([t, y]) => `[Parsed_metadata_3 @ 0x1] frame:1 pts:1 pts_time:${t}\n[Parsed_metadata_3 @ 0x1] lavfi.signalstats.YDIF=${y}`).join('\n');
@@ -56,5 +56,47 @@ describe('motion', () => {
     for (let t = 0.25; t <= 6; t += 0.25) rows.push([t, t > 3 ? 0.9 : 0.3]);
     const r = splitSilencesByMotion([{ start: 3, end: 6 }], parseMotion(stderr(rows)), 6);
     expect(r.kept).toEqual([]);
+  });
+});
+
+describe('regions (세로 구도 · 자막 위치)', () => {
+  it('가로 원본은 세 기둥 × 위아래 띠 여섯, 세로 원본은 위아래 둘', () => {
+    const h = regionsFor(1920, 1080);
+    expect(h.map((r) => r.name)).toEqual(['left.top', 'left.bottom', 'center.top', 'center.bottom', 'right.top', 'right.bottom']);
+    expect(h[4]!.x + h[4]!.w).toBeCloseTo(1, 5);
+    expect(h[2]!.x).toBeCloseTo(0.5 - h[2]!.w / 2, 5);
+    expect(regionsFor(1080, 1920).map((r) => r.name)).toEqual(['top', 'bottom']);
+  });
+
+  it('한 번 훑어 조각마다 파일 하나에 쓴다', () => {
+    const rs = regionsFor(1080, 1920);
+    const a = motionRegionsArgs('/x.mp4', rs, ['/w/top.txt', '/w/bottom.txt']);
+    const fc = a[a.indexOf('-filter_complex') + 1]!;
+    expect(fc).toContain('split=2[s0][s1]');
+    expect(fc).toContain("metadata=print:key=lavfi.signalstats.YDIF:file='/w/top.txt'[o0]");
+    expect(fc).toContain('crop=w=2*floor(iw*1.0000/2):h=2*floor(ih*0.3800/2):x=2*floor(iw*0.0000/2):y=2*floor(ih*0.6200/2)');
+    expect(a.filter((x) => x === '-map')).toHaveLength(2);
+    expect(() => motionRegionsArgs('/x.mp4', rs, ['/one'])).toThrow();
+  });
+
+  it('여러 구간에 걸친 평균', () => {
+    const s = parseMotion(stderr([[1, 2], [2, 4], [3, 9]]));
+    expect(motionLevelIn(s, [{ start: 0.5, end: 1.5 }, { start: 2.5, end: 3.5 }])).toBe(5.5);
+    expect(motionLevelIn(s, [])).toBeNull();
+  });
+
+  it('확실히 더 움직이는 기둥이 있을 때만 그쪽을 잡는다', () => {
+    expect(chooseCropFocus({ left: 0.4, center: 0.5, right: 6 })).toBe(1);
+    expect(chooseCropFocus({ left: 5, center: 1, right: 1 })).toBe(0);
+    expect(chooseCropFocus({ left: 3, center: 2.9, right: 3.2 })).toBe(0.5); // 애매하면 가운데
+    expect(chooseCropFocus({ left: 1.2, center: 0.1, right: 0.1 })).toBe(0.5); // 너무 조용하면 가운데
+    expect(chooseCropFocus({ left: null, center: null, right: null })).toBe(0.5);
+  });
+
+  it('아래가 확실히 더 움직이면 자막은 위로, 아니면 아래', () => {
+    expect(chooseSubtitleSide({ top: 0.5, bottom: 5 })).toBe('top');
+    expect(chooseSubtitleSide({ top: 4, bottom: 5 })).toBe('bottom');
+    expect(chooseSubtitleSide({ top: 0, bottom: 1 })).toBe('bottom');
+    expect(chooseSubtitleSide({ top: null, bottom: null })).toBe('bottom');
   });
 });

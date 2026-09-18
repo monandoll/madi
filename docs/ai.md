@@ -50,10 +50,10 @@ plan 잡 (workers/plan.ts, AI 한 턴 · 도구 없음)
 | `find_silences` | 무음 구간. `moving=true` 는 말은 없지만 동작이 이어지는 침묵(시범) |
 | `find_scenes` | 장면 전환 시각 + 구간 |
 | `propose_cuts` | 무음 → 잘라낼 구간 제안. 동작이 이어지는 침묵은 `kept` 로 따로 (자르지 않는다) |
-| `apply_edit` | Edit 생성/수정 (keep, cuts, crop, subtitles) |
+| `apply_edit` | Edit 생성/수정 (keep, parts, cuts, crop, focus, subtitles). `parts` 는 이어 붙일 조각을 결과 순서대로 — 시범 먼저 설명 뒤 (기획안 §4). `focus` 는 세로로 자를 때 잡을 쪽(auto·left·center·right) |
 | `render` | Edit → 결과 파일. 끝날 때까지 기다림 |
-| `extract_shorts` | 구간 여러 개 → 9:16 숏폼 파일들 |
-| `set_subtitle_style` | 자막 모양. `remember` 면 기본값도 |
+| `extract_shorts` | 구간 여러 개 → 9:16 숏폼 파일들. clip 에 `parts` · `focus` 를 줄 수 있다 |
+| `set_subtitle_style` | 자막 모양. `remember` 면 기본값도. `bottom` 을 주면 그 편집은 자동 위치를 안 쓴다 (`subtitleAuto=false`) |
 | `set_subtitle_text` | 자막 문장 고치기. `lines[{start,end,text}]` 가 겹치는 문장을 바꾼다(`replaceAll` 이면 전체). 자막이 없으면 `model=manual` 로 새로 만든다. "이 문장 고쳐줘", "○○라고 자막 넣어줘" 용 |
 | `update_style_rule` | style.md 에 규칙 한 줄 (사용자가 예라고 한 뒤에만) |
 
@@ -204,6 +204,17 @@ API 키 방식은 아직 안 쓴다 (사용자 본인 구독으로 돈다는 원
 **동작 시범 중의 침묵** (기획안 §5.1) — 무음이라는 이유만으로 시범을 잘라 내지 않는다. `ffmpeg-presets/motion.ts`: 화면을 160px 로 줄여 초당 4장의
 앞 장과의 밝기 차이(`signalstats` YDIF)를 재고, **말하던 동안**의 중간값보다 1.4배 이상(바닥 2) 움직인 침묵은 남긴다. 절대값이 아니라 같은 영상 안에서 견주므로
 카메라 · 조명이 달라도 된다. 처음부터 끝까지 똑같이 흔들리는 영상(손떨림)은 전처럼 다 자른다. 버튼(`silence` 잡) · `propose_cuts` · `find_silences` 가 같은 판단을 쓴다.
+
+**세로 구도 · 자막 위치** (기획안 §5.4 · §5.5) — 렌더 워커(`workers/edit.ts` `placeEdit`)가 Edit 에 아직 없는 결정을 화면의 움직임으로 채운다. 한 번 훑는다
+(`motionRegionsArgs`: 가로 원본은 왼쪽 · 가운데 · 오른쪽 기둥 × 위 · 아래 띠 여섯 조각, 세로 원본은 위 · 아래 띠 둘. 남는 구간 안의 표본만 센다).
+- `crop=vertical` 인데 `cropFocus` 가 null 이면 확실히 더 움직이는 기둥(다른 기둥의 1.3배 이상, 바닥 1.5)을 잡고 애매하면 가운데. 값(0 · 0.5 · 1)을 `Edit.cropFocus` 에 적는다.
+- `subtitles` 인데 `subtitleAuto` 면 (세로면 잡은 기둥의, 아니면 화면 전체의) 아래 띠가 위 띠보다 1.5배 이상 움직일 때 자막을 위로 (`subtitleStyle.bottom=0.7`). 어느 쪽이든 `subtitleAuto=false` 로 적어 다음 렌더가 다시 판단하지 않는다.
+- 결과 카드에 "화면 오른쪽에서 움직여서 그쪽을 잡았습니다" · "아래쪽 동작을 가리지 않게 자막을 위에 두었습니다" 가 붙는다 (가운데 · 아래면 조용히).
+- 화면을 못 읽으면 가운데 · 아래 — 전과 같고, 그것도 적는다. 렌더는 항상 Edit 로부터 재현.
+- 에이전트는 `apply_edit.focus` / `extract_shorts.clips[].focus` 로 미리 정하거나 `set_subtitle_style.bottom` 으로 고정할 수 있다.
+
+**여러 조각 숏폼** (기획안 §4 틱톡 구성) — `Edit.parts[]` 가 비어 있지 않으면 `keep` 대신 조각들을 **그 순서대로** 이어 붙인다(`keepSegments`). 뒤에 있는 시범을 앞에, 설명을 뒤에.
+자막 시각 재배치(`remapTime` · `remapRange`)도 같은 순서를 따른다. 액션 `short.from`(manual · chapter · plan)은 사용자가 어디서 고른 구간인지 `events` 에 남긴다 (§9 — 무엇을 골랐는지가 피드백).
 
 - 단위 `test/playbook.test.ts`: 포맷 고르기, 빠지면 안 되는 기준, 롱폼에만 붙는 챕터 지침, 소리 없는 영상.
 - 엔진 e2e `test/e2e.agent.test.ts`: 가짜 CLI 가 시스템 프롬프트에서 style.md 와 제작 지침을 둘 다 받았는지.

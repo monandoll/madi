@@ -18,7 +18,7 @@ const ref = (over: Partial<Reference> = {}): Reference => ({
   status: 'done',
   source: 'folder',
   url: null,
-  stats: { durationSec: 15, width: 1080, height: 1920, hasAudio: true, aspect: '9:16', silenceCount: 0, maxSilenceSec: 0, sceneCount: 3, cutsPerMin: 12, pair: null },
+  stats: { durationSec: 15, width: 1080, height: 1920, hasAudio: true, aspect: '9:16', silenceCount: 0, maxSilenceSec: 0, sceneCount: 3, cutsPerMin: 12, sceneTimes: [3, 8, 12], pair: null },
   insight: null,
   excluded: false,
   error: null,
@@ -49,6 +49,10 @@ describe('insightPrompt', () => {
     expect(prompt).toContain('## 완성본 분석');
     expect(prompt).toContain('[0:03–0:08] 견갑골을 뒤로 모으고');
     expect(prompt).toContain('"shortCandidates"');
+    // 장면 전환 시각과 제목 · 내용 관계도 묻는다 (기획안 §7 · §8.1)
+    expect(prompt).toContain('장면 전환: 0:03, 0:08, 0:12');
+    expect(prompt).toContain('"titleNote"');
+    expect(system).toContain('titleNote');
   });
 });
 
@@ -76,6 +80,7 @@ describe('parseInsight', () => {
     shortCandidates: [{ start: 3, end: 15, title: '견갑골 모으기', why: '설명과 시범이 완결' }],
     terms: ['견갑골', ' 견갑골 ', '외회전'],
     subtitleNotes: '짧게',
+    titleNote: '제목의 "견갑골"을 0:03 부터 시범으로 보여 준다',
     tags: ['어깨', '#견갑골', '어깨'],
   };
 
@@ -86,6 +91,7 @@ describe('parseInsight', () => {
     expect(i.sections[1]).toEqual({ title: '시범', start: 3, end: 15, kind: 'demo' });
     expect(i.terms).toEqual(['견갑골', '외회전']);
     expect(i.tags).toEqual(['어깨', '견갑골']);
+    expect(i.titleNote).toBe(good.titleNote);
     expect(i.provider).toBe('claude');
     expect(i.createdAt).toBe(5);
   });

@@ -16,6 +16,7 @@ const stat = (o: Partial<ReferenceStats>): ReferenceStats => ({
   maxSilenceSec: 0.8,
   sceneCount: 4,
   cutsPerMin: 8,
+  sceneTimes: [],
   pair: null,
   ...o,
 });

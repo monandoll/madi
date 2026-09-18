@@ -375,6 +375,7 @@ function InsightView({ insight: i }: { insight: ReferenceInsight }) {
       {i.keepRanges.length > 0 && row(copy.settings.insightKeep, i.keepRanges.map((k) => `${clock(k.start)}~${clock(k.end)} ${k.why}`).join(' · '))}
       {i.shortCandidates.length > 0 && row(copy.settings.insightShorts, i.shortCandidates.map((k) => `${k.title} (${clock(k.start)}~${clock(k.end)}) — ${k.why}`).join(' · '))}
       {i.terms.length > 0 && row(copy.settings.insightTerms, i.terms.join(', '))}
+      {i.titleNote && row(copy.settings.insightTitle, i.titleNote)}
     </div>
   );
 }
