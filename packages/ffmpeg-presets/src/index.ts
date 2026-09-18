@@ -6,3 +6,4 @@ export * from './progress.js';
 export * from './silence.js';
 export * from './render.js';
 export * from './scene.js';
+export * from './motion.js';

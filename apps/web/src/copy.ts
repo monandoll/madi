@@ -400,10 +400,10 @@ export const copy = {
               : '만드는 중',
     'transcript.ready': (p: { segments: number }) => `자막 ${p.segments}줄을 만들었습니다.`,
     'transcript.empty': () => '말소리를 찾지 못해 자막이 비어 있습니다. 소리가 작거나 음악만 있는 영상일 수 있습니다.',
-    'silence.none': () => '쉬는 구간이 없어 그대로 두었습니다.',
-    'output.ready': (p: { action?: string; cuts?: number; removedSec?: number; title?: string }) =>
+    'silence.none': (p: { kept?: number }) => (p.kept ? `쉬는 구간 ${p.kept}곳은 동작이 이어져 남겼습니다. 잘라낼 곳이 없어 그대로 두었습니다.` : '쉬는 구간이 없어 그대로 두었습니다.'),
+    'output.ready': (p: { action?: string; cuts?: number; removedSec?: number; title?: string; kept?: number }) =>
       p.action === 'silence'
-        ? `쉬는 구간 ${p.cuts ?? 0}곳, ${p.removedSec ?? 0}초를 잘라냈습니다.`
+        ? `쉬는 구간 ${p.cuts ?? 0}곳, ${p.removedSec ?? 0}초를 잘라냈습니다.${p.kept ? ` 동작이 이어지는 ${p.kept}곳은 남겼습니다.` : ''}`
         : p.action === 'vertical'
           ? '세로로 바꿨습니다.'
           : p.action === 'short'
