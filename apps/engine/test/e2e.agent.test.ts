@@ -123,6 +123,23 @@ describe('AI 연결', () => {
     expect(String((await waitReply()).params['text'])).toContain('기억 있어요');
   });
 
+  it('set_subtitle_text: 사용자 문장이 자막이 된다 (자막이 없어도)', async () => {
+    await chat('이 문장 고쳐줘: 안녕하세요 앱 소개합니다');
+    const m = await waitReply();
+    expect(String(m.params['text'])).toContain('"안녕하세요 앱 소개합니다" 로 바꿨어요');
+    const t = engine.library.transcriptOf(videoId)!;
+    expect(t.model).toBe('manual');
+    expect(t.segments.map((s) => s.text)).toEqual(['안녕하세요 앱 소개합니다']);
+    expect(t.segments[0]).toMatchObject({ start: 0, end: 2 });
+  });
+
+  it('update_style_rule 은 style.md 에 한 줄 붙인다', async () => {
+    await chat('규칙 저장해줘');
+    expect(String((await waitReply()).params['text'])).toContain('앞으로 그렇게 할게요.');
+    expect(fs.readFileSync(engine.style.mdPath, 'utf8')).toContain('- 숏폼은 30초 안쪽으로');
+  });
+
+  // 편집안은 자막이 없으면 먼저 만든다 (CI 엔 whisper 가 있다) — 자막이 없다는 전제의 set_subtitle_text 뒤에서 돈다
   it('편집안: AI 한 턴으로 구성 · 남길 곳 · 잘라낼 후보 · 숏폼 후보가 나오고, 다음 요청의 프롬프트에 같이 간다', { timeout: 120_000 }, async () => {
     const r = await api<ActionResponse>(`/api/videos/${videoId}/actions`, json({ type: 'plan' }));
     expect(r.status).toBe(200);
@@ -162,22 +179,6 @@ describe('AI 연결', () => {
     const od = OutputDetailResponse.parse((await api(`/api/outputs/${out.id}`)).body);
     expect(od.edit.cuts).toEqual([{ start: 0, end: 1, reason: 'ai' }]);
     expect(od.edit.crop).toBe('none');
-  });
-
-  it('set_subtitle_text: 사용자 문장이 자막이 된다 (자막이 없어도)', async () => {
-    await chat('이 문장 고쳐줘: 안녕하세요 앱 소개합니다');
-    const m = await waitReply();
-    expect(String(m.params['text'])).toContain('"안녕하세요 앱 소개합니다" 로 바꿨어요');
-    const t = engine.library.transcriptOf(videoId)!;
-    expect(t.model).toBe('manual');
-    expect(t.segments.map((s) => s.text)).toEqual(['안녕하세요 앱 소개합니다']);
-    expect(t.segments[0]).toMatchObject({ start: 0, end: 2 });
-  });
-
-  it('update_style_rule 은 style.md 에 한 줄 붙인다', async () => {
-    await chat('규칙 저장해줘');
-    expect(String((await waitReply()).params['text'])).toContain('앞으로 그렇게 할게요.');
-    expect(fs.readFileSync(engine.style.mdPath, 'utf8')).toContain('- 숏폼은 30초 안쪽으로');
   });
 
   it('에이전트 실패는 채팅 안에 오류 말풍선', async () => {
