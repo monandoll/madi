@@ -7,6 +7,7 @@ import { Edit } from './edit.js';
 import { Output } from './output.js';
 import { ChatMessage } from './chat.js';
 import { Chapters } from './chapter.js';
+import { EditPlan } from './plan.js';
 
 export const ENGINE_PORT = 41520;
 
@@ -41,6 +42,8 @@ export const VideoDetailResponse = z.object({
   aiBusy: z.boolean().default(false),
   /** 롱폼 챕터 (나눈 적 있을 때) */
   chapters: Chapters.nullable().default(null),
+  /** 편집안 (AI 가 읽은 적 있을 때) */
+  plan: EditPlan.nullable().default(null),
 });
 export type VideoDetailResponse = z.infer<typeof VideoDetailResponse>;
 
@@ -71,6 +74,10 @@ export const ActionRequest = z.discriminatedUnion('type', [
   z.object({ type: z.literal('chapters') }),
   /** 롱폼: 챕터마다 숏폼 하나씩 자동으로 (max 개까지) */
   z.object({ type: z.literal('auto_shorts'), max: z.number().int().min(1).max(10).default(3) }),
+  /** 편집안 만들기 (AI 연결 필요 — 없으면 409 ai_off). 다시 부르면 새로 읽는다. */
+  z.object({ type: z.literal('plan') }),
+  /** 편집안대로 롱폼 만들기: 잘라낼 후보를 빼고(남길 구간은 건드리지 않고) 렌더 */
+  z.object({ type: z.literal('apply_plan') }),
 ]);
 export type ActionRequest = z.infer<typeof ActionRequest>;
 

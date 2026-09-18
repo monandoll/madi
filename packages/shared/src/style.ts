@@ -48,7 +48,7 @@ export const ReferenceStats = z.object({
 export type ReferenceStats = z.infer<typeof ReferenceStats>;
 
 /** 시각 구간 + 이유. 에이전트가 읽고 사람도 읽는다. */
-const WhyRange = z.object({
+export const WhyRange = z.object({
   start: z.number().min(0),
   end: z.number().min(0),
   why: z.string().max(200),
@@ -105,8 +105,16 @@ export const MemorySource = z.enum(['reference', 'feedback', 'user']);
 export type MemorySource = z.infer<typeof MemorySource>;
 
 /**
+ * proposed = AI 가 완성본에서 추려 **제안한** 것. 사용자가 "쓰기"를 누르기 전엔 편집에 쓰지 않는다 (기획안 §12).
+ * approved = 사용자가 확인한 것 · 편집 중 "앞으로도 이렇게" 한 것 · 직접 쓴 것.
+ */
+export const MemoryStatus = z.enum(['proposed', 'approved']);
+export type MemoryStatus = z.infer<typeof MemoryStatus>;
+
+/**
  * 제작자 기억 한 줄. 여러 완성본에 반복해서 나타나는 것만 남긴다.
- * 사용자가 목록에서 보고 지울 수 있다 — 승인하지 않은 것을 영구 취향으로 굳히지 않는다.
+ * 승인하지 않은 것을 영구 취향으로 굳히지 않는다: 완성본에서 온 것은 proposed 로 들어오고, 사용자가 확인해야 approved.
+ * 사용자가 목록에서 보고 고치고 지울 수 있다.
  */
 export const MemoryItem = z.object({
   id: z.string(),
@@ -117,6 +125,7 @@ export const MemoryItem = z.object({
   /** scope = video 일 때 */
   videoId: z.string().nullable().default(null),
   source: MemorySource,
+  status: MemoryStatus.default('approved'),
   /** 근거가 된 완성본 id 들 */
   evidence: z.array(z.string()).default([]),
   createdAt: z.number().int(),
@@ -131,6 +140,23 @@ export const RememberRequest = z.object({
   topics: z.array(z.string().trim().min(1).max(30)).max(8).default([]),
 });
 export type RememberRequest = z.infer<typeof RememberRequest>;
+
+/** 기억 한 줄 고치기: 글을 바꾸거나(text) 제안을 확인한다(status=approved). */
+export const MemoryPatchRequest = z
+  .object({
+    text: z.string().trim().min(2).max(300).optional(),
+    status: z.literal('approved').optional(),
+  })
+  .refine((v) => v.text !== undefined || v.status !== undefined, { message: 'nothing to change' });
+export type MemoryPatchRequest = z.infer<typeof MemoryPatchRequest>;
+
+/** 제안 여러 줄 한 번에 확인. ids 가 없으면 제안 전부. */
+export const MemoryApproveRequest = z.object({ ids: z.array(z.string()).max(200).optional() });
+export type MemoryApproveRequest = z.infer<typeof MemoryApproveRequest>;
+
+/** 완성본 하나를 학습에서 빼거나 다시 넣는다 (파일은 그대로). */
+export const ReferencePatchRequest = z.object({ excluded: z.boolean() });
+export type ReferencePatchRequest = z.infer<typeof ReferencePatchRequest>;
 
 /** downloading 은 링크 완성본만 (yt-dlp 로 받는 중). */
 export const ReferenceStatus = z.enum(['queued', 'downloading', 'analyzing', 'done', 'failed', 'missing']);
@@ -153,6 +179,8 @@ export const Reference = z.object({
   stats: ReferenceStats.nullable(),
   /** AI 가 자막을 읽고 남긴 메모. AI 가 연결돼 있고 소리가 있을 때만 생긴다. */
   insight: ReferenceInsight.nullable().default(null),
+  /** 사용자가 학습에서 뺀 것 (기획안 §12). 숫자 · 기억 어디에도 안 쓴다. 파일은 그대로. */
+  excluded: z.boolean().default(false),
   error: z.string().nullable(),
   createdAt: z.number().int(),
   updatedAt: z.number().int(),

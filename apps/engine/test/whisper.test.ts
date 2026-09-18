@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { dropHallucinations, isNoiseText, parseWhisperJson, tokensToWords } from '../src/workers/whisper.js';
+import { dropHallucinations, isNoiseText, parseWhisperJson, termsPrompt, tokensToWords } from '../src/workers/whisper.js';
 
 const FIX = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const raw = fs.readFileSync(path.join(FIX, 'whisper-full.json'), 'utf8');
@@ -64,5 +64,13 @@ describe('무음에서 지어낸 문장', () => {
     expect(dropHallucinations(segments, []).map((s) => s.text)).toEqual(['무릎을 세웁니다', '번째]']);
     // 절반만 무음이면 남긴다
     expect(dropHallucinations(segments.slice(2, 3), [{ start: 5.0, end: 5.3 }])).toHaveLength(1);
+  });
+});
+
+describe('termsPrompt', () => {
+  it('용어를 whisper 첫 프롬프트 한 줄로. 없으면 빈 문자열, 중복 · 한 글자는 빼고 40개까지', () => {
+    expect(termsPrompt([])).toBe('');
+    expect(termsPrompt(['견갑골', ' 견갑골', '외회전', 'x'])).toBe('운동 · 재활 설명 영상. 용어: 견갑골, 외회전.');
+    expect(termsPrompt(Array.from({ length: 60 }, (_, i) => `용어${i}`)).split(', ')).toHaveLength(40);
   });
 });

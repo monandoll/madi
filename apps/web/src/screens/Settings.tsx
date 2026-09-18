@@ -316,6 +316,9 @@ export function SettingsScreen() {
             <span data-testid="ai-status">{aiStatus}</span> · {copy.settings.aiHelp}
           </p>
           <p className="text-12 text-text-3">{installing ? copy.settings.aiInstallHelp : aiAllInstalled ? copy.settings.aiLoginHelp : copy.settings.aiPickHelp}</p>
+          <p className="text-12 text-text-3" data-testid="ai-data-notice">
+            {copy.settings.aiDataNotice}
+          </p>
         </section>
 
         <StyleSection aiOn={aiOn} />

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { nanoid } from 'nanoid';
 import { kindFromDuration, keepSegments, type Video } from '@madi/shared';
-import { buildAss, parseSilences, renderPlan, silenceDetectArgs, silencesToCuts, ProgressParser } from '@madi/ffmpeg-presets';
+import { buildAss, motionDetectArgs, parseMotion, parseSilences, renderPlan, silenceDetectArgs, silencesToCuts, splitSilencesByMotion, ProgressParser } from '@madi/ffmpeg-presets';
 import type { EngineConfig } from '../config.js';
 import type { EventLog } from '../events.js';
 import type { Library } from '../library.js';
@@ -13,7 +13,7 @@ import type { StyleProfile } from '../agent/style.js';
 import type { Ffmpeg } from './ffmpeg.js';
 import { run } from './spawn.js';
 import type { Whisper } from './whisper.js';
-import { WhisperMissingError } from './whisper.js';
+import { termsPrompt, WhisperMissingError } from './whisper.js';
 
 export interface EditWorkerDeps {
   cfg: EngineConfig;
@@ -25,6 +25,8 @@ export interface EditWorkerDeps {
   whisper: () => Promise<Whisper>;
   /** 무음 기준(초)은 완성본에서 배운 값을 따른다 */
   style: StyleProfile;
+  /** 자막을 만들 때 whisper 에 알려 줄 운동 · 해부학 용어 (기억 · 완성본 · 편집안에서). 없으면 빈 목록. */
+  terms?: (videoId: string) => string[];
   events: EventLog;
   log: Logger;
 }
@@ -61,7 +63,7 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
       if (video.hasAudio === false) throw new Error('no audio');
       const whisper = await d.whisper();
       const work = path.join(cfg.dataDir, 'work', job.id);
-      const result = await whisper.transcribe(video.path, work, { signal, onProgress: setProgress });
+      const result = await whisper.transcribe(video.path, work, { signal, onProgress: setProgress, prompt: termsPrompt(d.terms?.(video.id) ?? []) });
       fs.rmSync(work, { recursive: true, force: true });
       const transcript = library.setTranscript(video.id, { ...result, model: whisper.model });
       d.events.record('transcript.made', { segments: transcript.segments.length, durationSec: video.durationSec }, Date.now() - started);
@@ -85,20 +87,23 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
     const video = videos.mustGet(job.videoId!);
     try {
       if (video.hasAudio === false) throw new Error('no audio');
+      const duration = video.durationSec ?? 0;
       const { stderr } = await run(d.ffmpegBin, silenceDetectArgs(video.path, { minSec: d.style.params().silenceMinSec }), { signal });
-      const silences = parseSilences(stderr, video.durationSec ?? 0);
-      const cuts = silencesToCuts(silences, video.durationSec ?? 0);
+      const silences = parseSilences(stderr, duration);
+      // 말은 없지만 동작이 이어지는 침묵(시범)은 남긴다 — 기획안 §5.1
+      const { cut, kept } = await splitByMotion(d, video.path, silences, duration, signal);
+      const cuts = silencesToCuts(cut, duration);
       const payload = job.payload as { type: 'silence'; videoId: string; editId?: string };
       const editId = payload.editId!;
       library.updateEdit(editId, { cuts });
       const m = library.messageForJob(job.id);
       if (cuts.length === 0) {
-        if (m) library.updateMessage(m.id, { kind: 'text', code: 'silence.none', params: {} });
+        if (m) library.updateMessage(m.id, { kind: 'text', code: 'silence.none', params: { kept: kept.length } });
         return;
       }
       const removed = cuts.reduce((a, c) => a + (c.end - c.start), 0);
       const render = queue.enqueue({ type: 'render', videoId: video.id, editId });
-      if (m) library.updateMessage(m.id, { jobId: render.id, code: 'progress.render', params: { ...m.params, step: 'render', cuts: cuts.length, removedSec: Math.round(removed) } });
+      if (m) library.updateMessage(m.id, { jobId: render.id, code: 'progress.render', params: { ...m.params, step: 'render', cuts: cuts.length, removedSec: Math.round(removed), kept: kept.length } });
     } catch (err) {
       fail(job.id, err);
       throw err;
@@ -183,4 +188,28 @@ export function outputThumbnailPath(cfg: EngineConfig, outputId: string): string
 
 export function videoLabel(v: Video): string {
   return v.title;
+}
+
+/**
+ * 무음 구간을 "가만히 있던 침묵"과 "동작이 이어지는 침묵"으로 나눈다.
+ * 화면을 못 읽으면(ffmpeg 오류) 전부 자르는 쪽으로 — 전과 같은 동작이고, 자르기 자체는 막지 않는다.
+ */
+export async function splitByMotion(
+  d: Pick<EditWorkerDeps, 'ffmpegBin' | 'log'>,
+  input: string,
+  silences: { start: number; end: number }[],
+  durationSec: number,
+  signal?: AbortSignal,
+): Promise<{ cut: { start: number; end: number }[]; kept: { start: number; end: number }[] }> {
+  if (silences.length === 0) return { cut: [], kept: [] };
+  try {
+    const { stderr } = await run(d.ffmpegBin, motionDetectArgs(input), signal ? { signal } : {});
+    const r = splitSilencesByMotion(silences, parseMotion(stderr), durationSec);
+    if (r.kept.length) d.log.info({ kept: r.kept.length, speechLevel: r.speechLevel }, 'silences kept for motion');
+    return { cut: r.cut, kept: r.kept };
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    d.log.warn({ err: String(err) }, 'motion pass failed; cutting all silences');
+    return { cut: silences, kept: [] };
+  }
 }

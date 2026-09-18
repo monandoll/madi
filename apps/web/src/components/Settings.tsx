@@ -29,6 +29,10 @@ export function CardRow({
   active?: boolean;
   testId?: string;
   'data-learned'?: string;
+  'data-kind'?: string;
+  'data-scope'?: string;
+  'data-status'?: string;
+  'data-excluded'?: string;
 }) {
   return (
     <div className={`flex min-h-11 items-center gap-2.5 px-3 py-3 pc:gap-3 ${first ? '' : 'border-t border-line-soft'} ${active ? 'bg-surface-2' : ''}`} data-testid={testId} {...rest}>

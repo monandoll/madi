@@ -47,6 +47,17 @@ test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지�
   await expect(bar.getByTestId('chat-chip').first()).toHaveText('숏폼 뽑아줘');
   const input = page.getByPlaceholder('말로 요청하세요');
   await expect(input).toBeVisible();
+  // AI 가 골라져 있으면 처음 열 때 편집안을 읽어 카드로 붙인다 (기획안 §4). 파일은 안 만든다.
+  await expect(page.getByTestId('bubble-assistant').first()).toContainText('편집안을 만듭니다');
+  const plan = page.getByTestId('plan-card');
+  await expect(plan).toBeVisible({ timeout: 90_000 });
+  await expect(plan.getByTestId('plan-section')).toHaveCount(2);
+  await expect(plan.getByTestId('plan-section').first()).toContainText('인사는 빼고 핵심 문장부터');
+  await expect(plan.getByTestId('plan-short')).toHaveCount(1);
+  await expect(plan.getByTestId('plan-short').first()).toContainText('릴스');
+  await expect(plan.getByTestId('plan-apply')).toContainText('잘라낼 후보 1곳을 빼고 롱폼 만들기');
+  await expect(page.getByTestId('plan-make')).toHaveText('편집안 다시 만들기');
+  await expect(page.getByTestId('output-row')).toHaveCount(0);
   const before = await page.getByTestId('output-row').count();
 
   await input.fill('세로로 바꿔줘');

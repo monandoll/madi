@@ -25,14 +25,31 @@ claude -p --output-format stream-json --mcp-config mcp.json --strict-mcp-config 
 - 영상당 동시 1. 돌아가는 동안 또 보내면 409 `ai_busy`. `POST /chat/cancel` 로 멈춤.
 - AI 미연결(`settings.ai.provider === 'none'`)이면 러너를 아예 스폰하지 않는다 (409 `ai_off`). 버튼 4개는 그대로 워커 직접 호출.
 
+## 편집안 (기획안 §4 · §13)
+
+촬영본을 넣으면 편집안이 나온다. AI 가 골라져 있으면 상세를 처음 열 때(인사와 함께) `plan` 잡이 걸리고, "편집안 만들기" 버튼으로 다시 읽을 수 있다.
+
+```
+plan 잡 (workers/plan.ts, AI 한 턴 · 도구 없음)
+  자막 (없고 소리 있으면 먼저 만든다) + 무음을 가만히/동작 중으로 나눔(motion) + 장면 전환 + "# 기억"(recall)
+  → plan/prompt.ts planPrompt → provider.analyze → parsePlan → plans 테이블 (EditPlan)
+  → 채팅에 plan 카드: 취지 · 시작 · 구성(시간 · 내용 · 편집 초안) · 남길 곳 · 잘라낼 후보 · 숏폼 후보(채널 · 이유) · 용어
+```
+
+- 편집안은 **파일을 만들지 않는다**. 사용자가 후보를 눌러야 렌더가 걸린다 (§6 초안 → 확인 → 확정 → 내보내기):
+  숏폼 후보 "숏폼으로" → `short` 액션, "잘라낼 후보 N곳을 빼고 롱폼 만들기" → `apply_plan` (`planCuts`: 남길 구간과 겹치는 부분은 컷에서 뺀다).
+- 다음 채팅 요청의 프롬프트에 `planBlock` 이 "# 이 영상의 편집안" 으로 들어간다 — 에이전트가 숏폼 · 컷을 고를 때 여기서 시작한다.
+- AI 가 없으면 `plan` 은 409 `ai_off`. 편집안 없이 `apply_plan` 은 409 `plan_missing`. 읽기 실패는 채팅에 `plan_failed` (큐 재시도 없음 — 토큰).
+- 단위 `test/plan.test.ts`, 엔진 e2e `test/e2e.agent.test.ts` (편집안 → 프롬프트 → 롱폼 만들기), 브라우저 `e2e/3-ai.spec.ts` (처음 열면 카드).
+
 ## 도구 (`apps/engine/src/mcp/tools.ts`)
 
 | 이름 | 하는 일 |
 |---|---|
 | `get_transcript` | 자막(문장·시각). 없으면 whisper 로 만들고 기다린다 |
-| `find_silences` | 무음 구간 |
+| `find_silences` | 무음 구간. `moving=true` 는 말은 없지만 동작이 이어지는 침묵(시범) |
 | `find_scenes` | 장면 전환 시각 + 구간 |
-| `propose_cuts` | 무음 → 잘라낼 구간 제안 |
+| `propose_cuts` | 무음 → 잘라낼 구간 제안. 동작이 이어지는 침묵은 `kept` 로 따로 (자르지 않는다) |
 | `apply_edit` | Edit 생성/수정 (keep, cuts, crop, subtitles) |
 | `render` | Edit → 결과 파일. 끝날 때까지 기다림 |
 | `extract_shorts` | 구간 여러 개 → 9:16 숏폼 파일들 |
@@ -180,6 +197,13 @@ API 키 방식은 아직 안 쓴다 (사용자 본인 구독으로 돈다는 원
 롱폼일 때만 챕터 지침이 붙는다 — 읽을 게 적을수록 잘 따른다.
 
 `DEFAULT_SUBTITLE_STYLE.bottom` 은 0.18 이다 (릴스·틱톡 화면 아래 UI 위로).
+
+**용어 사전** (기획안 §5.2) — 자막을 만들 때 whisper 에 `--prompt "운동 · 재활 설명 영상. 용어: 견갑골, 외회전, …"` 를 넣는다 (`termsPrompt`).
+용어는 사용자가 확인한 용어 기억(kind=term) + 완성본 메모의 용어 + 그 영상 편집안의 용어에서 모은다. 들린 말이 그래도 틀리면 에이전트가 `set_subtitle_text` 로 고치고, 사용자는 결과물 화면에서 "이 문장 고쳐줘".
+
+**동작 시범 중의 침묵** (기획안 §5.1) — 무음이라는 이유만으로 시범을 잘라 내지 않는다. `ffmpeg-presets/motion.ts`: 화면을 160px 로 줄여 초당 4장의
+앞 장과의 밝기 차이(`signalstats` YDIF)를 재고, **말하던 동안**의 중간값보다 1.4배 이상(바닥 2) 움직인 침묵은 남긴다. 절대값이 아니라 같은 영상 안에서 견주므로
+카메라 · 조명이 달라도 된다. 처음부터 끝까지 똑같이 흔들리는 영상(손떨림)은 전처럼 다 자른다. 버튼(`silence` 잡) · `propose_cuts` · `find_silences` 가 같은 판단을 쓴다.
 
 - 단위 `test/playbook.test.ts`: 포맷 고르기, 빠지면 안 되는 기준, 롱폼에만 붙는 챕터 지침, 소리 없는 영상.
 - 엔진 e2e `test/e2e.agent.test.ts`: 가짜 CLI 가 시스템 프롬프트에서 style.md 와 제작 지침을 둘 다 받았는지.

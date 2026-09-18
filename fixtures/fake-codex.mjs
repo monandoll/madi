@@ -24,6 +24,22 @@ const prompt = args[args.length - 1] ?? '';
 const request = /사용자 요청: (.*)$/m.exec(prompt)?.[1] ?? '';
 const emit = (o) => process.stdout.write(`${JSON.stringify(o)}\n`);
 // 분석 모드: 완성본 읽기 · 기억 정리 (도구 없이 한 턴)
+if (prompt.includes('## 편집안')) {
+  const dur = Number(/^길이\(초\): (\d+)/m.exec(prompt)?.[1] ?? 8);
+  const obj = {
+    purpose: '코덱스가 읽은 촬영본',
+    sections: [{ title: '전체', start: 0, end: dur, kind: 'demo', note: '그대로' }],
+    keepRanges: [],
+    cutCandidates: [],
+    shortCandidates: [{ start: 0, end: dur, title: '한 동작', why: '완결', channel: 'any' }],
+    terms: [],
+    tags: ['운동'],
+  };
+  const text = `\`\`\`json\n${JSON.stringify(obj)}\n\`\`\``;
+  emit({ type: 'item.completed', item: { type: 'agent_message', text } });
+  emit({ type: 'turn.completed' });
+  process.exit(0);
+}
 if (prompt.includes('## 완성본 분석') || prompt.includes('## 기억 정리')) {
   const obj = prompt.includes('## 완성본 분석')
     ? { purpose: '코덱스가 읽은 완성본', tags: ['몸'], shortCandidates: [{ start: 0, end: 3, title: '한 동작', why: '완결' }] }

@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { AiProvidersResponse, ChatResponse, HealthResponse, isStreaming, VideoDetailResponse, VideosResponse } from '@madi/shared';
+import { ActionResponse, AiProvidersResponse, ChatResponse, HealthResponse, isStreaming, OutputDetailResponse, VideoDetailResponse, VideosResponse } from '@madi/shared';
 import { resetCliCache } from '../src/agent/detect.js';
 import { type Engine, startEngine } from '../src/engine.js';
 import { FIXTURES, freePort, tempHome, waitFor } from './helpers.js';
@@ -137,6 +137,48 @@ describe('AI 연결', () => {
     await chat('규칙 저장해줘');
     expect(String((await waitReply()).params['text'])).toContain('앞으로 그렇게 할게요.');
     expect(fs.readFileSync(engine.style.mdPath, 'utf8')).toContain('- 숏폼은 30초 안쪽으로');
+  });
+
+  // 편집안은 자막이 없으면 먼저 만든다 (CI 엔 whisper 가 있다) — 자막이 없다는 전제의 set_subtitle_text 뒤에서 돈다
+  it('편집안: AI 한 턴으로 구성 · 남길 곳 · 잘라낼 후보 · 숏폼 후보가 나오고, 다음 요청의 프롬프트에 같이 간다', { timeout: 120_000 }, async () => {
+    const r = await api<ActionResponse>(`/api/videos/${videoId}/actions`, json({ type: 'plan' }));
+    expect(r.status).toBe(200);
+    const res = ActionResponse.parse(r.body);
+    expect(res.job?.type).toBe('plan');
+    expect(res.messages.map((m) => m.code)).toEqual(['action.plan', 'progress.plan']);
+    // 이미 걸려 있으면 또 걸지 않는다
+    const again = ActionResponse.parse((await api(`/api/videos/${videoId}/actions`, json({ type: 'plan' }))).body);
+    expect(again.job?.id).toBe(res.job?.id);
+    await waitFor(async () => (await detail()).plan !== null, 90_000);
+    await engine.queue.idle();
+    const d = await detail();
+    const plan = d.plan!;
+    expect(plan).toMatchObject({ videoId, provider: 'claude' });
+    expect(plan.purpose).toContain('햄스트링 스트레칭');
+    expect(plan.sections.length).toBeGreaterThanOrEqual(2);
+    expect(plan.sections[0]!.note).toBe('인사는 빼고 핵심 문장부터');
+    expect(plan.keepRanges[0]!.why).toContain('시범');
+    expect(plan.cutCandidates[0]).toMatchObject({ kind: 'aside', why: '인사 · 촬영 세팅 멘트' });
+    expect(plan.shortCandidates[0]).toMatchObject({ channel: 'reels' });
+    for (const x of [...plan.sections, ...plan.keepRanges, ...plan.cutCandidates, ...plan.shortCandidates]) expect(x.end).toBeLessThanOrEqual(plan.sections[plan.sections.length - 1]!.end);
+    const card = d.messages.find((m) => m.kind === 'plan')!;
+    expect(card).toMatchObject({ code: 'plan.ready', params: expect.objectContaining({ sections: plan.sections.length, shorts: 1, cuts: 1 }) });
+    expect(d.messages.some((m) => m.kind === 'progress')).toBe(false);
+    // 다음 채팅 요청에 편집안이 같이 간다
+    await chat('안녕');
+    expect(String((await waitReply()).params['text'])).toContain('편집안 있어요');
+  });
+
+  it('편집안대로 롱폼 만들기: 잘라낼 후보만 빠진 결과물', { timeout: 120_000 }, async () => {
+    const r = ActionResponse.parse((await api(`/api/videos/${videoId}/actions`, json({ type: 'apply_plan' }))).body);
+    expect(r.messages.map((m) => m.code)).toEqual(['action.apply_plan', 'progress.render']);
+    expect(r.messages[0]!.params['cuts']).toBe(1);
+    await waitFor(async () => (await detail()).outputs.some((o) => o.title.includes('편집안')), 90_000);
+    await engine.queue.idle();
+    const out = (await detail()).outputs.find((o) => o.title.includes('편집안'))!;
+    const od = OutputDetailResponse.parse((await api(`/api/outputs/${out.id}`)).body);
+    expect(od.edit.cuts).toEqual([{ start: 0, end: 1, reason: 'ai' }]);
+    expect(od.edit.crop).toBe('none');
   });
 
   it('에이전트 실패는 채팅 안에 오류 말풍선', async () => {

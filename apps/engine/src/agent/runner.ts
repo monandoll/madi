@@ -29,6 +29,8 @@ export interface RunnerDeps {
   engineUrl: () => string;
   /** 이 영상에 붙일 "# 기억" 블록 (완성본 · 지난 편집에서 배운 것). 없으면 빈 문자열. */
   recall?: (video: Video) => string;
+  /** 이 영상의 편집안 요약 (읽어 둔 게 있으면). 구간을 고를 때 여기서 시작한다. */
+  plan?: (video: Video) => string;
 }
 
 export class AgentError extends Error {
@@ -235,6 +237,8 @@ export class AgentRunner {
             .join('\n')}`
         : '지금까지 만든 결과물: 없음',
     ];
+    const plan = this.d.plan?.(video) ?? '';
+    if (plan) lines.push('', plan);
     if (history.length) lines.push('', '최근 대화:', ...history);
     lines.push('', `사용자 요청: ${text}`);
     return lines.join('\n');
@@ -257,6 +261,12 @@ export function describeMessage(m: ChatMessage): string | null {
       return '사용자: 쉬는 구간 잘라줘';
     case 'action.vertical':
       return '사용자: 세로로 바꿔줘';
+    case 'action.plan':
+      return '사용자: 편집안 만들어줘';
+    case 'plan.ready':
+      return '마디: 편집안을 만들었다 (아래 "이 영상의 편집안")';
+    case 'action.apply_plan':
+      return '사용자: 편집안대로 롱폼 만들어줘';
     case 'action.short':
       return `사용자: ${p['start']}초부터 ${p['end']}초까지 숏폼으로 잘라줘`;
     case 'output.ready':

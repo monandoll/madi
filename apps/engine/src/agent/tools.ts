@@ -8,6 +8,7 @@ import type { Logger } from '../log.js';
 import type { JobQueue } from '../queue/index.js';
 import type { VideoStore } from '../videos.js';
 import { run } from '../workers/spawn.js';
+import { splitByMotion } from '../workers/edit.js';
 import { TOOL_DEFS, type ToolInput, type ToolName } from '../mcp/tools.js';
 import type { ToolOutcome } from '../mcp/server.js';
 import type { ChapterStore } from '../chapters/store.js';
@@ -142,9 +143,16 @@ export class AgentTools {
 
   private async findSilences(video: Video, ctx: ToolContext, input: ToolInput<'find_silences'>) {
     if (video.hasAudio === false) throw new ToolError('이 영상은 소리가 없습니다.');
+    const duration = video.durationSec ?? 0;
     const { stderr } = await run(this.d.ffmpegBin, silenceDetectArgs(video.path, { minSec: input.minSec ?? this.d.style.params().silenceMinSec }), { signal: ctx.signal });
-    const silences = parseSilences(stderr, video.durationSec ?? 0);
-    return { silences: silences.map((s) => ({ start: r2(s.start), end: r2(s.end) })), totalSec: r2(silences.reduce((a, s) => a + s.end - s.start, 0)) };
+    const silences = parseSilences(stderr, duration);
+    const { kept } = await splitByMotion(this.d, video.path, silences, duration, ctx.signal);
+    const moving = new Set(kept);
+    return {
+      silences: silences.map((s) => ({ start: r2(s.start), end: r2(s.end), moving: moving.has(s) })),
+      totalSec: r2(silences.reduce((a, s) => a + s.end - s.start, 0)),
+      note: kept.length ? `moving=true 인 ${kept.length}곳은 말은 없지만 동작이 이어진다 (시범). 자르지 않는다.` : undefined,
+    };
   }
 
   private async findScenes(video: Video, ctx: ToolContext, input: ToolInput<'find_scenes'>) {
@@ -155,10 +163,17 @@ export class AgentTools {
 
   private async proposeCuts(video: Video, ctx: ToolContext, input: ToolInput<'propose_cuts'>) {
     if (video.hasAudio === false) throw new ToolError('소리가 없어 쉬는 구간을 찾을 수 없습니다.');
+    const duration = video.durationSec ?? 0;
     const { stderr } = await run(this.d.ffmpegBin, silenceDetectArgs(video.path, { minSec: input.minSilenceSec ?? this.d.style.params().silenceMinSec }), { signal: ctx.signal });
-    const silences = parseSilences(stderr, video.durationSec ?? 0);
-    const cuts = silencesToCuts(silences, video.durationSec ?? 0, input.padSec ?? 0.2);
-    return { cuts: cuts.map((c) => ({ start: r2(c.start), end: r2(c.end), reason: c.reason })), removedSec: r2(cuts.reduce((a, c) => a + c.end - c.start, 0)) };
+    const silences = parseSilences(stderr, duration);
+    // 동작이 이어지는 침묵(시범)은 제안에서 뺀다 — 에이전트가 따로 판단할 필요 없이 kept 로 알려 준다
+    const { cut, kept } = await splitByMotion(this.d, video.path, silences, duration, ctx.signal);
+    const cuts = silencesToCuts(cut, duration, input.padSec ?? 0.2);
+    return {
+      cuts: cuts.map((c) => ({ start: r2(c.start), end: r2(c.end), reason: c.reason })),
+      removedSec: r2(cuts.reduce((a, c) => a + c.end - c.start, 0)),
+      kept: kept.map((k) => ({ start: r2(k.start), end: r2(k.end), why: '말은 없지만 동작이 이어진다 (시범)' })),
+    };
   }
 
   // ---- 편집 ----

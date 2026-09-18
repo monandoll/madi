@@ -47,6 +47,7 @@ describe('playbook', () => {
 
   it('운동·재활에서 절대 자르면 안 되는 것을 짚어 준다', () => {
     expect(reels).toContain('운동 이름 · 횟수 · 주의사항');
+    expect(reels).toContain('동작 시범 중의 침묵은 자르지 않는다');
   });
 
   it('챕터 지침은 롱폼에만 (읽을 게 적을수록 잘 따른다)', () => {

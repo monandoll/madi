@@ -83,7 +83,8 @@ resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리
 - `Job` — 큐 항목. `type`, `status`, `progress`, `payload`, `error`
 - `StyleProfile` — `style.md`(자연어 규칙) + `params.json`(숫자) + `examples/`(few-shot)
 - `Reference` — 완성본(배우는 대상). `stats`(숫자) + `segments`(자막) + `insight`(AI 가 읽은 뜻: 취지·구성·보존 구간·숏폼 후보·용어·태그)
-- `Memory` — 제작자 기억 한 줄. `kind`(style·keep·avoid·term) · `scope`(all·topic·video) · `source`(reference·feedback·user). 사용자가 보고 지운다.
+- `Memory` — 제작자 기억 한 줄. `kind`(style·keep·avoid·term) · `scope`(all·topic·video) · `source`(reference·feedback·user) · `status`(proposed·approved). 완성본에서 추린 것은 **제안**으로 들어오고 사용자가 확인한 것만 편집에 쓴다. 사용자가 보고 고치고 지운다. 완성본은 `excluded` 로 학습에서 뺄 수 있다.
+- `EditPlan` — 촬영본 편집안 초안. AI 가 자막·무음·움직임·장면을 읽고 남긴 취지·구성(구간별 편집 초안)·남길 구간·잘라낼 후보·숏폼 후보(채널·이유). 파일은 만들지 않는다 — 사용자가 후보를 골라야 렌더.
 - `Chat` — `Video`별 대화. 메시지에 `Output` 카드가 붙는다.
 
 원칙: **렌더는 항상 `Edit`로부터 재현 가능**해야 한다. 결과 파일만 있고 결정이 없는 상태를 만들지 않는다.
@@ -94,7 +95,9 @@ resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리
 - 도구 목록 (`apps/engine/src/mcp/tools.ts`): `get_transcript`, `find_silences`, `find_scenes`, `propose_cuts`, `apply_edit`, `render`, `extract_shorts`, `get_chapters`, `set_subtitle_style`, `set_subtitle_text`, `update_style_rule`
 - 에이전트 컨텍스트에 `StyleProfile.style.md`를 항상 주입한다.
 - 그 위에 **제작 지침**(`src/agent/playbook.ts`)과 **기억**(`styleService.recall(video)` — 이 영상과 관련 있는 것만)을 같이 넣는다. 세기 순서는 사용자가 쓴 규칙 > 기억 > 제작 지침.
-- 완성본은 AI 가 연결돼 있으면 자막을 읽어 `insight` 를 남기고(insight 잡, 도구 없는 한 턴), 여러 편에 반복되는 것만 `Memory` 로 굳힌다. 영상을 매번 다시 읽지 않는다 — 저장한 메모만 꺼낸다.
+- 완성본은 AI 가 연결돼 있으면 자막을 읽어 `insight` 를 남기고(insight 잡, 도구 없는 한 턴), 여러 편에 반복되는 것만 `Memory` 로 **제안**한다. 사용자가 승인하지 않은 것을 영구 성향으로 확정하지 않는다 — 프롬프트에는 `approved` 만 들어간다. 영상을 매번 다시 읽지 않는다 — 저장한 메모만 꺼낸다.
+- 쉬는 구간 자르기(버튼 · `propose_cuts`)는 동작이 이어지는 침묵(시범)을 남긴다. 말하던 때보다 화면이 확실히 더 움직인 침묵은 자르지 않는다 (`ffmpeg-presets/motion.ts`).
+- AI 가 골라져 있으면 상세를 처음 열 때 `plan` 잡으로 편집안을 읽어 카드로 붙인다 (`src/plan/`). 다음 채팅 요청에는 그 편집안이 같이 간다.
 - 수정 요청이 오면 고친 뒤 **"앞으로도 이렇게 할까요?"** 를 한 번 묻고, 예일 때만 `update_style_rule`.
 - 에이전트 응답은 채팅에 스트리밍. 도구 호출 내부는 사용자에게 보이지 않는다.
 - AI 미연결 상태에서는 러너를 아예 스폰하지 않는다. 버튼 4개는 워커를 직접 호출한다.

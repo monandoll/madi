@@ -32,3 +32,31 @@ export function makeLongformFixture(out: string, opts: { scenes?: number; sceneS
   );
   return out;
 }
+
+/**
+ * 시범 침묵 테스트용 영상: 가만히 말함(회색 화면 + 톤) → 말 없이 동작(움직이는 테스트 패턴, 무음) → 다시 말함.
+ * 무음 구간은 하나(가운데)인데 그동안만 화면이 움직인다. 쉬는 구간 자르기가 그 침묵을 남겨야 한다.
+ */
+export function makeDemoSilenceFixture(out: string, opts: { talkSec?: number; demoSec?: number } = {}): string {
+  const talk = opts.talkSec ?? 3;
+  const demo = opts.demoSec ?? 2.5;
+  if (fs.existsSync(out)) return out;
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  const ffmpeg = resolveSidecar('ffmpeg', '/nonexistent');
+  const total = talk * 2 + demo;
+  execFileSync(
+    ffmpeg,
+    [
+      '-hide_banner', '-y',
+      '-f', 'lavfi', '-i', `color=c=gray:s=320x180:r=24:d=${talk}`,
+      '-f', 'lavfi', '-i', `testsrc2=s=320x180:r=24:d=${demo}`,
+      '-f', 'lavfi', '-i', `color=c=gray:s=320x180:r=24:d=${talk}`,
+      '-f', 'lavfi', '-i', `sine=frequency=440:sample_rate=44100:d=${total}`,
+      '-filter_complex',
+      `[0:v][1:v][2:v]concat=n=3:v=1:a=0[v];[3:a]volume='if(between(t,${talk},${talk + demo}),0,1)':eval=frame[a]`,
+      '-map', '[v]', '-map', '[a]', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-movflags', '+faststart', out,
+    ],
+    { stdio: 'ignore' },
+  );
+  return out;
+}

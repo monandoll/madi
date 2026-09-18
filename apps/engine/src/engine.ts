@@ -31,6 +31,9 @@ import { writeMcpConfig } from './agent/mcp-config.js';
 import { ReferenceStore } from './style/references.js';
 import { MemoryStore } from './style/memory.js';
 import { ChapterStore } from './chapters/store.js';
+import { PlanStore } from './plan/store.js';
+import { registerPlanWorker } from './workers/plan.js';
+import { planBlock } from './plan/prompt.js';
 import { registerChapterWorkers } from './workers/chapters.js';
 import { StyleService } from './style/service.js';
 import { createUploadServer } from './server/upload.js';
@@ -64,7 +67,9 @@ export interface Engine {
   style: StyleProfile;
   styleService: StyleService;
   refs: ReferenceStore;
+  memory: MemoryStore;
   chapters: ChapterStore;
+  plans: PlanStore;
   url: string;
   /** Electron 이 시스템 폴더 선택창을 붙인다. */
   setFolderPicker(fn: (() => Promise<string | null>) | undefined): void;
@@ -100,7 +105,6 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   };
   const style = new StyleProfile(cfg.styleDir);
   style.ensure();
-  registerEditWorkers({ cfg, queue, videos, library, ffmpeg, ffmpegBin, events, log, whisper, style });
   const chapters = new ChapterStore(db);
   registerChapterWorkers({ queue, videos, library, chapters, style, ffmpegBin, events, log });
   const watcher = new FolderWatcher({ videos, queue, events, log });
@@ -110,6 +114,15 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   const providers = { claude: new ClaudeProvider(writeMcpConfig), codex: new CodexProvider() };
   const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, ytdlpBin, whisper, events, log, memory, providers });
   styleService.registerWorker();
+  const plans = new PlanStore(db);
+  // 자막을 만들 때 whisper 에 알려 줄 용어: 확인한 용어 기억 + 완성본 메모의 용어 + 이 영상 편집안의 용어 (기획안 §5.2)
+  const terms = (videoId: string) => [
+    ...memory.listApproved().filter((m) => m.kind === 'term').map((m) => m.text),
+    ...refs.withInsight().flatMap((r) => r.insight?.terms ?? []),
+    ...(plans.get(videoId)?.terms ?? []),
+  ];
+  registerEditWorkers({ cfg, queue, videos, library, ffmpeg, ffmpegBin, events, log, whisper, style, terms });
+  registerPlanWorker({ cfg, queue, videos, library, plans, style, settings, providers, recall: (video) => styleService.recall(video), ffmpegBin, events, log });
 
   const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
   const remoteAuth = new RemoteAuth(path.join(cfg.dataDir, 'pairs.json'));
@@ -133,6 +146,10 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     mcpCommand: () => mcpCommand(cfg),
     engineUrl: () => url,
     recall: (video) => styleService.recall(video),
+    plan: (video) => {
+      const p = plans.get(video.id);
+      return p ? planBlock(p) : '';
+    },
   });
   const uploads = createUploadServer({ cfg, settings, events, log });
   const deps = {
@@ -151,6 +168,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     styleService,
     memory,
     chapters,
+    plans,
     version: VERSION,
     onSettingsChanged: () => {
       void watcher.setFolders(settings.get().watchFolders);
@@ -216,7 +234,9 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     style,
     styleService,
     refs,
+    memory,
     chapters,
+    plans,
     url,
     setFolderPicker(fn) {
       deps.pickFolder = fn;

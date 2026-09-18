@@ -11,6 +11,9 @@ import {
   AddLinkRequest,
   AddRuleRequest,
   RememberRequest,
+  MemoryPatchRequest,
+  MemoryApproveRequest,
+  ReferencePatchRequest,
   type StyleResponse,
   AiInstallRequest,
   type AiInstallResponse,
@@ -72,6 +75,8 @@ export interface AppDeps {
   /** 제작자 기억 (설정에서 보고 지운다). */
   memory: import('../style/memory.js').MemoryStore;
   chapters: import('../chapters/store.js').ChapterStore;
+  /** 촬영본 편집안 */
+  plans: import('../plan/store.js').PlanStore;
   version: string;
   onSettingsChanged?: () => void;
   /** 시스템 폴더 선택창. Electron 이 붙여 준다. 없으면 브라우저만 뜬 상태. */
@@ -284,6 +289,9 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ opened: true });
   });
 
+  // 버튼 액션 · 인사 · 자동 편집안이 같이 쓰는 것. AI 는 "골라져 있는지"만 본다 (설치 확인은 잡이 돌 때).
+  const actionDeps = { queue, videos, library: deps.library, events: deps.events, plans: deps.plans, aiOn: () => settings.get().ai.provider !== 'none' };
+
   app.get('/api/videos', (c) => {
     const body: VideosResponse = { videos: videos.listVisible().map((v) => toCard(v, deps)) };
     return c.json(body);
@@ -292,7 +300,7 @@ export function createApp(deps: AppDeps): Hono {
   app.get('/api/videos/:id', (c) => {
     const v = videos.get(c.req.param('id'));
     if (!v) return c.json({ error: { code: 'not_found', message: 'video not found' } }, 404);
-    if (v.status === 'ready') greetIfEmpty(deps.library, v);
+    if (v.status === 'ready') greetIfEmpty(actionDeps, v);
     const body: VideoDetailResponse = {
       video: toCard(v, deps),
       transcript: deps.library.transcriptOf(v.id),
@@ -301,6 +309,7 @@ export function createApp(deps: AppDeps): Hono {
       jobs: queue.list(['queued', 'running']).filter((j) => j.videoId === v.id),
       aiBusy: deps.agent.isBusy(v.id),
       chapters: deps.chapters.get(v.id),
+      plan: deps.plans.get(v.id),
     };
     return c.json(body);
   });
@@ -360,7 +369,7 @@ export function createApp(deps: AppDeps): Hono {
     const parsed = ActionRequest.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
     try {
-      const body: ActionResponse = runAction({ queue, videos, library: deps.library, events: deps.events }, v, parsed.data);
+      const body: ActionResponse = runAction(actionDeps, v, parsed.data);
       return c.json(body);
     } catch (err) {
       if (err instanceof ActionError) return c.json({ error: { code: err.code, message: err.code } }, 409);
@@ -469,11 +478,48 @@ export function createApp(deps: AppDeps): Hono {
     return c.json(body);
   });
 
-  /** 기억 한 줄 직접 쓰기 (범위 · 종류 포함). */
+  /** 기억 한 줄 직접 쓰기 (범위 · 종류 포함). 직접 쓴 것은 바로 확인된 것. */
   app.post('/api/style/memory', async (c) => {
     const parsed = RememberRequest.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
     deps.memory.add({ ...parsed.data, source: 'user' });
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  /** 기억 한 줄 고치기: 글을 바꾸거나 제안을 확인한다. */
+  app.patch('/api/style/memory/:id', async (c) => {
+    const parsed = MemoryPatchRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    const id = c.req.param('id');
+    if (!deps.memory.get(id)) return c.json({ error: { code: 'not_found', message: 'memory not found' } }, 404);
+    if (parsed.data.text !== undefined) deps.memory.updateText(id, parsed.data.text);
+    if (parsed.data.status === 'approved') deps.memory.approve([id]);
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  /** 제안 확인 — ids 가 없으면 제안 전부. */
+  app.post('/api/style/memory/approve', async (c) => {
+    const parsed = MemoryApproveRequest.safeParse((await c.req.json().catch(() => null)) ?? {});
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    deps.memory.approve(parsed.data.ids);
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  /** 기억 전부 지우기 (?only=proposed 면 제안만). 완성본에서 온 글은 다시 제안하지 않는다. */
+  app.delete('/api/style/memory', (c) => {
+    deps.memory.removeAll({ onlyProposed: c.req.query('only') === 'proposed' });
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
+  /** 완성본 하나를 학습에서 빼거나 다시 넣기. */
+  app.patch('/api/style/references/:id', async (c) => {
+    const parsed = ReferencePatchRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    if (!deps.styleService.setExcluded(c.req.param('id'), parsed.data.excluded)) return c.json({ error: { code: 'not_found', message: 'reference not found' } }, 404);
     const body: StyleResponse = deps.styleService.response();
     return c.json(body);
   });

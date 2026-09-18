@@ -44,12 +44,16 @@
 - **영상별 기억** `ReferenceInsight` (`packages/shared/src/style.ts`): 취지 · 대상 · 도입 방식 · 말투 · 구성(구간 + 종류) · 핵심 문장 ·
   **지우면 안 되는 구간**(시범 · 시범 중 침묵 · 주의사항) · 반복/NG 후보 · 숏폼 후보(+이유) · 용어 · 자막 특징 · 태그.
   프롬프트 · 파서는 `src/style/insight.ts` (순수 함수). 답이 코드펜스에 싸여 있거나 시각이 "1:23" 이어도 받고, 길이 밖 구간은 버리고, 취지가 없으면 null (지어내지 않는다).
-- **제작자 기억** `MemoryItem`: `kind`(style · keep · avoid · term) · `scope`(all · topic+topics · video) · `source`(reference · feedback · user) · 근거 완성본 id.
-  `src/style/memory.ts`. 완성본에서 온 것은 다시 정리할 때 통째로 바뀌고, 편집 중 남긴 것과 직접 쓴 것은 그대로.
+- **제작자 기억** `MemoryItem`: `kind`(style · keep · avoid · term) · `scope`(all · topic+topics · video) · `source`(reference · feedback · user) · `status`(proposed · approved) · 근거 완성본 id.
+  `src/style/memory.ts`. 완성본에서 온 것은 **제안(proposed)** 으로 들어오고 사용자가 "쓰기"를 눌러야 편집에 쓰인다 (`recall()` 은 approved 만 본다).
+  다시 정리할 때 통째로 바뀌되 이미 확인한 글은 확인 상태를 이어받고, 사용자가 뺀 글(kv `memory.dismissed`)은 다시 제안하지 않는다.
+  편집 중 남긴 것(사용자가 예라고 한 것)과 직접 쓴 것은 바로 approved.
 - **검색** `retrieve()`: 새 영상의 제목 · 자막에 나온 태그로 topic 기억과 비슷한 완성본을 고른다. 벡터 없이 낱말 겹침 (기획안 §11 초기 범위).
 - **범위 있는 규칙**: `update_style_rule(rule, scope, topics, kind)`. scope=all · kind=style 이면 전처럼 `style.md` 에, 그 밖은 기억에 (source=feedback).
 - **세기**: 제작 지침 < 기억 < 사용자가 쓴 규칙(style.md). 시스템 프롬프트에 그 순서로 들어간다.
-- **사용자 통제** (§12): 설정 → 기존 영상으로 배우기의 완성본 줄마다 "메모" 로 취지 · 구성 · 숏폼 후보를 본다. "AI 가 기억한 것" 목록에서 한 줄씩 빼고, 직접 한 줄 쓴다.
+- **사용자 통제** (§12): 설정 → 기존 영상으로 배우기의 완성본 줄마다 "메모" 로 취지 · 구성 · 숏폼 후보를 보고, "학습에서 빼기" 로 그 완성본을 숫자 · 기억 어디에도 안 쓰게 한다 (`references.excluded`, 파일은 그대로).
+  "AI 가 기억한 것" 은 완성본에서 찾은 제안(쓰기 · 모두 쓰기 · 빼기)과 확인된 목록(고치기 · 빼기)으로 나뉘고, 직접 한 줄 쓰고, 전부 지울 수 있다.
+  AI 연결 화면에 자막 · 편집 요청이 그 도구를 통해 AI 회사 서버로 간다는 안내가 있다 (영상 파일은 안 나간다).
 - AI 를 나중에 연결했으면 **다시 배우기** 가 메모 없는 완성본을 읽는다.
 - 분석 모드는 `AgentProvider.analyze()`: claude 는 `-p --mcp-config '{"mcpServers":{}}' --strict-mcp-config --max-turns 1`, codex 는 `exec` 에 MCP 설정 없이.
 
@@ -71,11 +75,18 @@
 | `POST /api/style/relearn` | 폴더 다시 훑기 + 실패한 것(링크 포함) 재분석 |
 | `POST /api/style/links {url}` | 링크로 배우기 (400 `bad_link`, 501 `no_downloader`) |
 | `DELETE /api/style/references/:id` | 완성본 빼기 (링크면 받은 파일도) |
+| `PATCH /api/style/references/:id {excluded}` | 완성본을 학습에서 빼기 · 다시 넣기 |
+| `POST /api/style/memory {text, kind?, scope?, topics?}` | 기억 직접 쓰기 (바로 approved) |
+| `PATCH /api/style/memory/:id {text? \| status:'approved'}` | 글 고치기 · 제안 확인 |
+| `POST /api/style/memory/approve {ids?}` | 제안 확인 (ids 없으면 전부) |
+| `DELETE /api/style/memory/:id` | 한 줄 빼기 (완성본에서 온 것은 다시 제안하지 않는다) |
+| `DELETE /api/style/memory[?only=proposed]` | 전부 지우기 · 제안만 지우기 |
 
 ## 테스트
 
 - 단위 `test/insight.test.ts`: 자막 줄이기, JSON 꺼내기, 메모 파싱(시각 clamp · 중복), 기억 파싱(모르는 근거 버림), 검색 · 기억 블록.
-- 엔진 e2e `test/e2e.style.test.ts` 마지막 describe: AI 연결 → 다시 배우기 → 완성본마다 메모 → 기억, 관련 기억만 붙음, 직접 쓰기 · 빼기, 완성본 다 빼면 비움.
+- 단위 `test/memory.test.ts`: 제안 · 확인 · 확인 상태 이어받기 · 뺀 글 다시 제안 안 함 · 고치기 · 전부 지우기.
+- 엔진 e2e `test/e2e.style.test.ts` 마지막 describe: AI 연결 → 다시 배우기 → 완성본마다 메모 → 제안, 확인해야 붙음, 관련 기억만 붙음, 고치기, 학습에서 빼기, 직접 쓰기 · 빼기, 완성본 다 빼면 비움, 전부 지우기.
 
 - 단위 `test/learn.test.ts`: 비율, aggregate, 문장 생성, 제목 정규화, pairDiff(LCS), StyleProfile 블록, 스캔. `test/link.test.ts`: 주소 고르기, yt-dlp 인자·출력, 오류 분류.
 - 엔진 e2e `test/e2e.style.test.ts`: 폴더 지정 → 진짜 ffmpeg 분석 → 배운 줄·무음 기준, 폴더 제거 → 원복, 다시 배우기, 링크(가짜 yt-dlp) → 받아서 배움·실패 코드·빼기.

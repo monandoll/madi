@@ -75,6 +75,8 @@ export const copy = {
     aiOn: (label: string) => `${label} 연결됨`,
     aiMissing: (label: string) => `${label}를 이 PC에서 찾지 못했습니다`,
     aiHelp: '연결하지 않아도 자막 · 쉬는 구간 자르기 · 규격 변환은 됩니다.',
+    /** 밖으로 나가는 것을 분명히 (기획안 §12) */
+    aiDataNotice: '연결하면 자막과 편집 요청이 그 도구를 통해 AI 회사 서버로 갑니다. 영상 파일은 이 컴퓨터를 떠나지 않습니다.',
     aiInstalled: (v: string | null) => (v ? `설치됨 · ${v}` : '설치됨'),
     aiNotInstalled: '설치 안 됨',
     aiUse: '연결하기',
@@ -154,7 +156,7 @@ export const copy = {
     insightTerms: '용어',
     /** 제작자 기억 */
     memoryLabel: 'AI 가 기억한 것',
-    memoryIntro: '완성본 여러 편에 반복해서 나타난 것과 편집 중 "앞으로도 이렇게" 한 것. 지우면 다음 편집부터 반영되지 않습니다.',
+    memoryIntro: '여기 있는 것만 편집에 씁니다. 완성본에서 찾은 것은 확인해야 쓰이고, 편집 중 "앞으로도 이렇게" 한 것과 직접 쓴 것은 바로 쓰입니다.',
     memoryEmpty: '아직 기억한 것이 없습니다.',
     memoryOff: 'AI 를 연결하면 완성본을 읽고 기억합니다.',
     memoryKind: { style: '방식', keep: '반드시', avoid: '피함', term: '용어' } as Record<string, string>,
@@ -163,6 +165,22 @@ export const copy = {
     memoryAddPlaceholder: '기억할 것 한 줄 (예: 도입은 질문으로 연다)',
     memoryAdd: '추가',
     memoryRemove: '빼기',
+    /** 완성본에서 찾은 것 — 확인해야 쓴다 */
+    memoryProposedLabel: (n: number) => `완성본에서 찾은 것 ${n}개`,
+    memoryProposedHelp: '확인한 것만 편집에 씁니다. 뺀 것은 다시 제안하지 않습니다.',
+    memoryApprove: '쓰기',
+    memoryApproveAll: '모두 쓰기',
+    memoryEdit: '고치기',
+    memoryEditSave: '저장',
+    memoryEditCancel: '취소',
+    memoryClearAll: '전부 지우기',
+    memoryClearConfirm: '기억을 전부 지웁니다. 되돌릴 수 없습니다.',
+    memoryClearYes: '지우기',
+    memoryClearNo: '취소',
+    /** 완성본 학습 제외 */
+    referenceExclude: '학습에서 빼기',
+    referenceInclude: '다시 넣기',
+    referenceExcluded: '학습에서 뺌',
     linksLabel: '링크로 배우기',
     linksPlaceholder: '유튜브 · 틱톡 · 릴스 링크 붙여넣기',
     linksAdd: '가져오기',
@@ -271,6 +289,7 @@ export const copy = {
     silence: '쉬는 구간 찾는 중',
     render: '만드는 중',
     chapters: '챕터 나누는 중',
+    plan: '편집안 만드는 중',
     analyze: '완성본 배우는 중',
     download: '링크 영상 가져오는 중',
   } as Record<string, string>,
@@ -321,6 +340,26 @@ export const copy = {
       title: (n: number) => `챕터 ${n}개`,
       makeShort: '숏폼으로',
       noHighlight: '너무 짧음',
+    },
+    /** 편집안 버튼 (AI 연결 시) */
+    planMake: '편집안 만들기',
+    planRemake: '편집안 다시 만들기',
+    /** 편집안 카드 — 취지 · 구성(시간 · 내용 · 편집 초안) · 남길 곳 · 잘라낼 후보 · 숏폼 후보 */
+    planCard: {
+      title: '편집안',
+      purpose: '취지',
+      hook: '시작',
+      sections: '구성',
+      sectionKind: { intro: '도입', setup: '준비', demo: '시범', qa: '질문', closing: '마무리', other: '' } as Record<string, string>,
+      keeps: '남길 곳',
+      cuts: '잘라낼 후보',
+      cutKind: { repeat: '반복', ng: 'NG', aside: '잡담', silence: '침묵', other: '' } as Record<string, string>,
+      shorts: '숏폼 후보',
+      channel: { reels: '릴스', shorts: '쇼츠', tiktok: '틱톡', any: '' } as Record<string, string>,
+      makeShort: '숏폼으로',
+      apply: (cuts: number) => (cuts ? `잘라낼 후보 ${cuts}곳을 빼고 롱폼 만들기` : '이대로 롱폼 만들기'),
+      noTranscript: '자막 없이 장면과 쉬는 구간만 보고 만든 초안입니다.',
+      terms: '용어',
     },
     shortPicker: {
       title: '구간 선택',
@@ -373,10 +412,19 @@ export const copy = {
    * 마디가 말하는 자리지만 말투는 위 규칙 그대로. 새 코드를 엔진에 추가하면 여기도 같이.
    */
   chat: {
-    greeting: (p: { durationSec: number; hasAudio: boolean }) =>
+    greeting: (p: { durationSec: number; hasAudio: boolean; plan?: boolean }) =>
       p.hasAudio
-        ? `${fmtMin(p.durationSec)}짜리 영상입니다. 무엇을 해드릴까요?`
+        ? p.plan
+          ? `${fmtMin(p.durationSec)}짜리 영상입니다. 먼저 훑어보고 편집안을 만듭니다.`
+          : `${fmtMin(p.durationSec)}짜리 영상입니다. 무엇을 해드릴까요?`
         : `${fmtMin(p.durationSec)}짜리 영상입니다. 소리가 없어 자막을 자동으로 만들 수는 없지만, 직접 써서 넣을 수 있습니다. 세로 변환과 숏폼도 됩니다.`,
+    'action.plan': () => '편집안 만들어줘',
+    'action.apply_plan': (p: { cuts: number }) => (p.cuts ? `잘라낼 후보 ${p.cuts}곳을 빼고 롱폼으로 만들어줘` : '편집안대로 롱폼으로 만들어줘'),
+    'progress.plan': (p: { hasAudio?: boolean }) => (p.hasAudio === false ? '장면을 보고 편집안 만드는 중' : '자막을 읽고 편집안 만드는 중'),
+    'plan.ready': (p: { sections: number; shorts: number; cuts: number; keeps: number }) =>
+      [`편집안을 만들었습니다. 구성 ${p.sections}개`, p.shorts ? `숏폼 후보 ${p.shorts}개` : '', p.cuts ? `잘라낼 후보 ${p.cuts}곳` : '', p.keeps ? `남길 곳 ${p.keeps}곳` : '']
+        .filter(Boolean)
+        .join(' · ') + '. 원하는 후보를 골라 만드세요.',
     'action.subtitle': () => '자막 넣어줘',
     'action.silence': () => '쉬는 구간 잘라줘',
     'action.vertical': () => '세로로 바꿔줘',
@@ -395,24 +443,32 @@ export const copy = {
           ? '숏폼 만드는 중'
           : p.action === 'vertical'
             ? '세로로 만드는 중'
-            : p.action === 'ai' && p.title
-              ? `「${p.title}」 만드는 중`
-              : '만드는 중',
+            : p.action === 'plan'
+              ? p.cuts
+                ? `잘라낼 후보 ${p.cuts}곳, ${p.removedSec ?? 0}초를 빼고 롱폼 만드는 중`
+                : '편집안대로 롱폼 만드는 중'
+              : p.action === 'ai' && p.title
+                ? `「${p.title}」 만드는 중`
+                : '만드는 중',
     'transcript.ready': (p: { segments: number }) => `자막 ${p.segments}줄을 만들었습니다.`,
     'transcript.empty': () => '말소리를 찾지 못해 자막이 비어 있습니다. 소리가 작거나 음악만 있는 영상일 수 있습니다.',
-    'silence.none': () => '쉬는 구간이 없어 그대로 두었습니다.',
-    'output.ready': (p: { action?: string; cuts?: number; removedSec?: number; title?: string }) =>
+    'silence.none': (p: { kept?: number }) => (p.kept ? `쉬는 구간 ${p.kept}곳은 동작이 이어져 남겼습니다. 잘라낼 곳이 없어 그대로 두었습니다.` : '쉬는 구간이 없어 그대로 두었습니다.'),
+    'output.ready': (p: { action?: string; cuts?: number; removedSec?: number; title?: string; kept?: number }) =>
       p.action === 'silence'
-        ? `쉬는 구간 ${p.cuts ?? 0}곳, ${p.removedSec ?? 0}초를 잘라냈습니다.`
+        ? `쉬는 구간 ${p.cuts ?? 0}곳, ${p.removedSec ?? 0}초를 잘라냈습니다.${p.kept ? ` 동작이 이어지는 ${p.kept}곳은 남겼습니다.` : ''}`
         : p.action === 'vertical'
           ? '세로로 바꿨습니다.'
           : p.action === 'short'
             ? '숏폼 하나를 만들었습니다.'
             : p.action === 'subtitle'
               ? '자막을 넣었습니다.'
-              : p.action === 'ai' && p.title
-                ? `「${p.title}」 만들었습니다.`
-                : '끝났습니다.',
+              : p.action === 'plan'
+                ? p.cuts
+                  ? `편집안대로 ${p.cuts}곳, ${p.removedSec ?? 0}초를 빼고 롱폼을 만들었습니다.`
+                  : '편집안대로 롱폼을 만들었습니다.'
+                : p.action === 'ai' && p.title
+                  ? `「${p.title}」 만들었습니다.`
+                  : '끝났습니다.',
     'user.text': (p: { text: string }) => p.text,
     'ai.text': (p: { text: string }) => p.text,
     'ai.done': () => '끝났습니다.',
@@ -431,6 +487,8 @@ export const copy = {
     range_too_short: '구간이 너무 짧습니다. 1초보다 길게 정하세요.',
     video_not_ready: '준비 중인 영상입니다. 잠시 뒤 다시 시도하세요.',
     too_short_for_chapters: '영상이 짧아 나눌 챕터가 없습니다.',
+    plan_failed: '편집안을 만들지 못했습니다. 다시 시도하세요.',
+    plan_missing: '편집안이 아직 없습니다. 먼저 편집안을 만드세요.',
     edit_failed: '만드는 중에 문제가 생겼습니다. 한 번 더 시도합니다.',
     ai_off: 'AI가 연결되어 있지 않습니다. 설정에서 연결하세요.',
     ai_busy: '앞 요청을 처리하는 중입니다.',

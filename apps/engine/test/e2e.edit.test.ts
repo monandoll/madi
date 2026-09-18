@@ -10,6 +10,7 @@ import { ActionResponse, OutputDetailResponse, OutputsResponse, VideoDetailRespo
 import { type Engine, startEngine } from '../src/engine.js';
 import { resolveSidecar, resolveWhisperModel } from '../src/main/sidecar.js';
 import { FIXTURES, SAMPLE_5S, freePort, tempHome, waitFor } from './helpers.js';
+import { makeDemoSilenceFixture } from './longform-fixture.js';
 
 let home: string;
 let watchDir: string;
@@ -111,6 +112,32 @@ describe('edit actions (AI off)', () => {
     expect(msg.params['cuts']).toBe(2);
   });
 
+  it('AI 가 없으면 편집안은 409 ai_off, 편집안 없이 만들기는 409 plan_missing', async () => {
+    const post = (body: unknown) => fetch(`${engine.url}/api/videos/${videoId}/actions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const a = await post({ type: 'plan' });
+    expect(a.status).toBe(409);
+    expect(((await a.json()) as { error: { code: string } }).error.code).toBe('ai_off');
+    const b = await post({ type: 'apply_plan' });
+    expect(b.status).toBe(409);
+    expect(((await b.json()) as { error: { code: string } }).error.code).toBe('plan_missing');
+    expect((await detail()).plan).toBeNull();
+  });
+
+  it('동작 시범 중의 침묵은 남긴다 (말 없이 움직이는 구간은 자르지 않는다)', { timeout: 120_000 }, async () => {
+    makeDemoSilenceFixture(path.join(watchDir, '햄스트링 시범.mp4'));
+    await waitFor(async () => VideosResponse.parse(await api('/api/videos')).videos.some((v) => v.title === '햄스트링 시범' && v.status === 'ready'), 60_000);
+    const demoId = VideosResponse.parse(await api('/api/videos')).videos.find((v) => v.title === '햄스트링 시범')!.id;
+    const res = ActionResponse.parse(await api(`/api/videos/${demoId}/actions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'silence' }) }));
+    await waitJob(res.job!.id);
+    await engine.queue.idle();
+    const d = VideoDetailResponse.parse(await api(`/api/videos/${demoId}`));
+    // 유일한 무음이 시범이라 잘라낼 곳이 없다 → 결과물 없이 한 마디, 남긴 곳 1
+    expect(d.outputs).toEqual([]);
+    const m = d.messages.find((x) => x.code === 'silence.none')!;
+    expect(m).toBeTruthy();
+    expect(m.params['kept']).toBe(1);
+  });
+
   it('수동 숏폼: 구간을 세로 숏폼으로', async () => {
     const res = await act({ type: 'short', range: { start: 1, end: 3.5 }, subtitles: false });
     await waitJob(res.job!.id);
@@ -148,7 +175,7 @@ describe('edit actions (AI off)', () => {
     expect(thumb.status).toBe(200);
     // 갤러리 카드에 결과물 개수
     const { videos } = VideosResponse.parse(await api('/api/videos'));
-    expect(videos[0]!.outputCount).toBe(3);
+    expect(videos.find((v) => v.id === videoId)!.outputCount).toBe(3);
   });
 
   it('자막 만들기 (whisper 있을 때만): 자막 + 번인 결과물', async (ctx) => {

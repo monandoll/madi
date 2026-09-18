@@ -14,7 +14,7 @@ export const TOOL_DEFS = {
     input: z.object({}),
   },
   find_silences: {
-    description: '말이 없는 구간(무음) 목록을 돌려준다. 잘라내지는 않는다.',
+    description: '말이 없는 구간(무음) 목록을 돌려준다. 잘라내지는 않는다. moving=true 면 말은 없지만 동작이 이어지는 침묵(시범)이라 자르면 안 된다.',
     input: z.object({
       minSec: z.number().min(0.2).max(10).optional().describe('이 길이(초) 이상 이어져야 무음으로 본다. 기본 0.7'),
     }),
@@ -26,7 +26,7 @@ export const TOOL_DEFS = {
     }),
   },
   propose_cuts: {
-    description: '무음을 기준으로 잘라낼 구간(cuts)을 제안한다. 적용하려면 apply_edit 에 그대로 넘긴다.',
+    description: '무음을 기준으로 잘라낼 구간(cuts)을 제안한다. 동작이 이어지는 침묵(시범)은 빼고 kept 로 따로 알려 준다 — 그 구간은 자르지 않는다. 적용하려면 cuts 를 apply_edit 에 그대로 넘긴다.',
     input: z.object({
       minSilenceSec: z.number().min(0.2).max(10).optional().describe('기본 0.7'),
       padSec: z.number().min(0).max(2).optional().describe('말 앞뒤로 남길 숨(초). 기본 0.2'),

@@ -216,6 +216,44 @@ describe('완성본의 뜻 읽기 · 기억', () => {
     expect(mem.find((m) => m.kind === 'term')?.text).toBe('견갑골');
     // 근거는 아는 완성본 id 만
     for (const m of mem) for (const id of m.evidence) expect(s.references.some((r) => r.id === id)).toBe(true);
+    // 완성본에서 온 것은 전부 "제안" — 확인하기 전엔 편집에 안 쓴다 (기획안 §12)
+    expect(mem.filter((m) => m.source === 'reference').every((m) => m.status === 'proposed')).toBe(true);
+    expect(engine.styleService.recall({ id: 'v-shoulder', title: '어깨 가동성 루틴' } as never)).not.toContain('[방식 · 어깨]');
+  });
+
+  it('제안은 확인해야 편집에 쓰인다 (한 줄씩 · 모두)', async () => {
+    const before = (await style()).memory;
+    const one = before.find((m) => m.scope === 'topic')!;
+    const patched = StyleResponse.parse((await api(`/api/style/memory/${one.id}`, json('PATCH', { status: 'approved' }))).body);
+    expect(patched.memory.find((m) => m.id === one.id)?.status).toBe('approved');
+    expect(patched.memory.filter((m) => m.status === 'proposed').length).toBe(before.length - 1);
+    expect(engine.styleService.recall({ id: 'v-shoulder', title: '어깨 가동성 루틴' } as never)).toContain('[방식 · 어깨]');
+    expect((await api(`/api/style/memory/${one.id}`, json('PATCH', {}))).status).toBe(400);
+    expect((await api('/api/style/memory/없음', json('PATCH', { status: 'approved' }))).status).toBe(404);
+    const all = StyleResponse.parse((await api('/api/style/memory/approve', json('POST', {}))).body);
+    expect(all.memory.every((m) => m.status === 'approved')).toBe(true);
+  });
+
+  it('기억 글을 고치면 그 글로 바뀌고 확인된 것으로 남는다', async () => {
+    const m = (await style()).memory.find((x) => x.kind === 'keep')!;
+    const r = StyleResponse.parse((await api(`/api/style/memory/${m.id}`, json('PATCH', { text: '시범 중 침묵은 2초까지 남긴다' }))).body);
+    expect(r.memory.find((x) => x.id === m.id)).toMatchObject({ text: '시범 중 침묵은 2초까지 남긴다', status: 'approved', source: 'reference' });
+    expect(engine.styleService.recall({ id: 'v', title: '아무 영상' } as never)).toContain('시범 중 침묵은 2초까지 남긴다');
+  });
+
+  it('완성본을 학습에서 빼면 숫자에서도 기억 검색에서도 빠지고, 다시 넣으면 돌아온다', async () => {
+    const s0 = await style();
+    const shoulder = s0.references.find((r) => r.title === '어깨 루틴_final')!;
+    const count = s0.learned!.count;
+    const off = StyleResponse.parse((await api(`/api/style/references/${shoulder.id}`, json('PATCH', { excluded: true }))).body);
+    expect(off.references.find((r) => r.id === shoulder.id)?.excluded).toBe(true);
+    expect(off.learned?.count).toBe(count - 1);
+    expect(engine.styleService.recall({ id: 'v-shoulder', title: '어깨 가동성 루틴' } as never)).not.toContain('비슷한 완성본: 어깨 루틴_final');
+    expect((await api('/api/style/references/없음', json('PATCH', { excluded: true }))).status).toBe(404);
+    const on = StyleResponse.parse((await api(`/api/style/references/${shoulder.id}`, json('PATCH', { excluded: false }))).body);
+    expect(on.references.find((r) => r.id === shoulder.id)?.excluded).toBe(false);
+    expect(on.learned?.count).toBe(count);
+    expect(engine.styleService.recall({ id: 'v-shoulder', title: '어깨 가동성 루틴' } as never)).toContain('비슷한 완성본: 어깨 루틴_final');
   });
 
   it('편집할 때는 관련 기억만 붙는다 (어깨 영상엔 어깨 기억, 다른 영상엔 안 붙음)', async () => {
@@ -234,16 +272,20 @@ describe('완성본의 뜻 읽기 · 기억', () => {
     expect(engine.agent.systemPrompt(shoulder)).toContain('[방식 · 어깨]');
   });
 
-  it('직접 쓴 기억은 추가되고, 어느 것이든 빼면 사라진다 (승인 안 한 것을 굳히지 않는다)', async () => {
+  it('직접 쓴 기억은 바로 쓰이고, 어느 것이든 빼면 사라진다 (뺀 제안은 다시 배워도 안 돌아온다)', async () => {
     const added = StyleResponse.parse((await api('/api/style/memory', json('POST', { text: '도입은 3초 안에 동작', scope: 'all' }))).body);
     const mine = added.memory.find((m) => m.source === 'user')!;
-    expect(mine).toMatchObject({ text: '도입은 3초 안에 동작', kind: 'style', scope: 'all' });
+    expect(mine).toMatchObject({ text: '도입은 3초 안에 동작', kind: 'style', scope: 'all', status: 'approved' });
     expect((await api('/api/style/memory', json('POST', { text: 'x' }))).status).toBe(400);
     const ref = added.memory.find((m) => m.source === 'reference')!;
     const after = StyleResponse.parse((await api(`/api/style/memory/${ref.id}`, { method: 'DELETE' })).body);
     expect(after.memory.some((m) => m.id === ref.id)).toBe(false);
     expect((await api('/api/style/memory/없음', { method: 'DELETE' })).status).toBe(404);
     expect(engine.styleService.recall({ id: 'v', title: '아무 영상' } as never)).toContain('도입은 3초 안에 동작');
+    expect(engine.memory.dismissed()).toContain(ref.text);
+    // 다시 정리해도 뺀 글은 돌아오지 않는다
+    await engine.styleService.rememory();
+    expect((await style()).memory.some((m) => m.text === ref.text)).toBe(false);
   });
 
   it('완성본을 다 빼면 완성본에서 온 기억도 비운다', async () => {
@@ -255,5 +297,12 @@ describe('완성본의 뜻 읽기 · 기억', () => {
     }, 15_000);
     // 직접 쓴 것은 남는다
     expect((await style()).memory.some((m) => m.source === 'user')).toBe(true);
+  });
+
+  it('전부 지우기', async () => {
+    await api('/api/style/memory', json('POST', { text: '하나 더' }));
+    expect((await style()).memory.length).toBeGreaterThan(0);
+    const r = StyleResponse.parse((await api('/api/style/memory', { method: 'DELETE' })).body);
+    expect(r.memory).toEqual([]);
   });
 });

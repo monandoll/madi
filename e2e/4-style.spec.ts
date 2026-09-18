@@ -91,20 +91,38 @@ test('링크를 붙여 넣으면 받아서 배운다 (가짜 yt-dlp)', async ({ 
   await expect(learned).toHaveCount(0);
 });
 
-test('AI 가 기억한 것: 직접 한 줄 쓰고, 빼면 사라진다', async ({ page }) => {
+test('AI 가 기억한 것: 직접 한 줄 쓰면 바로 쓰이고, 고치고, 빼고, 전부 지운다', async ({ page }) => {
   await page.request.patch('/api/settings', { data: { ai: { provider: 'none' }, setupDone: true } });
   await page.goto('/#/settings');
+  // 밖으로 나가는 것을 알려 준다 (기획안 §12)
+  await expect(page.getByTestId('ai-data-notice')).toContainText('영상 파일은 이 컴퓨터를 떠나지 않습니다');
   const mem = page.getByTestId('memory-section');
   await expect(mem).toBeVisible();
   await expect(mem.getByTestId('memory-list')).toContainText('아직 기억한 것이 없습니다');
+  await expect(mem.getByTestId('memory-proposed')).toHaveCount(0);
   await mem.getByTestId('memory-input').fill('도입은 질문으로 연다');
   await mem.getByTestId('memory-add').click();
   const row = mem.getByTestId('memory-row').filter({ hasText: '도입은 질문으로 연다' });
   await expect(row).toBeVisible();
   await expect(row).toHaveAttribute('data-scope', 'all');
+  await expect(row).toHaveAttribute('data-status', 'approved');
+  await expect(row.getByTestId('memory-approve')).toHaveCount(0);
   await expect(row).toContainText('모든 영상 · 직접');
-  await row.getByTestId('memory-remove').click();
+  // 고치기
+  await row.getByTestId('memory-edit').click();
+  // 고치는 동안은 글이 입력칸 안에 있어 hasText 로는 못 찾는다
+  await mem.getByTestId('memory-edit-input').fill('도입은 질문 하나로 연다');
+  await mem.getByTestId('memory-edit-input').press('Enter');
+  await expect(mem.getByTestId('memory-row').filter({ hasText: '도입은 질문 하나로 연다' })).toBeVisible();
+  // 하나 더 쓰고 전부 지우기 (두 번 눌러야 지워진다)
+  await mem.getByTestId('memory-input').fill('시범은 끝까지');
+  await mem.getByTestId('memory-add').click();
+  await expect(mem.getByTestId('memory-row')).toHaveCount(2);
+  await mem.getByTestId('memory-clear').click();
+  await expect(mem.getByTestId('memory-clear-confirm')).toContainText('되돌릴 수 없습니다');
+  await mem.getByTestId('memory-clear-yes').click();
   await expect(mem.getByTestId('memory-row')).toHaveCount(0);
+  await expect(mem.getByTestId('memory-clear')).toHaveCount(0);
   // 전문 용어 금지
   for (const banned of ['인사이트', '임베딩', '메모리', '프롬프트']) {
     await expect(page.getByText(banned, { exact: false })).toHaveCount(0);

@@ -82,6 +82,14 @@ export const api = {
   removeReference: (id: string) => send('DELETE', `/api/style/references/${id}`, undefined, StyleResponse),
   removeMemory: (id: string) => send('DELETE', `/api/style/memory/${id}`, undefined, StyleResponse),
   addMemory: (body: { text: string; kind?: string; scope?: string; topics?: string[] }) => send('POST', '/api/style/memory', body, StyleResponse),
+  /** 글 고치기 또는 제안 확인 */
+  patchMemory: (id: string, body: { text?: string; status?: 'approved' }) => send('PATCH', `/api/style/memory/${id}`, body, StyleResponse),
+  /** 제안 전부(또는 ids) 확인 */
+  approveMemory: (ids?: string[]) => send('POST', '/api/style/memory/approve', ids ? { ids } : {}, StyleResponse),
+  /** 기억 전부 지우기 (onlyProposed 면 제안만) */
+  clearMemory: (onlyProposed = false) => send('DELETE', `/api/style/memory${onlyProposed ? '?only=proposed' : ''}`, undefined, StyleResponse),
+  /** 완성본을 학습에서 빼거나 다시 넣기 */
+  patchReference: (id: string, excluded: boolean) => send('PATCH', `/api/style/references/${id}`, { excluded }, StyleResponse),
   outputs: () => get('/api/outputs', OutputsResponse),
   output: (id: string) => get(`/api/outputs/${id}`, OutputDetailResponse),
   suggestFolders: () => get('/api/folders/suggest', FoldersResponse),

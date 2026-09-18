@@ -73,6 +73,28 @@ if (mcpConfigPath === '{"mcpServers":{}}') {
       tags: [part, '스트레칭'],
     });
   }
+  if (prompt.includes('## 편집안')) {
+    // 촬영본 편집안: 길이 안에서 구성 · 남길 곳 · 잘라낼 후보 · 숏폼 후보. 자막이 있으면 첫 문장을 제목에.
+    const dur = Number(/^길이\(초\): (\d+)/m.exec(prompt)?.[1] ?? 8);
+    const title = /^제목: (.*)$/m.exec(prompt)?.[1] ?? '';
+    const hasText = !prompt.includes('자막: 없음');
+    const first = /^\[\d+:\d+–\d+:\d+\] (.*)$/m.exec(prompt)?.[1] ?? '';
+    const cutEnd = Math.min(1, dur / 4);
+    answer({
+      purpose: `${title} — 동작 하나를 설명하고 보여 준다`,
+      audience: '운동 초보',
+      hook: '인사를 빼고 동작 설명부터',
+      sections: [
+        { title: hasText && first ? first.slice(0, 20) : '도입', start: 0, end: Math.min(2, dur / 2), kind: 'intro', note: '인사는 빼고 핵심 문장부터' },
+        { title: '시범', start: Math.min(2, dur / 2), end: dur, kind: 'demo', note: '시범 속도 그대로' },
+      ],
+      keepRanges: [{ start: Math.min(2, dur / 2), end: dur, why: '동작 시범 — 말이 없어도 남긴다' }],
+      cutCandidates: [{ start: 0, end: cutEnd, why: '인사 · 촬영 세팅 멘트', kind: 'aside' }],
+      shortCandidates: [{ start: Math.min(1, dur / 4), end: dur, title: `${title} 한 동작`, why: '설명과 시범이 한 번에 완결된다', channel: 'reels' }],
+      terms: ['견갑골'],
+      tags: ['어깨', '스트레칭'],
+    });
+  }
   if (prompt.includes('## 기억 정리')) {
     const ids = [...prompt.matchAll(/\(id: ([^)]+)\)/g)].map((m) => m[1]);
     answer({
@@ -175,7 +197,7 @@ try {
     await sleep(8000);
     say('다 했어요.');
   } else {
-    say(`"${request}" 라고 하셨네요. 규칙 ${system.includes('편집 규칙') ? '읽었어요' : '못 읽었어요'}. 지침 ${system.includes('제작 지침') ? '있어요' : '없어요'}. 기억 ${system.includes('# 기억') ? '있어요' : '없어요'}.`);
+    say(`"${request}" 라고 하셨네요. 규칙 ${system.includes('편집 규칙') ? '읽었어요' : '못 읽었어요'}. 지침 ${system.includes('제작 지침') ? '있어요' : '없어요'}. 기억 ${system.includes('# 기억') ? '있어요' : '없어요'}. 편집안 ${prompt.includes('# 이 영상의 편집안') ? '있어요' : '없어요'}.`);
   }
   finish(true, last);
 } catch (err) {
