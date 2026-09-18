@@ -16,7 +16,7 @@ import type { SettingsStore } from '../settings.js';
 import type { VideoStore } from '../videos.js';
 import type { Ffmpeg } from '../workers/ffmpeg.js';
 import { run, SpawnError } from '../workers/spawn.js';
-import type { Whisper } from '../workers/whisper.js';
+import { termsPrompt, type Whisper } from '../workers/whisper.js';
 import { aggregate, aspectOf, learnedRuleLines, looksLikeSameVideo, pairDiff } from './learn.js';
 import { classifyLinkError, parseYtdlpOutput, ytdlpArgs } from './link.js';
 import type { ReferenceStore } from './references.js';
@@ -371,7 +371,8 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
     try {
       const whisper = await this.d.whisper();
       const work = path.join(this.d.cfg.workDir, 'analyze', ref.id);
-      const result = await whisper.transcribe(ref.path, work, { signal });
+      // 사용자가 확인한 용어 기억을 알려 주고 듣는다 (기획안 §5.2)
+      const result = await whisper.transcribe(ref.path, work, { signal, prompt: termsPrompt(this.d.memory.listApproved().filter((m) => m.kind === 'term').map((m) => m.text)) });
       fs.rmSync(work, { recursive: true, force: true });
       this.d.refs.update(ref.id, { segments: result.segments });
       return result.segments;

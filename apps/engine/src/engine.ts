@@ -105,7 +105,6 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   };
   const style = new StyleProfile(cfg.styleDir);
   style.ensure();
-  registerEditWorkers({ cfg, queue, videos, library, ffmpeg, ffmpegBin, events, log, whisper, style });
   const chapters = new ChapterStore(db);
   registerChapterWorkers({ queue, videos, library, chapters, style, ffmpegBin, events, log });
   const watcher = new FolderWatcher({ videos, queue, events, log });
@@ -116,6 +115,13 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, ytdlpBin, whisper, events, log, memory, providers });
   styleService.registerWorker();
   const plans = new PlanStore(db);
+  // 자막을 만들 때 whisper 에 알려 줄 용어: 확인한 용어 기억 + 완성본 메모의 용어 + 이 영상 편집안의 용어 (기획안 §5.2)
+  const terms = (videoId: string) => [
+    ...memory.listApproved().filter((m) => m.kind === 'term').map((m) => m.text),
+    ...refs.withInsight().flatMap((r) => r.insight?.terms ?? []),
+    ...(plans.get(videoId)?.terms ?? []),
+  ];
+  registerEditWorkers({ cfg, queue, videos, library, ffmpeg, ffmpegBin, events, log, whisper, style, terms });
   registerPlanWorker({ cfg, queue, videos, library, plans, style, settings, providers, recall: (video) => styleService.recall(video), ffmpegBin, events, log });
 
   const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);

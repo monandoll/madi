@@ -159,7 +159,7 @@ export class Whisper {
   async transcribe(
     input: string,
     workDir: string,
-    opts: { language?: string; signal?: AbortSignal | undefined; onProgress?: (ratio: number) => void } = {},
+    opts: { language?: string; signal?: AbortSignal | undefined; onProgress?: (ratio: number) => void; prompt?: string | undefined } = {},
   ): Promise<{ language: string; segments: Segment[] }> {
     if (!fs.existsSync(this.modelPath)) throw new WhisperMissingError('model');
     fs.mkdirSync(workDir, { recursive: true });
@@ -174,7 +174,7 @@ export class Whisper {
       // -sns: "[음악]" 같은 비음성 토큰을 애초에 내지 않는다
       await run(
         this.bins.whisper,
-        ['-m', this.modelPath, '-f', wav, '-l', opts.language ?? 'ko', '-t', threads, '-ojf', '-of', prefix, '-np', '-pp', '-sns'],
+        ['-m', this.modelPath, '-f', wav, '-l', opts.language ?? 'ko', '-t', threads, '-ojf', '-of', prefix, '-np', '-pp', '-sns', ...(opts.prompt ? ['--prompt', opts.prompt] : [])],
         {
           signal: opts.signal,
           onStdout: (chunk) => {
@@ -202,4 +202,13 @@ export class Whisper {
       fs.rmSync(wav, { force: true });
     }
   }
+}
+
+/**
+ * 운동 · 해부학 용어를 whisper 의 첫 프롬프트로 (기획안 §5.2 용어 사전). 모델이 "견갑골" 같은 낱말을 알고 들으면 오인식이 준다.
+ * 용어가 없으면 빈 문자열 (프롬프트를 안 넣는다). 너무 많으면 앞 40개.
+ */
+export function termsPrompt(terms: string[]): string {
+  const clean = [...new Set(terms.map((t) => t.trim()).filter((t) => t.length >= 2 && t.length <= 40))].slice(0, 40);
+  return clean.length ? `운동 · 재활 설명 영상. 용어: ${clean.join(', ')}.` : '';
 }

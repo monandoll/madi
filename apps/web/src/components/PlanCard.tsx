@@ -35,7 +35,7 @@ export function PlanCard({ plan, onShort, onApply }: Props) {
               <span className="flex min-w-0 flex-1 flex-col gap-px">
                 <span className="text-13 font-medium pc:text-14">
                   {s.title}
-                  {c.sectionKind[s.kind] ? <span className="ml-1.5 text-11 font-normal text-text-3">{c.sectionKind[s.kind]}</span> : null}
+                  {c.sectionKind[s.kind] && c.sectionKind[s.kind] !== s.title ? <span className="ml-1.5 text-11 font-normal text-text-3">{c.sectionKind[s.kind]}</span> : null}
                 </span>
                 {s.note && <span className="text-12 text-text-2">{s.note}</span>}
               </span>

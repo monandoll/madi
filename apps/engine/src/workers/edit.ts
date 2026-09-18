@@ -13,7 +13,7 @@ import type { StyleProfile } from '../agent/style.js';
 import type { Ffmpeg } from './ffmpeg.js';
 import { run } from './spawn.js';
 import type { Whisper } from './whisper.js';
-import { WhisperMissingError } from './whisper.js';
+import { termsPrompt, WhisperMissingError } from './whisper.js';
 
 export interface EditWorkerDeps {
   cfg: EngineConfig;
@@ -25,6 +25,8 @@ export interface EditWorkerDeps {
   whisper: () => Promise<Whisper>;
   /** 무음 기준(초)은 완성본에서 배운 값을 따른다 */
   style: StyleProfile;
+  /** 자막을 만들 때 whisper 에 알려 줄 운동 · 해부학 용어 (기억 · 완성본 · 편집안에서). 없으면 빈 목록. */
+  terms?: (videoId: string) => string[];
   events: EventLog;
   log: Logger;
 }
@@ -61,7 +63,7 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
       if (video.hasAudio === false) throw new Error('no audio');
       const whisper = await d.whisper();
       const work = path.join(cfg.dataDir, 'work', job.id);
-      const result = await whisper.transcribe(video.path, work, { signal, onProgress: setProgress });
+      const result = await whisper.transcribe(video.path, work, { signal, onProgress: setProgress, prompt: termsPrompt(d.terms?.(video.id) ?? []) });
       fs.rmSync(work, { recursive: true, force: true });
       const transcript = library.setTranscript(video.id, { ...result, model: whisper.model });
       d.events.record('transcript.made', { segments: transcript.segments.length, durationSec: video.durationSec }, Date.now() - started);
