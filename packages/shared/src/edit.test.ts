@@ -26,6 +26,30 @@ describe('keepSegments', () => {
   });
 });
 
+describe('keepSegments · parts', () => {
+  it('조각은 준 순서대로, 각 조각 안에서 컷을 뺀다', () => {
+    const segs = keepSegments({ keep: { start: 0, end: 1 }, parts: [{ start: 5, end: 8 }, { start: 1, end: 3 }], cuts: [{ start: 6, end: 6.5, reason: 'ai' }] }, 10);
+    expect(segs).toEqual([
+      { start: 5, end: 6 },
+      { start: 6.5, end: 8 },
+      { start: 1, end: 3 },
+    ]);
+  });
+  it('조각이 비어 있으면 keep 대로', () => {
+    expect(keepSegments({ keep: { start: 2, end: 4 }, parts: [], cuts: [] }, 10)).toEqual([{ start: 2, end: 4 }]);
+  });
+  it('순서가 뒤바뀐 조각에서도 시각을 옮긴다', () => {
+    const segs = [
+      { start: 5, end: 8 },
+      { start: 1, end: 3 },
+    ];
+    expect(remapTime(6, segs)).toBe(1);
+    expect(remapTime(2, segs)).toBe(4);
+    expect(remapTime(4, segs)).toBeNull();
+    expect(remapRange({ start: 1.5, end: 2.5 }, segs)).toEqual({ start: 3.5, end: 4.5 });
+  });
+});
+
 describe('remapTime', () => {
   const segs = [
     { start: 0, end: 2 },

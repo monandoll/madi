@@ -358,6 +358,7 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
       maxSilenceSec: Math.round(Math.max(0, ...silences.map((s) => s.end - s.start)) * 100) / 100,
       sceneCount: scenes.length,
       cutsPerMin: Math.round((scenes.length / minutes) * 10) / 10,
+      sceneTimes: scenes.slice(0, 200).map((t) => Math.round(t * 10) / 10),
       pair,
     };
   }

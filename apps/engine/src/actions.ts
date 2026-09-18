@@ -1,4 +1,5 @@
-import { type ActionRequest, type ActionResponse, DEFAULT_SUBTITLE_STYLE, type Edit, type Video } from '@madi/shared';
+import type { z } from 'zod';
+import { type ActionRequest, type ActionResponse, DEFAULT_SUBTITLE_STYLE, Edit, type Video } from '@madi/shared';
 import type { EventLog } from './events.js';
 import type { Library } from './library.js';
 import type { PlanStore } from './plan/store.js';
@@ -30,7 +31,7 @@ export function runAction(d: ActionDeps, video: Video, req: ActionRequest): Acti
   if (video.status !== 'ready') throw new ActionError('video_not_ready');
   const duration = video.durationSec ?? 0;
   const transcript = d.library.transcriptOf(video.id);
-  const baseEdit = (title: string): Omit<Edit, 'id' | 'createdAt'> => ({
+  const baseEdit = (title: string): Omit<z.input<typeof Edit>, 'id' | 'createdAt'> => ({
     videoId: video.id,
     title,
     keep: null,
@@ -47,7 +48,7 @@ export function runAction(d: ActionDeps, video: Video, req: ActionRequest): Acti
   const progress = (jobId: string, code: string, params: Record<string, string | number | boolean | null> = {}) =>
     messages.push(d.library.say({ videoId: video.id, role: 'assistant', kind: 'progress', code, jobId, params }));
 
-  d.events.record('action', { type: req.type, kind: video.kind });
+  d.events.record('action', { type: req.type, kind: video.kind, ...(req.type === 'short' ? { from: req.from } : {}) });
 
   switch (req.type) {
     case 'subtitle': {

@@ -154,6 +154,7 @@ export const copy = {
     insightKeep: '남긴 것',
     insightShorts: '숏폼 후보',
     insightTerms: '용어',
+    insightTitle: '제목과 내용',
     /** 제작자 기억 */
     memoryLabel: 'AI 가 기억한 것',
     memoryIntro: '여기 있는 것만 편집에 씁니다. 완성본에서 찾은 것은 확인해야 쓰이고, 편집 중 "앞으로도 이렇게" 한 것과 직접 쓴 것은 바로 쓰입니다.',
@@ -453,22 +454,8 @@ export const copy = {
     'transcript.ready': (p: { segments: number }) => `자막 ${p.segments}줄을 만들었습니다.`,
     'transcript.empty': () => '말소리를 찾지 못해 자막이 비어 있습니다. 소리가 작거나 음악만 있는 영상일 수 있습니다.',
     'silence.none': (p: { kept?: number }) => (p.kept ? `쉬는 구간 ${p.kept}곳은 동작이 이어져 남겼습니다. 잘라낼 곳이 없어 그대로 두었습니다.` : '쉬는 구간이 없어 그대로 두었습니다.'),
-    'output.ready': (p: { action?: string; cuts?: number; removedSec?: number; title?: string; kept?: number }) =>
-      p.action === 'silence'
-        ? `쉬는 구간 ${p.cuts ?? 0}곳, ${p.removedSec ?? 0}초를 잘라냈습니다.${p.kept ? ` 동작이 이어지는 ${p.kept}곳은 남겼습니다.` : ''}`
-        : p.action === 'vertical'
-          ? '세로로 바꿨습니다.'
-          : p.action === 'short'
-            ? '숏폼 하나를 만들었습니다.'
-            : p.action === 'subtitle'
-              ? '자막을 넣었습니다.'
-              : p.action === 'plan'
-                ? p.cuts
-                  ? `편집안대로 ${p.cuts}곳, ${p.removedSec ?? 0}초를 빼고 롱폼을 만들었습니다.`
-                  : '편집안대로 롱폼을 만들었습니다.'
-                : p.action === 'ai' && p.title
-                  ? `「${p.title}」 만들었습니다.`
-                  : '끝났습니다.',
+    'output.ready': (p: { action?: string; cuts?: number; removedSec?: number; title?: string; kept?: number; focus?: string; subtitleTop?: boolean }) =>
+      outputReadyLine(p) + placementNote(p),
     'user.text': (p: { text: string }) => p.text,
     'ai.text': (p: { text: string }) => p.text,
     'ai.done': () => '끝났습니다.',
@@ -520,4 +507,34 @@ export function chatText(code: string, params: Record<string, any>): string {
 
 export function errorMessage(code: string | null | undefined): string {
   return (code && copy.error[code]) || copy.error['media_failed']!;
+}
+
+/** 결과물 카드의 한 줄. 어떤 버튼 · 요청에서 온 결과인지에 따라 다르다. */
+function outputReadyLine(p: { action?: string; cuts?: number; removedSec?: number; title?: string; kept?: number }): string {
+  return (
+
+      p.action === 'silence'
+        ? `쉬는 구간 ${p.cuts ?? 0}곳, ${p.removedSec ?? 0}초를 잘라냈습니다.${p.kept ? ` 동작이 이어지는 ${p.kept}곳은 남겼습니다.` : ''}`
+        : p.action === 'vertical'
+          ? '세로로 바꿨습니다.'
+          : p.action === 'short'
+            ? '숏폼 하나를 만들었습니다.'
+            : p.action === 'subtitle'
+              ? '자막을 넣었습니다.'
+              : p.action === 'plan'
+                ? p.cuts
+                  ? `편집안대로 ${p.cuts}곳, ${p.removedSec ?? 0}초를 빼고 롱폼을 만들었습니다.`
+                  : '편집안대로 롱폼을 만들었습니다.'
+                : p.action === 'ai' && p.title
+                  ? `「${p.title}」 만들었습니다.`
+                  : '끝났습니다.'
+  );
+}
+
+/** 렌더가 알아서 정한 것: 세로 초점 · 자막 위치. 정한 게 없으면 빈 문자열 (조용하게). */
+function placementNote(p: { focus?: string; subtitleTop?: boolean }): string {
+  const parts: string[] = [];
+  if (p.focus === 'left' || p.focus === 'right') parts.push(`화면 ${p.focus === 'left' ? '왼쪽' : '오른쪽'}에서 움직여서 그쪽을 잡았습니다.`);
+  if (p.subtitleTop) parts.push('아래쪽 동작을 가리지 않게 자막을 위에 두었습니다.');
+  return parts.length ? ` ${parts.join(' ')}` : '';
 }

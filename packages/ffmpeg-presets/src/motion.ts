@@ -1,4 +1,5 @@
 import type { TimeRange } from '@madi/shared';
+import { escapeFilterPath } from './render.js';
 
 /**
  * 움직임 재기 — 기획안 §5.1 "동작 시범 중의 침묵은 말이 없다는 이유만으로 지우면 안 된다".
@@ -109,3 +110,97 @@ export function splitSilencesByMotion(
   }
   return { cut, kept, speechLevel };
 }
+
+// ---- 화면의 어느 쪽이 움직이는지 (기획안 §5.4 세로 구도 · §5.5 자막 위치) ----
+
+/** 화면 일부 (비율 0..1). */
+export interface MotionRegion {
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * 가로 원본이면 세로로 잘랐을 때 잡을 수 있는 왼쪽 · 가운데 · 오른쪽 기둥을 위 · 아래 띠로 나눠 여섯 조각,
+ * 세로 원본이면 위 · 아래 띠 둘. 위 띠는 화면 위 38%, 아래 띠는 아래 38% (자막이 놓이는 곳).
+ */
+export function regionsFor(width: number, height: number): MotionRegion[] {
+  const bands: [string, number, number][] = [
+    ['top', 0, 0.38],
+    ['bottom', 0.62, 0.38],
+  ];
+  if (width <= height) return bands.map(([b, y, h]) => ({ name: b, x: 0, y, w: 1, h }));
+  // 9:16 창의 너비 (원본 너비 대비). 그보다 좁으면 세 기둥이 겹치니 1/3 로 맞춘다.
+  const win = Math.min(1 / 3, (height * 9) / 16 / width);
+  const cols: [string, number][] = [
+    ['left', 0],
+    ['center', 0.5 - win / 2],
+    ['right', 1 - win],
+  ];
+  const out: MotionRegion[] = [];
+  for (const [c, x] of cols) for (const [b, y, h] of bands) out.push({ name: `${c}.${b}`, x, y, w: win, h });
+  return out;
+}
+
+/** 조각마다 움직임을 재서 파일 하나씩에 쓴다 (metadata=print:file). 한 번 훑는다. */
+export function motionRegionsArgs(input: string, regions: MotionRegion[], files: string[], opts: { fps?: number; width?: number } = {}): string[] {
+  if (regions.length !== files.length || regions.length === 0) throw new Error('regions/files mismatch');
+  const fps = opts.fps ?? MOTION_DEFAULTS.fps;
+  const width = opts.width ?? MOTION_DEFAULTS.width;
+  const n = regions.length;
+  const split = `[0:v]fps=${fps},scale=${width}:-2,split=${n}${regions.map((_, i) => `[s${i}]`).join('')}`;
+  const chains = regions.map((r, i) => {
+    const crop = `crop=w=2*floor(iw*${r.w.toFixed(4)}/2):h=2*floor(ih*${r.h.toFixed(4)}/2):x=2*floor(iw*${r.x.toFixed(4)}/2):y=2*floor(ih*${r.y.toFixed(4)}/2)`;
+    return `[s${i}]${crop},signalstats,metadata=print:key=lavfi.signalstats.YDIF:file='${escapeFilterPath(files[i]!)}'[o${i}]`;
+  });
+  const maps = regions.flatMap((_, i) => ['-map', `[o${i}]`, '-f', 'null', '-']);
+  return ['-hide_banner', '-nostdin', '-i', input, '-an', '-filter_complex', [split, ...chains].join(';'), ...maps];
+}
+
+/** 여러 구간에 걸친 평균 움직임 (구간 밖 표본은 뺀다). 표본이 없으면 null. */
+export function motionLevelIn(samples: MotionSample[], ranges: TimeRange[]): number | null {
+  return mean(samples.filter((s) => ranges.some((r) => s.t >= r.start && s.t <= r.end)).map((s) => s.diff));
+}
+
+export const FOCUS_DEFAULTS = {
+  /** 한 기둥이 다른 기둥보다 이 배수 이상 움직여야 그쪽으로 옮긴다 */
+  ratio: 1.3,
+  /** 그래도 이보다는 움직여야 한다 */
+  floor: 1.5,
+} as const;
+
+/**
+ * 왼쪽 · 가운데 · 오른쪽 기둥의 움직임 → 세로 크롭 초점 (0 · 0.5 · 1).
+ * 확실히 더 움직이는 기둥이 있을 때만 옮기고, 애매하면 가운데 (전과 같다).
+ */
+export function chooseCropFocus(levels: { left: number | null; center: number | null; right: number | null }, opts: { ratio?: number; floor?: number } = {}): number {
+  const ratio = opts.ratio ?? FOCUS_DEFAULTS.ratio;
+  const floor = opts.floor ?? FOCUS_DEFAULTS.floor;
+  const cands: [number, number][] = [
+    [0, levels.left ?? 0],
+    [0.5, levels.center ?? 0],
+    [1, levels.right ?? 0],
+  ];
+  const sorted = [...cands].sort((a, b) => b[1] - a[1]);
+  const [best, second] = [sorted[0]!, sorted[1]!];
+  if (best[0] === 0.5) return 0.5;
+  if (best[1] >= floor && best[1] >= second[1] * ratio) return best[0];
+  return 0.5;
+}
+
+/**
+ * 위 · 아래 띠의 움직임 → 자막을 어디 둘지. 아래가 확실히 더 움직이면(다리 · 골반 동작) 위로.
+ * 자막은 보통 아래에 있으니 아래가 기본이다.
+ */
+export function chooseSubtitleSide(levels: { top: number | null; bottom: number | null }, opts: { ratio?: number; floor?: number } = {}): 'bottom' | 'top' {
+  const ratio = opts.ratio ?? 1.5;
+  const floor = opts.floor ?? FOCUS_DEFAULTS.floor;
+  const top = levels.top ?? 0;
+  const bottom = levels.bottom ?? 0;
+  return bottom >= floor && bottom >= top * ratio ? 'top' : 'bottom';
+}
+
+/** 자막을 위에 둘 때의 아래 여백 (화면 높이 비율). 맨 위 앱 UI 아래로. */
+export const SUBTITLE_TOP_MARGIN = 0.7;

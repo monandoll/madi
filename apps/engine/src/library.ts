@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import type { z } from 'zod';
 import { ChatMessage, Edit, Output, Transcript, type Segment } from '@madi/shared';
 import type { Db } from './db/index.js';
 import { edits, messages, outputs, transcripts } from './db/schema.js';
@@ -11,7 +12,8 @@ export interface LibraryEvents {
   'output.added': [Output];
 }
 
-type EditInsert = Omit<Edit, 'id' | 'createdAt'>;
+/** parts · cropFocus · subtitleAuto 는 안 주면 기본값 (zod default). */
+type EditInsert = Omit<z.input<typeof Edit>, 'id' | 'createdAt'>;
 type OutputInsert = Omit<Output, 'id' | 'createdAt'>;
 type MessageInsert = Pick<ChatMessage, 'videoId' | 'role' | 'kind' | 'code'> &
   Partial<Pick<ChatMessage, 'params' | 'jobId' | 'outputId'>>;
@@ -48,9 +50,9 @@ export class Library extends EventEmitter<LibraryEvents> {
 
   // ---- edits ----
   createEdit(e: EditInsert): Edit {
-    const row = { ...e, id: nanoid(), createdAt: Date.now() };
+    const row = Edit.parse({ ...e, id: nanoid(), createdAt: Date.now() });
     this.db.insert(edits).values(row).run();
-    return Edit.parse(row);
+    return row;
   }
 
   /** 수동 숏폼(구간을 정한 편집) 개수. 제목의 번호에 쓴다. */

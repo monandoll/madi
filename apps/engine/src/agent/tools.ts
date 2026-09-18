@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEFAULT_SUBTITLE_STYLE, type Edit, type Output, type Video } from '@madi/shared';
+import { DEFAULT_SUBTITLE_STYLE, type Edit, type Output, type TimeRange, type Video } from '@madi/shared';
 import { parseScenes, parseSilences, sceneDetectArgs, scenesToRanges, silenceDetectArgs, silencesToCuts } from '@madi/ffmpeg-presets';
 import type { EngineConfig } from '../config.js';
 import type { EventLog } from '../events.js';
@@ -184,7 +184,9 @@ export class AgentTools {
     const cuts = input.cuts?.map((c) => ({ start: clamp(Math.min(c.start, c.end)), end: clamp(Math.max(c.start, c.end)), reason: c.reason ?? ('ai' as const) })).filter((c) => c.end > c.start);
     const keep = input.keep === undefined ? undefined : input.keep === null ? null : { start: clamp(Math.min(input.keep.start, input.keep.end)), end: clamp(Math.max(input.keep.start, input.keep.end)) };
     if (keep && keep.end - keep.start < 1) throw new ToolError('구간이 너무 짧습니다. 1초보다 길게 정하세요.');
+    const parts = input.parts === undefined ? undefined : this.cleanParts(video, input.parts);
     if (input.subtitles && video.hasAudio === false && !transcript) throw new ToolError('소리가 없어 자막을 자동으로 만들 수 없습니다. set_subtitle_text 로 문장을 먼저 넣으세요.');
+    const cropFocus = input.focus === undefined ? undefined : focusValue(input.focus);
 
     let edit: Edit;
     if (input.editId) {
@@ -193,19 +195,23 @@ export class AgentTools {
       edit = this.d.library.updateEdit(existing.id, {
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(keep !== undefined ? { keep } : {}),
+        ...(parts !== undefined ? { parts } : {}),
         ...(cuts !== undefined ? { cuts } : {}),
         ...(input.crop !== undefined ? { crop: input.crop } : {}),
+        ...(cropFocus !== undefined ? { cropFocus } : {}),
         ...(input.subtitles !== undefined ? { subtitles: input.subtitles } : {}),
         ...(transcript ? { transcriptId: transcript.id } : {}),
       });
     } else {
-      const crop = input.crop ?? (keep ? 'vertical' : 'none');
+      const crop = input.crop ?? (keep || parts?.length ? 'vertical' : 'none');
       edit = this.d.library.createEdit({
         videoId: video.id,
         title: input.title ?? `${video.title} · 편집`,
         keep: keep ?? null,
+        parts: parts ?? [],
         cuts: cuts ?? [],
         crop,
+        cropFocus: cropFocus ?? null,
         subtitles: input.subtitles ?? false,
         transcriptId: transcript?.id ?? null,
         subtitleStyle: this.d.style.params().subtitleStyle,
@@ -213,6 +219,17 @@ export class AgentTools {
       });
     }
     return summarizeEdit(edit);
+  }
+
+  /** 조각 목록 정리: 뒤집힌 건 바로, 길이 밖은 잘라, 1초 미만은 오류. 순서는 그대로 (그게 구성이다). */
+  private cleanParts(video: Video, parts: TimeRange[]): TimeRange[] {
+    const clamp = (t: number) => Math.max(0, Math.min(video.durationSec ?? t, t));
+    return parts.map((p) => {
+      const start = clamp(Math.min(p.start, p.end));
+      const end = clamp(Math.max(p.start, p.end));
+      if (end - start < 1) throw new ToolError(`${r2(p.start)}~${r2(p.end)} 조각이 너무 짧아요. 1초보다 길게 정하세요.`);
+      return { start, end };
+    });
   }
 
   private async render(video: Video, ctx: ToolContext, input: ToolInput<'render'>) {
@@ -229,16 +246,19 @@ export class AgentTools {
     const outputs: ReturnType<typeof summarizeOutput>[] = [];
     let n = this.d.library.shortEditCount(video.id);
     for (const clip of input.clips) {
-      const start = Math.max(0, Math.min(clip.start, clip.end));
-      const end = Math.min(video.durationSec ?? clip.end, Math.max(clip.start, clip.end));
+      const parts = clip.parts?.length ? this.cleanParts(video, clip.parts) : [];
+      const start = parts.length ? Math.min(...parts.map((p) => p.start)) : Math.max(0, Math.min(clip.start, clip.end));
+      const end = parts.length ? Math.max(...parts.map((p) => p.end)) : Math.min(video.durationSec ?? clip.end, Math.max(clip.start, clip.end));
       if (end - start < 1) throw new ToolError(`${r2(clip.start)}~${r2(clip.end)} 구간이 너무 짧아요.`);
       n += 1;
       const edit = this.d.library.createEdit({
         videoId: video.id,
         title: clip.title ?? `${video.title} · 숏폼 ${n}`,
         keep: { start, end },
+        parts,
         cuts: [],
         crop: 'vertical',
+        cropFocus: clip.focus === undefined ? null : focusValue(clip.focus),
         subtitles: wantSubs,
         transcriptId: transcript?.id ?? null,
         subtitleStyle: this.d.style.params().subtitleStyle,
@@ -261,7 +281,8 @@ export class AgentTools {
       const edit = this.d.library.edit(input.editId);
       if (!edit || edit.videoId !== video.id) throw new ToolError('그 편집을 찾지 못했습니다.');
       style = { ...edit.subtitleStyle, ...patch };
-      this.d.library.updateEdit(edit.id, { subtitleStyle: style });
+      // 여백을 직접 정했으면 렌더가 자동으로 위로 올리지 않는다
+      this.d.library.updateEdit(edit.id, { subtitleStyle: style, ...(input.bottom !== undefined ? { subtitleAuto: false } : {}) });
     }
     if (input.remember) this.d.style.writeParams({ ...this.d.style.params(), subtitleStyle: { ...DEFAULT_SUBTITLE_STYLE, ...style } });
     return { subtitleStyle: style, remembered: !!input.remember };
@@ -322,13 +343,20 @@ function jobFailureText(error: string | null): string {
   return `만드는 중에 문제가 생겼습니다${e ? ` (${e.slice(0, 120)})` : ''}.`;
 }
 
+/** focus 입력 → cropFocus. auto 는 null (렌더할 때 고른다). */
+export function focusValue(f: 'auto' | 'left' | 'center' | 'right'): number | null {
+  return f === 'auto' ? null : f === 'left' ? 0 : f === 'right' ? 1 : 0.5;
+}
+
 export function summarizeEdit(e: Edit) {
   return {
     editId: e.id,
     title: e.title,
     keep: e.keep ? { start: r2(e.keep.start), end: r2(e.keep.end) } : null,
+    ...(e.parts.length ? { parts: e.parts.map((p) => ({ start: r2(p.start), end: r2(p.end) })) } : {}),
     cuts: e.cuts.map((c) => ({ start: r2(c.start), end: r2(c.end) })),
     crop: e.crop,
+    ...(e.crop === 'vertical' ? { focus: e.cropFocus === null ? 'auto' : e.cropFocus < 0.25 ? 'left' : e.cropFocus > 0.75 ? 'right' : 'center' } : {}),
     subtitles: e.subtitles,
   };
 }

@@ -43,6 +43,8 @@ export const ReferenceStats = z.object({
   /** 장면 전환 수와 분당 컷 수 */
   sceneCount: z.number().int(),
   cutsPerMin: z.number(),
+  /** 장면이 바뀐 시각(초). 자막과 같이 읽으면 어디서 앵글 · 동작이 바뀌는지 안다 (기획안 §7). 앞 200개까지. */
+  sceneTimes: z.array(z.number().min(0)).default([]),
   pair: PairDiff.nullable(),
 });
 export type ReferenceStats = z.infer<typeof ReferenceStats>;
@@ -87,6 +89,8 @@ export const ReferenceInsight = z.object({
   terms: z.array(z.string().max(40)).default([]),
   /** 자막 길이 · 강조 방식 */
   subtitleNotes: z.string().max(200).default(''),
+  /** 제목(파일 이름)과 내용이 어떻게 이어지는지 — 제목이 약속한 것을 어디서 보여 주는지 (기획안 §8.1) */
+  titleNote: z.string().max(200).default(''),
   /** 검색용 태그 — 부위 · 동작 · 고민 (예: 어깨, 견갑골, 거북목) */
   tags: z.array(z.string().max(30)).default([]),
   /** 어느 도구가 읽었는지 */

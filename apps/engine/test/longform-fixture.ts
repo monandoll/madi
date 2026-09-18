@@ -60,3 +60,32 @@ export function makeDemoSilenceFixture(out: string, opts: { talkSec?: number; de
   );
   return out;
 }
+
+/**
+ * 구도 · 자막 위치 테스트용 영상: 회색 화면(480x270) 한 곳에만 움직이는 테스트 패턴을 얹는다.
+ * patch 는 비율(0..1). 예: 오른쪽 기둥 { x: .66, y: 0, w: .34, h: 1 } → 세로 크롭이 오른쪽을 잡아야 한다.
+ * 소리는 톤 (자막 · 직접 쓴 자막 테스트에 쓴다).
+ */
+export function makeMotionPatchFixture(out: string, patch: { x: number; y: number; w: number; h: number }, opts: { sec?: number } = {}): string {
+  const sec = opts.sec ?? 4;
+  if (fs.existsSync(out)) return out;
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  const ffmpeg = resolveSidecar('ffmpeg', '/nonexistent');
+  const W = 480;
+  const H = 270;
+  const pw = 2 * Math.round((W * patch.w) / 2);
+  const ph = 2 * Math.round((H * patch.h) / 2);
+  execFileSync(
+    ffmpeg,
+    [
+      '-hide_banner', '-y',
+      '-f', 'lavfi', '-i', `color=c=gray:s=${W}x${H}:r=24:d=${sec}`,
+      '-f', 'lavfi', '-i', `testsrc2=s=${pw}x${ph}:r=24:d=${sec}`,
+      '-f', 'lavfi', '-i', `sine=frequency=440:sample_rate=44100:d=${sec}`,
+      '-filter_complex', `[0:v][1:v]overlay=x=${Math.round(W * patch.x)}:y=${Math.round(H * patch.y)}[v]`,
+      '-map', '[v]', '-map', '2:a', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-movflags', '+faststart', out,
+    ],
+    { stdio: 'ignore' },
+  );
+  return out;
+}

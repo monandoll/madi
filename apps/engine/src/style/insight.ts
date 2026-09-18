@@ -58,6 +58,8 @@ export function insightPrompt(ref: Pick<Reference, 'title' | 'stats'>, segments:
     '- shortCandidates 는 하나의 설명이 완결되는 구간만. 자극적인 한 문장만 따지 않는다. 각각 왜 골랐는지 한 줄.',
     '- terms 는 이 영상에 나온 운동 · 해부학 용어 (견갑골, 외회전, 흉추, 햄스트링 …). 자막이 잘못 적었을 법한 것도 바른 표기로.',
     '- tags 는 검색용 낱말: 부위 · 동작 · 고민 (예: 어깨, 견갑골, 거북목, 스쿼트). 3~8개.',
+    '- 장면 전환 시각이 있으면 자막과 맞춰 본다: 말이 이어지는데 화면이 바뀌면 앵글 전환, 말이 멈추고 바뀌면 동작 전환이다. sections 의 경계를 거기에 맞춘다.',
+    '- titleNote 는 제목이 약속한 것을 영상 어디서 어떻게 보여 주는지 한 줄 (제목과 내용의 관계). 제목만 보고 짐작하지 않는다.',
     '- 답은 JSON 하나만. 설명 · 마크다운 · 코드펜스 없이 `{` 로 시작해 `}` 로 끝낸다.',
   ].join('\n');
   const prompt = [
@@ -65,6 +67,7 @@ export function insightPrompt(ref: Pick<Reference, 'title' | 'stats'>, segments:
     '',
     `제목: ${ref.title}`,
     st ? `길이: ${clock(st.durationSec)} · ${st.aspect} · 컷 ${st.sceneCount}번` : '',
+    st?.sceneTimes?.length ? `장면 전환: ${st.sceneTimes.slice(0, 40).map(clock).join(', ')}${st.sceneTimes.length > 40 ? ' …' : ''}` : '',
     '',
     '자막:',
     transcriptText(segments),
@@ -83,6 +86,7 @@ export function insightPrompt(ref: Pick<Reference, 'title' | 'stats'>, segments:
         shortCandidates: [{ start: 0, end: 0, title: '숏폼 제목', why: '왜 독립된 숏폼이 되는지' }],
         terms: ['용어'],
         subtitleNotes: '자막 길이 · 강조 방식',
+        titleNote: '제목이 약속한 것을 어디서 어떻게 보여 주는지',
         tags: ['태그'],
       },
       null,
@@ -162,6 +166,7 @@ export function parseInsight(text: string, opts: { provider: 'claude' | 'codex';
       .slice(0, 12),
     terms: uniq(strArr(obj['terms'], 40)).slice(0, 40),
     subtitleNotes: str(obj['subtitleNotes'], 200),
+    titleNote: str(obj['titleNote'], 200),
     tags: uniq(strArr(obj['tags'], 30).map(normTag)).slice(0, 12),
     provider: opts.provider,
     createdAt: opts.now ?? Date.now(),
@@ -200,6 +205,7 @@ export function memoryPrompt(refs: Pick<Reference, 'id' | 'title' | 'insight'>[]
         i.shortCandidates.length ? `숏폼 후보: ${i.shortCandidates.map((k) => `${k.title} — ${k.why}`).join(' / ')}` : '',
         i.terms.length ? `용어: ${i.terms.join(', ')}` : '',
         i.subtitleNotes ? `자막: ${i.subtitleNotes}` : '',
+        i.titleNote ? `제목과 내용: ${i.titleNote}` : '',
         `태그: ${i.tags.join(', ')}`,
       ]
         .filter(Boolean)
@@ -296,6 +302,7 @@ export function insightSummary(ref: Pick<Reference, 'title' | 'insight'>): strin
   if (i.keepRanges.length) lines.push(`- 남긴 것: ${i.keepRanges.slice(0, 4).map((k) => k.why).join(' / ')}`);
   if (i.shortCandidates.length) lines.push(`- 숏폼으로 뽑은 방식: ${i.shortCandidates.slice(0, 3).map((k) => `${k.title} — ${k.why}`).join(' / ')}`);
   if (i.subtitleNotes) lines.push(`- 자막: ${i.subtitleNotes}`);
+  if (i.titleNote) lines.push(`- 제목과 내용: ${i.titleNote}`);
   return lines.join('\n');
 }
 

@@ -1,8 +1,25 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { nanoid } from 'nanoid';
-import { kindFromDuration, keepSegments, type Video } from '@madi/shared';
-import { buildAss, motionDetectArgs, parseMotion, parseSilences, renderPlan, silenceDetectArgs, silencesToCuts, splitSilencesByMotion, ProgressParser } from '@madi/ffmpeg-presets';
+import { kindFromDuration, keepSegments, type Edit, type TimeRange, type Video } from '@madi/shared';
+import {
+  buildAss,
+  chooseCropFocus,
+  chooseSubtitleSide,
+  motionDetectArgs,
+  motionLevelIn,
+  motionRegionsArgs,
+  parseMotion,
+  parseSilences,
+  regionsFor,
+  renderPlan,
+  silenceDetectArgs,
+  silencesToCuts,
+  splitSilencesByMotion,
+  SUBTITLE_TOP_MARGIN,
+  ProgressParser,
+  type MotionSample,
+} from '@madi/ffmpeg-presets';
 import type { EngineConfig } from '../config.js';
 import type { EventLog } from '../events.js';
 import type { Library } from '../library.js';
@@ -113,7 +130,7 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
   queue.register('render', async ({ job, signal, setProgress }) => {
     const video = videos.mustGet(job.videoId!);
     const payload = job.payload as { type: 'render'; videoId: string; editId: string };
-    const edit = library.edit(payload.editId);
+    let edit = library.edit(payload.editId);
     if (!edit) throw new Error(`edit not found: ${payload.editId}`);
     const outDir = path.join(cfg.dataDir, 'outputs');
     fs.mkdirSync(outDir, { recursive: true });
@@ -126,15 +143,16 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
       const encoder = await ffmpeg.detectEncoder();
       const duration = video.durationSec ?? 0;
       const segments = keepSegments(edit, duration);
+      const transcript = edit.subtitles ? (edit.transcriptId && library.transcript(edit.transcriptId)) || library.transcriptOf(video.id) : null;
+      // 세로 초점 · 자막 위치를 아직 안 정했으면 화면의 어느 쪽이 움직이는지 보고 정해 Edit 에 적는다 (기획안 §5.4 · §5.5)
+      const placed = await placeEdit(d, video, edit, segments, !!transcript, path.join(cfg.dataDir, 'work', job.id), signal);
+      edit = placed.edit;
       let subtitleFile: string | undefined;
-      if (edit.subtitles) {
-        const transcript = (edit.transcriptId && library.transcript(edit.transcriptId)) || library.transcriptOf(video.id);
-        if (transcript) {
-          const vertical = edit.crop === 'vertical';
-          const frame = vertical ? { width: 1080, height: 1920 } : { width: video.width ?? 1920, height: video.height ?? 1080 };
-          fs.writeFileSync(assPath, buildAss(transcript.segments, segments, edit.subtitleStyle, frame), 'utf8');
-          subtitleFile = assPath;
-        }
+      if (transcript) {
+        const vertical = edit.crop === 'vertical';
+        const frame = vertical ? { width: 1080, height: 1920 } : { width: video.width ?? 1920, height: video.height ?? 1080 };
+        fs.writeFileSync(assPath, buildAss(transcript.segments, segments, edit.subtitleStyle, frame), 'utf8');
+        subtitleFile = assPath;
       }
       const plan = renderPlan({
         input: video.path,
@@ -167,9 +185,19 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
         outId,
       );
       await ffmpeg.thumbnail({ input: outPath, output: path.join(outDir, `${output.id}.jpg`), durationSec: meta.durationSec }).catch(() => {});
-      d.events.record('output.made', { crop: edit.crop, subtitles: edit.subtitles, cuts: edit.cuts.length, durationSec: meta.durationSec }, Date.now() - started);
+      d.events.record(
+        'output.made',
+        { crop: edit.crop, subtitles: edit.subtitles, cuts: edit.cuts.length, parts: edit.parts.length, focus: placed.focus, subtitleTop: placed.subtitleTop, durationSec: meta.durationSec },
+        Date.now() - started,
+      );
       const m = library.messageForJob(job.id);
-      if (m) library.updateMessage(m.id, { kind: 'output', code: 'output.ready', outputId: output.id, params: { ...m.params, title: output.title, durationSec: Math.round(output.durationSec) } });
+      if (m)
+        library.updateMessage(m.id, {
+          kind: 'output',
+          code: 'output.ready',
+          outputId: output.id,
+          params: { ...m.params, title: output.title, durationSec: Math.round(output.durationSec), ...(placed.focus ? { focus: placed.focus } : {}), ...(placed.subtitleTop ? { subtitleTop: true } : {}) },
+        });
       log.info({ output: output.id, ms: Date.now() - started }, 'output ready');
     } catch (err) {
       fs.rmSync(tmp, { force: true });
@@ -212,4 +240,102 @@ export async function splitByMotion(
     d.log.warn({ err: String(err) }, 'motion pass failed; cutting all silences');
     return { cut: silences, kept: [] };
   }
+}
+
+export type FocusSide = 'left' | 'center' | 'right';
+
+export interface Placement {
+  edit: Edit;
+  /** 이번 렌더에서 자동으로 고른 세로 초점 (가운데면 null — 말할 게 없다) */
+  focus: FocusSide | null;
+  /** 자막을 위로 올렸는지 */
+  subtitleTop: boolean;
+}
+
+const focusSide = (f: number): FocusSide => (f < 0.25 ? 'left' : f > 0.75 ? 'right' : 'center');
+
+/**
+ * 세로 초점(cropFocus 가 null) · 자막 위치(subtitleAuto) 를 화면의 움직임으로 정한다 — 한 번 훑는다.
+ * 정한 값은 Edit 에 적는다: 다음에 같은 Edit 로 렌더해도 같은 결과가 나와야 하니까.
+ * 화면을 못 읽으면(ffmpeg 오류) 가운데 · 아래 — 전과 같은 동작이고, 그것도 적는다.
+ */
+export async function placeEdit(
+  d: Pick<EditWorkerDeps, 'ffmpegBin' | 'log' | 'library'>,
+  video: Pick<Video, 'path' | 'width' | 'height'>,
+  edit: Edit,
+  segments: TimeRange[],
+  hasTranscript: boolean,
+  workDir: string,
+  signal?: AbortSignal,
+): Promise<Placement> {
+  const width = video.width ?? 1920;
+  const height = video.height ?? 1080;
+  const horizontal = width > height;
+  const needFocus = edit.crop === 'vertical' && horizontal && edit.cropFocus === null;
+  const needSide = edit.subtitles && hasTranscript && edit.subtitleAuto;
+  if (!needFocus && !needSide) return { edit, focus: null, subtitleTop: false };
+
+  const levels = await measureRegions(d, video.path, width, height, segments, workDir, signal);
+  const at = (name: string) => levels.get(name) ?? null;
+  const col = (c: string) => avg([at(`${c}.top`), at(`${c}.bottom`)]);
+
+  const patch: Partial<Pick<Edit, 'cropFocus' | 'subtitleAuto' | 'subtitleStyle'>> = {};
+  let focus: FocusSide | null = null;
+  let cropFocus = edit.cropFocus;
+  if (needFocus) {
+    cropFocus = levels.size ? chooseCropFocus({ left: col('left'), center: col('center'), right: col('right') }) : 0.5;
+    patch.cropFocus = cropFocus;
+    if (cropFocus !== 0.5) focus = focusSide(cropFocus);
+  }
+  let subtitleTop = false;
+  if (needSide) {
+    // 세로로 자르면 잡히는 기둥만, 아니면 화면 전체(기둥 평균)
+    let bands: { top: number | null; bottom: number | null };
+    if (!horizontal) bands = { top: at('top'), bottom: at('bottom') };
+    else if (edit.crop === 'vertical' && cropFocus !== null) {
+      const c = focusSide(cropFocus);
+      bands = { top: at(`${c}.top`), bottom: at(`${c}.bottom`) };
+    } else bands = { top: avg([at('left.top'), at('center.top'), at('right.top')]), bottom: avg([at('left.bottom'), at('center.bottom'), at('right.bottom')]) };
+    subtitleTop = levels.size ? chooseSubtitleSide(bands) === 'top' : false;
+    patch.subtitleAuto = false;
+    if (subtitleTop) patch.subtitleStyle = { ...edit.subtitleStyle, bottom: SUBTITLE_TOP_MARGIN };
+  }
+  const updated = d.library.updateEdit(edit.id, patch);
+  if (focus || subtitleTop) d.log.info({ edit: edit.id, focus, subtitleTop }, 'placement chosen');
+  return { edit: updated, focus, subtitleTop };
+}
+
+function avg(xs: (number | null)[]): number | null {
+  const v = xs.filter((x): x is number => x !== null);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+
+/** 조각(기둥 × 띠)마다 남는 구간 안의 평균 움직임. 못 읽으면 빈 맵. */
+async function measureRegions(
+  d: Pick<EditWorkerDeps, 'ffmpegBin' | 'log'>,
+  input: string,
+  width: number,
+  height: number,
+  segments: TimeRange[],
+  workDir: string,
+  signal?: AbortSignal,
+): Promise<Map<string, number | null>> {
+  const regions = regionsFor(width, height);
+  const files = regions.map((r) => path.join(workDir, `motion-${r.name}.txt`));
+  const out = new Map<string, number | null>();
+  try {
+    fs.mkdirSync(workDir, { recursive: true });
+    await run(d.ffmpegBin, motionRegionsArgs(input, regions, files), signal ? { signal } : {});
+    regions.forEach((r, i) => {
+      const samples: MotionSample[] = fs.existsSync(files[i]!) ? parseMotion(fs.readFileSync(files[i]!, 'utf8')) : [];
+      out.set(r.name, motionLevelIn(samples, segments));
+    });
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    d.log.warn({ err: String(err) }, 'region motion pass failed; center / bottom');
+    out.clear();
+  } finally {
+    fs.rmSync(workDir, { recursive: true, force: true });
+  }
+  return out;
 }

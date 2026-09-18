@@ -69,7 +69,8 @@ export const ActionRequest = z.discriminatedUnion('type', [
   z.object({ type: z.literal('subtitle') }),
   z.object({ type: z.literal('silence') }),
   z.object({ type: z.literal('vertical') }),
-  z.object({ type: z.literal('short'), range: TimeRange, subtitles: z.boolean().default(true) }),
+  /** from: 어디서 골랐는지 — 직접 구간 선택 · 챕터 카드 · 편집안 카드. 기록(events)에만 쓴다 (기획안 §9: 무엇을 골랐는지가 피드백). */
+  z.object({ type: z.literal('short'), range: TimeRange, subtitles: z.boolean().default(true), from: z.enum(['manual', 'chapter', 'plan']).default('manual') }),
   /** 롱폼: 챕터 나누기 (자막 없으면 먼저 만든다) */
   z.object({ type: z.literal('chapters') }),
   /** 롱폼: 챕터마다 숏폼 하나씩 자동으로 (max 개까지) */
