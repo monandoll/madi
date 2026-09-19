@@ -78,7 +78,7 @@ resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리
 - `Video` — 원본. `path`, `duration`, `kind: 'long' | 'short'`, `status`
 - `Proxy` — 720p 프리뷰용. 원본 등록 시 자동 생성.
 - `Transcript` — whisper 결과. 문장 단위 `Segment[]` (start, end, text, words[])
-- `Edit` — 편집 결정. 원본이 아니라 **결정 목록**이다. `keep`/`parts[]`(조각을 이 순서로 — 시범 먼저, 설명 뒤), `cuts[]`, `crop`+`cropFocus`(세로일 때 어디를 잡을지, null 이면 렌더가 움직임으로 고르고 다시 적는다), `subtitleStyle`+`subtitleAuto`(아래 동작을 가리면 위로), `speed[]`
+- `Edit` — 편집 결정. 원본이 아니라 **결정 목록**이다. `keep`/`parts[]`(조각을 이 순서로 — 시범 먼저, 설명 뒤), `cuts[]`, `crop`+`cropFocus`(세로일 때 어디를 잡을지, null 이면 렌더가 움직임으로 고르고 다시 적는다), `subtitleStyle`+`subtitleAuto`(아래 동작을 가리면 위로), `emphasis[]`(강조할 단어 · 구간), `speed[]`
 - `Output` — `Edit`를 렌더한 결과 파일. `Video`에 여러 개 매달림.
 - `Job` — 큐 항목. `type`, `status`, `progress`, `payload`, `error`
 - `StyleProfile` — `style.md`(자연어 규칙) + `params.json`(숫자) + `examples/`(few-shot)

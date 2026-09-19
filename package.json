@@ -1,7 +1,7 @@
 {
   "name": "madi",
   "private": true,
-  "version": "0.2.15",
+  "version": "0.2.16",
   "type": "module",
   "description": "운동·재활 크리에이터를 위한 AI 영상 편집 도구",
   "packageManager": "pnpm@10.33.0",

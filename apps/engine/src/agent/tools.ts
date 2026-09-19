@@ -187,6 +187,7 @@ export class AgentTools {
     const parts = input.parts === undefined ? undefined : this.cleanParts(video, input.parts);
     if (input.subtitles && video.hasAudio === false && !transcript) throw new ToolError('소리가 없어 자막을 자동으로 만들 수 없습니다. set_subtitle_text 로 문장을 먼저 넣으세요.');
     const cropFocus = input.focus === undefined ? undefined : focusValue(input.focus);
+    const emphasis = input.emphasis?.map((e) => ({ term: e.term, start: e.start ?? null, end: e.end ?? null }));
 
     let edit: Edit;
     if (input.editId) {
@@ -200,6 +201,7 @@ export class AgentTools {
         ...(input.crop !== undefined ? { crop: input.crop } : {}),
         ...(cropFocus !== undefined ? { cropFocus } : {}),
         ...(input.subtitles !== undefined ? { subtitles: input.subtitles } : {}),
+        ...(emphasis !== undefined ? { emphasis } : {}),
         ...(transcript ? { transcriptId: transcript.id } : {}),
       });
     } else {
@@ -213,6 +215,7 @@ export class AgentTools {
         crop,
         cropFocus: cropFocus ?? null,
         subtitles: input.subtitles ?? false,
+        emphasis: emphasis ?? [],
         transcriptId: transcript?.id ?? null,
         subtitleStyle: this.d.style.params().subtitleStyle,
         speed: [],
@@ -358,6 +361,7 @@ export function summarizeEdit(e: Edit) {
     crop: e.crop,
     ...(e.crop === 'vertical' ? { focus: e.cropFocus === null ? 'auto' : e.cropFocus < 0.25 ? 'left' : e.cropFocus > 0.75 ? 'right' : 'center' } : {}),
     subtitles: e.subtitles,
+    ...(e.emphasis.length ? { emphasis: e.emphasis.map((x) => ({ term: x.term, ...(x.start !== null ? { start: r2(x.start) } : {}), ...(x.end !== null ? { end: r2(x.end) } : {}) })) } : {}),
   };
 }
 

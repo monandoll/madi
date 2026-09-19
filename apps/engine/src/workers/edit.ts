@@ -151,7 +151,7 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
       if (transcript) {
         const vertical = edit.crop === 'vertical';
         const frame = vertical ? { width: 1080, height: 1920 } : { width: video.width ?? 1920, height: video.height ?? 1080 };
-        fs.writeFileSync(assPath, buildAss(transcript.segments, segments, edit.subtitleStyle, frame), 'utf8');
+        fs.writeFileSync(assPath, buildAss(transcript.segments, segments, edit.subtitleStyle, frame, edit.emphasis), 'utf8');
         subtitleFile = assPath;
       }
       const plan = renderPlan({

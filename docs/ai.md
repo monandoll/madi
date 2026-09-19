@@ -54,7 +54,7 @@ plan 잡 (workers/plan.ts, AI 한 턴 · 도구 없음)
 | `find_silences` | 무음 구간. `moving=true` 는 말은 없지만 동작이 이어지는 침묵(시범) |
 | `find_scenes` | 장면 전환 시각 + 구간 |
 | `propose_cuts` | 무음 → 잘라낼 구간 제안. 동작이 이어지는 침묵은 `kept` 로 따로 (자르지 않는다) |
-| `apply_edit` | Edit 생성/수정 (keep, parts, cuts, crop, focus, subtitles). `parts` 는 이어 붙일 조각을 결과 순서대로 — 시범 먼저 설명 뒤 (기획안 §4). `focus` 는 세로로 자를 때 잡을 쪽(auto·left·center·right) |
+| `apply_edit` | Edit 생성/수정 (keep, parts, cuts, crop, focus, subtitles, emphasis). `parts` 는 이어 붙일 조각을 결과 순서대로 — 시범 먼저 설명 뒤 (기획안 §4). `focus` 는 세로로 자를 때 잡을 쪽(auto·left·center·right). `emphasis` 는 자막에서 강조할 단어 — 구간을 주면 거기서만 (§6 예시 2) |
 | `render` | Edit → 결과 파일. 끝날 때까지 기다림 |
 | `extract_shorts` | 구간 여러 개 → 9:16 숏폼 파일들. clip 에 `parts` · `focus` 를 줄 수 있다 |
 | `set_subtitle_style` | 자막 모양. `remember` 면 기본값도. `bottom` 을 주면 그 편집은 자동 위치를 안 쓴다 (`subtitleAuto=false`) |
@@ -216,6 +216,10 @@ API 키 방식은 아직 안 쓴다 (사용자 본인 구독으로 돈다는 원
 - 결과 카드에 "화면 오른쪽에서 움직여서 그쪽을 잡았습니다" · "아래쪽 동작을 가리지 않게 자막을 위에 두었습니다" 가 붙는다 (가운데 · 아래면 조용히).
 - 화면을 못 읽으면 가운데 · 아래 — 전과 같고, 그것도 적는다. 렌더는 항상 Edit 로부터 재현.
 - 에이전트는 `apply_edit.focus` / `extract_shorts.clips[].focus` 로 미리 정하거나 `set_subtitle_style.bottom` 으로 고정할 수 있다.
+
+**단어 강조** (기획안 §6 예시 2 "견갑골 설명에만 단어를 강조") — `Edit.emphasis[{term,start,end}]`. 자막 빌더(`buildAss`)가 그 구간의 단어 안에서 term 을 찾아
+`{\c색\fs크기}…{\r}` 로 감싼다 (색은 `SubtitleStyle.emphasisColor`, 기본 accent · 크기 1.15배). 구간이 없으면 영상 전체. 결과물 화면의 자막 목록도 같은 자리를 굵게 보여 준다 (`splitEmphasis`).
+제작 지침: 용어는 처음 설명하는 구간에서만. 도구는 `apply_edit.emphasis` (목록 전체를 바꾼다, 빈 배열이면 지운다).
 
 **여러 조각 숏폼** (기획안 §4 틱톡 구성) — `Edit.parts[]` 가 비어 있지 않으면 `keep` 대신 조각들을 **그 순서대로** 이어 붙인다(`keepSegments`). 뒤에 있는 시범을 앞에, 설명을 뒤에.
 자막 시각 재배치(`remapTime` · `remapRange`)도 같은 순서를 따른다. 액션 `short.from`(manual · chapter · plan)은 사용자가 어디서 고른 구간인지 `events` 에 남긴다 (§9 — 무엇을 골랐는지가 피드백).

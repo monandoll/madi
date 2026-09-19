@@ -95,6 +95,18 @@ test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지�
   await page.getByTestId('output-row').last().getByTestId('output-revise').click();
   await expect(input).toHaveValue('「AI 세로」 고쳐줘: ');
   await input.fill('');
+
+  // 단어 강조: 문장을 넣고 "강조" → 결과물 자막 목록에 그 단어만 굵게 (기획안 §6 예시 2)
+  await input.fill('이 문장 고쳐줘: 무릎을 펴고 천천히');
+  await page.getByTestId('chat-send').click();
+  await expect(page.getByTestId('bubble-assistant').last()).toContainText('로 바꿨어요', { timeout: 30_000 });
+  await input.fill('강조해줘: 무릎');
+  await page.getByTestId('chat-send').click();
+  await expect(page.getByTestId('output-row').last()).toContainText('AI 강조', { timeout: 90_000 });
+  await page.getByTestId('output-row').last().getByRole('button', { name: '자세히' }).click();
+  const row = page.getByTestId('subtitle-row').first();
+  await expect(row.getByTestId('subtitle-strong')).toHaveText('무릎');
+  await expect(row).toContainText('무릎을 펴고 천천히');
 });
 
 test('멈추기: 답하는 중에 멈추면 그때까지의 말만 남는다', async ({ page }) => {

@@ -105,6 +105,8 @@ export const edits = sqliteTable('edits', {
   subtitleStyle: text('subtitle_style', { mode: 'json' }).notNull(),
   /** 렌더할 때 자막 위치(아래/위)를 동작을 피해 고른다 */
   subtitleAuto: integer('subtitle_auto', { mode: 'boolean' }).notNull().default(true),
+  /** 강조할 단어들 [{term,start,end}] */
+  emphasis: text('emphasis', { mode: 'json' }).notNull().default('[]'),
   speed: text('speed', { mode: 'json' }).notNull(),
   createdAt: integer('created_at').notNull(),
 });

@@ -5,6 +5,7 @@
  * 시나리오는 프롬프트 마지막 줄("사용자 요청: …")의 낱말로 고른다.
  *   세로   → apply_edit(vertical) + render
  *   조각   → extract_shorts(parts: 뒤 조각 먼저, focus=left)
+ *   강조   → apply_edit(subtitles, emphasis: 단어를 0–2초에서만) + render
  *   규칙   → update_style_rule
  *   문장   → set_subtitle_text (사용자 문장을 0–2초 자막으로)
  *   자막   → get_transcript (whisper 없으면 도구 오류를 그대로 전한다)
@@ -181,6 +182,13 @@ try {
     say('시범을 먼저 보여 주고 설명을 뒤에 붙일게요.');
     const r = await call('extract_shorts', { clips: [{ start: 0, end: 5, title: 'AI 조각', parts: [{ start: 3, end: 5 }, { start: 0, end: 2 }], focus: 'left' }], subtitles: false });
     say(`「${r.outputs[0].title}」 만들었어요. ${r.outputs[0].durationSec}초예요.`);
+  } else if (request.includes('강조')) {
+    // "○○ 강조해줘": 그 단어를 자막 첫 2초에서만 강조한 결과물
+    const term = (request.split(':')[1] ?? '앱').trim();
+    say(`"${term}" 를 처음 나올 때만 띄울게요.`);
+    const e = await call('apply_edit', { subtitles: true, title: 'AI 강조', emphasis: [{ term, start: 0, end: 2 }] });
+    const r = await call('render', { editId: e.editId });
+    say(`「${r.title}」 만들었어요. ${e.emphasis?.length ?? 0}개 단어를 띄웠어요.`);
   } else if (request.includes('규칙')) {
     await call('update_style_rule', { rule: '숏폼은 30초 안쪽으로' });
     say('앞으로 그렇게 할게요.');

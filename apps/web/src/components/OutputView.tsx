@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { keepSegments, type OutputDetailResponse, type Segment } from '@madi/shared';
-import { remapRange } from '@madi/shared';
+import { emphasisTerms, remapRange, splitEmphasis } from '@madi/shared';
 import { copy } from '../copy.js';
 import { formatDuration } from '../lib/format.js';
 import { PauseIcon, PlayIcon } from './Icons.js';
@@ -130,7 +130,17 @@ export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
               >
                 <span className="w-7 flex-none text-11 text-text-3">{cut ? formatDuration(r.srcStart) : formatDuration(r.at ?? 0)}</span>
                 <span className={`min-w-0 flex-1 text-13 leading-[1.55] ${cut ? 'text-muted line-through' : ''}`} style={{ textWrap: 'pretty' }}>
-                  {r.text}
+                  {edit.subtitles && edit.emphasis.length
+                    ? splitEmphasis(r.text, emphasisTerms(edit.emphasis, { start: r.srcStart, end: r.srcEnd })).map((p, i) =>
+                        p.strong ? (
+                          <strong key={i} className="font-semibold text-accent" data-testid="subtitle-strong">
+                            {p.text}
+                          </strong>
+                        ) : (
+                          <span key={i}>{p.text}</span>
+                        ),
+                      )
+                    : r.text}
                 </span>
                 {cut && !on && <span className="flex-none text-11 text-text-3">{copy.output.cutMeta(Math.round(r.srcEnd - r.srcStart))}</span>}
                 {on && onAsk && (

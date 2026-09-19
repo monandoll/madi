@@ -153,6 +153,18 @@ describe('AI 연결', () => {
     expect(t.segments[0]).toMatchObject({ start: 0, end: 2 });
   });
 
+  it('apply_edit.emphasis: 단어를 그 구간에서만 강조한 자막 결과물 (기획안 §6 예시 2)', { timeout: 120_000 }, async () => {
+    await chat('강조해줘: 앱');
+    const m = await waitReply();
+    expect(String(m.params['text'])).toContain('「AI 강조」 만들었어요. 1개 단어를 띄웠어요.');
+    const out = (await detail()).outputs.find((o) => o.title === 'AI 강조')!;
+    expect(out).toBeTruthy();
+    const od = OutputDetailResponse.parse((await api(`/api/outputs/${out.id}`)).body);
+    expect(od.edit.subtitles).toBe(true);
+    expect(od.edit.emphasis).toEqual([{ term: '앱', start: 0, end: 2 }]);
+    expect(od.edit.subtitleStyle.emphasisColor).toBe('#3E6B8A');
+  });
+
   it('update_style_rule 은 style.md 에 한 줄 붙인다', async () => {
     await chat('규칙 저장해줘');
     expect(String((await waitReply()).params['text'])).toContain('앞으로 그렇게 할게요.');

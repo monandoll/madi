@@ -36,7 +36,7 @@ export const TOOL_DEFS = {
   },
   apply_edit: {
     description:
-      '편집 결정을 만들거나(editId 없음) 고친다(editId 있음). keep=이 구간만 쓴다(숏폼), parts=여러 조각을 이 순서대로 이어 붙인다(시범을 먼저, 설명을 뒤에 — keep 대신), cuts=그 안에서 빼는 구간, crop=vertical 이면 9:16, focus=세로로 자를 때 어느 쪽을 잡을지(기본 auto: 움직이는 쪽), subtitles=자막 번인. 결과 파일을 만들려면 이어서 render 를 부른다.',
+      '편집 결정을 만들거나(editId 없음) 고친다(editId 있음). keep=이 구간만 쓴다(숏폼), parts=여러 조각을 이 순서대로 이어 붙인다(시범을 먼저, 설명을 뒤에 — keep 대신), cuts=그 안에서 빼는 구간, crop=vertical 이면 9:16, focus=세로로 자를 때 어느 쪽을 잡을지(기본 auto: 움직이는 쪽), subtitles=자막 번인, emphasis=자막에서 강조할 단어(구간을 주면 거기서만). 결과 파일을 만들려면 이어서 render 를 부른다.',
     input: z.object({
       editId: z.string().optional(),
       title: z.string().max(80).optional().describe('결과물 이름. 없으면 영상 제목에서 만든다'),
@@ -46,6 +46,11 @@ export const TOOL_DEFS = {
       crop: z.enum(['none', 'vertical']).optional(),
       focus: Focus.optional(),
       subtitles: z.boolean().optional(),
+      emphasis: z
+        .array(z.object({ term: z.string().trim().min(1).max(40), start: z.number().min(0).optional(), end: z.number().min(0).optional() }))
+        .max(20)
+        .optional()
+        .describe('자막에서 굵게 · 다른 색으로 띄울 단어들. start/end(초)를 주면 그 구간에서만 ("견갑골 설명에만"). 주면 목록 전체를 바꾼다, 빈 배열이면 강조를 다 지운다. subtitles=true 여야 보인다'),
     }),
   },
   render: {

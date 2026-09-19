@@ -1,0 +1,1 @@
+ALTER TABLE `edits` ADD `emphasis` text DEFAULT '[]' NOT NULL;

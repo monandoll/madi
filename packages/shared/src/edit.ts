@@ -18,6 +18,8 @@ export const SubtitleStyle = z.object({
   boxColor: z.string(),
   /** 화면 아래에서 띄우는 비율 0..1 */
   bottom: z.number().min(0).max(1),
+  /** 강조한 단어의 색 (기획안 §6 예시 2 — "견갑골 설명에만 단어를 강조") */
+  emphasisColor: z.string().default('#3E6B8A'),
 });
 export type SubtitleStyle = z.infer<typeof SubtitleStyle>;
 
@@ -28,7 +30,47 @@ export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   boxColor: '#E8C33F',
   // 9:16 은 화면 아래에 앱 UI(더보기 · 프로필 · 음원)가 겹친다. 그 위로 올린다.
   bottom: 0.18,
+  // 노란 박스 위의 진한 파랑 (accent). 굵기 · 크기로도 띄운다.
+  emphasisColor: '#3E6B8A',
 };
+
+/**
+ * 자막에서 강조할 단어. start · end(원본 초)를 주면 그 구간에서만 — "견갑골 설명에만" (기획안 §6 예시 2).
+ * 없으면 영상 전체에서 그 단어가 나올 때마다.
+ */
+export const Emphasis = z.object({
+  term: z.string().trim().min(1).max(40),
+  start: z.number().min(0).nullable().default(null),
+  end: z.number().min(0).nullable().default(null),
+});
+export type Emphasis = z.infer<typeof Emphasis>;
+
+/** 이 원본 구간(단어 · 문장)에 걸리는 강조 단어들. */
+export function emphasisTerms(emphasis: Emphasis[], at: TimeRange): string[] {
+  const mid = (at.start + at.end) / 2;
+  return emphasis.filter((e) => (e.start === null || mid >= e.start) && (e.end === null || mid <= e.end)).map((e) => e.term);
+}
+
+/** 글을 강조 조각과 아닌 조각으로 나눈다. 렌더(ASS 태그)와 화면(굵은 글씨)이 같이 쓴다. 긴 단어부터 맞춘다. */
+export function splitEmphasis(text: string, terms: string[]): { text: string; strong: boolean }[] {
+  const ts = [...new Set(terms.map((t) => t.trim()).filter(Boolean))].sort((a, b) => b.length - a.length);
+  if (!ts.length || !text) return text ? [{ text, strong: false }] : [];
+  const out: { text: string; strong: boolean }[] = [];
+  let i = 0;
+  while (i < text.length) {
+    const hit = ts.find((t) => text.startsWith(t, i));
+    if (hit) {
+      out.push({ text: hit, strong: true });
+      i += hit.length;
+      continue;
+    }
+    const last = out[out.length - 1];
+    if (last && !last.strong) last.text += text[i]!;
+    else out.push({ text: text[i]!, strong: false });
+    i += 1;
+  }
+  return out;
+}
 
 /**
  * 세로(9:16) 크롭의 가로 초점 0..1 (0 왼쪽 끝, 0.5 가운데, 1 오른쪽 끝). null 이면 렌더할 때 움직임을 보고 고른다 (기획안 §5.4).
@@ -57,6 +99,8 @@ export const Edit = z.object({
   transcriptId: z.string().nullable(),
   subtitleStyle: SubtitleStyle,
   subtitleAuto: z.boolean().default(true),
+  /** 강조할 단어들 (자막 번인에서 굵게 · 다른 색). */
+  emphasis: z.array(Emphasis).default([]),
   /** 아직 안 씀. 구간별 배속. */
   speed: z.array(TimeRange.extend({ rate: z.number().positive() })),
   createdAt: z.number().int(),
