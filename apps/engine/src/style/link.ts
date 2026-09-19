@@ -31,6 +31,9 @@ export function ytdlpArgs(o: YtdlpArgsOptions): string[] {
     '--no-warnings',
     '--no-progress',
     '--no-mtime',
+    // 제목이 깨지지 않게: 트레이 앱엔 로캘이 없어 yt-dlp 가 제목을 다른 인코딩으로 찍을 수 있다
+    '--encoding',
+    'utf-8',
     '-f',
     `bv*[height<=${h}]+ba/b[height<=${h}]/b`,
     '--merge-output-format',
@@ -66,7 +69,31 @@ export function parseYtdlpOutput(stdout: string): YtdlpResult | null {
     else if (line.startsWith(TITLE_TAG)) title = line.slice(TITLE_TAG.length).trim();
   }
   if (!filePath) return null;
-  return { filePath, title: title || path.basename(filePath).replace(/\.[^.]+$/, '') };
+  return { filePath, title: cleanTitle(title) || path.basename(filePath).replace(/\.[^.]+$/, '') };
+}
+
+/**
+ * 깨진 제목은 버린다 (로캘이 없는 환경에서 온 것). 대체 문자(U+FFFD) · 제어 문자를 지우고,
+ * 남은 글의 셋 중 하나 넘게 깨져 있었으면 빈 문자열 → 호출한 쪽이 "유튜브 영상" 같은 기본 이름을 쓴다.
+ */
+export function cleanTitle(raw: string): string {
+  const t = raw.replace(/[\u0000-\u001f\u007f]/g, '').trim();
+  if (!t) return '';
+  const broken = (t.match(/\uFFFD/g) ?? []).length;
+  if (broken * 3 > t.length) return '';
+  return t.replace(/\uFFFD/g, '').replace(/\s+/g, ' ').trim();
+}
+
+/** yt-dlp 를 띄울 환경: 로캘 · 파이썬 인코딩을 UTF-8 로 못 박고, PATH 에 알려진 폴더를 붙인다. */
+export function ytdlpEnv(base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return { ...base, ELECTRON_RUN_AS_NODE: '1', PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1', LANG: base['LANG'] || 'en_US.UTF-8', LC_ALL: base['LC_ALL'] || 'en_US.UTF-8' };
+}
+
+/** 받은 파일을 읽다(분석) 실패한 이유 → 사용자에게 보일 코드. 원문은 로그에만. */
+export function classifyAnalyzeError(message: string): 'link_unreadable' | 'link_failed' {
+  const s = message.toLowerCase();
+  if (/no video|no_video|stream|duration|probe|invalid data|moov|corrupt|enoent|no such file/.test(s)) return 'link_unreadable';
+  return 'link_failed';
 }
 
 export type LinkErrorCode = 'link_private' | 'link_unsupported' | 'link_unavailable' | 'link_network' | 'link_failed';

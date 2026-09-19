@@ -22,7 +22,7 @@ import { run, SpawnError } from '../workers/spawn.js';
 import { termsPrompt, type Whisper } from '../workers/whisper.js';
 import { aggregate, aspectOf, learnedRuleLines, looksLikeSameVideo, pairDiff } from './learn.js';
 import { withKnownDirs } from '../agent/detect.js';
-import { classifyLinkError, parseYtdlpOutput, ytdlpArgs } from './link.js';
+import { classifyAnalyzeError, classifyLinkError, parseYtdlpOutput, ytdlpArgs, ytdlpEnv } from './link.js';
 import type { ReferenceStore } from './references.js';
 import { scanReferenceFolders } from './scan.js';
 
@@ -213,12 +213,14 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
       const outBase = path.join(this.d.cfg.referencesDir, ref.id);
       try {
         // 유튜브는 JS 런타임이 있어야 한다. 트레이 앱엔 PATH 가 없으니 알려진 폴더를 붙이고, 우리 node(Electron 을 node 로) 를 직접 준다.
-        const env = { ...withKnownDirs(process.env), ELECTRON_RUN_AS_NODE: '1' };
+        const env = ytdlpEnv(withKnownDirs(process.env));
         const { stdout } = await run(this.d.ytdlpBin, ytdlpArgs({ url: ref.url, outBase, ffmpeg: this.d.ffmpegBin, nodeBin: process.execPath }), { signal, stderrTail: 2000, env });
         const got = parseYtdlpOutput(stdout);
         if (!got || !fs.existsSync(got.filePath)) throw new Error('yt-dlp finished without a file');
         const size = fs.statSync(got.filePath).size;
-        this.d.refs.update(ref.id, { path: got.filePath, fileName: path.basename(got.filePath), title: got.title.slice(0, 120), sizeBytes: size, status: 'queued', error: null });
+        // 제목이 깨져 있으면(cleanTitle 이 비움 → 파일 이름) 원래 이름("유튜브 영상")을 둔다
+        const title = /^[A-Za-z0-9_-]{16,}$/.test(got.title) ? ref.title : got.title.slice(0, 120);
+        this.d.refs.update(ref.id, { path: got.filePath, fileName: path.basename(got.filePath), title, sizeBytes: size, status: 'queued', error: null });
         this.d.events.record('reference.downloaded', { site: linkSiteLabel(ref.url), bytes: size }, Date.now() - started);
         this.d.queue.enqueue({ type: 'analyze', referenceId: ref.id });
       } catch (err) {
@@ -251,7 +253,10 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
         // 자막이 있고 AI 가 연결돼 있으면 뜻까지 읽는다 (기획안 §7 · §10). 학습에서 뺀 것은 읽지 않는다.
         if (this.insightOn() && !ref.excluded && (this.d.refs.segmentsOf(ref.id)?.length ?? 0) > 0) this.d.queue.enqueue({ type: 'insight', referenceId: ref.id });
       } catch (err) {
-        this.d.refs.update(ref.id, { status: 'failed', error: (err instanceof Error ? err.message : String(err)).slice(0, 200) });
+        // 사용자에겐 코드(쉬운 말)만, 원문은 로그에
+        const message = err instanceof Error ? err.message : String(err);
+        this.d.log.warn({ ref: ref.id, source: ref.source, err: message.slice(-600) }, 'reference analyze failed');
+        this.d.refs.update(ref.id, { status: 'failed', error: ref.source === 'link' ? classifyAnalyzeError(message) : message.slice(0, 200) });
         throw err;
       }
     });

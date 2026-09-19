@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { linkSiteLabel, normalizeVideoUrl } from '@madi/shared';
-import { classifyLinkError, parseYtdlpOutput, ytdlpArgs } from '../src/style/link.js';
+import { classifyAnalyzeError, classifyLinkError, cleanTitle, parseYtdlpOutput, ytdlpArgs, ytdlpEnv } from '../src/style/link.js';
 
 describe('yt-dlp 오류 → 코드 (JS 런타임)', () => {
   it('JS 런타임 · 챌린지 문제는 도구 쪽 실패로 (지금은 볼 수 없는 영상이 아니다)', () => {
@@ -44,6 +44,7 @@ describe('yt-dlp', () => {
     expect(args.filter((a) => a === '--print')).toHaveLength(2);
     expect(ytdlpArgs({ url: 'u', outBase: 'b' })).not.toContain('--ffmpeg-location');
     // 유튜브용 JS 런타임: 우리 node 를 직접 알려 준다 (트레이 앱은 PATH 가 비어 있다)
+    expect(args[args.indexOf('--encoding') + 1]).toBe('utf-8');
     const withNode = ytdlpArgs({ url: 'u', outBase: 'b', nodeBin: '/Applications/madi-engine.app/Contents/MacOS/madi-engine' });
     expect(withNode[withNode.indexOf('--js-runtimes') + 1]).toBe('node:/Applications/madi-engine.app/Contents/MacOS/madi-engine');
     expect(withNode.slice(-2)).toEqual(['--', 'u']);
@@ -53,6 +54,13 @@ describe('yt-dlp', () => {
     expect(parseYtdlpOutput(out)).toEqual({ filePath: '/tmp/refs/abc.mp4', title: '햄스트링 루틴' });
     expect(parseYtdlpOutput('MADI_FILE\t/tmp/refs/abc.mp4\n')).toEqual({ filePath: '/tmp/refs/abc.mp4', title: 'abc' });
     expect(parseYtdlpOutput('nothing here')).toBeNull();
+    // 깨진 제목(로캘 없는 환경)은 버리고 파일 이름으로
+    expect(parseYtdlpOutput('MADI_FILE\t/tmp/refs/abc.mp4\nMADI_TITLE\t\uFFFD\uFFFD\u25AC\uFFFD \uFFFD\uFFFD\uFFFD..?\uFFFD\n')).toEqual({ filePath: '/tmp/refs/abc.mp4', title: 'abc' });
+    expect(cleanTitle('견갑골 \uFFFD 모으기')).toBe('견갑골 모으기');
+    expect(ytdlpEnv({ PATH: '/x' })).toMatchObject({ PATH: '/x', PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1', LANG: 'en_US.UTF-8', ELECTRON_RUN_AS_NODE: '1' });
+    expect(ytdlpEnv({ LANG: 'ko_KR.UTF-8' }).LANG).toBe('ko_KR.UTF-8');
+    expect(classifyAnalyzeError('ffprobe: Invalid data found when processing input')).toBe('link_unreadable');
+    expect(classifyAnalyzeError('boom')).toBe('link_failed');
   });
   it('오류 분류', () => {
     expect(classifyLinkError('ERROR: Sign in to confirm you’re not a bot')).toBe('link_private');
