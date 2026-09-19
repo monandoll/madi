@@ -6,6 +6,7 @@ import path from 'node:path';
 import { app, dialog, Menu, nativeImage, shell, Tray } from 'electron';
 import { ENGINE_PORT } from '@madi/shared';
 import { type Engine, startEngine } from '../engine.js';
+import { loadAutoUpdater } from './updater.js';
 
 let tray: Tray | null = null;
 let engine: Engine | null = null;
@@ -92,32 +93,47 @@ app.whenReady().then(async () => {
 
   if (app.isPackaged) {
     // GitHub Releases 에서 새 버전을 받아 다음 실행 때 적용한다. 6시간마다 다시 본다.
-    const { autoUpdater } = await import('electron-updater');
-    autoUpdater.logger = null;
-    autoUpdater.autoDownload = true;
-    autoUpdater.autoInstallOnAppQuit = true;
-    // 상태를 엔진에 적어 화면이 "새 버전 · 지금 업데이트" 를 보여 준다 (설정 · 사이드바 · 트레이 메뉴)
     const u = engine.update;
-    autoUpdater.on('checking-for-update', () => u.checking());
-    autoUpdater.on('update-available', (info) => u.available(info.version));
-    autoUpdater.on('update-not-available', () => u.notAvailable());
-    autoUpdater.on('update-downloaded', (info) => {
-      u.downloaded(info.version);
-      tray?.setContextMenu(buildMenu());
-    });
-    autoUpdater.on('error', (err) => u.failed(err.message));
-    u.setHooks({
-      check: async () => {
-        await autoUpdater.checkForUpdates();
-      },
-      install: () => {
-        // 큐가 돌고 있어도 사용자가 눌렀으면 간다 — 다음 실행 때 잡은 다시 잡힌다
-        setImmediate(() => autoUpdater.quitAndInstall(false, true));
-      },
-    });
-    const check = () => void autoUpdater.checkForUpdates().catch(() => {});
-    check();
-    setInterval(check, 6 * 60 * 60 * 1000);
+    try {
+      const autoUpdater = await loadAutoUpdater();
+      autoUpdater.logger = {
+        debug: (message) => engine?.log.debug({ source: 'electron-updater' }, message),
+        info: (message) => engine?.log.info({ source: 'electron-updater' }, String(message)),
+        warn: (message) => engine?.log.warn({ source: 'electron-updater' }, String(message)),
+        error: (message) => engine?.log.error({ source: 'electron-updater' }, String(message)),
+      };
+      autoUpdater.autoDownload = true;
+      autoUpdater.autoInstallOnAppQuit = true;
+      // 상태를 엔진에 적어 화면이 "새 버전 · 지금 업데이트" 를 보여 준다 (설정 · 사이드바 · 트레이 메뉴)
+      autoUpdater.on('checking-for-update', () => u.checking());
+      autoUpdater.on('update-available', (info) => u.available(info.version));
+      autoUpdater.on('update-not-available', () => u.notAvailable());
+      autoUpdater.on('update-downloaded', (info) => {
+        u.downloaded(info.version);
+        tray?.setContextMenu(buildMenu());
+      });
+      autoUpdater.on('error', (err) => u.failed(err.message));
+      u.setHooks({
+        check: async () => {
+          await autoUpdater.checkForUpdates();
+        },
+        install: () => {
+          // 큐가 돌고 있어도 사용자가 눌렀으면 간다 — 다음 실행 때 잡은 다시 잡힌다
+          setImmediate(() => autoUpdater.quitAndInstall(false, true));
+        },
+      });
+      const check = () => void autoUpdater.checkForUpdates().catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        engine?.log.error({ err, source: 'electron-updater' }, 'update check failed');
+        u.failed(message);
+      });
+      check();
+      setInterval(check, 6 * 60 * 60 * 1000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      engine.log.error({ err, source: 'electron-updater' }, 'updater setup failed');
+      u.failed(message);
+    }
   }
 });
 
