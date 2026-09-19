@@ -178,6 +178,11 @@ export const copy = {
     memoryClearConfirm: '기억을 전부 지웁니다. 되돌릴 수 없습니다.',
     memoryClearYes: '지우기',
     memoryClearNo: '취소',
+    /** 자막에서 고친 말 (틀린 말 → 바른 말) */
+    correctionsLabel: '자막에서 고친 말',
+    correctionsIntro: '자막을 고치면 여기 남습니다. 바른 말은 다음 자막부터 알려 주고, 두 번 이상 고친 말은 바로 바꿔 씁니다.',
+    correctionsCount: (n: number) => (n >= 2 ? `${n}번 고침 · 바로 바꿈` : '1번 고침'),
+    correctionsRemove: '빼기',
     /** 완성본 학습 제외 */
     referenceExclude: '학습에서 빼기',
     referenceInclude: '다시 넣기',

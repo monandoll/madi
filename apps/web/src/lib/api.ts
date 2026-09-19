@@ -92,6 +92,8 @@ export const api = {
   approveMemory: (ids?: string[]) => send('POST', '/api/style/memory/approve', ids ? { ids } : {}, StyleResponse),
   /** 기억 전부 지우기 (onlyProposed 면 제안만) */
   clearMemory: (onlyProposed = false) => send('DELETE', `/api/style/memory${onlyProposed ? '?only=proposed' : ''}`, undefined, StyleResponse),
+  /** 자막에서 고친 말 빼기 */
+  removeCorrection: (id: string) => send('DELETE', `/api/style/corrections/${id}`, undefined, StyleResponse),
   /** 완성본을 학습에서 빼거나 다시 넣기 */
   patchReference: (id: string, excluded: boolean) => send('PATCH', `/api/style/references/${id}`, { excluded }, StyleResponse),
   outputs: () => get('/api/outputs', OutputsResponse),

@@ -111,6 +111,21 @@ export const edits = sqliteTable('edits', {
   createdAt: integer('created_at').notNull(),
 });
 
+/** 자막에서 고친 말 (틀린 말 → 바른 말). 쌍마다 한 줄, count 는 고친 횟수. */
+export const termCorrections = sqliteTable(
+  'term_corrections',
+  {
+    id: text('id').primaryKey(),
+    wrong: text('wrong').notNull(),
+    right: text('right').notNull(),
+    count: integer('count').notNull().default(1),
+    videoId: text('video_id'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (t) => [uniqueIndex('term_corrections_pair_idx').on(t.wrong, t.right)],
+);
+
 export const outputs = sqliteTable(
   'outputs',
   {

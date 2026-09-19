@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 import { type AiProvider, linkSiteLabel, normalizeVideoUrl, type Reference, type ReferenceStats, type Segment, type StyleResponse, type Video } from '@madi/shared';
 import type { AgentProvider } from '../agent/provider.js';
 import { insightPrompt, memoryBlock, memoryPrompt, parseInsight, parseMemory, retrieve } from './insight.js';
+import { applyCorrections, type CorrectionStore } from './corrections.js';
 import type { MemoryStore } from './memory.js';
 import { parseScenes, parseSilences, sceneDetectArgs, silenceDetectArgs } from '@madi/ffmpeg-presets';
 import type { StyleProfile } from '../agent/style.js';
@@ -39,6 +40,8 @@ export interface StyleServiceDeps {
   log: Logger;
   /** 제작자 기억 */
   memory: MemoryStore;
+  /** 자막에서 고친 말 — whisper 에 알려 주고, 반복된 것은 결과에서 바로 바꾼다 */
+  corrections: CorrectionStore;
   /** 완성본의 뜻을 읽을 AI (채팅과 같은 도구). 설정의 provider 로 고른다. */
   providers: Record<Exclude<AiProvider, 'none'>, AgentProvider>;
 }
@@ -192,6 +195,7 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
       linkImport: this.linkImport,
       memory: this.d.memory.list(),
       insightOn: this.insightOn(),
+      corrections: this.d.corrections.list(),
     };
   }
 
@@ -373,10 +377,12 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
       const whisper = await this.d.whisper();
       const work = path.join(this.d.cfg.workDir, 'analyze', ref.id);
       // 사용자가 확인한 용어 기억을 알려 주고 듣는다 (기획안 §5.2)
-      const result = await whisper.transcribe(ref.path, work, { signal, prompt: termsPrompt(this.d.memory.listApproved().filter((m) => m.kind === 'term').map((m) => m.text)) });
+      const terms = [...this.d.memory.listApproved().filter((m) => m.kind === 'term').map((m) => m.text), ...this.d.corrections.rights()];
+      const result = await whisper.transcribe(ref.path, work, { signal, prompt: termsPrompt(terms) });
       fs.rmSync(work, { recursive: true, force: true });
-      this.d.refs.update(ref.id, { segments: result.segments });
-      return result.segments;
+      const { segments } = applyCorrections(result.segments, this.d.corrections.active());
+      this.d.refs.update(ref.id, { segments });
+      return segments;
     } catch (err) {
       if (signal.aborted) throw err;
       this.d.log.debug({ ref: ref.id, err: String(err) }, 'reference transcript skipped');

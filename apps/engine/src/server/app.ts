@@ -54,6 +54,7 @@ import type { SettingsStore } from '../settings.js';
 import type { VideoStore } from '../videos.js';
 import type { Library } from '../library.js';
 import { rejectionMemory } from '../plan/prompt.js';
+import { type CorrectionStore, diffCorrections } from '../style/corrections.js';
 import { ActionError, greetIfEmpty, runAction } from '../actions.js';
 import { AgentError } from '../agent/runner.js';
 import { cliVersion, detectCli } from '../agent/detect.js';
@@ -78,6 +79,7 @@ export interface AppDeps {
   styleService: import('../style/service.js').StyleService;
   /** 제작자 기억 (설정에서 보고 지운다). */
   memory: import('../style/memory.js').MemoryStore;
+  corrections: CorrectionStore;
   chapters: import('../chapters/store.js').ChapterStore;
   /** 촬영본 편집안 */
   plans: import('../plan/store.js').PlanStore;
@@ -382,8 +384,11 @@ export function createApp(deps: AppDeps): Hono {
       const same = existing?.segments.find((o) => o.text === seg.text && Math.abs(o.start - seg.start) < 0.05 && Math.abs(o.end - seg.end) < 0.05);
       return same ?? seg;
     });
+    // 고친 말을 남긴다 (틀린 말 → 바른 말) — 다음 자막부터 알려 주고, 반복되면 바로 바꾼다 (기획안 §5.2)
+    const pairs = existing ? diffCorrections(existing.segments, segments) : [];
+    if (pairs.length) deps.corrections.record(pairs, video.id);
     const transcript = deps.library.setTranscript(video.id, { language: existing?.language ?? 'ko', model: existing?.model ?? 'manual', segments });
-    deps.events.record('transcript.edited', { lines: segments.length, manual: true, total: segments.length });
+    deps.events.record('transcript.edited', { lines: segments.length, manual: true, total: segments.length, corrections: pairs.length });
     const body: TranscriptResponse = { transcript };
     return c.json(body);
   });
@@ -541,6 +546,13 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   /** 완성본 하나를 학습에서 빼거나 다시 넣기. */
+  /** 고친 말 빼기 — 더는 알려 주지도, 바꾸지도 않는다. */
+  app.delete('/api/style/corrections/:id', (c) => {
+    if (!deps.corrections.remove(c.req.param('id'))) return c.json({ error: { code: 'not_found', message: 'correction not found' } }, 404);
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
   app.patch('/api/style/references/:id', async (c) => {
     const parsed = ReferencePatchRequest.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);

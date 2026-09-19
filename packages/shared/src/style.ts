@@ -206,6 +206,22 @@ export const StyleLearned = z.object({
 });
 export type StyleLearned = z.infer<typeof StyleLearned>;
 
+/**
+ * 용어 교정 한 쌍 (기획안 §5.2 · §11 `terms`). 사용자가 자막에서 "틀린 말"을 "바른 말"로 고친 기록.
+ * count 가 2 이상이면 다음 자막부터 자동으로 바꿔 쓴다. 바른 말은 한 번만 고쳐도 whisper 에 용어로 알려 준다.
+ */
+export const TermCorrection = z.object({
+  id: z.string(),
+  wrong: z.string().min(1).max(40),
+  right: z.string().min(1).max(40),
+  count: z.number().int().min(1),
+  /** 마지막으로 고친 영상 */
+  videoId: z.string().nullable(),
+  createdAt: z.number().int(),
+  updatedAt: z.number().int(),
+});
+export type TermCorrection = z.infer<typeof TermCorrection>;
+
 export const StyleResponse = z.object({
   rules: z.array(StyleRule),
   learned: StyleLearned.nullable(),
@@ -219,6 +235,8 @@ export const StyleResponse = z.object({
   memory: z.array(MemoryItem).default([]),
   /** AI 가 연결돼 있어 완성본의 뜻까지 읽는지. 아니면 숫자만 배운다. */
   insightOn: z.boolean().default(false),
+  /** 자막에서 고친 말 (틀린 말 → 바른 말 · 횟수). 사용자가 뺄 수 있다. */
+  corrections: z.array(TermCorrection).default([]),
 });
 export type StyleResponse = z.infer<typeof StyleResponse>;
 

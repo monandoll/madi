@@ -15,6 +15,7 @@ import type { ChapterStore } from '../chapters/store.js';
 import { computeChapters } from '../workers/chapters.js';
 import type { StyleProfile } from './style.js';
 import type { MemoryStore } from '../style/memory.js';
+import { type CorrectionStore, diffCorrections } from '../style/corrections.js';
 import { mergeSubtitleLines } from './subtitles.js';
 
 export interface AgentToolDeps {
@@ -29,6 +30,8 @@ export interface AgentToolDeps {
   log: Logger;
   /** 범위(주제 · 이 영상만)가 있는 규칙은 style.md 대신 여기에 */
   memory: MemoryStore;
+  /** 자막을 고치면 "틀린 말 → 바른 말" 을 남긴다 */
+  corrections: CorrectionStore;
 }
 
 export interface ToolContext {
@@ -100,8 +103,10 @@ export class AgentTools {
     const existing = this.d.library.transcriptOf(video.id);
     const segments = mergeSubtitleLines(existing?.segments ?? [], input.lines, input.replaceAll ?? false);
     if (segments.length === 0) throw new ToolError('넣을 문장이 없습니다.');
+    const pairs = existing ? diffCorrections(existing.segments, segments) : [];
+    if (pairs.length) this.d.corrections.record(pairs, video.id);
     const t = this.d.library.setTranscript(video.id, { language: existing?.language ?? 'ko', model: existing ? existing.model : 'manual', segments });
-    this.d.events.record('transcript.edited', { lines: input.lines.length, replaceAll: !!input.replaceAll, total: segments.length });
+    this.d.events.record('transcript.edited', { lines: input.lines.length, replaceAll: !!input.replaceAll, total: segments.length, corrections: pairs.length });
     return { segments: t.segments.map((s, i) => ({ i, start: r2(s.start), end: r2(s.end), text: s.text })) };
   }
 

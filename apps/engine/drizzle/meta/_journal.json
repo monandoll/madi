@@ -71,6 +71,13 @@
       "when": 1789808579073,
       "tag": "0009_edit_emphasis",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1789808867307,
+      "tag": "0010_term_corrections",
+      "breakpoints": true
     }
   ]
 }
