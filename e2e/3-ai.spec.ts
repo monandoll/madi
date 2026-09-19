@@ -111,9 +111,13 @@ test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지�
   await expect(page.getByTestId('output-compare')).toContainText('이전');
   await expect(page.getByTestId('output-compare')).toContainText('지금');
   await page.getByTestId('panel-close').click();
+  // 패널을 닫으면 #/videos/ 로 돌아가며 상세가 새로 그려진다 — 그 전에 쓰면 새 입력창이 비어 보내기가 안 된다
+  await expect(page).toHaveURL(/#\/videos\//);
+  await expect(page.getByTestId('output-detail')).toHaveCount(0);
 
   // 단어 강조: 문장을 넣고 "강조" → 결과물 자막 목록에 그 단어만 굵게 (기획안 §6 예시 2)
   await input.fill('이 문장 고쳐줘: 무릎을 펴고 천천히');
+  await expect(input).toHaveValue('이 문장 고쳐줘: 무릎을 펴고 천천히');
   await page.getByTestId('chat-send').click();
   await expect(page.getByTestId('bubble-assistant').last()).toContainText('로 바꿨어요', { timeout: 30_000 });
   await input.fill('강조해줘: 무릎');
