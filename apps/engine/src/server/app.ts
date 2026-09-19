@@ -8,6 +8,7 @@ import { RESPONSE_ALREADY_SENT } from '@hono/node-server/utils/response';
 import {
   ActionRequest,
   type ActionResponse,
+  type UpdateResponse,
   PlanFeedbackRequest,
   type PlanResponse,
   planRejected,
@@ -53,6 +54,7 @@ import type { JobQueue } from '../queue/index.js';
 import type { SettingsStore } from '../settings.js';
 import type { VideoStore } from '../videos.js';
 import type { Library } from '../library.js';
+import type { UpdateStatus } from '../update.js';
 import { rejectionMemory } from '../plan/prompt.js';
 import { type CorrectionStore, diffCorrections } from '../style/corrections.js';
 import { ActionError, greetIfEmpty, runAction } from '../actions.js';
@@ -80,6 +82,8 @@ export interface AppDeps {
   /** 제작자 기억 (설정에서 보고 지운다). */
   memory: import('../style/memory.js').MemoryStore;
   corrections: CorrectionStore;
+  /** 새 버전 상태 */
+  update: UpdateStatus;
   chapters: import('../chapters/store.js').ChapterStore;
   /** 촬영본 편집안 */
   plans: import('../plan/store.js').PlanStore;
@@ -178,12 +182,31 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get('/api/health', async (c) => {
     const ai = await deps.agent.status();
+    const u = deps.update.state;
     const body: HealthResponse = {
       ok: true,
       version: deps.version,
+      update: { available: u.available, downloaded: u.downloaded, canInstall: u.canInstall },
       ai,
       tunnel: { status: deps.tunnel.state.status, error: deps.tunnel.state.error, url: deps.tunnel.state.url },
     };
+    return c.json(body);
+  });
+
+  // 새 버전: 상태 · 지금 확인 · 받아 둔 것으로 다시 시작. 개발 모드(훅 없음)면 확인 · 설치는 409.
+  app.get('/api/update', (c) => {
+    const body: UpdateResponse = { update: deps.update.state };
+    return c.json(body);
+  });
+  app.post('/api/update/check', async (c) => {
+    if (!(await deps.update.check())) return c.json({ error: { code: 'update_unavailable', message: 'not a packaged app' } }, 409);
+    const body: UpdateResponse = { update: deps.update.state };
+    return c.json(body);
+  });
+  app.post('/api/update/install', (c) => {
+    if (!deps.update.install()) return c.json({ error: { code: 'update_not_ready', message: 'no downloaded update' } }, 409);
+    deps.events.record('update.install', { to: deps.update.state.available });
+    const body: UpdateResponse = { update: deps.update.state };
     return c.json(body);
   });
 

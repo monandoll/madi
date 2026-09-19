@@ -29,7 +29,10 @@ cp /tmp/whisper/build/bin/whisper-cli resources/bin/darwin-arm64/
 3. `publish` — 두 macOS 러너가 각자 올린 `latest-mac.yml` 을 `apps/engine/scripts/merge-latest-mac.mjs` 로 합쳐 다시 올리고
    (안 합치면 나중 것이 앞 것을 덮어 electron-updater 가 한쪽 아키텍처 zip 만 본다), 파일이 다 있는지 확인한 뒤 draft 를 풀어 latest 로 만든다.
 
-설치된 앱은 electron-updater 로 이 Release 를 보고 스스로 갱신한다(6시간마다, 다음 실행 때 적용).
+설치된 앱은 electron-updater 로 이 Release 를 보고 스스로 갱신한다(6시간마다 확인해 받아 두고, 다음 실행 때 적용).
+받아 두면 화면이 조용히 알려 준다 — 사이드바(PC) · 갤러리 위(모바일)에 "새 버전 x.y.z · 지금 업데이트", 설정 → 버전 행에도 같은 것,
+트레이 메뉴에 "새 버전 … 으로 업데이트". 누르면 앱이 꺼졌다 새 버전으로 켜진다 (`src/update.ts` `UpdateStatus`, `GET /api/update`, `POST /api/update/check|install`,
+`health.update`). 브라우저만 뜬 개발 모드에는 훅이 없어 늘 "최신"이고 확인 · 설치는 409. 테스트는 `MADI_FAKE_UPDATE=9.9.9` 로 받아 둔 척한다.
 버전은 `apps/engine/package.json` 의 `version` 이다 — 태그와 맞춘다.
 
 새 릴리스는 태그를 손으로 푸시하지 않아도 된다: `apps/engine/package.json` 의 `version` 을 올려 main 에 넣은 뒤

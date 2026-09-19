@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Settings as SettingsSchema, type TermKind } from '@madi/shared';
 import { FolderChooser } from '../components/FolderChooser.js';
 import { AiMark } from '../components/AiMark.js';
@@ -22,6 +22,11 @@ export function SettingsScreen() {
   const patch = usePatchSettings();
   const qc = useQueryClient();
   const health = useQuery({ queryKey: queryKeys.health, queryFn: api.health, refetchInterval: 5_000 });
+  // 새 버전: 설치된 앱만 받아 둔다. 확인 · 설치가 안 되는 곳(브라우저만)이면 409 — 조용히 넘긴다.
+  const update = useQuery({ queryKey: queryKeys.update, queryFn: api.update, refetchInterval: 15_000 });
+  const [updateInstalling, setUpdateInstalling] = useState(false);
+  const checkUpdate = useMutation({ mutationFn: api.checkUpdate, onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.update }), onError: () => undefined });
+  const installUpdate = useMutation({ mutationFn: api.installUpdate, onSuccess: () => setUpdateInstalling(true), onError: () => undefined });
   // 설치된 AI 도구. 설정 화면을 열 때마다 새로 찾는다 (설치 직후 바로 보이게).
   const providers = useQuery({ queryKey: queryKeys.aiProviders, queryFn: () => api.aiProviders(true), staleTime: 30_000 });
   const ai = health.data?.ai;
@@ -458,9 +463,40 @@ export function SettingsScreen() {
                 )}
               </div>
             </div>
-            <CardRow>
-              <span className="flex-1 text-14">{copy.settings.versionLabel}</span>
-              <span className="text-13 text-text-3">{health.data ? copy.settings.version(health.data.version) : ''}</span>
+            <CardRow testId="version-row">
+              <span className="flex flex-1 flex-col gap-0.5">
+                <span className="text-14">{copy.settings.versionLabel}</span>
+                {update.data?.update.error && <span className="text-12 text-text-3">{copy.update.failed}</span>}
+              </span>
+              <span className="flex items-center gap-2 text-13 text-text-3">
+                {health.data && (
+                  <>
+                    <span data-testid="version-text">{copy.settings.version(health.data.version)}</span>
+                    <span>·</span>
+                    {update.data?.update.available ? (
+                      update.data.update.canInstall ? (
+                        <>
+                          <span>{copy.update.ready(update.data.update.available)}</span>
+                          <button type="button" onClick={() => installUpdate.mutate()} disabled={installUpdate.isPending || updateInstalling} className="font-medium text-accent hover:text-accent-hover disabled:text-text-3" data-testid="version-install">
+                            {updateInstalling ? copy.update.installing : copy.update.installNow}
+                          </button>
+                        </>
+                      ) : (
+                        <span>{copy.update.downloading(update.data.update.available)}</span>
+                      )
+                    ) : (
+                      <>
+                        <span>{update.data?.update.checking ? copy.update.checking : copy.settings.versionLatest}</span>
+                        {update.data?.update.canInstall === false && !update.data.update.checking && (
+                          <button type="button" onClick={() => checkUpdate.mutate()} disabled={checkUpdate.isPending} className="text-text-3 hover:text-accent" data-testid="version-check">
+                            {copy.update.check}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+              </span>
             </CardRow>
           </Card>
         </section>

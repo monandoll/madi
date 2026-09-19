@@ -40,6 +40,8 @@ export default defineConfig({
       MADI_HOME: home,
       MADI_PORT: String(PORT),
       MADI_QUIET: '1',
+      // 새 버전 표시 확인용: 9.9.9 를 받아 둔 것처럼 (설치를 누르면 표시만 사라진다)
+      MADI_FAKE_UPDATE: '9.9.9',
       MADI_SUGGEST_ROOT: suggestRoot,
       // AI 연결 e2e: 진짜 claude 대신 fixtures/fake-claude.mjs (MCP 도구 호출은 진짜로 오간다)
       MADI_CLAUDE_BIN: path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'fake-claude.mjs'),

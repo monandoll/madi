@@ -28,6 +28,7 @@ function buildMenu(): Menu {
       click: () => void pickFolder(),
     },
     { type: 'separator' },
+    ...(engine?.update.state.canInstall ? [{ label: `새 버전 ${engine.update.state.available} 으로 업데이트`, click: () => void engine?.update.install() }, { type: 'separator' as const }] : []),
     { label: '종료', role: 'quit' },
   ]);
 }
@@ -95,7 +96,26 @@ app.whenReady().then(async () => {
     autoUpdater.logger = null;
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
-    const check = () => void autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    // 상태를 엔진에 적어 화면이 "새 버전 · 지금 업데이트" 를 보여 준다 (설정 · 사이드바 · 트레이 메뉴)
+    const u = engine.update;
+    autoUpdater.on('checking-for-update', () => u.checking());
+    autoUpdater.on('update-available', (info) => u.available(info.version));
+    autoUpdater.on('update-not-available', () => u.notAvailable());
+    autoUpdater.on('update-downloaded', (info) => {
+      u.downloaded(info.version);
+      tray?.setContextMenu(buildMenu());
+    });
+    autoUpdater.on('error', (err) => u.failed(err.message));
+    u.setHooks({
+      check: async () => {
+        await autoUpdater.checkForUpdates();
+      },
+      install: () => {
+        // 큐가 돌고 있어도 사용자가 눌렀으면 간다 — 다음 실행 때 잡은 다시 잡힌다
+        setImmediate(() => autoUpdater.quitAndInstall(false, true));
+      },
+    });
+    const check = () => void autoUpdater.checkForUpdates().catch(() => {});
     check();
     setInterval(check, 6 * 60 * 60 * 1000);
   }

@@ -216,3 +216,31 @@ test('PC 의 "폰에서 업로드"는 안내 카드를 열고, 거기서 이 브
   fs.rmSync(path.join(VIDEOS, '데스크 업로드.mp4'));
   await expect(page.getByTestId('video-card')).toHaveCount(2, { timeout: 30_000 });
 });
+
+test('새 버전: 사이드바와 설정에 조용히 "새 버전 · 지금 업데이트", 누르면 업데이트하는 중', async ({ page }) => {
+  await page.goto('/');
+  const banner = page.getByTestId('sidebar').getByTestId('update-banner');
+  await expect(banner).toHaveAttribute('data-state', 'ready');
+  await expect(banner).toContainText('새 버전 9.9.9');
+  await page.goto('/#/settings');
+  const row = page.getByTestId('version-row');
+  await expect(row).toContainText('새 버전 9.9.9');
+  await expect(row.getByTestId('version-install')).toHaveText('지금 업데이트');
+  // 붉은색 없음 (상태는 조용하게)
+  await expect(page.locator('[data-testid="version-row"] .text-error')).toHaveCount(0);
+  await row.getByTestId('version-install').click();
+  await expect(row.getByTestId('version-install')).toContainText('업데이트하는 중');
+  // 가짜 설치는 표시만 지운다 → 갤러리로 돌아가면 배너가 없다
+  await page.goto('/');
+  await expect(page.getByTestId('sidebar').getByTestId('update-banner')).toHaveCount(0);
+  await expect(page.getByTestId('sidebar')).toContainText('연결됨');
+  // 모바일(375)에서는 갤러리 위에 같은 줄이 뜬다 — 다시 받아 둔 것처럼 만든다
+  await page.request.post('/api/update/check');
+  await page.setViewportSize({ width: 375, height: 740 });
+  await page.goto('/');
+  await expect(page.getByTestId('gallery-main').getByTestId('update-banner')).toContainText('새 버전 9.9.9');
+  await page.getByTestId('gallery-main').getByTestId('update-install').click();
+  await expect(page.getByTestId('gallery-main').getByTestId('update-banner')).toHaveAttribute('data-state', 'installing');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.request.post('/api/update/check'); // 뒤 스펙들도 배너를 본다 (안 보여도 상관없는 스펙들)
+});

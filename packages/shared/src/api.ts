@@ -223,9 +223,28 @@ export type PairRequest = z.infer<typeof PairRequest>;
 export const PairResponse = z.object({ ok: z.literal(true) });
 export type PairResponse = z.infer<typeof PairResponse>;
 
+/** 새 버전 상태. 설치된 앱(electron-updater)만 채운다. 브라우저만 뜬 개발 모드면 항상 최신 · canInstall=false. */
+export const UpdateState = z.object({
+  current: z.string(),
+  /** 새로 나온 버전. 없으면 null */
+  available: z.string().nullable(),
+  /** 받아 두었는지 (받아 두면 "지금 업데이트" 가 된다) */
+  downloaded: z.boolean(),
+  checking: z.boolean(),
+  checkedAt: z.number().int().nullable(),
+  error: z.string().nullable(),
+  /** 지금 다시 시작해서 적용할 수 있는지 */
+  canInstall: z.boolean(),
+});
+export type UpdateState = z.infer<typeof UpdateState>;
+export const UpdateResponse = z.object({ update: UpdateState });
+export type UpdateResponse = z.infer<typeof UpdateResponse>;
+
 export const HealthResponse = z.object({
   ok: z.literal(true),
   version: z.string(),
+  /** 새 버전이 있는지 (화면이 조용히 알려 준다) */
+  update: z.object({ available: z.string().nullable(), downloaded: z.boolean(), canInstall: z.boolean() }).default({ available: null, downloaded: false, canInstall: false }),
   /** connected = 프로바이더를 골랐고 그 도구가 이 PC 에 있다. */
   ai: z.object({ connected: z.boolean(), provider: AiProvider, installed: z.boolean() }),
   tunnel: z.object({ status: TunnelStatus, error: z.string().nullable(), url: z.string().nullable().default(null) }),

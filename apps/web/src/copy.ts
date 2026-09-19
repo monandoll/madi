@@ -57,6 +57,17 @@ export const copy = {
     noneFound: '영상 폴더를 찾지 못했습니다. 아래에서 직접 선택하세요.',
     loading: '폴더 찾는 중',
   },
+  /** 새 버전 (조용하게. 오류가 아니다) */
+  update: {
+    ready: (v: string) => `새 버전 ${v}`,
+    downloading: (v: string) => `새 버전 ${v} 받는 중`,
+    installNow: '지금 업데이트',
+    installing: '업데이트하는 중입니다. 잠시 뒤 다시 열립니다.',
+    check: '새 버전 확인',
+    checking: '확인하는 중',
+    latest: '최신',
+    failed: '새 버전을 확인하지 못했습니다. 인터넷을 보고 다시 시도하세요.',
+  },
   settings: {
     title: '설정',
     back: '뒤로',

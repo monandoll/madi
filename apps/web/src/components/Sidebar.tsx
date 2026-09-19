@@ -2,6 +2,7 @@ import type { VideoCard } from '@madi/shared';
 import { copy } from '../copy.js';
 import { go, hrefOf, type Route } from '../lib/route.js';
 import { ClockIcon, FolderIcon, GearIcon, VideoIcon } from './Icons.js';
+import { UpdateBanner } from './UpdateBanner.js';
 
 interface Props {
   route: Route;
@@ -37,6 +38,7 @@ export function Sidebar({ route, workspaceName, engineOk, aiLabel, videos, outpu
           <span className="h-[7px] w-[7px] rounded-pill" style={{ background: engineOk ? 'var(--color-ok)' : 'var(--color-off)' }} data-testid="engine-dot" />
           <span className="text-12 text-text-2">{engineLabel}</span>
         </div>
+        <UpdateBanner />
       </div>
 
       <nav className="flex flex-none flex-col gap-px px-2 pb-2" role="tablist">

@@ -29,6 +29,7 @@ import { StyleProfile } from './agent/style.js';
 import { AgentTools } from './agent/tools.js';
 import { writeMcpConfig } from './agent/mcp-config.js';
 import { ReferenceStore } from './style/references.js';
+import { UpdateStatus } from './update.js';
 import { CorrectionStore } from './style/corrections.js';
 import { MemoryStore } from './style/memory.js';
 import { ChapterStore } from './chapters/store.js';
@@ -70,6 +71,8 @@ export interface Engine {
   refs: ReferenceStore;
   memory: MemoryStore;
   corrections: CorrectionStore;
+  /** 새 버전 상태. Electron 이 electron-updater 훅을 붙인다. */
+  update: UpdateStatus;
   chapters: ChapterStore;
   plans: PlanStore;
   url: string;
@@ -113,6 +116,12 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   const refs = new ReferenceStore(db);
   const memory = new MemoryStore(db);
   const corrections = new CorrectionStore(db);
+  const update = new UpdateStatus(VERSION);
+  // 테스트 · 화면 확인용: MADI_FAKE_UPDATE=0.9.9 면 그 버전을 받아 둔 것처럼 (설치는 아무 일도 안 한다)
+  if (process.env['MADI_FAKE_UPDATE']) {
+    update.setHooks({ check: async () => update.downloaded(process.env['MADI_FAKE_UPDATE']!), install: () => update.patch({ downloaded: false, available: null }) });
+    update.downloaded(process.env['MADI_FAKE_UPDATE']);
+  }
   const ytdlpBin = resolveSidecar('ytdlp', cfg.binDir);
   const providers = { claude: new ClaudeProvider(writeMcpConfig), codex: new CodexProvider() };
   const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, ytdlpBin, whisper, events, log, memory, corrections, providers });
@@ -174,6 +183,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     corrections,
     chapters,
     plans,
+    update,
     version: VERSION,
     onSettingsChanged: () => {
       void watcher.setFolders(settings.get().watchFolders);
@@ -243,6 +253,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     corrections,
     chapters,
     plans,
+    update,
     url,
     setFolderPicker(fn) {
       deps.pickFolder = fn;
