@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { linkSiteLabel, normalizeVideoUrl } from '@madi/shared';
 import { classifyLinkError, parseYtdlpOutput, ytdlpArgs } from '../src/style/link.js';
 
+describe('yt-dlp 오류 → 코드 (JS 런타임)', () => {
+  it('JS 런타임 · 챌린지 문제는 도구 쪽 실패로 (지금은 볼 수 없는 영상이 아니다)', () => {
+    expect(classifyLinkError('WARNING: [youtube] No supported JavaScript runtime could be found. ERROR: Requested format is not available')).toBe('link_failed');
+    expect(classifyLinkError('ERROR: [youtube] abc: n challenge solving failed')).toBe('link_failed');
+  });
+});
+
 describe('링크 고르기', () => {
   it('글 안에서 http(s) 주소 하나를 집어낸다', () => {
     expect(normalizeVideoUrl('https://www.youtube.com/watch?v=abc123')).toBe('https://www.youtube.com/watch?v=abc123');
@@ -36,6 +43,10 @@ describe('yt-dlp', () => {
     expect(args.slice(-2)).toEqual(['--', 'https://youtu.be/x']);
     expect(args.filter((a) => a === '--print')).toHaveLength(2);
     expect(ytdlpArgs({ url: 'u', outBase: 'b' })).not.toContain('--ffmpeg-location');
+    // 유튜브용 JS 런타임: 우리 node 를 직접 알려 준다 (트레이 앱은 PATH 가 비어 있다)
+    const withNode = ytdlpArgs({ url: 'u', outBase: 'b', nodeBin: '/Applications/madi-engine.app/Contents/MacOS/madi-engine' });
+    expect(withNode[withNode.indexOf('--js-runtimes') + 1]).toBe('node:/Applications/madi-engine.app/Contents/MacOS/madi-engine');
+    expect(withNode.slice(-2)).toEqual(['--', 'u']);
   });
   it('출력에서 파일·제목을 읽는다', () => {
     const out = '[download] 100%\nMADI_FILE\t/tmp/refs/abc.mp4\nMADI_TITLE\t햄스트링 루틴\n';

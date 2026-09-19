@@ -5,6 +5,8 @@ export interface RunOptions {
   onStdout?: (chunk: string) => void;
   /** stderr 마지막 N자를 오류 메시지에 붙인다 */
   stderrTail?: number;
+  /** 환경 변수 (없으면 상속) */
+  env?: NodeJS.ProcessEnv | undefined;
 }
 
 export interface RunResult {
@@ -25,7 +27,7 @@ export class SpawnError extends Error {
 /** 바이너리 하나 실행. 인자는 배열로만 (셸 없음). */
 export function run(bin: string, args: string[], opts: RunOptions = {}): Promise<RunResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    const child = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, ...(opts.env ? { env: opts.env } : {}) });
     let stdout = '';
     let stderr = '';
     child.stdout.setEncoding('utf8');

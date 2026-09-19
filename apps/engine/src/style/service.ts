@@ -21,6 +21,7 @@ import type { Ffmpeg } from '../workers/ffmpeg.js';
 import { run, SpawnError } from '../workers/spawn.js';
 import { termsPrompt, type Whisper } from '../workers/whisper.js';
 import { aggregate, aspectOf, learnedRuleLines, looksLikeSameVideo, pairDiff } from './learn.js';
+import { withKnownDirs } from '../agent/detect.js';
 import { classifyLinkError, parseYtdlpOutput, ytdlpArgs } from './link.js';
 import type { ReferenceStore } from './references.js';
 import { scanReferenceFolders } from './scan.js';
@@ -211,7 +212,9 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
       fs.mkdirSync(this.d.cfg.referencesDir, { recursive: true });
       const outBase = path.join(this.d.cfg.referencesDir, ref.id);
       try {
-        const { stdout } = await run(this.d.ytdlpBin, ytdlpArgs({ url: ref.url, outBase, ffmpeg: this.d.ffmpegBin }), { signal, stderrTail: 2000 });
+        // 유튜브는 JS 런타임이 있어야 한다. 트레이 앱엔 PATH 가 없으니 알려진 폴더를 붙이고, 우리 node(Electron 을 node 로) 를 직접 준다.
+        const env = { ...withKnownDirs(process.env), ELECTRON_RUN_AS_NODE: '1' };
+        const { stdout } = await run(this.d.ytdlpBin, ytdlpArgs({ url: ref.url, outBase, ffmpeg: this.d.ffmpegBin, nodeBin: process.execPath }), { signal, stderrTail: 2000, env });
         const got = parseYtdlpOutput(stdout);
         if (!got || !fs.existsSync(got.filePath)) throw new Error('yt-dlp finished without a file');
         const size = fs.statSync(got.filePath).size;

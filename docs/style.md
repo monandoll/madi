@@ -18,6 +18,8 @@
 5. `StyleProfile.setLearned` 가 학습 블록과 `params.learned`/`silenceMinSec` 를 바꾼다. WS `style.updated`.
 
 **링크** — 유튜브·틱톡·인스타 릴스 등 공개 영상 주소를 붙여 넣으면(`POST /api/style/links`):
+- 유튜브는 yt-dlp 가 JavaScript 를 돌려야 받아진다. 트레이 앱은 PATH 가 비어 있어 node · deno 를 못 찾으니, 알려진 폴더를 PATH 에 붙이고
+  `--js-runtimes node:<우리 실행 파일>` 로 Electron 을 node 로 쓴다 (`ELECTRON_RUN_AS_NODE=1`). 개발 모드에서는 그냥 node.
 
 1. `references` 에 `source=link`, `url` 로 한 줄 (같은 링크는 한 번만; 실패했던 것은 다시). 파일은 `~/.madi/references/<id>.mp4` 로 받는다 — 갤러리(감시 폴더)와 무관.
 2. `download` 잡이 사이드카 `yt-dlp`(`style/link.ts` 의 `ytdlpArgs`: 재생목록 제외, 720p 이하 mp4 하나, `--print` 로 파일 경로·제목)를 돌린다. 끝나면 제목을 채우고 `analyze` 로 이어진다.
