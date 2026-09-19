@@ -223,6 +223,7 @@ export const copy = {
       link_unavailable: '지금은 볼 수 없는 영상입니다.',
       link_network: '인터넷 연결이 끊겨 가져오지 못했습니다.',
       link_failed: '이 링크는 가져오지 못했습니다.',
+      link_unreadable: '받았는데 영상을 읽지 못했습니다. "다시 배우기"로 한 번 더 받아 보세요.',
     } as Record<string, string>,
     remoteLabel: '밖에서 접속하기',
     remoteOn: '연결됨',

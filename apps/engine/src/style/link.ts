@@ -16,6 +16,11 @@ export interface YtdlpArgsOptions {
   ffmpeg?: string | undefined;
   /** 최대 세로 해상도. 분석용이라 720 이면 충분하다. */
   maxHeight?: number;
+  /**
+   * 유튜브는 yt-dlp 가 JavaScript 를 돌려야 받아진다 (2025년 말부터). 트레이 앱은 PATH 가 비어 있어 node · deno 를 못 찾으니
+   * 우리가 가진 node(Electron 은 ELECTRON_RUN_AS_NODE=1 로 node 가 된다)를 직접 알려 준다.
+   */
+  nodeBin?: string | undefined;
 }
 
 /** 재생목록은 안 받고, 720p 이하 mp4 하나로. 끝나면 파일 경로·제목을 표시 줄로 찍게 한다. */
@@ -26,6 +31,9 @@ export function ytdlpArgs(o: YtdlpArgsOptions): string[] {
     '--no-warnings',
     '--no-progress',
     '--no-mtime',
+    // 제목이 깨지지 않게: 트레이 앱엔 로캘이 없어 yt-dlp 가 제목을 다른 인코딩으로 찍을 수 있다
+    '--encoding',
+    'utf-8',
     '-f',
     `bv*[height<=${h}]+ba/b[height<=${h}]/b`,
     '--merge-output-format',
@@ -41,6 +49,7 @@ export function ytdlpArgs(o: YtdlpArgsOptions): string[] {
     `after_move:${TITLE_TAG}%(title)s`,
   ];
   if (o.ffmpeg) args.push('--ffmpeg-location', o.ffmpeg);
+  if (o.nodeBin) args.push('--js-runtimes', `node:${o.nodeBin}`);
   args.push('--', o.url);
   return args;
 }
@@ -60,7 +69,31 @@ export function parseYtdlpOutput(stdout: string): YtdlpResult | null {
     else if (line.startsWith(TITLE_TAG)) title = line.slice(TITLE_TAG.length).trim();
   }
   if (!filePath) return null;
-  return { filePath, title: title || path.basename(filePath).replace(/\.[^.]+$/, '') };
+  return { filePath, title: cleanTitle(title) || path.basename(filePath).replace(/\.[^.]+$/, '') };
+}
+
+/**
+ * 깨진 제목은 버린다 (로캘이 없는 환경에서 온 것). 대체 문자(U+FFFD) · 제어 문자를 지우고,
+ * 남은 글의 셋 중 하나 넘게 깨져 있었으면 빈 문자열 → 호출한 쪽이 "유튜브 영상" 같은 기본 이름을 쓴다.
+ */
+export function cleanTitle(raw: string): string {
+  const t = raw.replace(/[\u0000-\u001f\u007f]/g, '').trim();
+  if (!t) return '';
+  const broken = (t.match(/\uFFFD/g) ?? []).length;
+  if (broken * 3 > t.length) return '';
+  return t.replace(/\uFFFD/g, '').replace(/\s+/g, ' ').trim();
+}
+
+/** yt-dlp 를 띄울 환경: 로캘 · 파이썬 인코딩을 UTF-8 로 못 박고, PATH 에 알려진 폴더를 붙인다. */
+export function ytdlpEnv(base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return { ...base, ELECTRON_RUN_AS_NODE: '1', PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1', LANG: base['LANG'] || 'en_US.UTF-8', LC_ALL: base['LC_ALL'] || 'en_US.UTF-8' };
+}
+
+/** 받은 파일을 읽다(분석) 실패한 이유 → 사용자에게 보일 코드. 원문은 로그에만. */
+export function classifyAnalyzeError(message: string): 'link_unreadable' | 'link_failed' {
+  const s = message.toLowerCase();
+  if (/no video|no_video|stream|duration|probe|invalid data|moov|corrupt|enoent|no such file/.test(s)) return 'link_unreadable';
+  return 'link_failed';
 }
 
 export type LinkErrorCode = 'link_private' | 'link_unsupported' | 'link_unavailable' | 'link_network' | 'link_failed';
@@ -69,6 +102,8 @@ export type LinkErrorCode = 'link_private' | 'link_unsupported' | 'link_unavaila
 export function classifyLinkError(stderr: string): LinkErrorCode {
   const s = stderr.toLowerCase();
   if (/login|sign in|cookies|private video|rate-limit|rate limit|429|age-restricted|confirm your age/.test(s)) return 'link_private';
+  // JS 런타임 · 챌린지 풀이 실패 = 도구 쪽 문제. "지금은 볼 수 없는" 이 아니라 "가져오지 못했다" 로.
+  if (/javascript runtime|js runtime|n challenge|sig challenge|ejs/.test(s)) return 'link_failed';
   if (/unsupported url|is not a valid url|no video formats|requested format is not available/.test(s)) return 'link_unsupported';
   if (/video unavailable|not available|removed|does not exist|404|has been deleted|blocked/.test(s)) return 'link_unavailable';
   if (/unable to download|connection|timed out|network|resolve host|ssl|getaddrinfo|econn/.test(s)) return 'link_network';
