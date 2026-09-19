@@ -55,6 +55,8 @@ export const OutputDetailResponse = z.object({
   edit: Edit,
   transcript: Transcript.nullable(),
   video: VideoCard,
+  /** 이 결과물이 고쳐서 만든 것이면, 고치기 전 결과물과 그 편집 (기획안 §6 "수정안 비교"). */
+  previous: z.object({ output: OutputCard, edit: Edit }).nullable().default(null),
 });
 export type OutputDetailResponse = z.infer<typeof OutputDetailResponse>;
 

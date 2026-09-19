@@ -107,6 +107,8 @@ export const edits = sqliteTable('edits', {
   subtitleAuto: integer('subtitle_auto', { mode: 'boolean' }).notNull().default(true),
   /** 강조할 단어들 [{term,start,end}] */
   emphasis: text('emphasis', { mode: 'json' }).notNull().default('[]'),
+  /** 어느 Edit 를 고쳐서 만든 것인지 */
+  revisionOf: text('revision_of'),
   speed: text('speed', { mode: 'json' }).notNull(),
   createdAt: integer('created_at').notNull(),
 });

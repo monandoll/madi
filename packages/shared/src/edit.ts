@@ -101,6 +101,11 @@ export const Edit = z.object({
   subtitleAuto: z.boolean().default(true),
   /** 강조할 단어들 (자막 번인에서 굵게 · 다른 색). */
   emphasis: z.array(Emphasis).default([]),
+  /**
+   * 어느 Edit 를 고쳐서 만든 것인지 (기획안 §6 "수정안 비교"). 결과물이 이미 있는 Edit 는 제자리에서 고치지 않고
+   * 새 Edit 를 만든다 — 이전 결과물도 계속 자기 Edit 로부터 재현돼야 하니까.
+   */
+  revisionOf: z.string().nullable().default(null),
   /** 아직 안 씀. 구간별 배속. */
   speed: z.array(TimeRange.extend({ rate: z.number().positive() })),
   createdAt: z.number().int(),
@@ -162,4 +167,43 @@ export function remapRange(range: TimeRange, segments: TimeRange[]): TimeRange |
 
 export function totalDuration(segments: TimeRange[]): number {
   return segments.reduce((a, s) => a + (s.end - s.start), 0);
+}
+
+/** 두 편집 결정의 차이 — 결과물 화면의 "이전과 달라진 점" 과 에이전트 도구 결과가 같이 쓴다. */
+export interface EditDiff {
+  keep?: { from: TimeRange | null; to: TimeRange | null };
+  parts?: { from: TimeRange[]; to: TimeRange[] };
+  cuts: { added: TimeRange[]; removed: TimeRange[] };
+  crop?: { from: Crop; to: Crop };
+  cropFocus?: { from: number | null; to: number | null };
+  subtitles?: { from: boolean; to: boolean };
+  /** 자막 아래 여백 (커지면 위로 간 것) */
+  subtitleBottom?: { from: number; to: number };
+  emphasis?: { added: string[]; removed: string[] };
+  /** 하나라도 달라졌는지 */
+  changed: boolean;
+}
+
+type Diffable = Pick<Edit, 'keep' | 'parts' | 'cuts' | 'crop' | 'cropFocus' | 'subtitles' | 'subtitleStyle' | 'emphasis'>;
+
+const sameRange = (a: TimeRange | null, b: TimeRange | null) => (a === null || b === null ? a === b : Math.abs(a.start - b.start) < 0.05 && Math.abs(a.end - b.end) < 0.05);
+const sameRanges = (a: TimeRange[], b: TimeRange[]) => a.length === b.length && a.every((r, i) => sameRange(r, b[i]!));
+
+export function editDiff(prev: Diffable, next: Diffable): EditDiff {
+  const d: EditDiff = { cuts: { added: [], removed: [] }, changed: false };
+  if (!sameRange(prev.keep, next.keep)) d.keep = { from: prev.keep, to: next.keep };
+  if (!sameRanges(prev.parts, next.parts)) d.parts = { from: prev.parts, to: next.parts };
+  d.cuts.added = next.cuts.filter((c) => !prev.cuts.some((p) => sameRange(p, c))).map(({ start, end }) => ({ start, end }));
+  d.cuts.removed = prev.cuts.filter((c) => !next.cuts.some((n) => sameRange(n, c))).map(({ start, end }) => ({ start, end }));
+  if (prev.crop !== next.crop) d.crop = { from: prev.crop, to: next.crop };
+  if (next.crop === 'vertical' && prev.cropFocus !== next.cropFocus) d.cropFocus = { from: prev.cropFocus, to: next.cropFocus };
+  if (prev.subtitles !== next.subtitles) d.subtitles = { from: prev.subtitles, to: next.subtitles };
+  if (next.subtitles && Math.abs(prev.subtitleStyle.bottom - next.subtitleStyle.bottom) > 0.01) d.subtitleBottom = { from: prev.subtitleStyle.bottom, to: next.subtitleStyle.bottom };
+  const pe = new Set(prev.emphasis.map((e) => e.term));
+  const ne = new Set(next.emphasis.map((e) => e.term));
+  const added = [...ne].filter((t) => !pe.has(t));
+  const removed = [...pe].filter((t) => !ne.has(t));
+  if (added.length || removed.length) d.emphasis = { added, removed };
+  d.changed = !!(d.keep || d.parts || d.cuts.added.length || d.cuts.removed.length || d.crop || d.cropFocus || d.subtitles || d.subtitleBottom || d.emphasis);
+  return d;
 }

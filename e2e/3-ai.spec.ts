@@ -37,6 +37,7 @@ test('설정: 설치된 도구 중 Claude Code 를 고르면 연결됨', async (
 });
 
 test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지며 결과물 카드가 붙는다', async ({ page }) => {
+  test.setTimeout(240_000); // 결과물을 네 번 만든다 (세로 · 고치기 · 강조)
   await page.goto('/');
   await page.locator('[data-testid="video-card"]', { hasText: '어깨 가동성 루틴 3분' }).click();
   const detail = page.getByTestId('video-detail');
@@ -95,6 +96,21 @@ test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지�
   await page.getByTestId('output-row').last().getByTestId('output-revise').click();
   await expect(input).toHaveValue('「AI 세로」 고쳐줘: ');
   await input.fill('');
+
+  // 수정안 비교: 결과물이 있는 편집을 고치면 새 결과물에 "이전과 달라진 점" 과 견주기 (기획안 §6)
+  const outs = (await (await page.request.get('/api/outputs')).json()).outputs as { id: string; editId: string; title: string }[];
+  const firstOut = outs.find((o) => o.title === 'AI 세로')!;
+  await input.fill(`고쳐줘: ${firstOut.editId}`);
+  await page.getByTestId('chat-send').click();
+  await expect(page.getByTestId('bubble-assistant').filter({ hasText: '이전 것과 비교할 수 있어요' })).toBeVisible({ timeout: 90_000 });
+  await page.getByTestId('output-row').last().getByRole('button', { name: '자세히' }).click();
+  const diff = page.getByTestId('output-diff');
+  await expect(diff).toContainText('이전과 달라진 점');
+  await expect(diff.getByTestId('output-diff-line').first()).toContainText('0:00–0:01 을 더 잘라냈습니다');
+  await diff.getByTestId('output-compare-toggle').click();
+  await expect(page.getByTestId('output-compare')).toContainText('이전');
+  await expect(page.getByTestId('output-compare')).toContainText('지금');
+  await page.getByTestId('panel-close').click();
 
   // 단어 강조: 문장을 넣고 "강조" → 결과물 자막 목록에 그 단어만 굵게 (기획안 §6 예시 2)
   await input.fill('이 문장 고쳐줘: 무릎을 펴고 천천히');

@@ -153,6 +153,23 @@ describe('AI 연결', () => {
     expect(t.segments[0]).toMatchObject({ start: 0, end: 2 });
   });
 
+  it('결과물이 있는 편집을 고치면 새 편집(revisionOf)이 되고, 결과물 화면은 이전 것과 달라진 점을 같이 준다 (기획안 §6)', { timeout: 120_000 }, async () => {
+    const first = (await detail()).outputs.find((o) => o.title === 'AI 세로')!;
+    const before = OutputDetailResponse.parse((await api(`/api/outputs/${first.id}`)).body);
+    expect(before.previous).toBeNull();
+    await chat(`고쳐줘: ${before.edit.id}`);
+    const reply = await waitReply();
+    expect(String(reply.params['text'])).toContain('1곳을 더 잘라냈어요. 이전 것과 비교할 수 있어요.');
+    const out = (await detail()).outputs.find((o) => o.editId !== before.edit.id && o.title === 'AI 세로')!;
+    expect(out).toBeTruthy();
+    const od = OutputDetailResponse.parse((await api(`/api/outputs/${out.id}`)).body);
+    expect(od.edit.revisionOf).toBe(before.edit.id);
+    expect(od.edit.cuts).toEqual([{ start: 0, end: 1, reason: 'ai' }]);
+    expect(od.previous?.output.id).toBe(first.id);
+    expect(od.previous?.edit.cuts).toEqual([]); // 이전 편집은 그대로 — 이전 결과물은 여전히 재현된다
+    expect(Math.abs(od.output.durationSec - (first.durationSec - 1))).toBeLessThan(0.4);
+  });
+
   it('apply_edit.emphasis: 단어를 그 구간에서만 강조한 자막 결과물 (기획안 §6 예시 2)', { timeout: 120_000 }, async () => {
     await chat('강조해줘: 앱');
     const m = await waitReply();

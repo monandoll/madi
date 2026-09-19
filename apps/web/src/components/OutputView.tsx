@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { keepSegments, type OutputDetailResponse, type Segment } from '@madi/shared';
+import { editDiff, keepSegments, type OutputDetailResponse, type Segment } from '@madi/shared';
 import { emphasisTerms, remapRange, splitEmphasis } from '@madi/shared';
 import { copy } from '../copy.js';
 import { formatDuration } from '../lib/format.js';
@@ -21,11 +21,13 @@ interface Props {
  * 모바일 결과물 화면과 PC 옆 패널이 같은 컴포넌트를 쓴다.
  */
 export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
-  const { output, edit, transcript, video } = data;
+  const { output, edit, transcript, video, previous } = data;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
+  const [comparing, setComparing] = useState(false);
+  const diff = previous ? editDiff(previous.edit, edit) : null;
 
   useEffect(() => {
     const v = videoRef.current;
@@ -94,6 +96,42 @@ export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
           <span className="text-12 text-text-3">{rows.length ? (wide ? copy.output.lines(rows.length - cuts) : copy.output.cuts(cuts)) : ''}</span>
         </div>
       </div>
+
+      {previous && diff && (
+        <div className="flex flex-none flex-col gap-1.5 border-t border-line-soft px-3.5 py-2.5" data-testid="output-diff">
+          <div className="flex items-baseline justify-between">
+            <span className="text-12 font-medium text-text-2">{copy.output.diffTitle}</span>
+            <button type="button" onClick={() => setComparing((v) => !v)} className="text-12 text-accent" data-testid="output-compare-toggle">
+              {comparing ? copy.output.compareClose : copy.output.compareOpen}
+            </button>
+          </div>
+          {(diff.changed ? copy.output.diff(diff) : [copy.output.diffNone]).map((line, i) => (
+            <span key={i} className="text-12 leading-normal text-text-2" data-testid="output-diff-line">
+              {line}
+            </span>
+          ))}
+          {comparing && (
+            <div className="flex justify-center gap-3 pt-1.5" data-testid="output-compare">
+              {[
+                { label: copy.output.before, o: previous.output },
+                { label: copy.output.after, o: output },
+              ].map(({ label, o }) => {
+                const v = o.width < o.height;
+                return (
+                  <div key={o.id} className="flex flex-col items-center gap-1">
+                    <div className="relative overflow-hidden rounded-panel bg-thumb" style={{ width: v ? 120 : 150, aspectRatio: v ? '9/16' : '16/9' }}>
+                      <video src={o.url} poster={o.thumbnailUrl ?? undefined} playsInline controls preload="metadata" className="absolute inset-0 h-full w-full object-cover" />
+                    </div>
+                    <span className="text-11 text-text-3">
+                      {label} · {formatDuration(o.durationSec)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto border-t border-line-soft" data-testid="subtitle-rows">
         {rows.length === 0 ? (

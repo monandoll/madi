@@ -217,6 +217,11 @@ API 키 방식은 아직 안 쓴다 (사용자 본인 구독으로 돈다는 원
 - 화면을 못 읽으면 가운데 · 아래 — 전과 같고, 그것도 적는다. 렌더는 항상 Edit 로부터 재현.
 - 에이전트는 `apply_edit.focus` / `extract_shorts.clips[].focus` 로 미리 정하거나 `set_subtitle_style.bottom` 으로 고정할 수 있다.
 
+**수정안 비교** (기획안 §6 "수정안 비교") — 결과물이 이미 있는 Edit 를 고치면(`apply_edit(editId)` · `set_subtitle_style(editId)`) 제자리에서 바꾸지 않고
+`revisionOf` 를 단 새 Edit 를 만든다 (`reviseEdit`). 이전 결과물은 계속 자기 Edit 로부터 재현되고, 도구 결과에 `changes`(`editDiff`: keep · parts · cuts 추가/복원 · crop · focus · 자막 · 여백 · 강조)가 실려
+에이전트가 "무엇을 바꿨는지" 를 정확히 말한다. `GET /api/outputs/:id` 는 `previous`(고치기 전 결과물 + Edit)를 같이 주고, 결과물 화면은 "이전과 달라진 점" 을 말로 적고 "이전 것과 견주기" 로 두 영상을 나란히 튼다.
+결과물이 없는 Edit 는 그대로 제자리에서 고친다.
+
 **단어 강조** (기획안 §6 예시 2 "견갑골 설명에만 단어를 강조") — `Edit.emphasis[{term,start,end}]`. 자막 빌더(`buildAss`)가 그 구간의 단어 안에서 term 을 찾아
 `{\c색\fs크기}…{\r}` 로 감싼다 (색은 `SubtitleStyle.emphasisColor`, 기본 accent · 크기 1.15배). 구간이 없으면 영상 전체. 결과물 화면의 자막 목록도 같은 자리를 굵게 보여 준다 (`splitEmphasis`).
 제작 지침: 용어는 처음 설명하는 구간에서만. 도구는 `apply_edit.emphasis` (목록 전체를 바꾼다, 빈 배열이면 지운다).

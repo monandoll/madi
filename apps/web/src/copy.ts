@@ -1,3 +1,4 @@
+import type { EditDiff } from '@madi/shared';
 /**
  * UI 문구는 전부 여기. 하드코딩 금지.
  *
@@ -417,6 +418,28 @@ export const copy = {
     restorePrefill: (text: string) => `이 부분 살려줘: ${text}`,
     noSubtitles: '자막 없음',
     notFound: '결과물을 찾지 못했습니다. 지워졌을 수 있습니다.',
+    /** 수정안 비교 (기획안 §6): 고쳐서 만든 결과물이면 전후를 같이 */
+    diffTitle: '이전과 달라진 점',
+    diffNone: '달라진 게 없습니다.',
+    before: '이전',
+    after: '지금',
+    compareOpen: '이전 것과 견주기',
+    compareClose: '견주기 닫기',
+    diff: (d: EditDiff): string[] => {
+      const r = (x: { start: number; end: number }) => `${fmtClock(x.start)}–${fmtClock(x.end)}`;
+      const out: string[] = [];
+      if (d.keep) out.push(d.keep.to ? (d.keep.from ? `구간을 ${r(d.keep.from)} 에서 ${r(d.keep.to)} 로 바꿨습니다.` : `${r(d.keep.to)} 구간만 씁니다.`) : '영상 전체를 씁니다.');
+      if (d.parts) out.push(d.parts.to.length ? `조각 ${d.parts.to.length}개를 ${d.parts.to.map(r).join(', ')} 순서로 이어 붙였습니다.` : '조각 구성을 풀었습니다.');
+      if (d.cuts.added.length) out.push(`${d.cuts.added.map(r).join(', ')} 을 더 잘라냈습니다.`);
+      if (d.cuts.removed.length) out.push(`${d.cuts.removed.map(r).join(', ')} 을 다시 살렸습니다.`);
+      if (d.crop) out.push(d.crop.to === 'vertical' ? '세로로 바꿨습니다.' : '가로로 돌렸습니다.');
+      if (d.cropFocus) out.push(d.cropFocus.to === null ? '화면의 어느 쪽을 잡을지 다시 고릅니다.' : `화면 ${d.cropFocus.to < 0.25 ? '왼쪽' : d.cropFocus.to > 0.75 ? '오른쪽' : '가운데'}을 잡았습니다.`);
+      if (d.subtitles) out.push(d.subtitles.to ? '자막을 넣었습니다.' : '자막을 뺐습니다.');
+      if (d.subtitleBottom) out.push(d.subtitleBottom.to > d.subtitleBottom.from ? '자막을 위로 올렸습니다.' : '자막을 아래로 내렸습니다.');
+      if (d.emphasis?.added.length) out.push(`${d.emphasis.added.map((t) => `"${t}"`).join(', ')} 을 강조했습니다.`);
+      if (d.emphasis?.removed.length) out.push(`${d.emphasis.removed.map((t) => `"${t}"`).join(', ')} 강조를 뺐습니다.`);
+      return out;
+    },
   },
   /**
    * 엔진이 남기는 대화 코드 → 문장. params 로 채운다.

@@ -92,6 +92,11 @@ export class Library extends EventEmitter<LibraryEvents> {
     return row ? Output.parse(row) : null;
   }
 
+  /** 이 편집으로 만든 결과물들 (최근 것부터). */
+  outputsForEdit(editId: string): Output[] {
+    return this.db.select().from(outputs).where(eq(outputs.editId, editId)).orderBy(desc(outputs.createdAt)).all().map((r) => Output.parse(r));
+  }
+
   outputsOf(videoId: string): Output[] {
     return this.db.select().from(outputs).where(eq(outputs.videoId, videoId)).orderBy(desc(outputs.createdAt)).all().map((r) => Output.parse(r));
   }

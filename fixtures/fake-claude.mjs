@@ -6,6 +6,7 @@
  *   세로   → apply_edit(vertical) + render
  *   조각   → extract_shorts(parts: 뒤 조각 먼저, focus=left)
  *   강조   → apply_edit(subtitles, emphasis: 단어를 0–2초에서만) + render
+ *   고쳐줘: <editId> → apply_edit(editId, cuts 0–1) + render (결과물이 있으면 새 편집 · changes)
  *   규칙   → update_style_rule
  *   문장   → set_subtitle_text (사용자 문장을 0–2초 자막으로)
  *   자막   → get_transcript (whisper 없으면 도구 오류를 그대로 전한다)
@@ -189,6 +190,13 @@ try {
     const e = await call('apply_edit', { subtitles: true, title: 'AI 강조', emphasis: [{ term, start: 0, end: 2 }] });
     const r = await call('render', { editId: e.editId });
     say(`「${r.title}」 만들었어요. ${e.emphasis?.length ?? 0}개 단어를 띄웠어요.`);
+  } else if (!request.includes('문장') && /고쳐줘:\s*\S{10,}/.test(request)) {
+    // "고쳐줘: <editId>" → 그 편집을 고친다 (앞 1초를 더 잘라냄). 결과물이 있는 편집이면 새 편집이 되고 changes 가 온다.
+    const editId = request.split(':')[1].trim();
+    say('앞부분을 조금 더 잘라낼게요.');
+    const e = await call('apply_edit', { editId, cuts: [{ start: 0, end: 1 }] });
+    const r = await call('render', { editId: e.editId });
+    say(`「${r.title}」 다시 만들었어요. ${e.changes?.cuts?.added?.length ?? 0}곳을 더 잘라냈어요.${e.revisionOf ? ' 이전 것과 비교할 수 있어요.' : ''}`);
   } else if (request.includes('규칙')) {
     await call('update_style_rule', { rule: '숏폼은 30초 안쪽으로' });
     say('앞으로 그렇게 할게요.');

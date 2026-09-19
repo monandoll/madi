@@ -418,11 +418,15 @@ export function createApp(deps: AppDeps): Hono {
     const edit = deps.library.edit(o.editId);
     const v = videos.get(o.videoId);
     if (!edit || !v) return c.json({ error: { code: 'not_found', message: 'output not found' } }, 404);
+    // 고쳐서 만든 결과물이면 고치기 전 것도 같이 (기획안 §6 수정안 비교)
+    const prevEdit = edit.revisionOf ? deps.library.edit(edit.revisionOf) : null;
+    const prevOut = prevEdit ? deps.library.outputsForEdit(prevEdit.id)[0] : undefined;
     const body: OutputDetailResponse = {
       output: toOutputCard(o, cfg),
       edit,
       transcript: (edit.transcriptId && deps.library.transcript(edit.transcriptId)) || deps.library.transcriptOf(v.id),
       video: toCard(v, deps),
+      previous: prevEdit && prevOut ? { output: toOutputCard(prevOut, cfg), edit: prevEdit } : null,
     };
     return c.json(body);
   });
