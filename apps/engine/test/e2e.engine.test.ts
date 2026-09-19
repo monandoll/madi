@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import WebSocket from 'ws';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { FoldersResponse, HealthResponse, SettingsResponse, VideosResponse, WsEvent } from '@madi/shared';
+import { FoldersResponse, HealthResponse, SettingsResponse, VideosResponse, WsEvent, UpdateResponse } from '@madi/shared';
 import { type Engine, startEngine } from '../src/engine.js';
 import { SAMPLE_5S, SAMPLE_SILENT, freePort, tempHome, waitFor } from './helpers.js';
 
@@ -50,6 +50,28 @@ describe('engine e2e', () => {
     expect(h.ok).toBe(true);
     expect(h.ai.connected).toBe(false);
     expect(h.tunnel.status).toBe('off');
+  });
+
+  it('새 버전: 브라우저만 뜬 상태면 최신이고 확인 · 설치는 409, 훅을 붙이면 받아 둔 뒤에만 설치된다', async () => {
+    const h = HealthResponse.parse(await api('/api/health'));
+    expect(h.update).toEqual({ available: null, downloaded: false, canInstall: false });
+    const u = UpdateResponse.parse(await api('/api/update')).update;
+    expect(u).toMatchObject({ current: h.version, available: null, canInstall: false });
+    const post = (p: string) => fetch(`${engine.url}${p}`, { method: 'POST' });
+    expect((await post('/api/update/check')).status).toBe(409);
+    expect((await post('/api/update/install')).status).toBe(409);
+    // Electron 이 붙이는 훅을 흉내 낸다
+    let installed = 0;
+    engine.update.setHooks({ check: async () => engine.update.available('9.9.9'), install: () => void installed++ });
+    const checked = UpdateResponse.parse(await (await post('/api/update/check')).json()).update;
+    expect(checked).toMatchObject({ available: '9.9.9', downloaded: false, canInstall: false });
+    expect((await post('/api/update/install')).status).toBe(409); // 아직 안 받았다
+    engine.update.downloaded('9.9.9');
+    expect(HealthResponse.parse(await api('/api/health')).update).toEqual({ available: '9.9.9', downloaded: true, canInstall: true });
+    expect((await post('/api/update/install')).status).toBe(200);
+    expect(installed).toBe(1);
+    engine.update.setHooks(null);
+    engine.update.notAvailable();
   });
 
   it('설정을 바꾸면 감시가 시작되고, 폴더에 넣은 영상이 ready 가 된다', async () => {

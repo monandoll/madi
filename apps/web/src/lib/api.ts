@@ -22,6 +22,7 @@ import {
   VideosResponse,
   type PlanFeedbackRequest,
   PlanResponse,
+  UpdateResponse,
 } from '@madi/shared';
 
 export class ApiError extends Error {
@@ -57,6 +58,10 @@ async function send<T>(method: 'PATCH' | 'POST' | 'DELETE' | 'PUT', path: string
 
 export const api = {
   health: () => get('/api/health', HealthResponse),
+  /** 새 버전 상태 · 지금 확인 · 받아 둔 것으로 다시 시작 */
+  update: () => get('/api/update', UpdateResponse),
+  checkUpdate: () => send('POST', '/api/update/check', undefined, UpdateResponse),
+  installUpdate: () => send('POST', '/api/update/install', undefined, UpdateResponse),
   videos: () => get('/api/videos', VideosResponse),
   settings: () => get('/api/settings', SettingsResponse),
   patchSettings: (body: SettingsPatch) => send('PATCH', '/api/settings', body, SettingsResponse),
@@ -106,6 +111,7 @@ export const api = {
 };
 
 export const queryKeys = {
+  update: ['update'] as const,
   health: ['health'] as const,
   videos: ['videos'] as const,
   settings: ['settings'] as const,

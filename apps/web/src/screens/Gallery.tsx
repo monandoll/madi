@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Qr } from '../components/Qr.js';
 import { HeaderButton, TopBar } from '../components/TopBar.js';
+import { UpdateBanner } from '../components/UpdateBanner.js';
 import { VideoCard } from '../components/VideoCard.js';
 import { copy } from '../copy.js';
 import { api, queryKeys } from '../lib/api.js';
@@ -114,6 +115,7 @@ export function Gallery() {
             {copy.upload.dropping}
           </div>
         )}
+        {!pc && <UpdateBanner className="mb-2.5" />}
         {pc && help && <UploadHelp onPick={pick} onClose={() => setHelp(false)} />}
         {uploads.items.length > 0 && (
           <div className="mb-3 flex flex-col overflow-hidden rounded-thumb border border-line pc:mb-4" data-testid="upload-list">
