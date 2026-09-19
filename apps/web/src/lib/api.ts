@@ -20,6 +20,8 @@ import {
   TranscriptResponse,
   VideoDetailResponse,
   VideosResponse,
+  type PlanFeedbackRequest,
+  PlanResponse,
 } from '@madi/shared';
 
 export class ApiError extends Error {
@@ -60,6 +62,8 @@ export const api = {
   patchSettings: (body: SettingsPatch) => send('PATCH', '/api/settings', body, SettingsResponse),
   video: (id: string) => get(`/api/videos/${id}`, VideoDetailResponse),
   act: (id: string, body: ActionRequest) => send('POST', `/api/videos/${id}/actions`, body, ActionResponse),
+  /** 편집안 후보 빼기 · 되돌리기 */
+  planFeedback: (id: string, body: PlanFeedbackRequest) => send('POST', `/api/videos/${id}/plan/feedback`, body, PlanResponse),
   putTranscript: (id: string, segments: { start: number; end: number; text: string }[]) => send('PUT', `/api/videos/${id}/transcript`, { segments }, TranscriptResponse),
   chat: (id: string, text: string) => send('POST', `/api/videos/${id}/chat`, { text }, ChatResponse),
   cancelChat: (id: string) => send('POST', `/api/videos/${id}/chat/cancel`, undefined, z.object({ canceled: z.boolean() })),

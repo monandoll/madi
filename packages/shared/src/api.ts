@@ -7,7 +7,7 @@ import { Edit } from './edit.js';
 import { Output } from './output.js';
 import { ChatMessage } from './chat.js';
 import { Chapters } from './chapter.js';
-import { EditPlan } from './plan.js';
+import { EditPlan, PlanFeedbackKind, PlanVerdict } from './plan.js';
 
 export const ENGINE_PORT = 41520;
 
@@ -83,6 +83,12 @@ export const ActionRequest = z.discriminatedUnion('type', [
 export type ActionRequest = z.infer<typeof ActionRequest>;
 
 export const ActionResponse = z.object({ messages: z.array(ChatMessage), job: Job.nullable() });
+
+/** 편집안 후보에 판단 남기기. verdict 가 null 이면 지운다 (되돌리기). */
+export const PlanFeedbackRequest = z.object({ kind: PlanFeedbackKind, index: z.number().int().min(0), verdict: PlanVerdict.nullable() });
+export type PlanFeedbackRequest = z.infer<typeof PlanFeedbackRequest>;
+export const PlanResponse = z.object({ plan: EditPlan });
+export type PlanResponse = z.infer<typeof PlanResponse>;
 
 /** 자막 직접 쓰기/고치기: 자막 전체를 이 줄들로 바꾼다 (소리 없는 영상도 됨). */
 export const TranscriptPutRequest = z.object({

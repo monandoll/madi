@@ -40,7 +40,11 @@ plan 잡 (workers/plan.ts, AI 한 턴 · 도구 없음)
   숏폼 후보 "숏폼으로" → `short` 액션, "잘라낼 후보 N곳을 빼고 롱폼 만들기" → `apply_plan` (`planCuts`: 남길 구간과 겹치는 부분은 컷에서 뺀다).
 - 다음 채팅 요청의 프롬프트에 `planBlock` 이 "# 이 영상의 편집안" 으로 들어간다 — 에이전트가 숏폼 · 컷을 고를 때 여기서 시작한다.
 - AI 가 없으면 `plan` 은 409 `ai_off`. 편집안 없이 `apply_plan` 은 409 `plan_missing`. 읽기 실패는 채팅에 `plan_failed` (큐 재시도 없음 — 토큰).
-- 단위 `test/plan.test.ts`, 엔진 e2e `test/e2e.agent.test.ts` (편집안 → 프롬프트 → 롱폼 만들기), 브라우저 `e2e/3-ai.spec.ts` (처음 열면 카드).
+- **후보 빼기** (기획안 §9 · §11 `edit_feedback`): 카드의 잘라낼 후보 · 숏폼 후보마다 "빼기 / 되돌리기". `POST /api/videos/:id/plan/feedback {kind, index, verdict}` → `EditPlan.feedback[]`.
+  뺀 컷은 `planCuts` 에서 빠지고, `planBlock` 은 뺀 것을 "사용자가 뺀 후보 (다시 제안하지 않는다)" 로 따로 넘긴다. 숏폼 후보를 눌러 만들면 `accepted` 로 남는다 (`short.from='plan'`).
+  같은 종류(반복 · NG · 잡담 · 침묵)의 컷을 영상을 넘어 3번 빼면 "…도 자르지 않는다" 를 기억 **제안**으로 올린다 (`rejectionMemory`, kv `plan.rejected`). 편집안을 다시 만들면 feedback 은 비워진다.
+  이벤트 `plan.feedback`.
+- 단위 `test/plan.test.ts`, 엔진 e2e `test/e2e.agent.test.ts` (편집안 → 프롬프트 → 롱폼 만들기 → 후보 빼기), 브라우저 `e2e/3-ai.spec.ts` (처음 열면 카드 · 빼기 토글).
 
 ## 도구 (`apps/engine/src/mcp/tools.ts`)
 

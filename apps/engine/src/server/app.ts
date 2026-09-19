@@ -8,6 +8,9 @@ import { RESPONSE_ALREADY_SENT } from '@hono/node-server/utils/response';
 import {
   ActionRequest,
   type ActionResponse,
+  PlanFeedbackRequest,
+  type PlanResponse,
+  planRejected,
   AddLinkRequest,
   AddRuleRequest,
   RememberRequest,
@@ -50,6 +53,7 @@ import type { JobQueue } from '../queue/index.js';
 import type { SettingsStore } from '../settings.js';
 import type { VideoStore } from '../videos.js';
 import type { Library } from '../library.js';
+import { rejectionMemory } from '../plan/prompt.js';
 import { ActionError, greetIfEmpty, runAction } from '../actions.js';
 import { AgentError } from '../agent/runner.js';
 import { cliVersion, detectCli } from '../agent/detect.js';
@@ -311,6 +315,27 @@ export function createApp(deps: AppDeps): Hono {
       chapters: deps.chapters.get(v.id),
       plan: deps.plans.get(v.id),
     };
+    return c.json(body);
+  });
+
+  // 편집안 후보에 판단 남기기 — 빼기 · 되돌리기 (기획안 §9). 같은 종류를 반복해서 빼면 기억으로 제안한다.
+  app.post('/api/videos/:id/plan/feedback', async (c) => {
+    const v = videos.get(c.req.param('id'));
+    if (!v) return c.json({ error: { code: 'not_found', message: 'video not found' } }, 404);
+    const parsed = PlanFeedbackRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    const before = deps.plans.get(v.id);
+    if (!before) return c.json({ error: { code: 'plan_missing', message: 'no plan' } }, 409);
+    const wasRejected = planRejected(before, parsed.data.kind, parsed.data.index);
+    const plan = deps.plans.setFeedback(v.id, parsed.data);
+    if (!plan) return c.json({ error: { code: 'not_found', message: 'candidate not found' } }, 404);
+    const cutKind = parsed.data.kind === 'cut' ? before.cutCandidates[parsed.data.index]?.kind : undefined;
+    deps.events.record('plan.feedback', { kind: parsed.data.kind, verdict: parsed.data.verdict, ...(cutKind ? { cutKind } : {}) });
+    if (parsed.data.verdict === 'rejected' && !wasRejected && cutKind) {
+      const text = rejectionMemory(cutKind, deps.plans.bumpRejected(cutKind));
+      if (text) deps.memory.add({ text, kind: 'keep', scope: 'all', source: 'feedback', status: 'proposed' });
+    }
+    const body: PlanResponse = { plan };
     return c.json(body);
   });
 

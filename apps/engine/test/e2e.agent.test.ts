@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ActionResponse, AiProvidersResponse, ChatResponse, HealthResponse, isStreaming, OutputDetailResponse, VideoDetailResponse, VideosResponse } from '@madi/shared';
+import { ActionResponse, AiProvidersResponse, ChatResponse, HealthResponse, isStreaming, OutputDetailResponse, PlanResponse, VideoDetailResponse, VideosResponse } from '@madi/shared';
 import { resetCliCache } from '../src/agent/detect.js';
 import { type Engine, startEngine } from '../src/engine.js';
 import { FIXTURES, freePort, tempHome, waitFor } from './helpers.js';
@@ -199,6 +199,35 @@ describe('AI 연결', () => {
     const od = OutputDetailResponse.parse((await api(`/api/outputs/${out.id}`)).body);
     expect(od.edit.cuts).toEqual([{ start: 0, end: 1, reason: 'ai' }]);
     expect(od.edit.crop).toBe('none');
+  });
+
+  it('편집안 후보 빼기: 만들기에서 빠지고, 프롬프트에 "뺀 후보" 로 가고, 세 번 빼면 기억 제안 (기획안 §9)', { timeout: 120_000 }, async () => {
+    const fb = (verdict: 'rejected' | null) => api<PlanResponse>(`/api/videos/${videoId}/plan/feedback`, json({ kind: 'cut', index: 0, verdict }));
+    const r = await fb('rejected');
+    expect(r.status).toBe(200);
+    expect(PlanResponse.parse(r.body).plan.feedback).toEqual([expect.objectContaining({ kind: 'cut', index: 0, verdict: 'rejected' })]);
+    // 없는 자리 · 편집안 없는 영상은 거절
+    expect((await api(`/api/videos/${videoId}/plan/feedback`, json({ kind: 'short', index: 9, verdict: 'rejected' }))).status).toBe(404);
+    // 편집안대로 만들기 → 빠진 컷 0
+    const a = ActionResponse.parse((await api(`/api/videos/${videoId}/actions`, json({ type: 'apply_plan' }))).body);
+    expect(a.messages[0]!.params['cuts']).toBe(0);
+    await engine.queue.idle();
+    const outs = (await detail()).outputs.filter((o) => o.title.includes('편집안'));
+    const od = OutputDetailResponse.parse((await api(`/api/outputs/${outs[0]!.id}`)).body);
+    expect(od.edit.cuts).toEqual([]);
+    // 다음 요청의 프롬프트에 뺀 후보가 간다
+    await chat('안녕');
+    expect(String((await waitReply()).params['text'])).toContain('뺀 후보 있어요');
+    // 되돌리기 → 다시 빼기 ×2 → 같은 종류(잡담) 세 번째에 기억 제안 (proposed)
+    expect(engine.memory.list().some((m) => m.text.includes('잡담'))).toBe(false);
+    await fb(null);
+    await fb('rejected');
+    await fb(null);
+    await fb('rejected');
+    const m = engine.memory.list().find((x) => x.text.includes('잡담'))!;
+    expect(m).toMatchObject({ kind: 'keep', scope: 'all', source: 'feedback', status: 'proposed' });
+    await fb(null);
+    expect(String((await chat('안녕'), await waitReply()).params['text'])).toContain('뺀 후보 없어요');
   });
 
   it('에이전트 실패는 채팅 안에 오류 말풍선', async () => {

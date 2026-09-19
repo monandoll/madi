@@ -57,6 +57,14 @@ test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지�
   await expect(plan.getByTestId('plan-short').first()).toContainText('릴스');
   await expect(plan.getByTestId('plan-apply')).toContainText('잘라낼 후보 1곳을 빼고 롱폼 만들기');
   await expect(page.getByTestId('plan-make')).toHaveText('편집안 다시 만들기');
+  // 후보 빼기 → 줄이 흐려지고 만들기 문구가 바뀐다. 되돌리기로 돌아온다 (기획안 §9)
+  await plan.getByTestId('plan-cut-toggle').first().click();
+  await expect(plan.getByTestId('plan-cut').first()).toHaveAttribute('data-rejected', 'true');
+  await expect(plan.getByTestId('plan-apply')).toContainText('이대로 롱폼 만들기');
+  await expect(plan.getByTestId('plan-cut-toggle').first()).toHaveText('되돌리기');
+  await plan.getByTestId('plan-cut-toggle').first().click();
+  await expect(plan.getByTestId('plan-cut').first()).not.toHaveAttribute('data-rejected', 'true');
+  await expect(plan.getByTestId('plan-apply')).toContainText('잘라낼 후보 1곳을 빼고 롱폼 만들기');
   await expect(page.getByTestId('output-row')).toHaveCount(0);
   const before = await page.getByTestId('output-row').count();
 

@@ -84,7 +84,7 @@ resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리
 - `StyleProfile` — `style.md`(자연어 규칙) + `params.json`(숫자) + `examples/`(few-shot)
 - `Reference` — 완성본(배우는 대상). `stats`(숫자 + 장면 전환 시각) + `segments`(자막) + `insight`(AI 가 읽은 뜻: 취지·구성·보존 구간·숏폼 후보·용어·제목과 내용의 관계·태그)
 - `Memory` — 제작자 기억 한 줄. `kind`(style·keep·avoid·term) · `scope`(all·topic·video) · `source`(reference·feedback·user) · `status`(proposed·approved). 완성본에서 추린 것은 **제안**으로 들어오고 사용자가 확인한 것만 편집에 쓴다. 사용자가 보고 고치고 지운다. 완성본은 `excluded` 로 학습에서 뺄 수 있다.
-- `EditPlan` — 촬영본 편집안 초안. AI 가 자막·무음·움직임·장면을 읽고 남긴 취지·구성(구간별 편집 초안)·남길 구간·잘라낼 후보·숏폼 후보(채널·이유). 파일은 만들지 않는다 — 사용자가 후보를 골라야 렌더.
+- `EditPlan` — 촬영본 편집안 초안. AI 가 자막·무음·움직임·장면을 읽고 남긴 취지·구성(구간별 편집 초안)·남길 구간·잘라낼 후보·숏폼 후보(채널·이유). 파일은 만들지 않는다 — 사용자가 후보를 골라야 렌더. `feedback[]` 에 사용자가 뺀·만든 후보가 남고, 뺀 것은 다시 제안하지 않는다.
 - `Chat` — `Video`별 대화. 메시지에 `Output` 카드가 붙는다.
 
 원칙: **렌더는 항상 `Edit`로부터 재현 가능**해야 한다. 결과 파일만 있고 결정이 없는 상태를 만들지 않는다.

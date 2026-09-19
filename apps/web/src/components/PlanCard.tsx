@@ -1,4 +1,4 @@
-import type { EditPlan, TimeRange } from '@madi/shared';
+import { type EditPlan, type PlanFeedbackKind, planRejected, type TimeRange } from '@madi/shared';
 import { copy } from '../copy.js';
 import { formatDuration } from '../lib/format.js';
 
@@ -8,15 +8,26 @@ interface Props {
   onShort?: ((range: TimeRange, title: string) => void) | undefined;
   /** 편집안대로 롱폼 만들기 */
   onApply?: (() => void) | undefined;
+  /** 후보 빼기 · 되돌리기 (기획안 §9). 없으면 토글이 안 보인다. */
+  onFeedback?: ((kind: PlanFeedbackKind, index: number, rejected: boolean) => void) | undefined;
 }
 
 /**
  * 편집안 카드 (기획안 §4 의 롱폼 편집안 표 + 숏폼 후보 표). 카드 틀은 챕터 카드와 같다 (1px 선, 8px).
  * 여기서는 아무것도 자동으로 만들지 않는다 — 사용자가 후보를 눌러야 렌더가 걸린다 (§6).
  */
-export function PlanCard({ plan, onShort, onApply }: Props) {
+export function PlanCard({ plan, onShort, onApply, onFeedback }: Props) {
   const c = copy.detail.planCard;
   const span = (r: { start: number; end: number }) => `${formatDuration(r.start)}–${formatDuration(r.end)}`;
+  const rejected = (kind: PlanFeedbackKind, i: number) => planRejected(plan, kind, i);
+  const accepted = (i: number) => plan.feedback.some((f) => f.kind === 'short' && f.index === i && f.verdict === 'accepted');
+  const activeCuts = plan.cutCandidates.filter((_, i) => !rejected('cut', i)).length;
+  const toggle = (kind: PlanFeedbackKind, i: number) =>
+    onFeedback ? (
+      <button type="button" onClick={() => onFeedback(kind, i, !rejected(kind, i))} className="flex-none text-12 text-text-3 hover:text-text-2 pc:text-13" data-testid={`plan-${kind}-toggle`}>
+        {rejected(kind, i) ? c.restore : c.reject}
+      </button>
+    ) : null;
   return (
     <div className="flex w-full flex-col overflow-hidden rounded-thumb border border-line" data-testid="plan-card">
       <div className="flex flex-col gap-1 px-3 pt-2.5 pb-2">
@@ -60,12 +71,13 @@ export function PlanCard({ plan, onShort, onApply }: Props) {
         <div className="border-t border-line-soft px-3 py-2" data-testid="plan-cuts">
           <div className="pb-1 text-12 text-text-3">{c.cuts}</div>
           {plan.cutCandidates.map((k, i) => (
-            <div key={i} className="flex gap-2.5 py-[3px] text-12 pc:gap-3 pc:text-13">
-              <span className="w-[86px] flex-none text-text-3">{span(k)}</span>
-              <span className="min-w-0 flex-1 text-text-2">
+            <div key={i} className="flex items-center gap-2.5 py-[3px] text-12 pc:gap-3 pc:text-13" data-testid="plan-cut" data-rejected={rejected('cut', i) || undefined}>
+              <span className={`w-[86px] flex-none ${rejected('cut', i) ? 'text-muted line-through' : 'text-text-3'}`}>{span(k)}</span>
+              <span className={`min-w-0 flex-1 ${rejected('cut', i) ? 'text-muted line-through' : 'text-text-2'}`}>
                 {c.cutKind[k.kind] ? <span className="mr-1.5 rounded-pill bg-track px-1.5 py-px text-11 text-text-2">{c.cutKind[k.kind]}</span> : null}
                 {k.why}
               </span>
+              {toggle('cut', i)}
             </div>
           ))}
         </div>
@@ -75,21 +87,23 @@ export function PlanCard({ plan, onShort, onApply }: Props) {
         <div className="border-t border-line-soft" data-testid="plan-shorts">
           <div className="px-3 pt-2 pb-1 text-12 text-text-3">{c.shorts}</div>
           {plan.shortCandidates.map((s, i) => (
-            <div key={i} className="flex items-center gap-2.5 px-3 py-[7px] pc:gap-3 pc:hover:bg-surface-2" data-testid="plan-short">
+            <div key={i} className="flex items-center gap-2.5 px-3 py-[7px] pc:gap-3 pc:hover:bg-surface-2" data-testid="plan-short" data-rejected={rejected('short', i) || undefined}>
               <span className="flex min-w-0 flex-1 flex-col gap-px">
-                <span className="text-13 font-medium pc:text-14">
+                <span className={`text-13 font-medium pc:text-14 ${rejected('short', i) ? 'text-muted line-through' : ''}`}>
                   {s.title}
                   {c.channel[s.channel] ? <span className="ml-1.5 text-11 font-normal text-text-3">{c.channel[s.channel]}</span> : null}
+                  {accepted(i) && !rejected('short', i) ? <span className="ml-1.5 text-11 font-normal text-ok">{c.made}</span> : null}
                 </span>
-                <span className="text-12 text-text-2">
+                <span className={`text-12 ${rejected('short', i) ? 'text-muted line-through' : 'text-text-2'}`}>
                   {span(s)} · {s.why}
                 </span>
               </span>
-              {onShort && (
+              {onShort && !rejected('short', i) && (
                 <button type="button" onClick={() => onShort({ start: s.start, end: s.end }, s.title)} className="flex-none text-12 text-accent pc:text-13" data-testid="plan-short-make">
                   {c.makeShort}
                 </button>
               )}
+              {toggle('short', i)}
             </div>
           ))}
         </div>
@@ -103,7 +117,7 @@ export function PlanCard({ plan, onShort, onApply }: Props) {
 
       {onApply && (
         <button type="button" onClick={onApply} className="flex min-h-11 items-center border-t border-line-soft px-3 text-left text-13 font-medium text-accent hover:bg-surface-2" data-testid="plan-apply">
-          {c.apply(plan.cutCandidates.length)}
+          {c.apply(activeCuts)}
         </button>
       )}
     </div>

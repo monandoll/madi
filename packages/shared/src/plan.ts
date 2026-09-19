@@ -23,6 +23,23 @@ export const PlanSection = z.object({
 });
 export type PlanSection = z.infer<typeof PlanSection>;
 
+/**
+ * 사용자가 편집안 후보에 남긴 판단 (기획안 §9 — 확정 · 거절 기록이 가장 중요한 학습 데이터).
+ * rejected 는 "이건 빼" (편집안대로 만들기에서 빠지고, 에이전트에게 다시 제안하지 말라고 알린다).
+ * accepted 는 숏폼 후보를 눌러 실제로 만든 것. index 는 그 목록(cutCandidates · shortCandidates)의 자리.
+ */
+export const PlanFeedbackKind = z.enum(['cut', 'short']);
+export type PlanFeedbackKind = z.infer<typeof PlanFeedbackKind>;
+export const PlanVerdict = z.enum(['rejected', 'accepted']);
+export type PlanVerdict = z.infer<typeof PlanVerdict>;
+export const PlanFeedback = z.object({
+  kind: PlanFeedbackKind,
+  index: z.number().int().min(0),
+  verdict: PlanVerdict,
+  at: z.number().int(),
+});
+export type PlanFeedback = z.infer<typeof PlanFeedback>;
+
 export const EditPlan = z.object({
   videoId: z.string(),
   /** 이 영상이 전하려는 것 */
@@ -43,7 +60,14 @@ export const EditPlan = z.object({
   tags: z.array(z.string().max(30)).default([]),
   /** 자막을 보고 만든 것인지 (아니면 장면 · 무음만) */
   fromTranscript: z.boolean().default(false),
+  /** 사용자가 후보에 남긴 판단. 편집안을 다시 만들면 비워진다 (자리가 바뀌니까). */
+  feedback: z.array(PlanFeedback).default([]),
   provider: z.enum(['claude', 'codex']),
   createdAt: z.number().int(),
 });
 export type EditPlan = z.infer<typeof EditPlan>;
+
+/** 그 후보를 사용자가 뺐는지. */
+export function planRejected(plan: Pick<EditPlan, 'feedback'>, kind: PlanFeedbackKind, index: number): boolean {
+  return plan.feedback.some((f) => f.kind === kind && f.index === index && f.verdict === 'rejected');
+}

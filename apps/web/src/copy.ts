@@ -361,6 +361,11 @@ export const copy = {
       apply: (cuts: number) => (cuts ? `잘라낼 후보 ${cuts}곳을 빼고 롱폼 만들기` : '이대로 롱폼 만들기'),
       noTranscript: '자막 없이 장면과 쉬는 구간만 보고 만든 초안입니다.',
       terms: '용어',
+      /** 후보 빼기 · 되돌리기 (뺀 것은 만들기에서 빠지고, 다시 제안하지 않는다) */
+      reject: '빼기',
+      restore: '되돌리기',
+      rejected: '뺌',
+      made: '만듦',
     },
     shortPicker: {
       title: '구간 선택',

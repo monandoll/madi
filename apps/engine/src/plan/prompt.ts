@@ -1,4 +1,4 @@
-import { type Cut, EditPlan, type Segment, type TimeRange, type Video } from '@madi/shared';
+import { type Cut, EditPlan, type PlanCutKind, planRejected, type Segment, type TimeRange, type Video } from '@madi/shared';
 import { type Format, formatLine } from '../agent/playbook.js';
 import { extractJson, transcriptText } from '../style/insight.js';
 
@@ -146,9 +146,12 @@ export function parsePlan(
  * 편집안대로 잘라낼 컷: 잘라낼 후보에서 남길 구간과 겹치는 부분을 뺀다.
  * 사용자가 "이대로 만들기"를 눌렀을 때만 쓴다 — 편집안 자체는 파일을 만들지 않는다.
  */
-export function planCuts(plan: Pick<EditPlan, 'cutCandidates' | 'keepRanges'>, durationSec: number): Cut[] {
+export function planCuts(plan: Pick<EditPlan, 'cutCandidates' | 'keepRanges'> & Partial<Pick<EditPlan, 'feedback'>>, durationSec: number): Cut[] {
   const out: Cut[] = [];
-  for (const c of plan.cutCandidates) {
+  const feedback = plan.feedback ?? [];
+  for (const [i, c] of plan.cutCandidates.entries()) {
+    // 사용자가 뺀 후보는 자르지 않는다 (기획안 §9)
+    if (planRejected({ feedback }, 'cut', i)) continue;
     let pieces: TimeRange[] = [{ start: Math.max(0, c.start), end: Math.min(durationSec, c.end) }];
     for (const k of plan.keepRanges) {
       pieces = pieces.flatMap((p) => {
@@ -174,13 +177,40 @@ export function planBlock(plan: EditPlan): string {
     for (const s of plan.sections) out.push(`- ${clock(s.start)}–${clock(s.end)} ${s.title}${s.note ? ` — ${s.note}` : ''}`);
   }
   if (plan.keepRanges.length) out.push(`남길 구간: ${plan.keepRanges.map((k) => `${clock(k.start)}–${clock(k.end)} (${k.why})`).join(' · ')}`);
-  if (plan.cutCandidates.length) out.push(`잘라낼 후보: ${plan.cutCandidates.map((c) => `${clock(c.start)}–${clock(c.end)} [${CUT_LABEL[c.kind]}] ${c.why}`).join(' · ')}`);
-  if (plan.shortCandidates.length) {
+  const cuts = plan.cutCandidates.filter((_, i) => !planRejected(plan, 'cut', i));
+  const shorts = plan.shortCandidates.filter((_, i) => !planRejected(plan, 'short', i));
+  if (cuts.length) out.push(`잘라낼 후보: ${cuts.map((c) => `${clock(c.start)}–${clock(c.end)} [${CUT_LABEL[c.kind]}] ${c.why}`).join(' · ')}`);
+  if (shorts.length) {
     out.push('숏폼 후보:');
-    for (const s of plan.shortCandidates) out.push(`- ${clock(s.start)}–${clock(s.end)} ${s.title} (${s.channel}) — ${s.why}`);
+    for (const s of shorts) out.push(`- ${clock(s.start)}–${clock(s.end)} ${s.title} (${s.channel}) — ${s.why}`);
   }
+  // 사용자가 뺀 것은 따로 — 같은 걸 다시 제안하지 않게 (기획안 §9)
+  const rejected = [
+    ...plan.cutCandidates.filter((_, i) => planRejected(plan, 'cut', i)).map((c) => `${clock(c.start)}–${clock(c.end)} 자르기 (${c.why})`),
+    ...plan.shortCandidates.filter((_, i) => planRejected(plan, 'short', i)).map((s) => `${clock(s.start)}–${clock(s.end)} 숏폼 "${s.title}"`),
+  ];
+  if (rejected.length) out.push(`사용자가 뺀 후보 (다시 제안하지 않는다): ${rejected.join(' · ')}`);
   if (plan.terms.length) out.push(`용어 표기: ${plan.terms.join(', ')}`);
   return out.join('\n');
+}
+
+/** 잘라낼 후보를 같은 종류로 이만큼 빼면 기억으로 제안한다 */
+export const REJECT_MEMORY_AT = 3;
+
+const REJECT_MEMORY_TEXT: Partial<Record<PlanCutKind, string>> = {
+  repeat: '반복해서 말한 부분도 자르지 않는다',
+  ng: 'NG 로 보이는 구간도 자르지 않는다',
+  aside: '인사 · 잡담 · 촬영 멘트도 자르지 않는다',
+  silence: '말이 없는 구간도 자르지 않는다',
+};
+
+/**
+ * 같은 종류의 잘라낼 후보를 반복해서 빼면 "이런 건 자르지 말라"는 기억을 **제안**한다 (사용자가 확인해야 쓴다 — §12).
+ * 딱 그 횟수에 닿을 때 한 번만. 종류가 '기타'면 문장을 만들 수 없어 null.
+ */
+export function rejectionMemory(cutKind: PlanCutKind, count: number): string | null {
+  if (count !== REJECT_MEMORY_AT) return null;
+  return REJECT_MEMORY_TEXT[cutKind] ?? null;
 }
 
 // ---- 작은 것들 ----

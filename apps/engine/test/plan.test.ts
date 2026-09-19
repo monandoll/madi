@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { EditPlan, Segment } from '@madi/shared';
-import { parsePlan, planBlock, planCuts, planPrompt } from '../src/plan/prompt.js';
+import { parsePlan, planBlock, planCuts, planPrompt, REJECT_MEMORY_AT, rejectionMemory } from '../src/plan/prompt.js';
 
 const seg = (start: number, end: number, text: string): Segment => ({ id: `s${start}`, start, end, text, words: [] });
 const video = { title: '어깨 스트레칭 촬영본', durationSec: 120, width: 1920, height: 1080, hasAudio: true };
@@ -112,5 +112,25 @@ describe('planCuts / planBlock', () => {
     expect(b).toContain('[반복] 반복');
     expect(b).toContain('- 0:02–0:10 한 동작 (shorts) — 완결');
     expect(b).toContain('용어 표기: 견갑골');
+    expect(b).not.toContain('사용자가 뺀 후보');
+  });
+
+  it('사용자가 뺀 후보는 컷에서 빠지고, 프롬프트에는 "다시 제안하지 않는다" 로 따로 간다 (기획안 §9)', () => {
+    const fb = { ...plan, feedback: [{ kind: 'cut' as const, index: 1, verdict: 'rejected' as const, at: 1 }, { kind: 'short' as const, index: 0, verdict: 'rejected' as const, at: 1 }] };
+    expect(planCuts(fb, 10)).toEqual([{ start: 0, end: 2, reason: 'ai' }]);
+    const b = planBlock(fb);
+    expect(b).toContain('잘라낼 후보: 0:00–0:02 [잡담] 인사');
+    expect(b).not.toContain('[반복] 반복');
+    expect(b).not.toContain('- 0:02–0:10 한 동작');
+    expect(b).toContain('사용자가 뺀 후보 (다시 제안하지 않는다): 0:03–0:08 자르기 (반복) · 0:02–0:10 숏폼 "한 동작"');
+  });
+});
+
+describe('rejectionMemory', () => {
+  it('같은 종류를 세 번 빼면 딱 그때 한 번 "자르지 않는다" 기억을 제안한다. 기타는 문장이 없다', () => {
+    expect(rejectionMemory('aside', 1)).toBeNull();
+    expect(rejectionMemory('aside', REJECT_MEMORY_AT)).toBe('인사 · 잡담 · 촬영 멘트도 자르지 않는다');
+    expect(rejectionMemory('aside', REJECT_MEMORY_AT + 1)).toBeNull();
+    expect(rejectionMemory('other', REJECT_MEMORY_AT)).toBeNull();
   });
 });
