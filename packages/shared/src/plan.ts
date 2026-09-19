@@ -62,6 +62,16 @@ export const EditPlan = z.object({
   fromTranscript: z.boolean().default(false),
   /** 사용자가 후보에 남긴 판단. 편집안을 다시 만들면 비워진다 (자리가 바뀌니까). */
   feedback: z.array(PlanFeedback).default([]),
+  /** 화면을 보고 안 것 (기획안 §5.4 · §10): 사람이 어느 쪽에 있는지 · 앵글 · 동작이 시작되는 지점. 화면을 안 봤으면 null. */
+  framing: z
+    .object({
+      side: z.enum(['left', 'center', 'right', 'unknown']).default('unknown'),
+      note: z.string().max(200).default(''),
+    })
+    .nullable()
+    .default(null),
+  /** AI 가 본 화면의 시각들 (§8.1 "분석에 사용한 프레임 정보"). 안 봤으면 빈 목록. */
+  frameTimes: z.array(z.number().min(0)).default([]),
   provider: z.enum(['claude', 'codex']),
   createdAt: z.number().int(),
 });

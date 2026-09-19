@@ -210,12 +210,37 @@ describe('AI 연결', () => {
     expect(plan.cutCandidates[0]).toMatchObject({ kind: 'aside', why: '인사 · 촬영 세팅 멘트' });
     expect(plan.shortCandidates[0]).toMatchObject({ channel: 'reels' });
     for (const x of [...plan.sections, ...plan.keepRanges, ...plan.cutCandidates, ...plan.shortCandidates]) expect(x.end).toBeLessThanOrEqual(plan.sections[plan.sections.length - 1]!.end);
+    // 화면 시트를 만들어 보여 줬다 (기획안 §10): 가짜 CLI 는 Read 가 sheets/ 에 열려 있고 파일이 있을 때만 "봤다"고 답한다
+    expect(plan.frameTimes.length).toBeGreaterThan(0);
+    expect(plan.framing).toEqual({ side: 'right', note: '사람이 오른쪽에 서 있다' });
     const card = d.messages.find((m) => m.kind === 'plan')!;
     expect(card).toMatchObject({ code: 'plan.ready', params: expect.objectContaining({ sections: plan.sections.length, shorts: 1, cuts: 1 }) });
     expect(d.messages.some((m) => m.kind === 'progress')).toBe(false);
     // 다음 채팅 요청에 편집안이 같이 간다
     await chat('안녕');
     expect(String((await waitReply()).params['text'])).toContain('편집안 있어요');
+  });
+
+  it('편집안의 숏폼 후보를 누르면 화면에서 본 사람 위치(오른쪽)를 잡는다 (§5.4 · §10)', { timeout: 120_000 }, async () => {
+    const plan = (await detail()).plan!;
+    const cand = plan.shortCandidates[0]!;
+    const r = ActionResponse.parse((await api(`/api/videos/${videoId}/actions`, json({ type: 'short', range: { start: cand.start, end: cand.end }, subtitles: false, from: 'plan' }))).body);
+    await waitFor(() => engine.queue.get(r.job!.id)?.status === 'done', 90_000);
+    await engine.queue.idle();
+    const out = (await detail()).outputs.find((o) => o.title.includes('숏폼'))!;
+    const od = OutputDetailResponse.parse((await api(`/api/outputs/${out.id}`)).body);
+    expect(od.edit.cropFocus).toBe(1);
+    expect((await detail()).plan!.feedback).toEqual([expect.objectContaining({ kind: 'short', index: 0, verdict: 'accepted' })]);
+  });
+
+  it('"화면도 보여 주기"를 끄면 시트 없이 읽는다 (framing 없음)', { timeout: 120_000 }, async () => {
+    await api('/api/settings', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ai: { provider: 'claude', paths: { claude: null, codex: null }, frames: false } }) });
+    const r = ActionResponse.parse((await api(`/api/videos/${videoId}/actions`, json({ type: 'plan' }))).body);
+    await waitFor(() => engine.queue.get(r.job!.id)?.status === 'done', 90_000);
+    const plan = (await detail()).plan!;
+    expect(plan.framing).toBeNull();
+    expect(plan.frameTimes).toEqual([]);
+    await api('/api/settings', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ai: { provider: 'claude', paths: { claude: null, codex: null }, frames: true } }) });
   });
 
   it('편집안대로 롱폼 만들기: 잘라낼 후보만 빠진 결과물', { timeout: 120_000 }, async () => {

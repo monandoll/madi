@@ -133,12 +133,19 @@ export class ClaudeProvider implements AgentProvider {
   async analyze(opts: AnalyzeOptions): Promise<AgentResult> {
     const bin = opts.bin ?? this.bin();
     if (!bin) return { text: '', toolCalls: 0, ok: false, error: 'not_installed' };
-    return runCli(bin, claudeAnalyzeArgs({ system: opts.system }), opts.prompt, new ClaudeStream(), { cwd: opts.cwd, onText: () => undefined, onTool: () => undefined, ...(opts.signal ? { signal: opts.signal } : {}), ...(opts.onLog ? { onLog: opts.onLog } : {}) });
+    return runCli(bin, claudeAnalyzeArgs({ system: opts.system, images: opts.images ?? [] }), opts.prompt, new ClaudeStream(), { cwd: opts.cwd, onText: () => undefined, onTool: () => undefined, ...(opts.signal ? { signal: opts.signal } : {}), ...(opts.onLog ? { onLog: opts.onLog } : {}) });
   }
 }
 
-/** 분석 모드 인자: MCP 없음, 내장 도구 전부 막음, 한 턴. */
-export function claudeAnalyzeArgs(opts: { system: string }): string[] {
+/** 시트 파일을 두는 곳 (분석 cwd 아래). Claude 는 이 폴더만 Read 로 열 수 있다. */
+export const SHEETS_DIR = 'sheets';
+
+/**
+ * 분석 모드 인자: MCP 없음, 내장 도구 전부 막음, 한 턴.
+ * 그림(대표 프레임 시트)이 있으면 Read 를 cwd 의 sheets/ 아래에서만 열어 주고, 읽고 답할 만큼 턴을 준다.
+ */
+export function claudeAnalyzeArgs(opts: { system: string; images?: string[] }): string[] {
+  const withImages = (opts.images?.length ?? 0) > 0;
   return [
     '-p',
     '--output-format',
@@ -148,11 +155,12 @@ export function claudeAnalyzeArgs(opts: { system: string }): string[] {
     '--mcp-config',
     '{"mcpServers":{}}',
     '--strict-mcp-config',
+    ...(withImages ? ['--allowedTools', `Read(./${SHEETS_DIR}/**)`] : []),
     '--disallowedTools',
-    ...CLAUDE_DISALLOWED,
+    ...CLAUDE_DISALLOWED.filter((t) => !(withImages && t === 'Read')),
     '--append-system-prompt',
     opts.system,
     '--max-turns',
-    '1',
+    withImages ? '4' : '1',
   ];
 }

@@ -87,13 +87,16 @@ export function runAction(d: ActionDeps, video: Video, req: ActionRequest): Acti
       user('action.short', { start: Math.round(start), end: Math.round(end) });
       const n = d.library.shortEditCount(video.id) + 1;
       const wantSubs = req.subtitles && (video.hasAudio !== false || !!transcript);
-      // 편집안의 숏폼 후보를 눌러 만든 거면 "골랐다"로 남긴다 (기획안 §9)
+      // 편집안의 숏폼 후보를 눌러 만든 거면 "골랐다"로 남기고, 화면을 보고 안 사람 위치가 있으면 그쪽을 잡는다 (기획안 §9 · §5.4)
+      let cropFocus: number | null = null;
       if (req.from === 'plan') {
         const plan = d.plans.get(video.id);
         const idx = plan?.shortCandidates.findIndex((s) => Math.abs(s.start - start) < 0.5 && Math.abs(s.end - end) < 0.5) ?? -1;
         if (idx >= 0) d.plans.setFeedback(video.id, { kind: 'short', index: idx, verdict: 'accepted' });
+        const side = plan?.framing?.side;
+        cropFocus = side === 'left' ? 0 : side === 'right' ? 1 : null;
       }
-      const edit = d.library.createEdit({ ...baseEdit(`${video.title} · 숏폼 ${n}`), keep: { start, end }, crop: 'vertical', subtitles: wantSubs });
+      const edit = d.library.createEdit({ ...baseEdit(`${video.title} · 숏폼 ${n}`), keep: { start, end }, crop: 'vertical', cropFocus, subtitles: wantSubs });
       if (wantSubs && !transcript) {
         const job = d.queue.enqueue({ type: 'transcribe', videoId: video.id, renderEditId: edit.id });
         progress(job.id, 'progress.transcribe', { step: 'transcribe', action: 'short', durationSec: Math.round(duration) });

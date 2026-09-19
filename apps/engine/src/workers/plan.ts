@@ -15,7 +15,9 @@ import type { JobQueue } from '../queue/index.js';
 import type { SettingsStore } from '../settings.js';
 import type { VideoStore } from '../videos.js';
 import { splitByMotion } from './edit.js';
+import { makeFrameSheets } from './frames.js';
 import { run } from './spawn.js';
+import { SHEETS_DIR } from '../agent/claude.js';
 
 export interface PlanWorkerDeps {
   cfg: EngineConfig;
@@ -68,13 +70,25 @@ export function registerPlanWorker(d: PlanWorkerDeps): void {
       const scenes = parseScenes((await run(d.ffmpegBin, sceneDetectArgs(video.path, 0.4), { signal })).stderr);
       setProgress(0.6);
       const segments = transcript?.segments ?? null;
-      const { system, prompt } = planPrompt({ video, segments, silences, movingSilences: moving, scenes, format: formatOf(video), memory: d.recall(video) });
       const cwd = path.join(d.cfg.workDir, 'plan', video.id);
       fs.mkdirSync(cwd, { recursive: true });
       try {
-        const res = await provider.analyze({ system, prompt, cwd, bin: provider.bin(d.settings.get().ai.paths?.[providerId] ?? null), signal });
+        // 화면도 보여 준다 (기획안 §10): 장면 전환 직후 · 고르게 나눈 지점의 대표 프레임 시트 (설정에서 끌 수 있다)
+        const sheets = d.settings.get().ai.frames ? await makeFrameSheets(d, video.path, { durationSec: duration, scenes, dir: path.join(cwd, SHEETS_DIR), signal }) : [];
+        setProgress(0.7);
+        const { system, prompt } = planPrompt({
+          video,
+          segments,
+          silences,
+          movingSilences: moving,
+          scenes,
+          format: formatOf(video),
+          memory: d.recall(video),
+          frames: sheets.length ? { sheets: sheets.map((s) => ({ rel: s.rel, times: s.times })), attached: providerId === 'codex' } : undefined,
+        });
+        const res = await provider.analyze({ system, prompt, cwd, images: sheets.map((s) => s.file), bin: provider.bin(d.settings.get().ai.paths?.[providerId] ?? null), signal });
         if (!res.ok) throw new Error(res.error === 'not_installed' ? 'ai_missing' : (res.error ?? 'analyze failed'));
-        const plan = parsePlan(res.text, { videoId: video.id, provider: providerId, durationSec: duration, fromTranscript: !!segments?.length });
+        const plan = parsePlan(res.text, { videoId: video.id, provider: providerId, durationSec: duration, fromTranscript: !!segments?.length, frameTimes: sheets.flatMap((s) => s.times) });
         if (!plan) throw new Error('no plan in answer');
         d.plans.set(plan);
         if (m) {
@@ -84,7 +98,7 @@ export function registerPlanWorker(d: PlanWorkerDeps): void {
             params: { ...m.params, sections: plan.sections.length, shorts: plan.shortCandidates.length, cuts: plan.cutCandidates.length, keeps: plan.keepRanges.length },
           });
         }
-        d.events.record('plan.made', { provider: providerId, sections: plan.sections.length, shorts: plan.shortCandidates.length, cuts: plan.cutCandidates.length, fromTranscript: plan.fromTranscript, durationSec: duration }, Date.now() - started);
+        d.events.record('plan.made', { provider: providerId, sections: plan.sections.length, shorts: plan.shortCandidates.length, cuts: plan.cutCandidates.length, fromTranscript: plan.fromTranscript, frames: plan.frameTimes.length, durationSec: duration }, Date.now() - started);
       } finally {
         fs.rmSync(cwd, { recursive: true, force: true });
       }

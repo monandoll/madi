@@ -46,6 +46,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // ---- 분석 모드 (MCP 없이 한 턴): 완성본 읽기 · 기억 정리 ----
 // 진짜 답처럼 코드펜스와 앞말을 붙여서 준다 (파서가 그걸 벗겨야 한다).
 if (mcpConfigPath === '{"mcpServers":{}}') {
+  // 화면 시트: 프롬프트가 ./sheets/… 를 열어 보라 하고, 그 폴더가 Read 로 열려 있고, 파일이 실제로 있으면 "봤다"
+  const sheetFiles = [...prompt.matchAll(/^- (\.\/sheets\/[^:]+):/gm)].map((m) => m[1]);
+  const canRead = args.includes('--allowedTools') && args[args.indexOf('--allowedTools') + 1] === 'Read(./sheets/**)' && !args.slice(args.indexOf('--disallowedTools') + 1).includes('Read');
+  const sawFrames = canRead && sheetFiles.length > 0 && sheetFiles.every((f) => fs.existsSync(f));
+  if (sheetFiles.length && !canRead) {
+    process.stderr.write('fake-claude: sheets in prompt but Read not allowed\n');
+    process.exit(2);
+  }
   const answer = (obj) => {
     const text = `정리했습니다.\n\`\`\`json\n${JSON.stringify(obj, null, 2)}\n\`\`\``;
     emit({ type: 'system', subtype: 'init', tools: [], mcp_servers: [] });
@@ -73,6 +81,7 @@ if (mcpConfigPath === '{"mcpServers":{}}') {
       shortCandidates: [{ start: 0, end, title: `${part} 한 동작`, why: '설명과 시범이 한 번에 완결된다' }],
       terms: ['견갑골', '외회전'],
       subtitleNotes: '한 줄 12자 안팎',
+      visual: sawFrames ? '사람이 가운데 크게, 자막은 아래' : '',
       tags: [part, '스트레칭'],
     });
   }
@@ -96,6 +105,7 @@ if (mcpConfigPath === '{"mcpServers":{}}') {
       shortCandidates: [{ start: Math.min(1, dur / 4), end: dur, title: `${title} 한 동작`, why: '설명과 시범이 한 번에 완결된다', channel: 'reels' }],
       terms: ['견갑골'],
       tags: ['어깨', '스트레칭'],
+      framing: sawFrames ? { side: 'right', note: '사람이 오른쪽에 서 있다' } : null,
     });
   }
   if (prompt.includes('## 기억 정리')) {

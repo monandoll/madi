@@ -77,7 +77,10 @@ export const copy = {
     aiMissing: (label: string) => `${label}를 이 PC에서 찾지 못했습니다`,
     aiHelp: '연결하지 않아도 자막 · 쉬는 구간 자르기 · 규격 변환은 됩니다.',
     /** 밖으로 나가는 것을 분명히 (기획안 §12) */
-    aiDataNotice: '연결하면 자막과 편집 요청이 그 도구를 통해 AI 회사 서버로 갑니다. 영상 파일은 이 컴퓨터를 떠나지 않습니다.',
+    aiDataNotice: '연결하면 자막과 편집 요청이 그 도구를 통해 AI 회사 서버로 갑니다. "화면도 보여 주기"를 켜면 장면마다 뽑은 화면 몇 장(최대 24칸)도 함께 갑니다. 영상 파일은 이 컴퓨터를 떠나지 않습니다.',
+    /** 대표 프레임 시트 (기획안 §10) */
+    aiFrames: '화면도 보여 주기',
+    aiFramesHelp: '편집안과 완성본 메모를 만들 때 장면이 바뀌는 곳의 화면을 작게 모아 같이 보여 줍니다. 사람이 어느 쪽에 있는지, 동작이 언제 시작되는지 알아냅니다.',
     aiInstalled: (v: string | null) => (v ? `설치됨 · ${v}` : '설치됨'),
     aiNotInstalled: '설치 안 됨',
     aiUse: '연결하기',
@@ -156,6 +159,7 @@ export const copy = {
     insightShorts: '숏폼 후보',
     insightTerms: '용어',
     insightTitle: '제목과 내용',
+    insightVisual: '화면',
     /** 제작자 기억 */
     memoryLabel: 'AI 가 기억한 것',
     memoryIntro: '여기 있는 것만 편집에 씁니다. 완성본에서 찾은 것은 확인해야 쓰이고, 편집 중 "앞으로도 이렇게" 한 것과 직접 쓴 것은 바로 쓰입니다.',

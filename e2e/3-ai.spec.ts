@@ -138,6 +138,22 @@ test('멈추기: 답하는 중에 멈추면 그때까지의 말만 남는다', a
   await expect(page.getByTestId('bubble-assistant').last()).not.toContainText('다 했어요');
 });
 
+test('"화면도 보여 주기" 스위치: 기본 켬, 끄면 설정에 남고, 안내 문구에 화면이 나간다고 적혀 있다 (기획안 §10 · §12)', async ({ page }) => {
+  await page.goto('/#/settings');
+  const toggle = page.getByTestId('ai-frames-toggle');
+  await expect(toggle).toBeChecked();
+  await expect(page.getByTestId('ai-data-notice')).toContainText('화면 몇 장');
+  // 설정이 저장돼야 화면이 바뀐다 (서버 값이 진실) — 누르고 저장을 기다린다
+  await toggle.click();
+  await expect.poll(async () => (await (await page.request.get('/api/settings')).json()).settings.ai.frames).toBe(false);
+  await expect(toggle).not.toBeChecked();
+  await page.reload();
+  await expect(page.getByTestId('ai-frames-toggle')).not.toBeChecked();
+  await page.getByTestId('ai-frames-toggle').click();
+  await expect.poll(async () => (await (await page.request.get('/api/settings')).json()).settings.ai.frames).toBe(true);
+  await expect(page.getByTestId('ai-frames-toggle')).toBeChecked();
+});
+
 test('설정에서 연결을 끊으면 다시 버튼 4개', async ({ page }) => {
   await page.goto('/#/settings');
   await page.getByTestId('ai-disconnect').click();

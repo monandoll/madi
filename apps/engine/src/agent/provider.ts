@@ -37,6 +37,8 @@ export interface AnalyzeOptions {
   system: string;
   prompt: string;
   cwd: string;
+  /** 같이 보여 줄 그림 파일 (대표 프레임 시트). cwd 안의 절대 경로. 도구마다 넘기는 법이 다르다. */
+  images?: string[] | undefined;
   bin?: string | null;
   signal?: AbortSignal | undefined;
   onLog?: (line: string) => void;

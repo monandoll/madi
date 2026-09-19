@@ -217,6 +217,16 @@ API 키 방식은 아직 안 쓴다 (사용자 본인 구독으로 돈다는 원
 - 화면을 못 읽으면 가운데 · 아래 — 전과 같고, 그것도 적는다. 렌더는 항상 Edit 로부터 재현.
 - 에이전트는 `apply_edit.focus` / `extract_shorts.clips[].focus` 로 미리 정하거나 `set_subtitle_style.bottom` 으로 고정할 수 있다.
 
+**대표 프레임 시트** (기획안 §10 · §5.4) — 편집안과 완성본 메모를 만들 때 자막 · 숫자만이 아니라 화면도 보여 준다. `ffmpeg-presets/frames.ts`:
+장면 전환 직후(+0.5초)와 고르게 나눈 지점(20초에 한 장쯤, 최소 6장)을 골라(최대 24장) 320px 칸으로 줄여 4칸씩 격자로 붙인 JPEG 시트(최대 2장, `contactSheetArgs`: 시각마다 입력을 열어 한 장씩 → concat → tile).
+칸에 시각을 찍지 않고 프롬프트에 "칸 순서대로 시각" 을 적는다 (`frameLines`). 워커 `workers/frames.ts` (`makeFrameSheets`)가 분석 cwd 아래 `sheets/` 에 만들고 끝나면 지운다.
+- Claude: `--allowedTools "Read(./sheets/**)"` 로 그 폴더만 열어 주고 `--max-turns 4` (`claudeAnalyzeArgs`). Codex: `codex exec -i 시트` 로 첨부 (`codexAnalyzeArgs`).
+- 편집안: `framing {side, note}` (사람이 어느 쪽에 · 앵글 · 동작 시작) + `frameTimes`. 편집안의 숏폼 후보를 누르면 `side` 가 `cropFocus` 가 된다 (left 0 · right 1 · center 는 움직임으로). `planBlock` 에 "화면: 사람이 오른쪽에 있다 (focus=right)".
+- 완성본 메모: `visual` (구도 · 앵글 · 자막 자리) + `frameTimes`. 설정 메모에 "화면" 줄.
+- 설정 → AI 연결 "화면도 보여 주기" (`settings.ai.frames`, 기본 켬). 끄면 시트 없이 (framing null · visual 빈 문자열). 안내 문구에 화면 몇 장이 나간다고 적는다 (§12).
+- 시트를 못 만들면(짧은 영상 · ffmpeg 오류) 화면 없이 간다. 자세 판정은 하지 않는다 (§5.6).
+- 단위 `frames.test.ts` · `agent.test.ts`(인자) · `plan.test.ts` · `insight.test.ts`, 엔진 e2e agent(가짜 CLI 는 Read 가 열려 있고 파일이 있을 때만 "봤다") · style, 브라우저 3-ai(스위치).
+
 **수정안 비교** (기획안 §6 "수정안 비교") — 결과물이 이미 있는 Edit 를 고치면(`apply_edit(editId)` · `set_subtitle_style(editId)`) 제자리에서 바꾸지 않고
 `revisionOf` 를 단 새 Edit 를 만든다 (`reviseEdit`). 이전 결과물은 계속 자기 Edit 로부터 재현되고, 도구 결과에 `changes`(`editDiff`: keep · parts · cuts 추가/복원 · crop · focus · 자막 · 여백 · 강조)가 실려
 에이전트가 "무엇을 바꿨는지" 를 정확히 말한다. `GET /api/outputs/:id` 는 `previous`(고치기 전 결과물 + Edit)를 같이 주고, 결과물 화면은 "이전과 달라진 점" 을 말로 적고 "이전 것과 견주기" 로 두 영상을 나란히 튼다.

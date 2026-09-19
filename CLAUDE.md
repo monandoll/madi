@@ -100,6 +100,7 @@ resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리
 - 쉬는 구간 자르기(버튼 · `propose_cuts`)는 동작이 이어지는 침묵(시범)을 남긴다. 말하던 때보다 화면이 확실히 더 움직인 침묵은 자르지 않는다 (`ffmpeg-presets/motion.ts`).
 - 세로 크롭 초점과 자막 위치는 렌더가 화면의 어느 쪽이 움직이는지 한 번 재서 정하고(`regionsFor` · `chooseCropFocus` · `chooseSubtitleSide`) 그 결정을 `Edit` 에 적는다. 에이전트는 `apply_edit.focus` / `set_subtitle_style.bottom` 으로 덮어쓸 수 있다.
 - AI 가 골라져 있으면 상세를 처음 열 때 `plan` 잡으로 편집안을 읽어 카드로 붙인다 (`src/plan/`). 다음 채팅 요청에는 그 편집안이 같이 간다.
+- 편집안 · 완성본 메모에는 대표 프레임 시트(장면 전환 직후 화면을 4칸 격자로, 최대 2장)도 같이 보여 준다 (`ffmpeg-presets/frames.ts`, `workers/frames.ts`). Claude 는 `Read(./sheets/**)` 만 열어 주고, Codex 는 `-i` 로 붙인다. 설정 `ai.frames` 로 끈다. 자세를 판정하지 않는다.
 - 수정 요청이 오면 고친 뒤 **"앞으로도 이렇게 할까요?"** 를 한 번 묻고, 예일 때만 `update_style_rule`.
 - 에이전트 응답은 채팅에 스트리밍. 도구 호출 내부는 사용자에게 보이지 않는다.
 - AI 미연결 상태에서는 러너를 아예 스폰하지 않는다. 버튼 4개는 워커를 직접 호출한다.

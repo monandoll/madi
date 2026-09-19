@@ -33,6 +33,18 @@ describe('planPrompt', () => {
     expect(prompt).toContain('"shortCandidates"');
   });
 
+  it('화면 시트가 있으면 어느 파일이 어느 시각인지 적고, Claude 는 Read 로 · Codex 는 첨부로 안내한다 (기획안 §10)', () => {
+    const base = { video, segments: null, silences: [], movingSilences: [], scenes: [], format: 'long' as const, memory: '' };
+    const read = planPrompt({ ...base, frames: { sheets: [{ rel: './sheets/sheet-1.jpg', times: [0.5, 30, 61.2] }], attached: false } }).prompt;
+    expect(read).toContain('Read 도구로 열어 봐라');
+    expect(read).toContain('- ./sheets/sheet-1.jpg: 0:00, 0:30, 1:01');
+    expect(read).toContain('"framing"');
+    const attached = planPrompt({ ...base, frames: { sheets: [{ rel: './sheets/sheet-1.jpg', times: [1] }], attached: true } }).prompt;
+    expect(attached).toContain('첨부했다');
+    expect(attached).toContain('- 시트 1: 0:01');
+    expect(planPrompt(base).prompt).not.toContain('화면 시트');
+  });
+
   it('자막이 없으면 그렇다고 말한다', () => {
     const { system, prompt } = planPrompt({ video: { ...video, hasAudio: false }, segments: null, silences: [], movingSilences: [], scenes: [], format: 'reels', memory: '' });
     expect(prompt).toContain('자막: 없음');
@@ -69,6 +81,12 @@ describe('parsePlan', () => {
     ]);
     expect(p.shortCandidates[1]!.channel).toBe('any');
     expect(p.terms).toEqual(['견갑골']);
+    expect(p.framing).toBeNull(); // 화면을 안 봤다
+    expect(p.frameTimes).toEqual([]);
+    const seen = parsePlan(JSON.stringify({ ...good, framing: { side: 'right', note: '사람이 오른쪽' } }), { videoId: 'v', provider: 'claude', durationSec: 120, fromTranscript: true, frameTimes: [0.5, 30.04] })!;
+    expect(seen.framing).toEqual({ side: 'right', note: '사람이 오른쪽' });
+    expect(seen.frameTimes).toEqual([0.5, 30]);
+    expect(parsePlan(JSON.stringify({ ...good, framing: { side: 'nope' } }), { videoId: 'v', provider: 'claude', durationSec: 120, fromTranscript: true })!.framing).toBeNull();
     expect(p.tags).toEqual(['어깨', '스트레칭']);
     expect(p).toMatchObject({ videoId: 'v', provider: 'claude', fromTranscript: true, createdAt: 7 });
   });
@@ -113,6 +131,8 @@ describe('planCuts / planBlock', () => {
     expect(b).toContain('- 0:02–0:10 한 동작 (shorts) — 완결');
     expect(b).toContain('용어 표기: 견갑골');
     expect(b).not.toContain('사용자가 뺀 후보');
+    expect(b).not.toContain('화면:');
+    expect(planBlock({ ...plan, framing: { side: 'left', note: '허리까지 보인다' } })).toContain('화면: 사람이 왼쪽에 있다 (세로로 자를 땐 focus=left) — 허리까지 보인다');
   });
 
   it('사용자가 뺀 후보는 컷에서 빠지고, 프롬프트에는 "다시 제안하지 않는다" 로 따로 간다 (기획안 §9)', () => {

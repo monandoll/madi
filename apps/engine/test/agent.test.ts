@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { describe, expect, it } from 'vitest';
-import { claudeArgs, ClaudeStream, claudeToolName } from '../src/agent/claude.js';
-import { codexArgs, CodexStream, toml } from '../src/agent/codex.js';
+import { claudeArgs, ClaudeStream, claudeToolName, claudeAnalyzeArgs, CLAUDE_DISALLOWED } from '../src/agent/claude.js';
+import { codexArgs, CodexStream, toml, codexAnalyzeArgs } from '../src/agent/codex.js';
 import { describeMessage } from '../src/agent/runner.js';
 import { DEFAULT_STYLE_MD, StyleProfile } from '../src/agent/style.js';
 import { serveStdio } from '../src/mcp/server.js';
@@ -153,5 +153,27 @@ describe('describeMessage', () => {
     expect(describeMessage({ ...base, role: 'user', code: 'action.vertical', params: {} })).toBe('사용자: 세로로 바꿔줘');
     expect(describeMessage({ ...base, role: 'assistant', kind: 'output', code: 'output.ready', params: { title: 'T' } })).toBe('마디: (결과물 "T" 만들어짐)');
     expect(describeMessage({ ...base, role: 'assistant', kind: 'error', code: 'no_audio', params: {} })).toBe('마디: (문제: no_audio)');
+  });
+});
+
+describe('분석 모드 + 화면 시트 (기획안 §10)', () => {
+  it('claude: 그림이 없으면 Read 까지 막고 한 턴, 있으면 sheets/ 만 Read 로 열고 턴을 더 준다', () => {
+    const plain = claudeAnalyzeArgs({ system: 'S' });
+    expect(plain).not.toContain('--allowedTools');
+    expect(plain.slice(plain.indexOf('--disallowedTools') + 1, plain.indexOf('--append-system-prompt'))).toEqual(CLAUDE_DISALLOWED);
+    expect(plain[plain.indexOf('--max-turns') + 1]).toBe('1');
+    const withImg = claudeAnalyzeArgs({ system: 'S', images: ['/w/sheets/sheet-1.jpg'] });
+    expect(withImg[withImg.indexOf('--allowedTools') + 1]).toBe('Read(./sheets/**)');
+    const denied = withImg.slice(withImg.indexOf('--disallowedTools') + 1, withImg.indexOf('--append-system-prompt'));
+    expect(denied).not.toContain('Read');
+    expect(denied).toContain('Bash');
+    expect(withImg[withImg.indexOf('--max-turns') + 1]).toBe('4');
+  });
+  it('codex: 그림은 -i 로 붙인다', () => {
+    const a = codexAnalyzeArgs({ cwd: '/w', prompt: 'P', images: ['/w/sheets/sheet-1.jpg', '/w/sheets/sheet-2.jpg'] });
+    expect(a.filter((x) => x === '-i')).toHaveLength(2);
+    expect(a[a.indexOf('-i') + 1]).toBe('/w/sheets/sheet-1.jpg');
+    expect(a.at(-1)).toBe('P');
+    expect(codexAnalyzeArgs({ cwd: '/w', prompt: 'P' })).not.toContain('-i');
   });
 });

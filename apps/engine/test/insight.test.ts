@@ -53,6 +53,10 @@ describe('insightPrompt', () => {
     expect(prompt).toContain('장면 전환: 0:03, 0:08, 0:12');
     expect(prompt).toContain('"titleNote"');
     expect(system).toContain('titleNote');
+    expect(prompt).not.toContain('화면 시트');
+    const seen = insightPrompt(ref(), SEGS, { sheets: [{ rel: './sheets/sheet-1.jpg', times: [0.5, 8] }], attached: false }).prompt;
+    expect(seen).toContain('- ./sheets/sheet-1.jpg: 0:00, 0:08');
+    expect(seen).toContain('"visual"');
   });
 });
 
@@ -92,6 +96,11 @@ describe('parseInsight', () => {
     expect(i.terms).toEqual(['견갑골', '외회전']);
     expect(i.tags).toEqual(['어깨', '견갑골']);
     expect(i.titleNote).toBe(good.titleNote);
+    expect(i.visual).toBe('');
+    expect(i.frameTimes).toEqual([]);
+    const seen = parseInsight(JSON.stringify({ ...good, visual: '가운데 구도' }), { provider: 'claude', durationSec: 15, frameTimes: [0.5, 8] })!;
+    expect(seen.visual).toBe('가운데 구도');
+    expect(seen.frameTimes).toEqual([0.5, 8]);
     expect(i.provider).toBe('claude');
     expect(i.createdAt).toBe(5);
   });

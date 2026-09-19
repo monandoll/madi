@@ -44,6 +44,7 @@
 - **영상별 기억** `ReferenceInsight` (`packages/shared/src/style.ts`): 취지 · 대상 · 도입 방식 · 말투 · 구성(구간 + 종류) · 핵심 문장 ·
   **지우면 안 되는 구간**(시범 · 시범 중 침묵 · 주의사항) · 반복/NG 후보 · 숏폼 후보(+이유) · 용어 · 자막 특징 · **제목과 내용의 관계**(`titleNote`, 기획안 §8.1) · 태그.
   프롬프트에는 자막과 함께 장면 전환 시각이 들어간다 — 말이 이어지는데 화면이 바뀌면 앵글 전환, 말이 멈추고 바뀌면 동작 전환 (§7).
+  "화면도 보여 주기"가 켜져 있으면 대표 프레임 시트(최대 2장)도 같이 가고 `visual`(구도 · 자막 자리)과 `frameTimes` 가 남는다 (§10, `docs/ai.md`).
   프롬프트 · 파서는 `src/style/insight.ts` (순수 함수). 답이 코드펜스에 싸여 있거나 시각이 "1:23" 이어도 받고, 길이 밖 구간은 버리고, 취지가 없으면 null (지어내지 않는다).
 - **제작자 기억** `MemoryItem`: `kind`(style · keep · avoid · term) · `scope`(all · topic+topics · video) · `source`(reference · feedback · user) · `status`(proposed · approved) · 근거 완성본 id.
   `src/style/memory.ts`. 완성본에서 온 것은 **제안(proposed)** 으로 들어오고 사용자가 "쓰기"를 눌러야 편집에 쓰인다 (`recall()` 은 approved 만 본다).

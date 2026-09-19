@@ -91,6 +91,10 @@ export const ReferenceInsight = z.object({
   subtitleNotes: z.string().max(200).default(''),
   /** 제목(파일 이름)과 내용이 어떻게 이어지는지 — 제목이 약속한 것을 어디서 보여 주는지 (기획안 §8.1) */
   titleNote: z.string().max(200).default(''),
+  /** 화면을 보고 안 것 — 구도 · 앵글 · 자막 자리 · 강조 방식 (기획안 §10). 화면을 안 봤으면 빈 문자열. */
+  visual: z.string().max(200).default(''),
+  /** AI 가 본 화면의 시각들 (§8.1). 안 봤으면 빈 목록. */
+  frameTimes: z.array(z.number().min(0)).default([]),
   /** 검색용 태그 — 부위 · 동작 · 고민 (예: 어깨, 견갑골, 거북목) */
   tags: z.array(z.string().max(30)).default([]),
   /** 어느 도구가 읽었는지 */

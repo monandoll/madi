@@ -316,6 +316,19 @@ export function SettingsScreen() {
             <span data-testid="ai-status">{aiStatus}</span> · {copy.settings.aiHelp}
           </p>
           <p className="text-12 text-text-3">{installing ? copy.settings.aiInstallHelp : aiAllInstalled ? copy.settings.aiLoginHelp : copy.settings.aiPickHelp}</p>
+          <label className="flex cursor-pointer items-start gap-2.5 text-13" data-testid="ai-frames">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 flex-none accent-accent"
+              checked={settings.ai.frames}
+              onChange={(e) => patch.mutate({ ai: { ...settings.ai, frames: e.target.checked } })}
+              data-testid="ai-frames-toggle"
+            />
+            <span className="flex flex-col gap-0.5">
+              <span className="font-medium">{copy.settings.aiFrames}</span>
+              <span className="text-12 text-text-3">{copy.settings.aiFramesHelp}</span>
+            </span>
+          </label>
           <p className="text-12 text-text-3" data-testid="ai-data-notice">
             {copy.settings.aiDataNotice}
           </p>
