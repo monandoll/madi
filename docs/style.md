@@ -44,6 +44,7 @@
 - **영상별 기억** `ReferenceInsight` (`packages/shared/src/style.ts`): 취지 · 대상 · 도입 방식 · 말투 · 구성(구간 + 종류) · 핵심 문장 ·
   **지우면 안 되는 구간**(시범 · 시범 중 침묵 · 주의사항) · 반복/NG 후보 · 숏폼 후보(+이유) · 용어 · 자막 특징 · **제목과 내용의 관계**(`titleNote`, 기획안 §8.1) · 태그.
   프롬프트에는 자막과 함께 장면 전환 시각이 들어간다 — 말이 이어지는데 화면이 바뀌면 앵글 전환, 말이 멈추고 바뀌면 동작 전환 (§7).
+  "화면도 보여 주기"가 켜져 있으면 대표 프레임 시트(최대 2장)도 같이 가고 `visual`(구도 · 자막 자리)과 `frameTimes` 가 남는다 (§10, `docs/ai.md`).
   프롬프트 · 파서는 `src/style/insight.ts` (순수 함수). 답이 코드펜스에 싸여 있거나 시각이 "1:23" 이어도 받고, 길이 밖 구간은 버리고, 취지가 없으면 null (지어내지 않는다).
 - **제작자 기억** `MemoryItem`: `kind`(style · keep · avoid · term) · `scope`(all · topic+topics · video) · `source`(reference · feedback · user) · `status`(proposed · approved) · 근거 완성본 id.
   `src/style/memory.ts`. 완성본에서 온 것은 **제안(proposed)** 으로 들어오고 사용자가 "쓰기"를 눌러야 편집에 쓰인다 (`recall()` 은 approved 만 본다).
@@ -52,6 +53,10 @@
 - **검색** `retrieve()`: 새 영상의 제목 · 자막에 나온 태그로 topic 기억과 비슷한 완성본을 고른다. 벡터 없이 낱말 겹침 (기획안 §11 초기 범위).
 - **범위 있는 규칙**: `update_style_rule(rule, scope, topics, kind)`. scope=all · kind=style 이면 전처럼 `style.md` 에, 그 밖은 기억에 (source=feedback).
 - **세기**: 제작 지침 < 기억 < 사용자가 쓴 규칙(style.md). 시스템 프롬프트에 그 순서로 들어간다.
+- **자막에서 고친 말** (§5.2 · §11 `terms`): 자막을 고칠 때(직접 쓰기 · `set_subtitle_text`) 전후 문장을 시각으로 맞추고 낱말을 LCS 로 견줘
+  1:1 로 바뀐 자리만 "틀린 말 → 바른 말" 로 남긴다 (`src/style/corrections.ts`, 같은 조사는 떼고, 숫자 · 한 글자 · 더하기/빼기는 제외). 테이블 `term_corrections`.
+  바른 말은 한 번만 고쳐도 whisper 용어 프롬프트에 들어가고, 같은 쌍이 2번 이상이면 whisper 결과(문장 · 단어)에서 바로 바꿔 쓴다 (`applyCorrections`, 원본 자막 · 완성본 자막 둘 다).
+  설정 → 편집 스타일 "자막에서 고친 말" 에 횟수와 함께 보이고, 빼면 더는 알려 주지도 바꾸지도 않는다 (`DELETE /api/style/corrections/:id`).
 - **사용자 통제** (§12): 설정 → 기존 영상으로 배우기의 완성본 줄마다 "메모" 로 취지 · 구성 · 숏폼 후보를 보고, "학습에서 빼기" 로 그 완성본을 숫자 · 기억 어디에도 안 쓰게 한다 (`references.excluded`, 파일은 그대로).
   "AI 가 기억한 것" 은 완성본에서 찾은 제안(쓰기 · 모두 쓰기 · 빼기)과 확인된 목록(고치기 · 빼기)으로 나뉘고, 직접 한 줄 쓰고, 전부 지울 수 있다.
   AI 연결 화면에 자막 · 편집 요청이 그 도구를 통해 AI 회사 서버로 간다는 안내가 있다 (영상 파일은 안 나간다).

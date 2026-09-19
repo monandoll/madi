@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEFAULT_SUBTITLE_STYLE, type Edit, type Output, type TimeRange, type Video } from '@madi/shared';
+import { DEFAULT_SUBTITLE_STYLE, type Edit, editDiff, type Output, type TimeRange, type Video } from '@madi/shared';
 import { parseScenes, parseSilences, sceneDetectArgs, scenesToRanges, silenceDetectArgs, silencesToCuts } from '@madi/ffmpeg-presets';
 import type { EngineConfig } from '../config.js';
 import type { EventLog } from '../events.js';
@@ -15,6 +15,7 @@ import type { ChapterStore } from '../chapters/store.js';
 import { computeChapters } from '../workers/chapters.js';
 import type { StyleProfile } from './style.js';
 import type { MemoryStore } from '../style/memory.js';
+import { type CorrectionStore, diffCorrections } from '../style/corrections.js';
 import { mergeSubtitleLines } from './subtitles.js';
 
 export interface AgentToolDeps {
@@ -29,6 +30,8 @@ export interface AgentToolDeps {
   log: Logger;
   /** 범위(주제 · 이 영상만)가 있는 규칙은 style.md 대신 여기에 */
   memory: MemoryStore;
+  /** 자막을 고치면 "틀린 말 → 바른 말" 을 남긴다 */
+  corrections: CorrectionStore;
 }
 
 export interface ToolContext {
@@ -100,8 +103,10 @@ export class AgentTools {
     const existing = this.d.library.transcriptOf(video.id);
     const segments = mergeSubtitleLines(existing?.segments ?? [], input.lines, input.replaceAll ?? false);
     if (segments.length === 0) throw new ToolError('넣을 문장이 없습니다.');
+    const pairs = existing ? diffCorrections(existing.segments, segments) : [];
+    if (pairs.length) this.d.corrections.record(pairs, video.id);
     const t = this.d.library.setTranscript(video.id, { language: existing?.language ?? 'ko', model: existing ? existing.model : 'manual', segments });
-    this.d.events.record('transcript.edited', { lines: input.lines.length, replaceAll: !!input.replaceAll, total: segments.length });
+    this.d.events.record('transcript.edited', { lines: input.lines.length, replaceAll: !!input.replaceAll, total: segments.length, corrections: pairs.length });
     return { segments: t.segments.map((s, i) => ({ i, start: r2(s.start), end: r2(s.end), text: s.text })) };
   }
 
@@ -187,12 +192,13 @@ export class AgentTools {
     const parts = input.parts === undefined ? undefined : this.cleanParts(video, input.parts);
     if (input.subtitles && video.hasAudio === false && !transcript) throw new ToolError('소리가 없어 자막을 자동으로 만들 수 없습니다. set_subtitle_text 로 문장을 먼저 넣으세요.');
     const cropFocus = input.focus === undefined ? undefined : focusValue(input.focus);
+    const emphasis = input.emphasis?.map((e) => ({ term: e.term, start: e.start ?? null, end: e.end ?? null }));
 
     let edit: Edit;
     if (input.editId) {
       const existing = this.d.library.edit(input.editId);
       if (!existing || existing.videoId !== video.id) throw new ToolError('그 편집을 찾지 못했습니다.');
-      edit = this.d.library.updateEdit(existing.id, {
+      edit = this.reviseEdit(existing, {
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(keep !== undefined ? { keep } : {}),
         ...(parts !== undefined ? { parts } : {}),
@@ -200,8 +206,10 @@ export class AgentTools {
         ...(input.crop !== undefined ? { crop: input.crop } : {}),
         ...(cropFocus !== undefined ? { cropFocus } : {}),
         ...(input.subtitles !== undefined ? { subtitles: input.subtitles } : {}),
+        ...(emphasis !== undefined ? { emphasis } : {}),
         ...(transcript ? { transcriptId: transcript.id } : {}),
       });
+      return { ...summarizeEdit(edit), changes: editDiff(existing, edit) };
     } else {
       const crop = input.crop ?? (keep || parts?.length ? 'vertical' : 'none');
       edit = this.d.library.createEdit({
@@ -213,12 +221,23 @@ export class AgentTools {
         crop,
         cropFocus: cropFocus ?? null,
         subtitles: input.subtitles ?? false,
+        emphasis: emphasis ?? [],
         transcriptId: transcript?.id ?? null,
         subtitleStyle: this.d.style.params().subtitleStyle,
         speed: [],
       });
     }
     return summarizeEdit(edit);
+  }
+
+  /**
+   * 편집을 고친다. 결과물이 이미 있는 편집은 제자리에서 바꾸지 않고 새 편집을 만든다 (revisionOf) —
+   * 이전 결과물도 계속 자기 편집으로부터 재현돼야 하고, 화면이 전후를 견줄 수 있어야 하니까 (기획안 §6).
+   */
+  private reviseEdit(existing: Edit, patch: Partial<Omit<Edit, 'id' | 'createdAt' | 'videoId'>>): Edit {
+    if (this.d.library.outputsForEdit(existing.id).length === 0) return this.d.library.updateEdit(existing.id, patch);
+    const { id: _id, createdAt: _at, ...rest } = existing;
+    return this.d.library.createEdit({ ...rest, ...patch, revisionOf: existing.id });
   }
 
   /** 조각 목록 정리: 뒤집힌 건 바로, 길이 밖은 잘라, 1초 미만은 오류. 순서는 그대로 (그게 구성이다). */
@@ -281,8 +300,10 @@ export class AgentTools {
       const edit = this.d.library.edit(input.editId);
       if (!edit || edit.videoId !== video.id) throw new ToolError('그 편집을 찾지 못했습니다.');
       style = { ...edit.subtitleStyle, ...patch };
-      // 여백을 직접 정했으면 렌더가 자동으로 위로 올리지 않는다
-      this.d.library.updateEdit(edit.id, { subtitleStyle: style, ...(input.bottom !== undefined ? { subtitleAuto: false } : {}) });
+      // 여백을 직접 정했으면 렌더가 자동으로 위로 올리지 않는다. 결과물이 있는 편집이면 새 편집이 된다.
+      const revised = this.reviseEdit(edit, { subtitleStyle: style, ...(input.bottom !== undefined ? { subtitleAuto: false } : {}) });
+      if (input.remember) this.d.style.writeParams({ ...this.d.style.params(), subtitleStyle: { ...DEFAULT_SUBTITLE_STYLE, ...style } });
+      return { subtitleStyle: style, remembered: !!input.remember, editId: revised.id };
     }
     if (input.remember) this.d.style.writeParams({ ...this.d.style.params(), subtitleStyle: { ...DEFAULT_SUBTITLE_STYLE, ...style } });
     return { subtitleStyle: style, remembered: !!input.remember };
@@ -358,6 +379,8 @@ export function summarizeEdit(e: Edit) {
     crop: e.crop,
     ...(e.crop === 'vertical' ? { focus: e.cropFocus === null ? 'auto' : e.cropFocus < 0.25 ? 'left' : e.cropFocus > 0.75 ? 'right' : 'center' } : {}),
     subtitles: e.subtitles,
+    ...(e.revisionOf ? { revisionOf: e.revisionOf } : {}),
+    ...(e.emphasis.length ? { emphasis: e.emphasis.map((x) => ({ term: x.term, ...(x.start !== null ? { start: r2(x.start) } : {}), ...(x.end !== null ? { end: r2(x.end) } : {}) })) } : {}),
   };
 }
 

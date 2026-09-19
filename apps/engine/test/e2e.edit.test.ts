@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ActionResponse, OutputDetailResponse, OutputsResponse, VideoDetailResponse, VideosResponse } from '@madi/shared';
+import { ActionResponse, OutputDetailResponse, OutputsResponse, VideoDetailResponse, VideosResponse, StyleResponse } from '@madi/shared';
 import { type Engine, startEngine } from '../src/engine.js';
 import { resolveSidecar, resolveWhisperModel } from '../src/main/sidecar.js';
 import { FIXTURES, SAMPLE_5S, freePort, tempHome, waitFor } from './helpers.js';
@@ -239,6 +239,31 @@ describe('edit actions (AI off)', () => {
     expect(t2.segments[0].id).toBe(t.segments[0].id);
     expect(t2.segments[1].id).not.toBe(t.segments[1].id);
     expect((await fetch(`${engine.url}/api/videos/${silent.id}/transcript`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ segments: [] }) })).status).toBe(400);
+  });
+
+  it('자막에서 고친 말은 남는다: 틀린 말 → 바른 말, 두 번이면 바로 바꿈, 빼면 사라진다 (기획안 §5.2)', async () => {
+    const silent = VideosResponse.parse(await api('/api/videos')).videos.find((v) => v.title === '무음')!;
+    const put = (lines: { start: number; end: number; text: string }[]) =>
+      fetch(`${engine.url}/api/videos/${silent.id}/transcript`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ segments: lines }) });
+    // 문장을 아예 다시 쓴 건 교정이 아니다 ('무릎 펴기' → '겹갑골을 뒤로')
+    await put([{ start: 0, end: 1.5, text: '겹갑골을 뒤로' }, { start: 1.5, end: 3, text: '아주 천천히' }]);
+    expect(StyleResponse.parse(await api('/api/style')).corrections).toEqual([]);
+    await put([{ start: 0, end: 1.5, text: '견갑골을 뒤로' }, { start: 1.5, end: 3, text: '아주 천천히' }]);
+    let style = StyleResponse.parse(await api('/api/style'));
+    expect(style.corrections).toEqual([expect.objectContaining({ wrong: '겹갑골', right: '견갑골', count: 1, videoId: silent.id })]);
+    expect(engine.corrections.active()).toEqual([]); // 한 번은 아직 안 바꾼다
+    expect(engine.corrections.rights()).toEqual(['견갑골']); // 그래도 whisper 에는 알려 준다
+    await put([{ start: 0, end: 1.5, text: '견갑골을 뒤로' }, { start: 1.5, end: 3, text: '겹갑골이 아프면' }]);
+    await put([{ start: 0, end: 1.5, text: '견갑골을 뒤로' }, { start: 1.5, end: 3, text: '견갑골이 아프면' }]);
+    style = StyleResponse.parse(await api('/api/style'));
+    expect(style.corrections[0]).toMatchObject({ wrong: '겹갑골', right: '견갑골', count: 2 });
+    expect(engine.corrections.active()).toEqual([{ wrong: '겹갑골', right: '견갑골' }]);
+    const del = await fetch(`${engine.url}/api/style/corrections/${style.corrections[0]!.id}`, { method: 'DELETE' });
+    expect(del.status).toBe(200);
+    expect(StyleResponse.parse(await del.json()).corrections).toEqual([]);
+    expect((await fetch(`${engine.url}/api/style/corrections/nope`, { method: 'DELETE' })).status).toBe(404);
+    // 자막을 원래대로 돌려놓는다 (뒤 테스트가 이 영상을 안 쓰지만 깔끔하게)
+    await put([{ start: 0, end: 1.5, text: '무릎 펴기' }, { start: 1.5, end: 3, text: '아주 천천히' }]);
   });
 
   const ready = async (title: string) => {

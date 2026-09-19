@@ -71,6 +71,10 @@ export function VideoDetail({ id, panelOutputId }: Props) {
     onError,
   });
   const stop = useMutation({ mutationFn: () => api.cancelChat(id), onSuccess: invalidate });
+  const planFeedback = useMutation({
+    mutationFn: (b: { kind: 'cut' | 'short'; index: number; rejected: boolean }) => api.planFeedback(id, { kind: b.kind, index: b.index, verdict: b.rejected ? 'rejected' : null }),
+    onSuccess: invalidate,
+  });
   // 자막 직접 쓰기: 자막을 통째로 바꾼 뒤 바로 "자막 넣기"
   const saveSubs = useMutation({
     mutationFn: async (lines: { start: number; end: number; text: string }[]) => {
@@ -212,6 +216,7 @@ export function VideoDetail({ id, panelOutputId }: Props) {
           onOpenOutput={openOutput}
           plan={plan}
           onApplyPlan={busy || act.isPending ? undefined : () => act.mutate({ type: 'apply_plan' })}
+          onPlanFeedback={planFeedback.isPending ? undefined : (kind, index, rejected) => planFeedback.mutate({ kind, index, rejected })}
         />
         {localError && (
           <div className="rounded-thumb bg-accent-faint px-3 py-2 text-13 leading-normal" data-testid="chat-error">

@@ -7,3 +7,4 @@ export * from './silence.js';
 export * from './render.js';
 export * from './scene.js';
 export * from './motion.js';
+export * from './frames.js';

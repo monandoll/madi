@@ -24,6 +24,8 @@ export const Settings = z.object({
         codex: z.string().nullable().default(null),
       })
       .default({ claude: null, codex: null }),
+    /** 편집안 · 완성본 메모를 만들 때 화면 몇 장(대표 프레임 시트, 최대 2장)도 같이 보여 줄지 (기획안 §10). 끄면 자막과 숫자만. */
+    frames: z.boolean().default(true),
   }),
   /** 처음 켰을 때 설정 카드를 끝냈는지. false 면 갤러리 위에 카드가 뜬다. */
   setupDone: z.boolean().default(false),
@@ -49,7 +51,7 @@ export type Settings = z.infer<typeof Settings>;
 export const DEFAULT_SETTINGS: Settings = {
   workspaceName: '내 스튜디오',
   watchFolders: [],
-  ai: { provider: 'none', paths: { claude: null, codex: null } },
+  ai: { provider: 'none', paths: { claude: null, codex: null }, frames: true },
   setupDone: false,
   remoteMode: 'off',
   tunnelToken: null,

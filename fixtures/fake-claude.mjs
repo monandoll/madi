@@ -5,6 +5,8 @@
  * 시나리오는 프롬프트 마지막 줄("사용자 요청: …")의 낱말로 고른다.
  *   세로   → apply_edit(vertical) + render
  *   조각   → extract_shorts(parts: 뒤 조각 먼저, focus=left)
+ *   강조   → apply_edit(subtitles, emphasis: 단어를 0–2초에서만) + render
+ *   고쳐줘: <editId> → apply_edit(editId, cuts 0–1) + render (결과물이 있으면 새 편집 · changes)
  *   규칙   → update_style_rule
  *   문장   → set_subtitle_text (사용자 문장을 0–2초 자막으로)
  *   자막   → get_transcript (whisper 없으면 도구 오류를 그대로 전한다)
@@ -44,6 +46,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // ---- 분석 모드 (MCP 없이 한 턴): 완성본 읽기 · 기억 정리 ----
 // 진짜 답처럼 코드펜스와 앞말을 붙여서 준다 (파서가 그걸 벗겨야 한다).
 if (mcpConfigPath === '{"mcpServers":{}}') {
+  // 화면 시트: 프롬프트가 ./sheets/… 를 열어 보라 하고, 그 폴더가 Read 로 열려 있고, 파일이 실제로 있으면 "봤다"
+  const sheetFiles = [...prompt.matchAll(/^- (\.\/sheets\/[^:]+):/gm)].map((m) => m[1]);
+  const canRead = args.includes('--allowedTools') && args[args.indexOf('--allowedTools') + 1] === 'Read(./sheets/**)' && !args.slice(args.indexOf('--disallowedTools') + 1).includes('Read');
+  const sawFrames = canRead && sheetFiles.length > 0 && sheetFiles.every((f) => fs.existsSync(f));
+  if (sheetFiles.length && !canRead) {
+    process.stderr.write('fake-claude: sheets in prompt but Read not allowed\n');
+    process.exit(2);
+  }
   const answer = (obj) => {
     const text = `정리했습니다.\n\`\`\`json\n${JSON.stringify(obj, null, 2)}\n\`\`\``;
     emit({ type: 'system', subtype: 'init', tools: [], mcp_servers: [] });
@@ -71,6 +81,7 @@ if (mcpConfigPath === '{"mcpServers":{}}') {
       shortCandidates: [{ start: 0, end, title: `${part} 한 동작`, why: '설명과 시범이 한 번에 완결된다' }],
       terms: ['견갑골', '외회전'],
       subtitleNotes: '한 줄 12자 안팎',
+      visual: sawFrames ? '사람이 가운데 크게, 자막은 아래' : '',
       tags: [part, '스트레칭'],
     });
   }
@@ -94,6 +105,7 @@ if (mcpConfigPath === '{"mcpServers":{}}') {
       shortCandidates: [{ start: Math.min(1, dur / 4), end: dur, title: `${title} 한 동작`, why: '설명과 시범이 한 번에 완결된다', channel: 'reels' }],
       terms: ['견갑골'],
       tags: ['어깨', '스트레칭'],
+      framing: sawFrames ? { side: 'right', note: '사람이 오른쪽에 서 있다' } : null,
     });
   }
   if (prompt.includes('## 기억 정리')) {
@@ -181,6 +193,20 @@ try {
     say('시범을 먼저 보여 주고 설명을 뒤에 붙일게요.');
     const r = await call('extract_shorts', { clips: [{ start: 0, end: 5, title: 'AI 조각', parts: [{ start: 3, end: 5 }, { start: 0, end: 2 }], focus: 'left' }], subtitles: false });
     say(`「${r.outputs[0].title}」 만들었어요. ${r.outputs[0].durationSec}초예요.`);
+  } else if (request.includes('강조')) {
+    // "○○ 강조해줘": 그 단어를 자막 첫 2초에서만 강조한 결과물
+    const term = (request.split(':')[1] ?? '앱').trim();
+    say(`"${term}" 를 처음 나올 때만 띄울게요.`);
+    const e = await call('apply_edit', { subtitles: true, title: 'AI 강조', emphasis: [{ term, start: 0, end: 2 }] });
+    const r = await call('render', { editId: e.editId });
+    say(`「${r.title}」 만들었어요. ${e.emphasis?.length ?? 0}개 단어를 띄웠어요.`);
+  } else if (!request.includes('문장') && /고쳐줘:\s*\S{10,}/.test(request)) {
+    // "고쳐줘: <editId>" → 그 편집을 고친다 (앞 1초를 더 잘라냄). 결과물이 있는 편집이면 새 편집이 되고 changes 가 온다.
+    const editId = request.split(':')[1].trim();
+    say('앞부분을 조금 더 잘라낼게요.');
+    const e = await call('apply_edit', { editId, cuts: [{ start: 0, end: 1 }] });
+    const r = await call('render', { editId: e.editId });
+    say(`「${r.title}」 다시 만들었어요. ${e.changes?.cuts?.added?.length ?? 0}곳을 더 잘라냈어요.${e.revisionOf ? ' 이전 것과 비교할 수 있어요.' : ''}`);
   } else if (request.includes('규칙')) {
     await call('update_style_rule', { rule: '숏폼은 30초 안쪽으로' });
     say('앞으로 그렇게 할게요.');
@@ -203,7 +229,7 @@ try {
     await sleep(8000);
     say('다 했어요.');
   } else {
-    say(`"${request}" 라고 하셨네요. 규칙 ${system.includes('편집 규칙') ? '읽었어요' : '못 읽었어요'}. 지침 ${system.includes('제작 지침') ? '있어요' : '없어요'}. 기억 ${system.includes('# 기억') ? '있어요' : '없어요'}. 편집안 ${prompt.includes('# 이 영상의 편집안') ? '있어요' : '없어요'}.`);
+    say(`"${request}" 라고 하셨네요. 규칙 ${system.includes('편집 규칙') ? '읽었어요' : '못 읽었어요'}. 지침 ${system.includes('제작 지침') ? '있어요' : '없어요'}. 기억 ${system.includes('# 기억') ? '있어요' : '없어요'}. 편집안 ${prompt.includes('# 이 영상의 편집안') ? '있어요' : '없어요'}. 뺀 후보 ${prompt.includes('사용자가 뺀 후보') ? '있어요' : '없어요'}.`);
   }
   finish(true, last);
 } catch (err) {

@@ -1,3 +1,4 @@
+import { type FrameMaterial, frameLines } from '../plan/prompt.js';
 import { type MemoryItem, type MemoryKind, type MemoryScope, type Reference, ReferenceInsight, type Segment } from '@madi/shared';
 import { z } from 'zod';
 
@@ -46,7 +47,7 @@ export const INSIGHT_MARKER = '## 완성본 분석';
 export const MEMORY_MARKER = '## 기억 정리';
 
 /** 완성본 하나를 읽고 JSON 메모를 쓰게 하는 프롬프트. system 은 역할, prompt 는 재료. */
-export function insightPrompt(ref: Pick<Reference, 'title' | 'stats'>, segments: Segment[]): { system: string; prompt: string } {
+export function insightPrompt(ref: Pick<Reference, 'title' | 'stats'>, segments: Segment[], frames?: FrameMaterial): { system: string; prompt: string } {
   const st = ref.stats;
   const system = [
     "너는 '마디'의 편집 분석가다. 운동 · 재활 · 스트레칭 영상 크리에이터의 **완성본**(이미 편집돼 올라간 영상)을 자막으로 읽고, 이 제작자가 영상을 어떻게 짜는지 메모를 남긴다.",
@@ -60,6 +61,7 @@ export function insightPrompt(ref: Pick<Reference, 'title' | 'stats'>, segments:
     '- tags 는 검색용 낱말: 부위 · 동작 · 고민 (예: 어깨, 견갑골, 거북목, 스쿼트). 3~8개.',
     '- 장면 전환 시각이 있으면 자막과 맞춰 본다: 말이 이어지는데 화면이 바뀌면 앵글 전환, 말이 멈추고 바뀌면 동작 전환이다. sections 의 경계를 거기에 맞춘다.',
     '- titleNote 는 제목이 약속한 것을 영상 어디서 어떻게 보여 주는지 한 줄 (제목과 내용의 관계). 제목만 보고 짐작하지 않는다.',
+    '- 화면 시트가 있으면 본다: 구도(사람이 어디에 · 얼마나 크게), 앵글 습관, 자막이 놓이는 자리와 강조 방식을 visual 한 줄로. 자세가 맞는지는 판정하지 않는다. 시트가 없으면 visual 은 빈 문자열.',
     '- 답은 JSON 하나만. 설명 · 마크다운 · 코드펜스 없이 `{` 로 시작해 `}` 로 끝낸다.',
   ].join('\n');
   const prompt = [
@@ -68,6 +70,7 @@ export function insightPrompt(ref: Pick<Reference, 'title' | 'stats'>, segments:
     `제목: ${ref.title}`,
     st ? `길이: ${clock(st.durationSec)} · ${st.aspect} · 컷 ${st.sceneCount}번` : '',
     st?.sceneTimes?.length ? `장면 전환: ${st.sceneTimes.slice(0, 40).map(clock).join(', ')}${st.sceneTimes.length > 40 ? ' …' : ''}` : '',
+    ...(frames ? frameLines(frames) : []),
     '',
     '자막:',
     transcriptText(segments),
@@ -87,6 +90,7 @@ export function insightPrompt(ref: Pick<Reference, 'title' | 'stats'>, segments:
         terms: ['용어'],
         subtitleNotes: '자막 길이 · 강조 방식',
         titleNote: '제목이 약속한 것을 어디서 어떻게 보여 주는지',
+        visual: '화면에서 본 것 한 줄 (구도 · 앵글 · 자막 자리)',
         tags: ['태그'],
       },
       null,
@@ -118,7 +122,7 @@ const Loose = z.object({}).passthrough();
  * AI 답 → ReferenceInsight. 시각은 영상 길이 안으로 잘라 넣고, 시작 ≥ 끝인 구간은 버린다.
  * 모양이 아예 아니면 null (실패로 남긴다 — 지어내지 않는다).
  */
-export function parseInsight(text: string, opts: { provider: 'claude' | 'codex'; durationSec: number; now?: number }): ReferenceInsight | null {
+export function parseInsight(text: string, opts: { provider: 'claude' | 'codex'; durationSec: number; now?: number; frameTimes?: number[] }): ReferenceInsight | null {
   const raw = extractJson(text);
   if (!raw || !Loose.safeParse(raw).success) return null;
   const obj = raw as Record<string, unknown>;
@@ -167,6 +171,8 @@ export function parseInsight(text: string, opts: { provider: 'claude' | 'codex';
     terms: uniq(strArr(obj['terms'], 40)).slice(0, 40),
     subtitleNotes: str(obj['subtitleNotes'], 200),
     titleNote: str(obj['titleNote'], 200),
+    visual: str(obj['visual'], 200),
+    frameTimes: (opts.frameTimes ?? []).map((t) => r1(t)),
     tags: uniq(strArr(obj['tags'], 30).map(normTag)).slice(0, 12),
     provider: opts.provider,
     createdAt: opts.now ?? Date.now(),
@@ -206,6 +212,7 @@ export function memoryPrompt(refs: Pick<Reference, 'id' | 'title' | 'insight'>[]
         i.terms.length ? `용어: ${i.terms.join(', ')}` : '',
         i.subtitleNotes ? `자막: ${i.subtitleNotes}` : '',
         i.titleNote ? `제목과 내용: ${i.titleNote}` : '',
+        i.visual ? `화면: ${i.visual}` : '',
         `태그: ${i.tags.join(', ')}`,
       ]
         .filter(Boolean)
@@ -303,6 +310,7 @@ export function insightSummary(ref: Pick<Reference, 'title' | 'insight'>): strin
   if (i.shortCandidates.length) lines.push(`- 숏폼으로 뽑은 방식: ${i.shortCandidates.slice(0, 3).map((k) => `${k.title} — ${k.why}`).join(' / ')}`);
   if (i.subtitleNotes) lines.push(`- 자막: ${i.subtitleNotes}`);
   if (i.titleNote) lines.push(`- 제목과 내용: ${i.titleNote}`);
+  if (i.visual) lines.push(`- 화면: ${i.visual}`);
   return lines.join('\n');
 }
 

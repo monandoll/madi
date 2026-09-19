@@ -105,9 +105,28 @@ export const edits = sqliteTable('edits', {
   subtitleStyle: text('subtitle_style', { mode: 'json' }).notNull(),
   /** 렌더할 때 자막 위치(아래/위)를 동작을 피해 고른다 */
   subtitleAuto: integer('subtitle_auto', { mode: 'boolean' }).notNull().default(true),
+  /** 강조할 단어들 [{term,start,end}] */
+  emphasis: text('emphasis', { mode: 'json' }).notNull().default('[]'),
+  /** 어느 Edit 를 고쳐서 만든 것인지 */
+  revisionOf: text('revision_of'),
   speed: text('speed', { mode: 'json' }).notNull(),
   createdAt: integer('created_at').notNull(),
 });
+
+/** 자막에서 고친 말 (틀린 말 → 바른 말). 쌍마다 한 줄, count 는 고친 횟수. */
+export const termCorrections = sqliteTable(
+  'term_corrections',
+  {
+    id: text('id').primaryKey(),
+    wrong: text('wrong').notNull(),
+    right: text('right').notNull(),
+    count: integer('count').notNull().default(1),
+    videoId: text('video_id'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (t) => [uniqueIndex('term_corrections_pair_idx').on(t.wrong, t.right)],
+);
 
 export const outputs = sqliteTable(
   'outputs',

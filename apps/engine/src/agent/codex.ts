@@ -103,10 +103,11 @@ export class CodexProvider implements AgentProvider {
     const bin = opts.bin ?? this.bin();
     if (!bin) return { text: '', toolCalls: 0, ok: false, error: 'not_installed' };
     const prompt = `${opts.system}\n\n---\n\n${opts.prompt}`;
-    return runCli(bin, codexAnalyzeArgs({ cwd: opts.cwd, prompt }), null, new CodexStream(), { cwd: opts.cwd, onText: () => undefined, onTool: () => undefined, ...(opts.signal ? { signal: opts.signal } : {}), ...(opts.onLog ? { onLog: opts.onLog } : {}) });
+    return runCli(bin, codexAnalyzeArgs({ cwd: opts.cwd, prompt, images: opts.images ?? [] }), null, new CodexStream(), { cwd: opts.cwd, onText: () => undefined, onTool: () => undefined, ...(opts.signal ? { signal: opts.signal } : {}), ...(opts.onLog ? { onLog: opts.onLog } : {}) });
   }
 }
 
-export function codexAnalyzeArgs(opts: { cwd: string; prompt: string }): string[] {
-  return ['exec', '--json', '--skip-git-repo-check', '-C', opts.cwd, '-s', 'read-only', opts.prompt];
+/** 분석 모드: 도구 없이 한 턴. 그림은 `-i 파일` 로 붙인다 (codex exec 의 이미지 첨부). */
+export function codexAnalyzeArgs(opts: { cwd: string; prompt: string; images?: string[] }): string[] {
+  return ['exec', '--json', '--skip-git-repo-check', '-C', opts.cwd, '-s', 'read-only', ...(opts.images ?? []).flatMap((f) => ['-i', f]), opts.prompt];
 }

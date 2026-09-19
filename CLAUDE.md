@@ -78,13 +78,14 @@ resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리
 - `Video` — 원본. `path`, `duration`, `kind: 'long' | 'short'`, `status`
 - `Proxy` — 720p 프리뷰용. 원본 등록 시 자동 생성.
 - `Transcript` — whisper 결과. 문장 단위 `Segment[]` (start, end, text, words[])
-- `Edit` — 편집 결정. 원본이 아니라 **결정 목록**이다. `keep`/`parts[]`(조각을 이 순서로 — 시범 먼저, 설명 뒤), `cuts[]`, `crop`+`cropFocus`(세로일 때 어디를 잡을지, null 이면 렌더가 움직임으로 고르고 다시 적는다), `subtitleStyle`+`subtitleAuto`(아래 동작을 가리면 위로), `speed[]`
+- `Edit` — 편집 결정. 원본이 아니라 **결정 목록**이다. `keep`/`parts[]`(조각을 이 순서로 — 시범 먼저, 설명 뒤), `cuts[]`, `crop`+`cropFocus`(세로일 때 어디를 잡을지, null 이면 렌더가 움직임으로 고르고 다시 적는다), `subtitleStyle`+`subtitleAuto`(아래 동작을 가리면 위로), `emphasis[]`(강조할 단어 · 구간), `revisionOf`(결과물이 있는 Edit 를 고치면 새 Edit — 이전 결과물은 계속 재현된다), `speed[]`
 - `Output` — `Edit`를 렌더한 결과 파일. `Video`에 여러 개 매달림.
 - `Job` — 큐 항목. `type`, `status`, `progress`, `payload`, `error`
 - `StyleProfile` — `style.md`(자연어 규칙) + `params.json`(숫자) + `examples/`(few-shot)
 - `Reference` — 완성본(배우는 대상). `stats`(숫자 + 장면 전환 시각) + `segments`(자막) + `insight`(AI 가 읽은 뜻: 취지·구성·보존 구간·숏폼 후보·용어·제목과 내용의 관계·태그)
+- `TermCorrection` — 자막에서 고친 말 한 쌍(틀린 말 → 바른 말 · 횟수). 바른 말은 whisper 에 알려 주고, 2번 이상이면 결과에서 바로 바꾼다. 사용자가 뺄 수 있다.
 - `Memory` — 제작자 기억 한 줄. `kind`(style·keep·avoid·term) · `scope`(all·topic·video) · `source`(reference·feedback·user) · `status`(proposed·approved). 완성본에서 추린 것은 **제안**으로 들어오고 사용자가 확인한 것만 편집에 쓴다. 사용자가 보고 고치고 지운다. 완성본은 `excluded` 로 학습에서 뺄 수 있다.
-- `EditPlan` — 촬영본 편집안 초안. AI 가 자막·무음·움직임·장면을 읽고 남긴 취지·구성(구간별 편집 초안)·남길 구간·잘라낼 후보·숏폼 후보(채널·이유). 파일은 만들지 않는다 — 사용자가 후보를 골라야 렌더.
+- `EditPlan` — 촬영본 편집안 초안. AI 가 자막·무음·움직임·장면을 읽고 남긴 취지·구성(구간별 편집 초안)·남길 구간·잘라낼 후보·숏폼 후보(채널·이유). 파일은 만들지 않는다 — 사용자가 후보를 골라야 렌더. `feedback[]` 에 사용자가 뺀·만든 후보가 남고, 뺀 것은 다시 제안하지 않는다.
 - `Chat` — `Video`별 대화. 메시지에 `Output` 카드가 붙는다.
 
 원칙: **렌더는 항상 `Edit`로부터 재현 가능**해야 한다. 결과 파일만 있고 결정이 없는 상태를 만들지 않는다.
@@ -99,6 +100,7 @@ resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리
 - 쉬는 구간 자르기(버튼 · `propose_cuts`)는 동작이 이어지는 침묵(시범)을 남긴다. 말하던 때보다 화면이 확실히 더 움직인 침묵은 자르지 않는다 (`ffmpeg-presets/motion.ts`).
 - 세로 크롭 초점과 자막 위치는 렌더가 화면의 어느 쪽이 움직이는지 한 번 재서 정하고(`regionsFor` · `chooseCropFocus` · `chooseSubtitleSide`) 그 결정을 `Edit` 에 적는다. 에이전트는 `apply_edit.focus` / `set_subtitle_style.bottom` 으로 덮어쓸 수 있다.
 - AI 가 골라져 있으면 상세를 처음 열 때 `plan` 잡으로 편집안을 읽어 카드로 붙인다 (`src/plan/`). 다음 채팅 요청에는 그 편집안이 같이 간다.
+- 편집안 · 완성본 메모에는 대표 프레임 시트(장면 전환 직후 화면을 4칸 격자로, 최대 2장)도 같이 보여 준다 (`ffmpeg-presets/frames.ts`, `workers/frames.ts`). Claude 는 `Read(./sheets/**)` 만 열어 주고, Codex 는 `-i` 로 붙인다. 설정 `ai.frames` 로 끈다. 자세를 판정하지 않는다.
 - 수정 요청이 오면 고친 뒤 **"앞으로도 이렇게 할까요?"** 를 한 번 묻고, 예일 때만 `update_style_rule`.
 - 에이전트 응답은 채팅에 스트리밍. 도구 호출 내부는 사용자에게 보이지 않는다.
 - AI 미연결 상태에서는 러너를 아예 스폰하지 않는다. 버튼 4개는 워커를 직접 호출한다.

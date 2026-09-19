@@ -40,7 +40,11 @@ plan 잡 (workers/plan.ts, AI 한 턴 · 도구 없음)
   숏폼 후보 "숏폼으로" → `short` 액션, "잘라낼 후보 N곳을 빼고 롱폼 만들기" → `apply_plan` (`planCuts`: 남길 구간과 겹치는 부분은 컷에서 뺀다).
 - 다음 채팅 요청의 프롬프트에 `planBlock` 이 "# 이 영상의 편집안" 으로 들어간다 — 에이전트가 숏폼 · 컷을 고를 때 여기서 시작한다.
 - AI 가 없으면 `plan` 은 409 `ai_off`. 편집안 없이 `apply_plan` 은 409 `plan_missing`. 읽기 실패는 채팅에 `plan_failed` (큐 재시도 없음 — 토큰).
-- 단위 `test/plan.test.ts`, 엔진 e2e `test/e2e.agent.test.ts` (편집안 → 프롬프트 → 롱폼 만들기), 브라우저 `e2e/3-ai.spec.ts` (처음 열면 카드).
+- **후보 빼기** (기획안 §9 · §11 `edit_feedback`): 카드의 잘라낼 후보 · 숏폼 후보마다 "빼기 / 되돌리기". `POST /api/videos/:id/plan/feedback {kind, index, verdict}` → `EditPlan.feedback[]`.
+  뺀 컷은 `planCuts` 에서 빠지고, `planBlock` 은 뺀 것을 "사용자가 뺀 후보 (다시 제안하지 않는다)" 로 따로 넘긴다. 숏폼 후보를 눌러 만들면 `accepted` 로 남는다 (`short.from='plan'`).
+  같은 종류(반복 · NG · 잡담 · 침묵)의 컷을 영상을 넘어 3번 빼면 "…도 자르지 않는다" 를 기억 **제안**으로 올린다 (`rejectionMemory`, kv `plan.rejected`). 편집안을 다시 만들면 feedback 은 비워진다.
+  이벤트 `plan.feedback`.
+- 단위 `test/plan.test.ts`, 엔진 e2e `test/e2e.agent.test.ts` (편집안 → 프롬프트 → 롱폼 만들기 → 후보 빼기), 브라우저 `e2e/3-ai.spec.ts` (처음 열면 카드 · 빼기 토글).
 
 ## 도구 (`apps/engine/src/mcp/tools.ts`)
 
@@ -50,7 +54,7 @@ plan 잡 (workers/plan.ts, AI 한 턴 · 도구 없음)
 | `find_silences` | 무음 구간. `moving=true` 는 말은 없지만 동작이 이어지는 침묵(시범) |
 | `find_scenes` | 장면 전환 시각 + 구간 |
 | `propose_cuts` | 무음 → 잘라낼 구간 제안. 동작이 이어지는 침묵은 `kept` 로 따로 (자르지 않는다) |
-| `apply_edit` | Edit 생성/수정 (keep, parts, cuts, crop, focus, subtitles). `parts` 는 이어 붙일 조각을 결과 순서대로 — 시범 먼저 설명 뒤 (기획안 §4). `focus` 는 세로로 자를 때 잡을 쪽(auto·left·center·right) |
+| `apply_edit` | Edit 생성/수정 (keep, parts, cuts, crop, focus, subtitles, emphasis). `parts` 는 이어 붙일 조각을 결과 순서대로 — 시범 먼저 설명 뒤 (기획안 §4). `focus` 는 세로로 자를 때 잡을 쪽(auto·left·center·right). `emphasis` 는 자막에서 강조할 단어 — 구간을 주면 거기서만 (§6 예시 2) |
 | `render` | Edit → 결과 파일. 끝날 때까지 기다림 |
 | `extract_shorts` | 구간 여러 개 → 9:16 숏폼 파일들. clip 에 `parts` · `focus` 를 줄 수 있다 |
 | `set_subtitle_style` | 자막 모양. `remember` 면 기본값도. `bottom` 을 주면 그 편집은 자동 위치를 안 쓴다 (`subtitleAuto=false`) |
@@ -212,6 +216,25 @@ API 키 방식은 아직 안 쓴다 (사용자 본인 구독으로 돈다는 원
 - 결과 카드에 "화면 오른쪽에서 움직여서 그쪽을 잡았습니다" · "아래쪽 동작을 가리지 않게 자막을 위에 두었습니다" 가 붙는다 (가운데 · 아래면 조용히).
 - 화면을 못 읽으면 가운데 · 아래 — 전과 같고, 그것도 적는다. 렌더는 항상 Edit 로부터 재현.
 - 에이전트는 `apply_edit.focus` / `extract_shorts.clips[].focus` 로 미리 정하거나 `set_subtitle_style.bottom` 으로 고정할 수 있다.
+
+**대표 프레임 시트** (기획안 §10 · §5.4) — 편집안과 완성본 메모를 만들 때 자막 · 숫자만이 아니라 화면도 보여 준다. `ffmpeg-presets/frames.ts`:
+장면 전환 직후(+0.5초)와 고르게 나눈 지점(20초에 한 장쯤, 최소 6장)을 골라(최대 24장) 320px 칸으로 줄여 4칸씩 격자로 붙인 JPEG 시트(최대 2장, `contactSheetArgs`: 시각마다 입력을 열어 한 장씩 → concat → tile).
+칸에 시각을 찍지 않고 프롬프트에 "칸 순서대로 시각" 을 적는다 (`frameLines`). 워커 `workers/frames.ts` (`makeFrameSheets`)가 분석 cwd 아래 `sheets/` 에 만들고 끝나면 지운다.
+- Claude: `--allowedTools "Read(./sheets/**)"` 로 그 폴더만 열어 주고 `--max-turns 4` (`claudeAnalyzeArgs`). Codex: `codex exec -i 시트` 로 첨부 (`codexAnalyzeArgs`).
+- 편집안: `framing {side, note}` (사람이 어느 쪽에 · 앵글 · 동작 시작) + `frameTimes`. 편집안의 숏폼 후보를 누르면 `side` 가 `cropFocus` 가 된다 (left 0 · right 1 · center 는 움직임으로). `planBlock` 에 "화면: 사람이 오른쪽에 있다 (focus=right)".
+- 완성본 메모: `visual` (구도 · 앵글 · 자막 자리) + `frameTimes`. 설정 메모에 "화면" 줄.
+- 설정 → AI 연결 "화면도 보여 주기" (`settings.ai.frames`, 기본 켬). 끄면 시트 없이 (framing null · visual 빈 문자열). 안내 문구에 화면 몇 장이 나간다고 적는다 (§12).
+- 시트를 못 만들면(짧은 영상 · ffmpeg 오류) 화면 없이 간다. 자세 판정은 하지 않는다 (§5.6).
+- 단위 `frames.test.ts` · `agent.test.ts`(인자) · `plan.test.ts` · `insight.test.ts`, 엔진 e2e agent(가짜 CLI 는 Read 가 열려 있고 파일이 있을 때만 "봤다") · style, 브라우저 3-ai(스위치).
+
+**수정안 비교** (기획안 §6 "수정안 비교") — 결과물이 이미 있는 Edit 를 고치면(`apply_edit(editId)` · `set_subtitle_style(editId)`) 제자리에서 바꾸지 않고
+`revisionOf` 를 단 새 Edit 를 만든다 (`reviseEdit`). 이전 결과물은 계속 자기 Edit 로부터 재현되고, 도구 결과에 `changes`(`editDiff`: keep · parts · cuts 추가/복원 · crop · focus · 자막 · 여백 · 강조)가 실려
+에이전트가 "무엇을 바꿨는지" 를 정확히 말한다. `GET /api/outputs/:id` 는 `previous`(고치기 전 결과물 + Edit)를 같이 주고, 결과물 화면은 "이전과 달라진 점" 을 말로 적고 "이전 것과 견주기" 로 두 영상을 나란히 튼다.
+결과물이 없는 Edit 는 그대로 제자리에서 고친다.
+
+**단어 강조** (기획안 §6 예시 2 "견갑골 설명에만 단어를 강조") — `Edit.emphasis[{term,start,end}]`. 자막 빌더(`buildAss`)가 그 구간의 단어 안에서 term 을 찾아
+`{\c색\fs크기}…{\r}` 로 감싼다 (색은 `SubtitleStyle.emphasisColor`, 기본 accent · 크기 1.15배). 구간이 없으면 영상 전체. 결과물 화면의 자막 목록도 같은 자리를 굵게 보여 준다 (`splitEmphasis`).
+제작 지침: 용어는 처음 설명하는 구간에서만. 도구는 `apply_edit.emphasis` (목록 전체를 바꾼다, 빈 배열이면 지운다).
 
 **여러 조각 숏폼** (기획안 §4 틱톡 구성) — `Edit.parts[]` 가 비어 있지 않으면 `keep` 대신 조각들을 **그 순서대로** 이어 붙인다(`keepSegments`). 뒤에 있는 시범을 앞에, 설명을 뒤에.
 자막 시각 재배치(`remapTime` · `remapRange`)도 같은 순서를 따른다. 액션 `short.from`(manual · chapter · plan)은 사용자가 어디서 고른 구간인지 `events` 에 남긴다 (§9 — 무엇을 골랐는지가 피드백).

@@ -37,6 +37,7 @@ test('설정: 설치된 도구 중 Claude Code 를 고르면 연결됨', async (
 });
 
 test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지며 결과물 카드가 붙는다', async ({ page }) => {
+  test.setTimeout(240_000); // 결과물을 네 번 만든다 (세로 · 고치기 · 강조)
   await page.goto('/');
   await page.locator('[data-testid="video-card"]', { hasText: '어깨 가동성 루틴 3분' }).click();
   const detail = page.getByTestId('video-detail');
@@ -57,6 +58,14 @@ test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지�
   await expect(plan.getByTestId('plan-short').first()).toContainText('릴스');
   await expect(plan.getByTestId('plan-apply')).toContainText('잘라낼 후보 1곳을 빼고 롱폼 만들기');
   await expect(page.getByTestId('plan-make')).toHaveText('편집안 다시 만들기');
+  // 후보 빼기 → 줄이 흐려지고 만들기 문구가 바뀐다. 되돌리기로 돌아온다 (기획안 §9)
+  await plan.getByTestId('plan-cut-toggle').first().click();
+  await expect(plan.getByTestId('plan-cut').first()).toHaveAttribute('data-rejected', 'true');
+  await expect(plan.getByTestId('plan-apply')).toContainText('이대로 롱폼 만들기');
+  await expect(plan.getByTestId('plan-cut-toggle').first()).toHaveText('되돌리기');
+  await plan.getByTestId('plan-cut-toggle').first().click();
+  await expect(plan.getByTestId('plan-cut').first()).not.toHaveAttribute('data-rejected', 'true');
+  await expect(plan.getByTestId('plan-apply')).toContainText('잘라낼 후보 1곳을 빼고 롱폼 만들기');
   await expect(page.getByTestId('output-row')).toHaveCount(0);
   const before = await page.getByTestId('output-row').count();
 
@@ -87,6 +96,33 @@ test('상세: 입력창과 칩이 보이고, 말로 시키면 답이 채워지�
   await page.getByTestId('output-row').last().getByTestId('output-revise').click();
   await expect(input).toHaveValue('「AI 세로」 고쳐줘: ');
   await input.fill('');
+
+  // 수정안 비교: 결과물이 있는 편집을 고치면 새 결과물에 "이전과 달라진 점" 과 견주기 (기획안 §6)
+  const outs = (await (await page.request.get('/api/outputs')).json()).outputs as { id: string; editId: string; title: string }[];
+  const firstOut = outs.find((o) => o.title === 'AI 세로')!;
+  await input.fill(`고쳐줘: ${firstOut.editId}`);
+  await page.getByTestId('chat-send').click();
+  await expect(page.getByTestId('bubble-assistant').filter({ hasText: '이전 것과 비교할 수 있어요' })).toBeVisible({ timeout: 90_000 });
+  await page.getByTestId('output-row').last().getByRole('button', { name: '자세히' }).click();
+  const diff = page.getByTestId('output-diff');
+  await expect(diff).toContainText('이전과 달라진 점');
+  await expect(diff.getByTestId('output-diff-line').first()).toContainText('0:00–0:01 을 더 잘라냈습니다');
+  await diff.getByTestId('output-compare-toggle').click();
+  await expect(page.getByTestId('output-compare')).toContainText('이전');
+  await expect(page.getByTestId('output-compare')).toContainText('지금');
+  await page.getByTestId('panel-close').click();
+
+  // 단어 강조: 문장을 넣고 "강조" → 결과물 자막 목록에 그 단어만 굵게 (기획안 §6 예시 2)
+  await input.fill('이 문장 고쳐줘: 무릎을 펴고 천천히');
+  await page.getByTestId('chat-send').click();
+  await expect(page.getByTestId('bubble-assistant').last()).toContainText('로 바꿨어요', { timeout: 30_000 });
+  await input.fill('강조해줘: 무릎');
+  await page.getByTestId('chat-send').click();
+  await expect(page.getByTestId('output-row').last()).toContainText('AI 강조', { timeout: 90_000 });
+  await page.getByTestId('output-row').last().getByRole('button', { name: '자세히' }).click();
+  const row = page.getByTestId('subtitle-row').first();
+  await expect(row.getByTestId('subtitle-strong')).toHaveText('무릎');
+  await expect(row).toContainText('무릎을 펴고 천천히');
 });
 
 test('멈추기: 답하는 중에 멈추면 그때까지의 말만 남는다', async ({ page }) => {
@@ -100,6 +136,22 @@ test('멈추기: 답하는 중에 멈추면 그때까지의 말만 남는다', a
   await expect(page.getByTestId('chat-send')).toBeVisible();
   await expect(page.getByTestId('bubble-assistant').last()).toContainText('천천히 할게요.');
   await expect(page.getByTestId('bubble-assistant').last()).not.toContainText('다 했어요');
+});
+
+test('"화면도 보여 주기" 스위치: 기본 켬, 끄면 설정에 남고, 안내 문구에 화면이 나간다고 적혀 있다 (기획안 §10 · §12)', async ({ page }) => {
+  await page.goto('/#/settings');
+  const toggle = page.getByTestId('ai-frames-toggle');
+  await expect(toggle).toBeChecked();
+  await expect(page.getByTestId('ai-data-notice')).toContainText('화면 몇 장');
+  // 설정이 저장돼야 화면이 바뀐다 (서버 값이 진실) — 누르고 저장을 기다린다
+  await toggle.click();
+  await expect.poll(async () => (await (await page.request.get('/api/settings')).json()).settings.ai.frames).toBe(false);
+  await expect(toggle).not.toBeChecked();
+  await page.reload();
+  await expect(page.getByTestId('ai-frames-toggle')).not.toBeChecked();
+  await page.getByTestId('ai-frames-toggle').click();
+  await expect.poll(async () => (await (await page.request.get('/api/settings')).json()).settings.ai.frames).toBe(true);
+  await expect(page.getByTestId('ai-frames-toggle')).toBeChecked();
 });
 
 test('설정에서 연결을 끊으면 다시 버튼 4개', async ({ page }) => {

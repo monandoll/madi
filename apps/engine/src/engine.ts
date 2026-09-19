@@ -29,6 +29,7 @@ import { StyleProfile } from './agent/style.js';
 import { AgentTools } from './agent/tools.js';
 import { writeMcpConfig } from './agent/mcp-config.js';
 import { ReferenceStore } from './style/references.js';
+import { CorrectionStore } from './style/corrections.js';
 import { MemoryStore } from './style/memory.js';
 import { ChapterStore } from './chapters/store.js';
 import { PlanStore } from './plan/store.js';
@@ -68,6 +69,7 @@ export interface Engine {
   styleService: StyleService;
   refs: ReferenceStore;
   memory: MemoryStore;
+  corrections: CorrectionStore;
   chapters: ChapterStore;
   plans: PlanStore;
   url: string;
@@ -110,9 +112,10 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   const watcher = new FolderWatcher({ videos, queue, events, log });
   const refs = new ReferenceStore(db);
   const memory = new MemoryStore(db);
+  const corrections = new CorrectionStore(db);
   const ytdlpBin = resolveSidecar('ytdlp', cfg.binDir);
   const providers = { claude: new ClaudeProvider(writeMcpConfig), codex: new CodexProvider() };
-  const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, ytdlpBin, whisper, events, log, memory, providers });
+  const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, ytdlpBin, whisper, events, log, memory, corrections, providers });
   styleService.registerWorker();
   const plans = new PlanStore(db);
   // 자막을 만들 때 whisper 에 알려 줄 용어: 확인한 용어 기억 + 완성본 메모의 용어 + 이 영상 편집안의 용어 (기획안 §5.2)
@@ -120,8 +123,9 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     ...memory.listApproved().filter((m) => m.kind === 'term').map((m) => m.text),
     ...refs.withInsight().flatMap((r) => r.insight?.terms ?? []),
     ...(plans.get(videoId)?.terms ?? []),
+    ...corrections.rights(),
   ];
-  registerEditWorkers({ cfg, queue, videos, library, ffmpeg, ffmpegBin, events, log, whisper, style, terms });
+  registerEditWorkers({ cfg, queue, videos, library, ffmpeg, ffmpegBin, events, log, whisper, style, terms, corrections: () => corrections.active() });
   registerPlanWorker({ cfg, queue, videos, library, plans, style, settings, providers, recall: (video) => styleService.recall(video), ffmpegBin, events, log });
 
   const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
@@ -133,7 +137,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     const s = settings.get();
     return { mode: s.remoteMode, token: s.tunnelToken, localUrl: url };
   };
-  const agentTools = new AgentTools({ cfg, library, videos, queue, ffmpegBin, style, chapters, events, log, memory });
+  const agentTools = new AgentTools({ cfg, library, videos, queue, ffmpegBin, style, chapters, events, log, memory, corrections });
   const agent = new AgentRunner({
     cfg,
     settings,
@@ -167,6 +171,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     agentTools,
     styleService,
     memory,
+    corrections,
     chapters,
     plans,
     version: VERSION,
@@ -235,6 +240,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     styleService,
     refs,
     memory,
+    corrections,
     chapters,
     plans,
     url,

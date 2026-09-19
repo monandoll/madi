@@ -58,6 +58,8 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
   const links = refs.filter((r) => r.source === 'link');
   const folderRefs = refs.filter((r) => r.source === 'folder');
   const memory = style.data?.memory ?? [];
+  const corrections = style.data?.corrections ?? [];
+  const removeCorrection = useMutation({ mutationFn: (id: string) => api.removeCorrection(id), onSuccess: (data) => qc.setQueryData(queryKeys.style, data) });
   const proposed = memory.filter((m) => m.status === 'proposed');
   const approved = memory.filter((m) => m.status !== 'proposed');
   const insightOn = style.data?.insightOn ?? false;
@@ -236,6 +238,31 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
         </div>
       </div>
 
+      {/* 자막에서 고친 말 — 있을 때만 (기획안 §5.2 · §11 terms). 빼면 더는 알려 주지도 바꾸지도 않는다 */}
+      {corrections.length > 0 && (
+        <div className="flex flex-col gap-[9px] pt-3" data-testid="corrections-section">
+          <SectionTitle>{copy.settings.correctionsLabel}</SectionTitle>
+          <p className="text-12 text-text-3">{copy.settings.correctionsIntro}</p>
+          <Card testId="corrections-list">
+            {corrections.map((c, i) => (
+              <CardRow key={c.id} first={i === 0} testId="correction-row" data-count={c.count}>
+                <span className="flex min-w-0 flex-1 flex-col gap-px">
+                  <span className="text-13 leading-normal pc:text-14">
+                    <span className="text-text-3 line-through">{c.wrong}</span>
+                    <span className="mx-1.5 text-text-3">→</span>
+                    <span className="font-medium">{c.right}</span>
+                  </span>
+                  <span className="text-12 text-text-3">{copy.settings.correctionsCount(c.count)}</span>
+                </span>
+                <button type="button" onClick={() => removeCorrection.mutate(c.id)} disabled={removeCorrection.isPending} className="flex-none text-13 text-text-3 hover:text-text-2" data-testid="correction-remove">
+                  {copy.settings.correctionsRemove}
+                </button>
+              </CardRow>
+            ))}
+          </Card>
+        </div>
+      )}
+
       {/* AI 가 기억한 것 — 완성본에서 찾은 것은 확인해야 쓰이고, 사용자가 보고 고치고 지운다 (기획안 §12) */}
       <div className="flex flex-col gap-[9px] pt-3" data-testid="memory-section">
         <SectionTitle>{copy.settings.memoryLabel}</SectionTitle>
@@ -376,6 +403,7 @@ function InsightView({ insight: i }: { insight: ReferenceInsight }) {
       {i.shortCandidates.length > 0 && row(copy.settings.insightShorts, i.shortCandidates.map((k) => `${k.title} (${clock(k.start)}~${clock(k.end)}) — ${k.why}`).join(' · '))}
       {i.terms.length > 0 && row(copy.settings.insightTerms, i.terms.join(', '))}
       {i.titleNote && row(copy.settings.insightTitle, i.titleNote)}
+      {i.visual && row(copy.settings.insightVisual, i.visual)}
     </div>
   );
 }

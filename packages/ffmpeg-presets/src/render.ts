@@ -1,4 +1,4 @@
-import { type Edit, type Segment, type TimeRange, keepSegments, remapRange, type SubtitleStyle } from '@madi/shared';
+import { type Edit, type Emphasis, emphasisTerms, type Segment, splitEmphasis, type TimeRange, keepSegments, remapRange, type SubtitleStyle } from '@madi/shared';
 import { type Encoder, proxyEncoderArgs } from './encoder.js';
 
 export const SHORT_WIDTH = 1080;
@@ -135,7 +135,17 @@ export function buildAss(
   keep: TimeRange[],
   style: SubtitleStyle,
   frame: { width: number; height: number },
+  emphasis: Emphasis[] = [],
 ): string {
+  // 강조 단어: 색을 바꾸고 조금 키운다. {\r} 로 원래 스타일로 돌아온다.
+  const strongTag = `{\\c${assColor(style.emphasisColor)}\\fs${Math.round(style.fontSize * 1.15)}}`;
+  const wordText = (w: { start: number; end: number; text: string }) => {
+    const terms = emphasis.length ? emphasisTerms(emphasis, { start: w.start, end: w.end }) : [];
+    if (!terms.length) return escapeAss(w.text.trim());
+    return splitEmphasis(w.text.trim(), terms)
+      .map((p) => (p.strong ? `${strongTag}${escapeAss(p.text)}{\\r}` : escapeAss(p.text)))
+      .join('');
+  };
   const marginV = Math.round(frame.height * style.bottom);
   const header = [
     '[Script Info]',
@@ -158,7 +168,7 @@ export function buildAss(
     const words = seg.words.length ? seg.words : [{ start: seg.start, end: seg.end, text: seg.text, p: null }];
     let cur: { start: number; end: number; text: string[] } | null = null;
     const flush = () => {
-      if (cur && cur.text.length) lines.push(`Dialogue: 0,${assTime(cur.start)},${assTime(cur.end)},Madi,,0,0,0,,${escapeAss(cur.text.join(' '))}`);
+      if (cur && cur.text.length) lines.push(`Dialogue: 0,${assTime(cur.start)},${assTime(cur.end)},Madi,,0,0,0,,${cur.text.join(' ')}`);
       cur = null;
     };
     for (const w of words) {
@@ -169,7 +179,7 @@ export function buildAss(
       }
       if (!cur) cur = { start: r.start, end: r.end, text: [] };
       cur.end = Math.max(cur.end, r.end);
-      cur.text.push(w.text.trim());
+      cur.text.push(wordText(w));
     }
     flush();
   }

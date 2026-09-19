@@ -91,6 +91,37 @@ test('링크를 붙여 넣으면 받아서 배운다 (가짜 yt-dlp)', async ({ 
   await expect(learned).toHaveCount(0);
 });
 
+test('자막에서 고친 말: 두 번 고치면 "바로 바꿈", 빼면 사라진다', async ({ page }) => {
+  // 준비된 영상이 하나 필요하다. 이 스펙만 따로 돌리면 갤러리 스펙이 안 돌았을 수 있으니 폴더 하나를 더 본다.
+  const readyVideo = async () => ((await (await page.request.get('/api/videos')).json()).videos as { id: string; status: string }[]).find((x) => x.status === 'ready');
+  if (!(await readyVideo())) {
+    const dir = path.join(process.env['MADI_E2E_HOME']!, 'corrections-videos');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(path.join(FIXTURES, 'sample-silent-3s.mp4'), path.join(dir, '고친 말.mp4'));
+    const { settings } = await (await page.request.get('/api/settings')).json();
+    await page.request.patch('/api/settings', { data: { watchFolders: [...settings.watchFolders, dir] } });
+    await expect.poll(readyVideo, { timeout: 60_000 }).toBeTruthy();
+  }
+  const v = (await readyVideo())!;
+  const put = (text: string) => page.request.put(`/api/videos/${v.id}/transcript`, { data: { segments: [{ start: 0, end: 1, text }] } });
+  await put('겹갑골을 모으고');
+  await put('견갑골을 모으고');
+  await page.goto('/#/settings');
+  const sec = page.getByTestId('corrections-section');
+  await expect(sec).toBeVisible();
+  const row = sec.getByTestId('correction-row').filter({ hasText: '견갑골' });
+  await expect(row).toContainText('겹갑골');
+  await expect(row).toContainText('1번 고침');
+  // 문장을 아예 바꾼 건 교정이 아니다 → 새 문장에서 같은 말을 또 고치면 2번
+  await put('허리를 펴세요');
+  await put('겹갑골이 아프면');
+  await put('견갑골이 아프면');
+  await page.reload();
+  await expect(sec.getByTestId('correction-row').filter({ hasText: '견갑골' })).toContainText('2번 고침 · 바로 바꿈');
+  await sec.getByTestId('correction-row').filter({ hasText: '견갑골' }).getByTestId('correction-remove').click();
+  await expect(page.getByTestId('corrections-section')).toHaveCount(0);
+});
+
 test('AI 가 기억한 것: 직접 한 줄 쓰면 바로 쓰이고, 고치고, 빼고, 전부 지운다', async ({ page }) => {
   await page.request.patch('/api/settings', { data: { ai: { provider: 'none' }, setupDone: true } });
   await page.goto('/#/settings');

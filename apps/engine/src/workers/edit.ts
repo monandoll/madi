@@ -31,6 +31,7 @@ import type { Ffmpeg } from './ffmpeg.js';
 import { run } from './spawn.js';
 import type { Whisper } from './whisper.js';
 import { termsPrompt, WhisperMissingError } from './whisper.js';
+import { applyCorrections, type CorrectionPair } from '../style/corrections.js';
 
 export interface EditWorkerDeps {
   cfg: EngineConfig;
@@ -42,8 +43,10 @@ export interface EditWorkerDeps {
   whisper: () => Promise<Whisper>;
   /** 무음 기준(초)은 완성본에서 배운 값을 따른다 */
   style: StyleProfile;
-  /** 자막을 만들 때 whisper 에 알려 줄 운동 · 해부학 용어 (기억 · 완성본 · 편집안에서). 없으면 빈 목록. */
+  /** 자막을 만들 때 whisper 에 알려 줄 운동 · 해부학 용어 (기억 · 완성본 · 편집안 · 고친 말에서). 없으면 빈 목록. */
   terms?: (videoId: string) => string[];
+  /** 반복해서 고친 말 — whisper 결과에서 바로 바꾼다 (기획안 §5.2). 없으면 안 바꾼다. */
+  corrections?: () => CorrectionPair[];
   events: EventLog;
   log: Logger;
 }
@@ -82,8 +85,10 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
       const work = path.join(cfg.dataDir, 'work', job.id);
       const result = await whisper.transcribe(video.path, work, { signal, onProgress: setProgress, prompt: termsPrompt(d.terms?.(video.id) ?? []) });
       fs.rmSync(work, { recursive: true, force: true });
-      const transcript = library.setTranscript(video.id, { ...result, model: whisper.model });
-      d.events.record('transcript.made', { segments: transcript.segments.length, durationSec: video.durationSec }, Date.now() - started);
+      // 전에 두 번 이상 고친 말은 바로 바꿔 쓴다
+      const fixed = applyCorrections(result.segments, d.corrections?.() ?? []);
+      const transcript = library.setTranscript(video.id, { language: result.language, segments: fixed.segments, model: whisper.model });
+      d.events.record('transcript.made', { segments: transcript.segments.length, corrected: fixed.replaced, durationSec: video.durationSec }, Date.now() - started);
       const m = library.messageForJob(job.id);
       const payload = job.payload as { type: 'transcribe'; videoId: string; renderEditId?: string | null };
       if (payload.renderEditId) {
@@ -151,7 +156,7 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
       if (transcript) {
         const vertical = edit.crop === 'vertical';
         const frame = vertical ? { width: 1080, height: 1920 } : { width: video.width ?? 1920, height: video.height ?? 1080 };
-        fs.writeFileSync(assPath, buildAss(transcript.segments, segments, edit.subtitleStyle, frame), 'utf8');
+        fs.writeFileSync(assPath, buildAss(transcript.segments, segments, edit.subtitleStyle, frame, edit.emphasis), 'utf8');
         subtitleFile = assPath;
       }
       const plan = renderPlan({

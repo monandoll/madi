@@ -4,6 +4,9 @@ import { EventEmitter } from 'node:events';
 import { type AiProvider, linkSiteLabel, normalizeVideoUrl, type Reference, type ReferenceStats, type Segment, type StyleResponse, type Video } from '@madi/shared';
 import type { AgentProvider } from '../agent/provider.js';
 import { insightPrompt, memoryBlock, memoryPrompt, parseInsight, parseMemory, retrieve } from './insight.js';
+import { makeFrameSheets } from '../workers/frames.js';
+import { SHEETS_DIR } from '../agent/claude.js';
+import { applyCorrections, type CorrectionStore } from './corrections.js';
 import type { MemoryStore } from './memory.js';
 import { parseScenes, parseSilences, sceneDetectArgs, silenceDetectArgs } from '@madi/ffmpeg-presets';
 import type { StyleProfile } from '../agent/style.js';
@@ -39,6 +42,8 @@ export interface StyleServiceDeps {
   log: Logger;
   /** 제작자 기억 */
   memory: MemoryStore;
+  /** 자막에서 고친 말 — whisper 에 알려 주고, 반복된 것은 결과에서 바로 바꾼다 */
+  corrections: CorrectionStore;
   /** 완성본의 뜻을 읽을 AI (채팅과 같은 도구). 설정의 provider 로 고른다. */
   providers: Record<Exclude<AiProvider, 'none'>, AgentProvider>;
 }
@@ -192,6 +197,7 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
       linkImport: this.linkImport,
       memory: this.d.memory.list(),
       insightOn: this.insightOn(),
+      corrections: this.d.corrections.list(),
     };
   }
 
@@ -262,13 +268,15 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
       const cwd = path.join(this.d.cfg.workDir, 'insight', ref.id);
       fs.mkdirSync(cwd, { recursive: true });
       try {
-        const { system, prompt } = insightPrompt(ref, segments);
-        const res = await provider.analyze({ system, prompt, cwd, bin: provider.bin(this.d.settings.get().ai.paths?.[providerId] ?? null), signal });
+        // 화면도 보여 준다 (기획안 §10) — 장면 전환 시각은 숫자 분석 때 재 두었다
+        const sheets = this.d.settings.get().ai.frames && fs.existsSync(ref.path) ? await makeFrameSheets(this.d, ref.path, { durationSec: ref.stats?.durationSec ?? 0, scenes: ref.stats?.sceneTimes ?? [], dir: path.join(cwd, SHEETS_DIR), signal }) : [];
+        const { system, prompt } = insightPrompt(ref, segments, sheets.length ? { sheets: sheets.map((s) => ({ rel: s.rel, times: s.times })), attached: providerId === 'codex' } : undefined);
+        const res = await provider.analyze({ system, prompt, cwd, images: sheets.map((s) => s.file), bin: provider.bin(this.d.settings.get().ai.paths?.[providerId] ?? null), signal });
         if (!res.ok) throw new Error(res.error ?? 'analyze failed');
-        const insight = parseInsight(res.text, { provider: providerId, durationSec: ref.stats?.durationSec ?? 0 });
+        const insight = parseInsight(res.text, { provider: providerId, durationSec: ref.stats?.durationSec ?? 0, frameTimes: sheets.flatMap((s) => s.times) });
         if (!insight) throw new Error('no insight in answer');
         this.d.refs.update(ref.id, { insight });
-        this.d.events.record('reference.insight', { provider: providerId, tags: insight.tags.length, shorts: insight.shortCandidates.length }, Date.now() - started);
+        this.d.events.record('reference.insight', { provider: providerId, tags: insight.tags.length, shorts: insight.shortCandidates.length, frames: insight.frameTimes.length }, Date.now() - started);
         this.emit('style.updated');
         this.scheduleRememory();
       } catch (err) {
@@ -373,10 +381,12 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
       const whisper = await this.d.whisper();
       const work = path.join(this.d.cfg.workDir, 'analyze', ref.id);
       // 사용자가 확인한 용어 기억을 알려 주고 듣는다 (기획안 §5.2)
-      const result = await whisper.transcribe(ref.path, work, { signal, prompt: termsPrompt(this.d.memory.listApproved().filter((m) => m.kind === 'term').map((m) => m.text)) });
+      const terms = [...this.d.memory.listApproved().filter((m) => m.kind === 'term').map((m) => m.text), ...this.d.corrections.rights()];
+      const result = await whisper.transcribe(ref.path, work, { signal, prompt: termsPrompt(terms) });
       fs.rmSync(work, { recursive: true, force: true });
-      this.d.refs.update(ref.id, { segments: result.segments });
-      return result.segments;
+      const { segments } = applyCorrections(result.segments, this.d.corrections.active());
+      this.d.refs.update(ref.id, { segments });
+      return segments;
     } catch (err) {
       if (signal.aborted) throw err;
       this.d.log.debug({ ref: ref.id, err: String(err) }, 'reference transcript skipped');

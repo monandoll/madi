@@ -127,4 +127,25 @@ describe('buildAss', () => {
     expect(ass).toContain('Dialogue: 0,0:00:02.00,0:00:03.00,Madi,,0,0,0,,골반부터');
     expect(ass).not.toContain('말고');
   });
+
+  it('강조 단어는 그 구간에서만 색 · 크기 태그로 감싼다 (기획안 §6 예시 2)', () => {
+    const seg = {
+      id: 's1',
+      start: 0,
+      end: 4,
+      text: '골반부터 접고 골반을 세우고',
+      words: [
+        { start: 0, end: 1, text: '골반부터', p: null },
+        { start: 1, end: 2, text: '접고', p: null },
+        { start: 2, end: 3, text: '골반을', p: null },
+        { start: 3, end: 4, text: '세우고', p: null },
+      ],
+    };
+    const ass = buildAss([seg], [{ start: 0, end: 4 }], DEFAULT_SUBTITLE_STYLE, { width: 1080, height: 1920 }, [{ term: '골반', start: 0, end: 1.5 }]);
+    const tag = `{\\c${assColor(DEFAULT_SUBTITLE_STYLE.emphasisColor)}\\fs${Math.round(DEFAULT_SUBTITLE_STYLE.fontSize * 1.15)}}`;
+    expect(ass).toContain(`,,${tag}골반{\\r}부터 접고 골반을 세우고`);
+    // 문장 하나짜리(직접 쓴 자막)도 안에서 단어를 찾는다
+    const manual = buildAss([{ id: 'm', start: 0, end: 2, text: '무릎을 펴고', words: [] }], [{ start: 0, end: 2 }], DEFAULT_SUBTITLE_STYLE, { width: 1080, height: 1920 }, [{ term: '무릎', start: null, end: null }]);
+    expect(manual).toContain(`,,${tag}무릎{\\r}을 펴고`);
+  });
 });

@@ -20,6 +20,8 @@ import {
   TranscriptResponse,
   VideoDetailResponse,
   VideosResponse,
+  type PlanFeedbackRequest,
+  PlanResponse,
 } from '@madi/shared';
 
 export class ApiError extends Error {
@@ -60,6 +62,8 @@ export const api = {
   patchSettings: (body: SettingsPatch) => send('PATCH', '/api/settings', body, SettingsResponse),
   video: (id: string) => get(`/api/videos/${id}`, VideoDetailResponse),
   act: (id: string, body: ActionRequest) => send('POST', `/api/videos/${id}/actions`, body, ActionResponse),
+  /** 편집안 후보 빼기 · 되돌리기 */
+  planFeedback: (id: string, body: PlanFeedbackRequest) => send('POST', `/api/videos/${id}/plan/feedback`, body, PlanResponse),
   putTranscript: (id: string, segments: { start: number; end: number; text: string }[]) => send('PUT', `/api/videos/${id}/transcript`, { segments }, TranscriptResponse),
   chat: (id: string, text: string) => send('POST', `/api/videos/${id}/chat`, { text }, ChatResponse),
   cancelChat: (id: string) => send('POST', `/api/videos/${id}/chat/cancel`, undefined, z.object({ canceled: z.boolean() })),
@@ -88,6 +92,8 @@ export const api = {
   approveMemory: (ids?: string[]) => send('POST', '/api/style/memory/approve', ids ? { ids } : {}, StyleResponse),
   /** 기억 전부 지우기 (onlyProposed 면 제안만) */
   clearMemory: (onlyProposed = false) => send('DELETE', `/api/style/memory${onlyProposed ? '?only=proposed' : ''}`, undefined, StyleResponse),
+  /** 자막에서 고친 말 빼기 */
+  removeCorrection: (id: string) => send('DELETE', `/api/style/corrections/${id}`, undefined, StyleResponse),
   /** 완성본을 학습에서 빼거나 다시 넣기 */
   patchReference: (id: string, excluded: boolean) => send('PATCH', `/api/style/references/${id}`, { excluded }, StyleResponse),
   outputs: () => get('/api/outputs', OutputsResponse),

@@ -18,6 +18,8 @@ export const SubtitleStyle = z.object({
   boxColor: z.string(),
   /** 화면 아래에서 띄우는 비율 0..1 */
   bottom: z.number().min(0).max(1),
+  /** 강조한 단어의 색 (기획안 §6 예시 2 — "견갑골 설명에만 단어를 강조") */
+  emphasisColor: z.string().default('#3E6B8A'),
 });
 export type SubtitleStyle = z.infer<typeof SubtitleStyle>;
 
@@ -28,7 +30,47 @@ export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   boxColor: '#E8C33F',
   // 9:16 은 화면 아래에 앱 UI(더보기 · 프로필 · 음원)가 겹친다. 그 위로 올린다.
   bottom: 0.18,
+  // 노란 박스 위의 진한 파랑 (accent). 굵기 · 크기로도 띄운다.
+  emphasisColor: '#3E6B8A',
 };
+
+/**
+ * 자막에서 강조할 단어. start · end(원본 초)를 주면 그 구간에서만 — "견갑골 설명에만" (기획안 §6 예시 2).
+ * 없으면 영상 전체에서 그 단어가 나올 때마다.
+ */
+export const Emphasis = z.object({
+  term: z.string().trim().min(1).max(40),
+  start: z.number().min(0).nullable().default(null),
+  end: z.number().min(0).nullable().default(null),
+});
+export type Emphasis = z.infer<typeof Emphasis>;
+
+/** 이 원본 구간(단어 · 문장)에 걸리는 강조 단어들. */
+export function emphasisTerms(emphasis: Emphasis[], at: TimeRange): string[] {
+  const mid = (at.start + at.end) / 2;
+  return emphasis.filter((e) => (e.start === null || mid >= e.start) && (e.end === null || mid <= e.end)).map((e) => e.term);
+}
+
+/** 글을 강조 조각과 아닌 조각으로 나눈다. 렌더(ASS 태그)와 화면(굵은 글씨)이 같이 쓴다. 긴 단어부터 맞춘다. */
+export function splitEmphasis(text: string, terms: string[]): { text: string; strong: boolean }[] {
+  const ts = [...new Set(terms.map((t) => t.trim()).filter(Boolean))].sort((a, b) => b.length - a.length);
+  if (!ts.length || !text) return text ? [{ text, strong: false }] : [];
+  const out: { text: string; strong: boolean }[] = [];
+  let i = 0;
+  while (i < text.length) {
+    const hit = ts.find((t) => text.startsWith(t, i));
+    if (hit) {
+      out.push({ text: hit, strong: true });
+      i += hit.length;
+      continue;
+    }
+    const last = out[out.length - 1];
+    if (last && !last.strong) last.text += text[i]!;
+    else out.push({ text: text[i]!, strong: false });
+    i += 1;
+  }
+  return out;
+}
 
 /**
  * 세로(9:16) 크롭의 가로 초점 0..1 (0 왼쪽 끝, 0.5 가운데, 1 오른쪽 끝). null 이면 렌더할 때 움직임을 보고 고른다 (기획안 §5.4).
@@ -57,6 +99,13 @@ export const Edit = z.object({
   transcriptId: z.string().nullable(),
   subtitleStyle: SubtitleStyle,
   subtitleAuto: z.boolean().default(true),
+  /** 강조할 단어들 (자막 번인에서 굵게 · 다른 색). */
+  emphasis: z.array(Emphasis).default([]),
+  /**
+   * 어느 Edit 를 고쳐서 만든 것인지 (기획안 §6 "수정안 비교"). 결과물이 이미 있는 Edit 는 제자리에서 고치지 않고
+   * 새 Edit 를 만든다 — 이전 결과물도 계속 자기 Edit 로부터 재현돼야 하니까.
+   */
+  revisionOf: z.string().nullable().default(null),
   /** 아직 안 씀. 구간별 배속. */
   speed: z.array(TimeRange.extend({ rate: z.number().positive() })),
   createdAt: z.number().int(),
@@ -118,4 +167,43 @@ export function remapRange(range: TimeRange, segments: TimeRange[]): TimeRange |
 
 export function totalDuration(segments: TimeRange[]): number {
   return segments.reduce((a, s) => a + (s.end - s.start), 0);
+}
+
+/** 두 편집 결정의 차이 — 결과물 화면의 "이전과 달라진 점" 과 에이전트 도구 결과가 같이 쓴다. */
+export interface EditDiff {
+  keep?: { from: TimeRange | null; to: TimeRange | null };
+  parts?: { from: TimeRange[]; to: TimeRange[] };
+  cuts: { added: TimeRange[]; removed: TimeRange[] };
+  crop?: { from: Crop; to: Crop };
+  cropFocus?: { from: number | null; to: number | null };
+  subtitles?: { from: boolean; to: boolean };
+  /** 자막 아래 여백 (커지면 위로 간 것) */
+  subtitleBottom?: { from: number; to: number };
+  emphasis?: { added: string[]; removed: string[] };
+  /** 하나라도 달라졌는지 */
+  changed: boolean;
+}
+
+type Diffable = Pick<Edit, 'keep' | 'parts' | 'cuts' | 'crop' | 'cropFocus' | 'subtitles' | 'subtitleStyle' | 'emphasis'>;
+
+const sameRange = (a: TimeRange | null, b: TimeRange | null) => (a === null || b === null ? a === b : Math.abs(a.start - b.start) < 0.05 && Math.abs(a.end - b.end) < 0.05);
+const sameRanges = (a: TimeRange[], b: TimeRange[]) => a.length === b.length && a.every((r, i) => sameRange(r, b[i]!));
+
+export function editDiff(prev: Diffable, next: Diffable): EditDiff {
+  const d: EditDiff = { cuts: { added: [], removed: [] }, changed: false };
+  if (!sameRange(prev.keep, next.keep)) d.keep = { from: prev.keep, to: next.keep };
+  if (!sameRanges(prev.parts, next.parts)) d.parts = { from: prev.parts, to: next.parts };
+  d.cuts.added = next.cuts.filter((c) => !prev.cuts.some((p) => sameRange(p, c))).map(({ start, end }) => ({ start, end }));
+  d.cuts.removed = prev.cuts.filter((c) => !next.cuts.some((n) => sameRange(n, c))).map(({ start, end }) => ({ start, end }));
+  if (prev.crop !== next.crop) d.crop = { from: prev.crop, to: next.crop };
+  if (next.crop === 'vertical' && prev.cropFocus !== next.cropFocus) d.cropFocus = { from: prev.cropFocus, to: next.cropFocus };
+  if (prev.subtitles !== next.subtitles) d.subtitles = { from: prev.subtitles, to: next.subtitles };
+  if (next.subtitles && Math.abs(prev.subtitleStyle.bottom - next.subtitleStyle.bottom) > 0.01) d.subtitleBottom = { from: prev.subtitleStyle.bottom, to: next.subtitleStyle.bottom };
+  const pe = new Set(prev.emphasis.map((e) => e.term));
+  const ne = new Set(next.emphasis.map((e) => e.term));
+  const added = [...ne].filter((t) => !pe.has(t));
+  const removed = [...pe].filter((t) => !ne.has(t));
+  if (added.length || removed.length) d.emphasis = { added, removed };
+  d.changed = !!(d.keep || d.parts || d.cuts.added.length || d.cuts.removed.length || d.crop || d.cropFocus || d.subtitles || d.subtitleBottom || d.emphasis);
+  return d;
 }

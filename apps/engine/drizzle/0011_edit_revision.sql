@@ -1,0 +1,1 @@
+ALTER TABLE `edits` ADD `revision_of` text;

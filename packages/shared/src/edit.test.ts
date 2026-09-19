@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { keepSegments, remapRange, remapTime, totalDuration } from './edit.js';
+import { DEFAULT_SUBTITLE_STYLE, editDiff, keepSegments, remapRange, remapTime, totalDuration, emphasisTerms, splitEmphasis } from './edit.js';
 
 describe('keepSegments', () => {
   it('전체에서 컷을 뺀다', () => {
@@ -79,5 +79,53 @@ describe('remapRange', () => {
     expect(remapRange({ start: 2, end: 3 }, segs)).toBeNull();
     expect(remapRange({ start: 2.5, end: 3.5 }, segs)).toEqual({ start: 2, end: 2.5 });
     expect(remapRange({ start: 1.4, end: 2.4 }, segs)).toEqual({ start: 1.4, end: 2 });
+  });
+});
+
+describe('emphasis (자막 단어 강조)', () => {
+  it('구간을 준 강조는 그 구간의 단어에만, 없는 건 전체에', () => {
+    const em = [
+      { term: '견갑골', start: 10, end: 20 },
+      { term: '호흡', start: null, end: null },
+    ];
+    expect(emphasisTerms(em, { start: 12, end: 13 })).toEqual(['견갑골', '호흡']);
+    expect(emphasisTerms(em, { start: 30, end: 31 })).toEqual(['호흡']);
+  });
+
+  it('글을 강조 조각으로 나눈다 (긴 단어 먼저, 겹치지 않게)', () => {
+    expect(splitEmphasis('견갑골을 뒤로 모으고', ['견갑골'])).toEqual([
+      { text: '견갑골', strong: true },
+      { text: '을 뒤로 모으고', strong: false },
+    ]);
+    expect(splitEmphasis('외회전과 회전', ['회전', '외회전'])).toEqual([
+      { text: '외회전', strong: true },
+      { text: '과 ', strong: false },
+      { text: '회전', strong: true },
+    ]);
+    expect(splitEmphasis('아무것도', [])).toEqual([{ text: '아무것도', strong: false }]);
+    expect(splitEmphasis('', ['x'])).toEqual([]);
+  });
+});
+
+describe('editDiff (수정안 비교)', () => {
+  const base = { keep: null, parts: [], cuts: [], crop: 'none' as const, cropFocus: null, subtitles: false, subtitleStyle: DEFAULT_SUBTITLE_STYLE, emphasis: [] };
+  it('같으면 changed=false, 컷 · 구간 · 세로 · 자막 · 강조가 달라진 것만 적는다', () => {
+    expect(editDiff(base, base).changed).toBe(false);
+    const d = editDiff(
+      { ...base, cuts: [{ start: 0, end: 1, reason: 'ai' }] },
+      { ...base, keep: { start: 2, end: 9 }, cuts: [{ start: 3, end: 4, reason: 'ai' }], crop: 'vertical', cropFocus: 1, subtitles: true, subtitleStyle: { ...DEFAULT_SUBTITLE_STYLE, bottom: 0.7 }, emphasis: [{ term: '견갑골', start: null, end: null }] },
+    );
+    expect(d).toMatchObject({
+      changed: true,
+      keep: { from: null, to: { start: 2, end: 9 } },
+      cuts: { added: [{ start: 3, end: 4 }], removed: [{ start: 0, end: 1 }] },
+      crop: { from: 'none', to: 'vertical' },
+      cropFocus: { from: null, to: 1 },
+      subtitles: { from: false, to: true },
+      emphasis: { added: ['견갑골'], removed: [] },
+    });
+    expect(d.parts).toBeUndefined();
+    // 자막을 안 넣는 편집끼리는 여백 차이를 말하지 않는다
+    expect(editDiff(base, { ...base, subtitleStyle: { ...DEFAULT_SUBTITLE_STYLE, bottom: 0.7 } }).subtitleBottom).toBeUndefined();
   });
 });

@@ -1,4 +1,4 @@
-import { type Cut, EditPlan, type Segment, type TimeRange, type Video } from '@madi/shared';
+import { type Cut, EditPlan, type PlanCutKind, planRejected, type Segment, type TimeRange, type Video } from '@madi/shared';
 import { type Format, formatLine } from '../agent/playbook.js';
 import { extractJson, transcriptText } from '../style/insight.js';
 
@@ -33,6 +33,21 @@ export interface PlanMaterial {
   format: Format;
   /** "# 기억" 블록 (관련 기억 + 비슷한 완성본 요약). 없으면 빈 문자열. */
   memory: string;
+  /** 대표 프레임 시트 (기획안 §10). attached 면 도구가 그림을 직접 붙인 것(Codex), 아니면 Read 로 열어 보라고 한다(Claude). */
+  frames?: FrameMaterial | undefined;
+}
+
+export interface FrameMaterial {
+  sheets: { rel: string; times: number[] }[];
+  attached: boolean;
+}
+
+/** 시트 안내 줄들: 어느 파일이 어느 시각의 화면인지 (칸은 왼쪽 위부터 오른쪽으로, 줄 바꿔서). */
+export function frameLines(f: FrameMaterial, cols = 4): string[] {
+  if (!f.sheets.length) return [];
+  const out = [f.attached ? `화면 시트 ${f.sheets.length}장을 첨부했다. 한 줄에 ${cols}칸, 왼쪽 위부터 오른쪽으로 · 줄 바꿔서 이 시각의 화면이다:` : `화면 시트 ${f.sheets.length}장이 있다. Read 도구로 열어 봐라 (한 줄에 ${cols}칸, 왼쪽 위부터 오른쪽으로 · 줄 바꿔서 이 시각의 화면이다):`];
+  for (const [i, s] of f.sheets.entries()) out.push(`- ${f.attached ? `시트 ${i + 1}` : s.rel}: ${s.times.map((t) => clock(t)).join(', ')}`);
+  return out;
 }
 
 /** 편집안을 JSON 으로 쓰게 하는 프롬프트. system 은 역할 · 기준, prompt 는 재료. */
@@ -50,6 +65,7 @@ export function planPrompt(m: PlanMaterial): { system: string; prompt: string } 
     '- cutCandidates: 반복 설명(repeat) · NG · 되풀이(ng) · 잡담 · 촬영 세팅 멘트(aside) · 가만히 있던 침묵(silence). 이유 한 줄. keepRanges 와 겹치지 않게.',
     '- shortCandidates: 하나의 설명이 **완결**되는 구간만 (질문 → 설명 → 시범, 또는 동작 하나 + 횟수 · 주의). 자극적인 한 문장만 따지 않는다. 20~60초. 채널(reels · shorts · tiktok · any)과 이유.',
     '- terms: 자막이 잘못 적었을 법한 운동 · 해부학 용어의 바른 표기. tags: 검색용 낱말(부위 · 동작 · 고민) 3~8개.',
+    '- 화면 시트가 있으면 본다: 사람이 화면의 어느 쪽에 있는지(세로로 자를 때 그쪽을 잡는다), 앵글이 바뀌는 곳, 동작이 눈에 띄게 시작되는 칸의 시각을 framing 과 sections · keepRanges 에 반영한다. 자세가 맞는지는 판정하지 않는다. 시트가 없으면 framing 은 null.',
     '- 답은 JSON 하나만. 설명 · 마크다운 · 코드펜스 없이 `{` 로 시작해 `}` 로 끝낸다.',
     ...(m.memory ? ['', '이 제작자에 대해 아는 것 (편집안에 반영한다):', m.memory] : []),
   ].join('\n');
@@ -62,6 +78,7 @@ export function planPrompt(m: PlanMaterial): { system: string; prompt: string } 
     m.scenes.length ? `장면 전환: ${m.scenes.map((t) => clock(t)).join(', ')}` : '장면 전환: 없음',
     m.silences.length ? `가만히 있던 침묵: ${m.silences.map((s) => `${clock(s.start)}–${clock(s.end)}`).join(', ')}` : '',
     m.movingSilences.length ? `동작 중 침묵 (말은 없지만 움직임이 이어짐 — 시범일 가능성): ${m.movingSilences.map((s) => `${clock(s.start)}–${clock(s.end)}`).join(', ')}` : '',
+    ...(m.frames ? frameLines(m.frames) : []),
     '',
     hasText ? `자막:\n${transcriptText(m.segments!)}` : '자막: 없음 (소리가 없거나 말이 없다 — 장면 · 침묵으로만 판단한다)',
     '',
@@ -77,6 +94,7 @@ export function planPrompt(m: PlanMaterial): { system: string; prompt: string } 
         shortCandidates: [{ start: 0, end: 0, title: '숏폼 제목', why: '왜 독립된 숏폼이 되는지', channel: 'reels|shorts|tiktok|any' }],
         terms: ['용어'],
         tags: ['태그'],
+        framing: { side: 'left|center|right|unknown', note: '화면에서 본 것 한 줄 (사람 위치 · 앵글 · 동작이 시작되는 시각)' },
       },
       null,
       2,
@@ -90,7 +108,7 @@ export function planPrompt(m: PlanMaterial): { system: string; prompt: string } 
 /** AI 답 → EditPlan. 시각은 길이 안으로, 뒤집힌 구간은 버린다. 취지가 없으면 null (지어내지 않는다). */
 export function parsePlan(
   text: string,
-  opts: { videoId: string; provider: 'claude' | 'codex'; durationSec: number; fromTranscript: boolean; now?: number },
+  opts: { videoId: string; provider: 'claude' | 'codex'; durationSec: number; fromTranscript: boolean; now?: number; frameTimes?: number[] },
 ): EditPlan | null {
   const raw = extractJson(text);
   if (!raw || typeof raw !== 'object') return null;
@@ -134,6 +152,8 @@ export function parsePlan(
       .map((t) => t.replace(/^#/, '').toLowerCase())
       .slice(0, 12),
     fromTranscript: opts.fromTranscript,
+    framing: framingOf(obj['framing']),
+    frameTimes: (opts.frameTimes ?? []).map((t) => r1(t)),
     provider: opts.provider,
     createdAt: opts.now ?? Date.now(),
   };
@@ -146,9 +166,12 @@ export function parsePlan(
  * 편집안대로 잘라낼 컷: 잘라낼 후보에서 남길 구간과 겹치는 부분을 뺀다.
  * 사용자가 "이대로 만들기"를 눌렀을 때만 쓴다 — 편집안 자체는 파일을 만들지 않는다.
  */
-export function planCuts(plan: Pick<EditPlan, 'cutCandidates' | 'keepRanges'>, durationSec: number): Cut[] {
+export function planCuts(plan: Pick<EditPlan, 'cutCandidates' | 'keepRanges'> & Partial<Pick<EditPlan, 'feedback'>>, durationSec: number): Cut[] {
   const out: Cut[] = [];
-  for (const c of plan.cutCandidates) {
+  const feedback = plan.feedback ?? [];
+  for (const [i, c] of plan.cutCandidates.entries()) {
+    // 사용자가 뺀 후보는 자르지 않는다 (기획안 §9)
+    if (planRejected({ feedback }, 'cut', i)) continue;
     let pieces: TimeRange[] = [{ start: Math.max(0, c.start), end: Math.min(durationSec, c.end) }];
     for (const k of plan.keepRanges) {
       pieces = pieces.flatMap((p) => {
@@ -174,13 +197,54 @@ export function planBlock(plan: EditPlan): string {
     for (const s of plan.sections) out.push(`- ${clock(s.start)}–${clock(s.end)} ${s.title}${s.note ? ` — ${s.note}` : ''}`);
   }
   if (plan.keepRanges.length) out.push(`남길 구간: ${plan.keepRanges.map((k) => `${clock(k.start)}–${clock(k.end)} (${k.why})`).join(' · ')}`);
-  if (plan.cutCandidates.length) out.push(`잘라낼 후보: ${plan.cutCandidates.map((c) => `${clock(c.start)}–${clock(c.end)} [${CUT_LABEL[c.kind]}] ${c.why}`).join(' · ')}`);
-  if (plan.shortCandidates.length) {
+  const cuts = plan.cutCandidates.filter((_, i) => !planRejected(plan, 'cut', i));
+  const shorts = plan.shortCandidates.filter((_, i) => !planRejected(plan, 'short', i));
+  if (cuts.length) out.push(`잘라낼 후보: ${cuts.map((c) => `${clock(c.start)}–${clock(c.end)} [${CUT_LABEL[c.kind]}] ${c.why}`).join(' · ')}`);
+  if (shorts.length) {
     out.push('숏폼 후보:');
-    for (const s of plan.shortCandidates) out.push(`- ${clock(s.start)}–${clock(s.end)} ${s.title} (${s.channel}) — ${s.why}`);
+    for (const s of shorts) out.push(`- ${clock(s.start)}–${clock(s.end)} ${s.title} (${s.channel}) — ${s.why}`);
+  }
+  // 사용자가 뺀 것은 따로 — 같은 걸 다시 제안하지 않게 (기획안 §9)
+  const rejected = [
+    ...plan.cutCandidates.filter((_, i) => planRejected(plan, 'cut', i)).map((c) => `${clock(c.start)}–${clock(c.end)} 자르기 (${c.why})`),
+    ...plan.shortCandidates.filter((_, i) => planRejected(plan, 'short', i)).map((s) => `${clock(s.start)}–${clock(s.end)} 숏폼 "${s.title}"`),
+  ];
+  if (rejected.length) out.push(`사용자가 뺀 후보 (다시 제안하지 않는다): ${rejected.join(' · ')}`);
+  if (plan.framing && (plan.framing.side !== 'unknown' || plan.framing.note)) {
+    const side = plan.framing.side === 'left' ? '왼쪽' : plan.framing.side === 'right' ? '오른쪽' : plan.framing.side === 'center' ? '가운데' : null;
+    out.push(`화면: ${side ? `사람이 ${side}에 있다 (세로로 자를 땐 focus=${plan.framing.side})` : ''}${plan.framing.note ? `${side ? ' — ' : ''}${plan.framing.note}` : ''}`);
   }
   if (plan.terms.length) out.push(`용어 표기: ${plan.terms.join(', ')}`);
   return out.join('\n');
+}
+
+/** 잘라낼 후보를 같은 종류로 이만큼 빼면 기억으로 제안한다 */
+export const REJECT_MEMORY_AT = 3;
+
+const REJECT_MEMORY_TEXT: Partial<Record<PlanCutKind, string>> = {
+  repeat: '반복해서 말한 부분도 자르지 않는다',
+  ng: 'NG 로 보이는 구간도 자르지 않는다',
+  aside: '인사 · 잡담 · 촬영 멘트도 자르지 않는다',
+  silence: '말이 없는 구간도 자르지 않는다',
+};
+
+/**
+ * 같은 종류의 잘라낼 후보를 반복해서 빼면 "이런 건 자르지 말라"는 기억을 **제안**한다 (사용자가 확인해야 쓴다 — §12).
+ * 딱 그 횟수에 닿을 때 한 번만. 종류가 '기타'면 문장을 만들 수 없어 null.
+ */
+export function rejectionMemory(cutKind: PlanCutKind, count: number): string | null {
+  if (count !== REJECT_MEMORY_AT) return null;
+  return REJECT_MEMORY_TEXT[cutKind] ?? null;
+}
+
+/** 화면을 보고 안 것. 모양이 아니면 null (화면을 안 봤다). */
+function framingOf(v: unknown): EditPlan['framing'] {
+  if (typeof v !== 'object' || v === null) return null;
+  const o = v as Record<string, unknown>;
+  const side = o['side'];
+  const s = side === 'left' || side === 'center' || side === 'right' ? side : 'unknown';
+  const note = str(o['note'], 200);
+  return s === 'unknown' && !note ? null : { side: s, note };
 }
 
 // ---- 작은 것들 ----

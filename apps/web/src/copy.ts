@@ -1,3 +1,4 @@
+import type { EditDiff } from '@madi/shared';
 /**
  * UI 문구는 전부 여기. 하드코딩 금지.
  *
@@ -76,7 +77,10 @@ export const copy = {
     aiMissing: (label: string) => `${label}를 이 PC에서 찾지 못했습니다`,
     aiHelp: '연결하지 않아도 자막 · 쉬는 구간 자르기 · 규격 변환은 됩니다.',
     /** 밖으로 나가는 것을 분명히 (기획안 §12) */
-    aiDataNotice: '연결하면 자막과 편집 요청이 그 도구를 통해 AI 회사 서버로 갑니다. 영상 파일은 이 컴퓨터를 떠나지 않습니다.',
+    aiDataNotice: '연결하면 자막과 편집 요청이 그 도구를 통해 AI 회사 서버로 갑니다. "화면도 보여 주기"를 켜면 장면마다 뽑은 화면 몇 장(최대 24칸)도 함께 갑니다. 영상 파일은 이 컴퓨터를 떠나지 않습니다.',
+    /** 대표 프레임 시트 (기획안 §10) */
+    aiFrames: '화면도 보여 주기',
+    aiFramesHelp: '편집안과 완성본 메모를 만들 때 장면이 바뀌는 곳의 화면을 작게 모아 같이 보여 줍니다. 사람이 어느 쪽에 있는지, 동작이 언제 시작되는지 알아냅니다.',
     aiInstalled: (v: string | null) => (v ? `설치됨 · ${v}` : '설치됨'),
     aiNotInstalled: '설치 안 됨',
     aiUse: '연결하기',
@@ -155,6 +159,7 @@ export const copy = {
     insightShorts: '숏폼 후보',
     insightTerms: '용어',
     insightTitle: '제목과 내용',
+    insightVisual: '화면',
     /** 제작자 기억 */
     memoryLabel: 'AI 가 기억한 것',
     memoryIntro: '여기 있는 것만 편집에 씁니다. 완성본에서 찾은 것은 확인해야 쓰이고, 편집 중 "앞으로도 이렇게" 한 것과 직접 쓴 것은 바로 쓰입니다.',
@@ -178,6 +183,11 @@ export const copy = {
     memoryClearConfirm: '기억을 전부 지웁니다. 되돌릴 수 없습니다.',
     memoryClearYes: '지우기',
     memoryClearNo: '취소',
+    /** 자막에서 고친 말 (틀린 말 → 바른 말) */
+    correctionsLabel: '자막에서 고친 말',
+    correctionsIntro: '자막을 고치면 여기 남습니다. 바른 말은 다음 자막부터 알려 주고, 두 번 이상 고친 말은 바로 바꿔 씁니다.',
+    correctionsCount: (n: number) => (n >= 2 ? `${n}번 고침 · 바로 바꿈` : '1번 고침'),
+    correctionsRemove: '빼기',
     /** 완성본 학습 제외 */
     referenceExclude: '학습에서 빼기',
     referenceInclude: '다시 넣기',
@@ -361,6 +371,11 @@ export const copy = {
       apply: (cuts: number) => (cuts ? `잘라낼 후보 ${cuts}곳을 빼고 롱폼 만들기` : '이대로 롱폼 만들기'),
       noTranscript: '자막 없이 장면과 쉬는 구간만 보고 만든 초안입니다.',
       terms: '용어',
+      /** 후보 빼기 · 되돌리기 (뺀 것은 만들기에서 빠지고, 다시 제안하지 않는다) */
+      reject: '빼기',
+      restore: '되돌리기',
+      rejected: '뺌',
+      made: '만듦',
     },
     shortPicker: {
       title: '구간 선택',
@@ -407,6 +422,28 @@ export const copy = {
     restorePrefill: (text: string) => `이 부분 살려줘: ${text}`,
     noSubtitles: '자막 없음',
     notFound: '결과물을 찾지 못했습니다. 지워졌을 수 있습니다.',
+    /** 수정안 비교 (기획안 §6): 고쳐서 만든 결과물이면 전후를 같이 */
+    diffTitle: '이전과 달라진 점',
+    diffNone: '달라진 게 없습니다.',
+    before: '이전',
+    after: '지금',
+    compareOpen: '이전 것과 견주기',
+    compareClose: '견주기 닫기',
+    diff: (d: EditDiff): string[] => {
+      const r = (x: { start: number; end: number }) => `${fmtClock(x.start)}–${fmtClock(x.end)}`;
+      const out: string[] = [];
+      if (d.keep) out.push(d.keep.to ? (d.keep.from ? `구간을 ${r(d.keep.from)} 에서 ${r(d.keep.to)} 로 바꿨습니다.` : `${r(d.keep.to)} 구간만 씁니다.`) : '영상 전체를 씁니다.');
+      if (d.parts) out.push(d.parts.to.length ? `조각 ${d.parts.to.length}개를 ${d.parts.to.map(r).join(', ')} 순서로 이어 붙였습니다.` : '조각 구성을 풀었습니다.');
+      if (d.cuts.added.length) out.push(`${d.cuts.added.map(r).join(', ')} 을 더 잘라냈습니다.`);
+      if (d.cuts.removed.length) out.push(`${d.cuts.removed.map(r).join(', ')} 을 다시 살렸습니다.`);
+      if (d.crop) out.push(d.crop.to === 'vertical' ? '세로로 바꿨습니다.' : '가로로 돌렸습니다.');
+      if (d.cropFocus) out.push(d.cropFocus.to === null ? '화면의 어느 쪽을 잡을지 다시 고릅니다.' : `화면 ${d.cropFocus.to < 0.25 ? '왼쪽' : d.cropFocus.to > 0.75 ? '오른쪽' : '가운데'}을 잡았습니다.`);
+      if (d.subtitles) out.push(d.subtitles.to ? '자막을 넣었습니다.' : '자막을 뺐습니다.');
+      if (d.subtitleBottom) out.push(d.subtitleBottom.to > d.subtitleBottom.from ? '자막을 위로 올렸습니다.' : '자막을 아래로 내렸습니다.');
+      if (d.emphasis?.added.length) out.push(`${d.emphasis.added.map((t) => `"${t}"`).join(', ')} 을 강조했습니다.`);
+      if (d.emphasis?.removed.length) out.push(`${d.emphasis.removed.map((t) => `"${t}"`).join(', ')} 강조를 뺐습니다.`);
+      return out;
+    },
   },
   /**
    * 엔진이 남기는 대화 코드 → 문장. params 로 채운다.

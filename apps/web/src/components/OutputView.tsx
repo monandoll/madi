@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { keepSegments, type OutputDetailResponse, type Segment } from '@madi/shared';
-import { remapRange } from '@madi/shared';
+import { editDiff, keepSegments, type OutputDetailResponse, type Segment } from '@madi/shared';
+import { emphasisTerms, remapRange, splitEmphasis } from '@madi/shared';
 import { copy } from '../copy.js';
 import { formatDuration } from '../lib/format.js';
 import { PauseIcon, PlayIcon } from './Icons.js';
@@ -21,11 +21,13 @@ interface Props {
  * 모바일 결과물 화면과 PC 옆 패널이 같은 컴포넌트를 쓴다.
  */
 export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
-  const { output, edit, transcript, video } = data;
+  const { output, edit, transcript, video, previous } = data;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
+  const [comparing, setComparing] = useState(false);
+  const diff = previous ? editDiff(previous.edit, edit) : null;
 
   useEffect(() => {
     const v = videoRef.current;
@@ -95,6 +97,42 @@ export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
         </div>
       </div>
 
+      {previous && diff && (
+        <div className="flex flex-none flex-col gap-1.5 border-t border-line-soft px-3.5 py-2.5" data-testid="output-diff">
+          <div className="flex items-baseline justify-between">
+            <span className="text-12 font-medium text-text-2">{copy.output.diffTitle}</span>
+            <button type="button" onClick={() => setComparing((v) => !v)} className="text-12 text-accent" data-testid="output-compare-toggle">
+              {comparing ? copy.output.compareClose : copy.output.compareOpen}
+            </button>
+          </div>
+          {(diff.changed ? copy.output.diff(diff) : [copy.output.diffNone]).map((line, i) => (
+            <span key={i} className="text-12 leading-normal text-text-2" data-testid="output-diff-line">
+              {line}
+            </span>
+          ))}
+          {comparing && (
+            <div className="flex justify-center gap-3 pt-1.5" data-testid="output-compare">
+              {[
+                { label: copy.output.before, o: previous.output },
+                { label: copy.output.after, o: output },
+              ].map(({ label, o }) => {
+                const v = o.width < o.height;
+                return (
+                  <div key={o.id} className="flex flex-col items-center gap-1">
+                    <div className="relative overflow-hidden rounded-panel bg-thumb" style={{ width: v ? 120 : 150, aspectRatio: v ? '9/16' : '16/9' }}>
+                      <video src={o.url} poster={o.thumbnailUrl ?? undefined} playsInline controls preload="metadata" className="absolute inset-0 h-full w-full object-cover" />
+                    </div>
+                    <span className="text-11 text-text-3">
+                      {label} · {formatDuration(o.durationSec)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-y-auto border-t border-line-soft" data-testid="subtitle-rows">
         {rows.length === 0 ? (
           <p className="px-3.5 py-6 text-center text-13 text-text-3">
@@ -130,7 +168,17 @@ export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
               >
                 <span className="w-7 flex-none text-11 text-text-3">{cut ? formatDuration(r.srcStart) : formatDuration(r.at ?? 0)}</span>
                 <span className={`min-w-0 flex-1 text-13 leading-[1.55] ${cut ? 'text-muted line-through' : ''}`} style={{ textWrap: 'pretty' }}>
-                  {r.text}
+                  {edit.subtitles && edit.emphasis.length
+                    ? splitEmphasis(r.text, emphasisTerms(edit.emphasis, { start: r.srcStart, end: r.srcEnd })).map((p, i) =>
+                        p.strong ? (
+                          <strong key={i} className="font-semibold text-accent" data-testid="subtitle-strong">
+                            {p.text}
+                          </strong>
+                        ) : (
+                          <span key={i}>{p.text}</span>
+                        ),
+                      )
+                    : r.text}
                 </span>
                 {cut && !on && <span className="flex-none text-11 text-text-3">{copy.output.cutMeta(Math.round(r.srcEnd - r.srcStart))}</span>}
                 {on && onAsk && (

@@ -202,6 +202,9 @@ describe('완성본의 뜻 읽기 · 기억', () => {
     expect(one.insight).toMatchObject({ provider: 'claude', tags: expect.arrayContaining(['햄스트링']) });
     expect(one.insight!.purpose).toContain('햄스트링');
     expect(one.insight!.shortCandidates[0]).toMatchObject({ title: '햄스트링 한 동작' });
+    // 화면 시트도 보여 줬다 (기획안 §10)
+    expect(one.insight!.visual).toBe('사람이 가운데 크게, 자막은 아래');
+    expect(one.insight!.frameTimes.length).toBeGreaterThan(0);
     // 시각은 영상 길이 안
     for (const k of one.insight!.keepRanges) expect(k.end).toBeLessThanOrEqual(one.stats!.durationSec);
     // 소리 없는 완성본은 읽을 게 없다

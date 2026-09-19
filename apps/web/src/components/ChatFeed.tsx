@@ -1,4 +1,4 @@
-import { type Chapters, type ChatMessage, type EditPlan, isStreaming, type Job, type OutputCard, type TimeRange } from '@madi/shared';
+import { type Chapters, type ChatMessage, type EditPlan, isStreaming, type Job, type OutputCard, type PlanFeedbackKind, type TimeRange } from '@madi/shared';
 import { chatText, copy, errorMessage } from '../copy.js';
 import { formatDuration, formatTime } from '../lib/format.js';
 import { go } from '../lib/route.js';
@@ -23,13 +23,15 @@ interface Props {
   onShortFromPlan?: ((range: TimeRange, title: string) => void) | undefined;
   /** 편집안 카드의 "롱폼 만들기" */
   onApplyPlan?: (() => void) | undefined;
+  /** 편집안 후보 빼기 · 되돌리기 */
+  onPlanFeedback?: ((kind: PlanFeedbackKind, index: number, rejected: boolean) => void) | undefined;
 }
 
 /**
  * design/v2 영상 상세 피드: 아바타(마/나) · 이름 · 시각 · 글. 결과물 카드(왼쪽 3px accent 선), 챕터 카드, 진행 카드가 글 아래에 붙는다.
  * 에이전트가 쓰는 중이면 "마디가 보고 있어요…" 줄.
  */
-export function ChatFeed({ messages, outputs, jobs, onRevise, chapters, onShortFromChapter, onOpenOutput, plan, onShortFromPlan, onApplyPlan }: Props) {
+export function ChatFeed({ messages, outputs, jobs, onRevise, chapters, onShortFromChapter, onOpenOutput, plan, onShortFromPlan, onApplyPlan, onPlanFeedback }: Props) {
   const outputById = new Map(outputs.map((o) => [o.id, o]));
   const jobById = new Map(jobs.map((j) => [j.id, j]));
   return (
@@ -66,7 +68,7 @@ export function ChatFeed({ messages, outputs, jobs, onRevise, chapters, onShortF
         if (m.kind === 'plan') {
           return (
             <Row key={m.id} role="assistant" at={m.createdAt} text={chatText(m.code, m.params)}>
-              {plan && <PlanCard plan={plan} onShort={onShortFromPlan} onApply={onApplyPlan} />}
+              {plan && <PlanCard plan={plan} onShort={onShortFromPlan} onApply={onApplyPlan} onFeedback={onPlanFeedback} />}
             </Row>
           );
         }

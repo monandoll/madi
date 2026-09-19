@@ -4,6 +4,7 @@
  * MADI_FAKE_CODEX=login 이면 로그인 안 된 것처럼 stderr 에 적고 1 로 끝난다 (실제 codex 의 문구).
  * MADI_CODEX_BIN=fixtures/fake-codex.mjs 로 끼운다.
  */
+import fs from 'node:fs';
 const args = process.argv.slice(2);
 if (args.includes('--version')) {
   process.stdout.write('codex-cli 0.0.0 (fake)\n');
@@ -24,10 +25,14 @@ const prompt = args[args.length - 1] ?? '';
 const request = /사용자 요청: (.*)$/m.exec(prompt)?.[1] ?? '';
 const emit = (o) => process.stdout.write(`${JSON.stringify(o)}\n`);
 // 분석 모드: 완성본 읽기 · 기억 정리 (도구 없이 한 턴)
+// 화면 시트: -i 로 붙은 파일이 실제로 있으면 "봤다"
+const images = args.flatMap((a, i) => (a === '-i' ? [args[i + 1]] : []));
+const sawFrames = images.length > 0 && images.every((f) => fs.existsSync(f));
 if (prompt.includes('## 편집안')) {
   const dur = Number(/^길이\(초\): (\d+)/m.exec(prompt)?.[1] ?? 8);
   const obj = {
     purpose: '코덱스가 읽은 촬영본',
+    framing: sawFrames ? { side: 'left', note: '코덱스: 사람이 왼쪽' } : null,
     sections: [{ title: '전체', start: 0, end: dur, kind: 'demo', note: '그대로' }],
     keepRanges: [],
     cutCandidates: [],
@@ -42,7 +47,7 @@ if (prompt.includes('## 편집안')) {
 }
 if (prompt.includes('## 완성본 분석') || prompt.includes('## 기억 정리')) {
   const obj = prompt.includes('## 완성본 분석')
-    ? { purpose: '코덱스가 읽은 완성본', tags: ['몸'], shortCandidates: [{ start: 0, end: 3, title: '한 동작', why: '완결' }] }
+    ? { purpose: '코덱스가 읽은 완성본', tags: ['몸'], shortCandidates: [{ start: 0, end: 3, title: '한 동작', why: '완결' }], visual: sawFrames ? '코덱스: 가운데 구도' : '' }
     : { items: [{ text: '코덱스 기억 한 줄', kind: 'style', scope: 'all', topics: [], evidence: [] }] };
   emit({ type: 'thread.started', thread_id: 'fake-thread' });
   emit({ type: 'turn.started' });

@@ -91,6 +91,10 @@ export const ReferenceInsight = z.object({
   subtitleNotes: z.string().max(200).default(''),
   /** 제목(파일 이름)과 내용이 어떻게 이어지는지 — 제목이 약속한 것을 어디서 보여 주는지 (기획안 §8.1) */
   titleNote: z.string().max(200).default(''),
+  /** 화면을 보고 안 것 — 구도 · 앵글 · 자막 자리 · 강조 방식 (기획안 §10). 화면을 안 봤으면 빈 문자열. */
+  visual: z.string().max(200).default(''),
+  /** AI 가 본 화면의 시각들 (§8.1). 안 봤으면 빈 목록. */
+  frameTimes: z.array(z.number().min(0)).default([]),
   /** 검색용 태그 — 부위 · 동작 · 고민 (예: 어깨, 견갑골, 거북목) */
   tags: z.array(z.string().max(30)).default([]),
   /** 어느 도구가 읽었는지 */
@@ -206,6 +210,22 @@ export const StyleLearned = z.object({
 });
 export type StyleLearned = z.infer<typeof StyleLearned>;
 
+/**
+ * 용어 교정 한 쌍 (기획안 §5.2 · §11 `terms`). 사용자가 자막에서 "틀린 말"을 "바른 말"로 고친 기록.
+ * count 가 2 이상이면 다음 자막부터 자동으로 바꿔 쓴다. 바른 말은 한 번만 고쳐도 whisper 에 용어로 알려 준다.
+ */
+export const TermCorrection = z.object({
+  id: z.string(),
+  wrong: z.string().min(1).max(40),
+  right: z.string().min(1).max(40),
+  count: z.number().int().min(1),
+  /** 마지막으로 고친 영상 */
+  videoId: z.string().nullable(),
+  createdAt: z.number().int(),
+  updatedAt: z.number().int(),
+});
+export type TermCorrection = z.infer<typeof TermCorrection>;
+
 export const StyleResponse = z.object({
   rules: z.array(StyleRule),
   learned: StyleLearned.nullable(),
@@ -219,6 +239,8 @@ export const StyleResponse = z.object({
   memory: z.array(MemoryItem).default([]),
   /** AI 가 연결돼 있어 완성본의 뜻까지 읽는지. 아니면 숫자만 배운다. */
   insightOn: z.boolean().default(false),
+  /** 자막에서 고친 말 (틀린 말 → 바른 말 · 횟수). 사용자가 뺄 수 있다. */
+  corrections: z.array(TermCorrection).default([]),
 });
 export type StyleResponse = z.infer<typeof StyleResponse>;
 

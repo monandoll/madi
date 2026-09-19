@@ -8,6 +8,9 @@ import { RESPONSE_ALREADY_SENT } from '@hono/node-server/utils/response';
 import {
   ActionRequest,
   type ActionResponse,
+  PlanFeedbackRequest,
+  type PlanResponse,
+  planRejected,
   AddLinkRequest,
   AddRuleRequest,
   RememberRequest,
@@ -50,6 +53,8 @@ import type { JobQueue } from '../queue/index.js';
 import type { SettingsStore } from '../settings.js';
 import type { VideoStore } from '../videos.js';
 import type { Library } from '../library.js';
+import { rejectionMemory } from '../plan/prompt.js';
+import { type CorrectionStore, diffCorrections } from '../style/corrections.js';
 import { ActionError, greetIfEmpty, runAction } from '../actions.js';
 import { AgentError } from '../agent/runner.js';
 import { cliVersion, detectCli } from '../agent/detect.js';
@@ -74,6 +79,7 @@ export interface AppDeps {
   styleService: import('../style/service.js').StyleService;
   /** 제작자 기억 (설정에서 보고 지운다). */
   memory: import('../style/memory.js').MemoryStore;
+  corrections: CorrectionStore;
   chapters: import('../chapters/store.js').ChapterStore;
   /** 촬영본 편집안 */
   plans: import('../plan/store.js').PlanStore;
@@ -314,6 +320,27 @@ export function createApp(deps: AppDeps): Hono {
     return c.json(body);
   });
 
+  // 편집안 후보에 판단 남기기 — 빼기 · 되돌리기 (기획안 §9). 같은 종류를 반복해서 빼면 기억으로 제안한다.
+  app.post('/api/videos/:id/plan/feedback', async (c) => {
+    const v = videos.get(c.req.param('id'));
+    if (!v) return c.json({ error: { code: 'not_found', message: 'video not found' } }, 404);
+    const parsed = PlanFeedbackRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    const before = deps.plans.get(v.id);
+    if (!before) return c.json({ error: { code: 'plan_missing', message: 'no plan' } }, 409);
+    const wasRejected = planRejected(before, parsed.data.kind, parsed.data.index);
+    const plan = deps.plans.setFeedback(v.id, parsed.data);
+    if (!plan) return c.json({ error: { code: 'not_found', message: 'candidate not found' } }, 404);
+    const cutKind = parsed.data.kind === 'cut' ? before.cutCandidates[parsed.data.index]?.kind : undefined;
+    deps.events.record('plan.feedback', { kind: parsed.data.kind, verdict: parsed.data.verdict, ...(cutKind ? { cutKind } : {}) });
+    if (parsed.data.verdict === 'rejected' && !wasRejected && cutKind) {
+      const text = rejectionMemory(cutKind, deps.plans.bumpRejected(cutKind));
+      if (text) deps.memory.add({ text, kind: 'keep', scope: 'all', source: 'feedback', status: 'proposed' });
+    }
+    const body: PlanResponse = { plan };
+    return c.json(body);
+  });
+
   // AI 연결 뒤의 채팅. 미연결이면 러너를 스폰하지 않는다 (409 ai_off).
   app.post('/api/videos/:id/chat', async (c) => {
     const v = videos.get(c.req.param('id'));
@@ -357,8 +384,11 @@ export function createApp(deps: AppDeps): Hono {
       const same = existing?.segments.find((o) => o.text === seg.text && Math.abs(o.start - seg.start) < 0.05 && Math.abs(o.end - seg.end) < 0.05);
       return same ?? seg;
     });
+    // 고친 말을 남긴다 (틀린 말 → 바른 말) — 다음 자막부터 알려 주고, 반복되면 바로 바꾼다 (기획안 §5.2)
+    const pairs = existing ? diffCorrections(existing.segments, segments) : [];
+    if (pairs.length) deps.corrections.record(pairs, video.id);
     const transcript = deps.library.setTranscript(video.id, { language: existing?.language ?? 'ko', model: existing?.model ?? 'manual', segments });
-    deps.events.record('transcript.edited', { lines: segments.length, manual: true, total: segments.length });
+    deps.events.record('transcript.edited', { lines: segments.length, manual: true, total: segments.length, corrections: pairs.length });
     const body: TranscriptResponse = { transcript };
     return c.json(body);
   });
@@ -388,11 +418,15 @@ export function createApp(deps: AppDeps): Hono {
     const edit = deps.library.edit(o.editId);
     const v = videos.get(o.videoId);
     if (!edit || !v) return c.json({ error: { code: 'not_found', message: 'output not found' } }, 404);
+    // 고쳐서 만든 결과물이면 고치기 전 것도 같이 (기획안 §6 수정안 비교)
+    const prevEdit = edit.revisionOf ? deps.library.edit(edit.revisionOf) : null;
+    const prevOut = prevEdit ? deps.library.outputsForEdit(prevEdit.id)[0] : undefined;
     const body: OutputDetailResponse = {
       output: toOutputCard(o, cfg),
       edit,
       transcript: (edit.transcriptId && deps.library.transcript(edit.transcriptId)) || deps.library.transcriptOf(v.id),
       video: toCard(v, deps),
+      previous: prevEdit && prevOut ? { output: toOutputCard(prevOut, cfg), edit: prevEdit } : null,
     };
     return c.json(body);
   });
@@ -516,6 +550,13 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   /** 완성본 하나를 학습에서 빼거나 다시 넣기. */
+  /** 고친 말 빼기 — 더는 알려 주지도, 바꾸지도 않는다. */
+  app.delete('/api/style/corrections/:id', (c) => {
+    if (!deps.corrections.remove(c.req.param('id'))) return c.json({ error: { code: 'not_found', message: 'correction not found' } }, 404);
+    const body: StyleResponse = deps.styleService.response();
+    return c.json(body);
+  });
+
   app.patch('/api/style/references/:id', async (c) => {
     const parsed = ReferencePatchRequest.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
