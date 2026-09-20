@@ -56,6 +56,8 @@ export class AgentRunner {
   /** MCP 서버 → 엔진 도구 API 인증. 엔진이 뜰 때마다 새로 만든다. */
   readonly token = nanoid(32);
   private runs = new Map<string, ActiveRun>();
+  /** 답은 끝났지만 작업 폴더 정리가 남은 실행까지 포함. 엔진을 끌 때 이것까지 기다린다. */
+  private pending = new Set<Promise<void>>();
 
   constructor(private readonly d: RunnerDeps) {}
 
@@ -94,7 +96,13 @@ export class AgentRunner {
     const reply = this.d.library.say({ videoId: video.id, role: 'assistant', kind: 'text', code: 'ai.text', params: { text: '', streaming: true } });
     const run: ActiveRun = { id: nanoid(), videoId: video.id, messageId: reply.id, controller: new AbortController() };
     this.runs.set(video.id, run);
-    run.completion = this.execute(run, video, provider, text, editId).finally(() => this.runs.delete(video.id));
+    const completion = this.execute(run, video, provider, text, editId).finally(() => {
+      // 정리 중에 같은 영상의 새 실행이 시작됐을 수 있다 — 내 것일 때만 지운다
+      if (this.runs.get(video.id) === run) this.runs.delete(video.id);
+      this.pending.delete(completion);
+    });
+    run.completion = completion;
+    this.pending.add(completion);
     return [user, reply];
   }
 
@@ -106,9 +114,8 @@ export class AgentRunner {
   }
 
   async stopAll(): Promise<void> {
-    const runs = [...this.runs.values()];
-    for (const r of runs) r.controller.abort();
-    await Promise.all(runs.map(r => r.completion));
+    for (const r of this.runs.values()) r.controller.abort();
+    await Promise.all([...this.pending]);
   }
 
   private async execute(run: ActiveRun, video: Video, providerId: Exclude<AiProvider, 'none'>, text: string, editId?: string): Promise<void> {
@@ -182,6 +189,9 @@ export class AgentRunner {
       this.d.log.error({ run: run.id, err: String(err) }, 'agent run crashed');
       this.d.library.updateMessage(run.messageId, { kind: 'error', code: 'ai_failed', params: { streaming: false, detail: String(err).slice(0, 300) } });
     } finally {
+      // 마지막 말풍선 갱신(WS)을 받은 화면이 곧바로 다시 조회한다. 폴더 정리(비동기)를 기다리는 동안
+      // busy 로 답하면 그 뒤엔 알림이 없어 화면이 "멈추기"에 멈춘다 → 정리 전에 먼저 푼다. 폴더는 실행마다 따로다.
+      if (this.runs.get(video.id) === run) this.runs.delete(video.id);
       try {
         await fs.promises.rm(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       } catch (err) {
