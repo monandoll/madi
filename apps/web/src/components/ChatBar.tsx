@@ -9,7 +9,7 @@ interface Props {
   prefill?: { text: string; at: number } | undefined;
   /** 긴 영상이면 챕터·숏폼 여러 개 칩 */
   longform?: boolean;
-  onSend(text: string): void;
+  onSend(text: string, fromInput?: boolean): void;
   onStop(): void;
 }
 
@@ -29,7 +29,7 @@ export function ChatBar({ busy, disabled = false, prefill, longform = false, onS
   const submit = () => {
     const t = text.trim();
     if (!t || busy || disabled) return;
-    onSend(t);
+    onSend(t, true);
     setText('');
   };
   const canSend = !!text.trim() && !disabled;

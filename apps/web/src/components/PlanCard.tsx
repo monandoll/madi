@@ -34,6 +34,12 @@ export function PlanCard({ plan, onShort, onApply, onFeedback }: Props) {
         <span className="text-13 font-medium pc:text-14">{c.title}</span>
         <Line label={c.purpose}>{plan.purpose}</Line>
         {plan.hook && <Line label={c.hook}>{plan.hook}</Line>}
+        {plan.recipe && <div className="flex flex-col gap-1" data-testid="plan-recipe">
+          <Line label={c.recipe}>{plan.recipe.summary}</Line>
+          {plan.recipe.parts.length > 0 && <Line label={c.order}>{plan.recipe.parts.map(span).join(' → ')}</Line>}
+          {plan.recipe.captions.length > 0 && <Line label={c.captions}>{c.captionCount(plan.recipe.captions.length, plan.recipe.captions.filter((s) => s.secondaryText).length)}</Line>}
+          {plan.recipe.limitations.length > 0 && <Line label={c.limitations}>{plan.recipe.limitations.join(' · ')}</Line>}
+        </div>}
         {!plan.fromTranscript && <span className="text-12 text-text-3">{c.noTranscript}</span>}
       </div>
 

@@ -69,8 +69,8 @@ export const api = {
   act: (id: string, body: ActionRequest) => send('POST', `/api/videos/${id}/actions`, body, ActionResponse),
   /** 편집안 후보 빼기 · 되돌리기 */
   planFeedback: (id: string, body: PlanFeedbackRequest) => send('POST', `/api/videos/${id}/plan/feedback`, body, PlanResponse),
-  putTranscript: (id: string, segments: { start: number; end: number; text: string }[]) => send('PUT', `/api/videos/${id}/transcript`, { segments }, TranscriptResponse),
-  chat: (id: string, text: string) => send('POST', `/api/videos/${id}/chat`, { text }, ChatResponse),
+  putTranscript: (id: string, segments: { start: number; end: number; text: string; secondaryText?: string }[], editId?: string) => send('PUT', `/api/videos/${id}/transcript`, { segments, ...(editId ? { editId } : {}) }, TranscriptResponse),
+  chat: (id: string, text: string, editId?: string) => send('POST', `/api/videos/${id}/chat`, { text, editId }, ChatResponse),
   cancelChat: (id: string) => send('POST', `/api/videos/${id}/chat/cancel`, undefined, z.object({ canceled: z.boolean() })),
   aiProviders: (fresh = false) => get(`/api/ai/providers${fresh ? '?fresh=1' : ''}`, AiProvidersResponse),
   /** 이 PC 에서 도구를 어디에 뒀는지 직접 알려 주기. path 가 null 이면 직접 고른 것을 지운다. */
