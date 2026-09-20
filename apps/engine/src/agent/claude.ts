@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { findCli } from './detect.js';
 import { type AgentProvider, type AgentResult, type AgentRunOptions, type AnalyzeOptions, runCli, type StreamEvent, type StreamParser } from './provider.js';
 
@@ -89,7 +91,7 @@ export function claudeToolName(tool: string): string {
 /** 에이전트가 파일·셸을 못 만지게 막는 내장 도구들. */
 export const CLAUDE_DISALLOWED = ['Bash', 'Edit', 'Write', 'Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch', 'Task', 'NotebookEdit', 'MultiEdit', 'TodoWrite', 'KillShell', 'BashOutput'];
 
-export function claudeArgs(opts: { mcpConfigPath: string; toolNames: string[]; system: string; maxTurns?: number }): string[] {
+export function claudeArgs(opts: { mcpConfigPath: string; toolNames: string[]; systemPath: string; maxTurns?: number }): string[] {
   return [
     '-p',
     '--output-format',
@@ -103,8 +105,8 @@ export function claudeArgs(opts: { mcpConfigPath: string; toolNames: string[]; s
     ...opts.toolNames.map(claudeToolName),
     '--disallowedTools',
     ...CLAUDE_DISALLOWED,
-    '--append-system-prompt',
-    opts.system,
+    '--append-system-prompt-file',
+    opts.systemPath,
     '--max-turns',
     String(opts.maxTurns ?? 40),
   ];
@@ -125,7 +127,7 @@ export class ClaudeProvider implements AgentProvider {
     const bin = opts.bin ?? this.bin();
     if (!bin) return { text: '', toolCalls: 0, ok: false, error: 'not_installed' };
     const mcpConfigPath = this.writeMcpConfig(opts.mcp, opts.cwd);
-    const args = claudeArgs({ mcpConfigPath, toolNames: opts.toolNames, system: opts.system });
+    const args = claudeArgs({ mcpConfigPath, toolNames: opts.toolNames, systemPath: writeSystemPrompt(opts) });
     return runCli(bin, args, opts.prompt, new ClaudeStream(), opts);
   }
 
@@ -133,7 +135,7 @@ export class ClaudeProvider implements AgentProvider {
   async analyze(opts: AnalyzeOptions): Promise<AgentResult> {
     const bin = opts.bin ?? this.bin();
     if (!bin) return { text: '', toolCalls: 0, ok: false, error: 'not_installed' };
-    return runCli(bin, claudeAnalyzeArgs({ system: opts.system, images: opts.images ?? [] }), opts.prompt, new ClaudeStream(), { cwd: opts.cwd, onText: () => undefined, onTool: () => undefined, ...(opts.signal ? { signal: opts.signal } : {}), ...(opts.onLog ? { onLog: opts.onLog } : {}) });
+    return runCli(bin, claudeAnalyzeArgs({ systemPath: writeSystemPrompt(opts), images: opts.images ?? [] }), opts.prompt, new ClaudeStream(), { cwd: opts.cwd, onText: () => undefined, onTool: () => undefined, ...(opts.signal ? { signal: opts.signal } : {}), ...(opts.onLog ? { onLog: opts.onLog } : {}) });
   }
 }
 
@@ -144,7 +146,7 @@ export const SHEETS_DIR = 'sheets';
  * 분석 모드 인자: MCP 없음, 내장 도구 전부 막음, 한 턴.
  * 그림(대표 프레임 시트)이 있으면 Read 를 cwd 의 sheets/ 아래에서만 열어 주고, 읽고 답할 만큼 턴을 준다.
  */
-export function claudeAnalyzeArgs(opts: { system: string; images?: string[] }): string[] {
+export function claudeAnalyzeArgs(opts: { systemPath: string; images?: string[] }): string[] {
   const withImages = (opts.images?.length ?? 0) > 0;
   return [
     '-p',
@@ -158,9 +160,16 @@ export function claudeAnalyzeArgs(opts: { system: string; images?: string[] }): 
     ...(withImages ? ['--allowedTools', `Read(./${SHEETS_DIR}/**)`] : []),
     '--disallowedTools',
     ...CLAUDE_DISALLOWED.filter((t) => !(withImages && t === 'Read')),
-    '--append-system-prompt',
-    opts.system,
+    '--append-system-prompt-file',
+    opts.systemPath,
     '--max-turns',
     withImages ? '4' : '1',
   ];
+}
+
+/** 긴 다중행 지침을 Windows 명령줄에 싣지 않는다. https://code.claude.com/docs/en/cli-reference */
+function writeSystemPrompt(opts: { cwd: string; system: string }): string {
+  const file = path.join(opts.cwd, 'system-prompt.txt');
+  fs.writeFileSync(file, opts.system, 'utf8');
+  return file;
 }

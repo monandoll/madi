@@ -32,7 +32,7 @@ if (args.includes('--version')) {
 }
 const flag = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 const mcpConfigPath = flag('--mcp-config');
-const system = flag('--append-system-prompt') ?? '';
+const system = flag('--append-system-prompt-file') ? fs.readFileSync(flag('--append-system-prompt-file'), 'utf8') : flag('--append-system-prompt') ?? '';
 const prompt = await new Promise((resolve) => {
   let s = '';
   process.stdin.setEncoding('utf8');

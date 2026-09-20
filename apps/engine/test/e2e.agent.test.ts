@@ -8,13 +8,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ActionResponse, AiProvidersResponse, ChatResponse, HealthResponse, isStreaming, OutputDetailResponse, PlanResponse, VideoDetailResponse, VideosResponse } from '@madi/shared';
 import { resetCliCache } from '../src/agent/detect.js';
 import { type Engine, startEngine } from '../src/engine.js';
-import { FIXTURES, freePort, tempHome, waitFor } from './helpers.js';
+import { FIXTURES, fakeCli, freePort, tempHome, waitFor } from './helpers.js';
 
 let home: string;
 let engine: Engine;
 let videoId: string;
-const FAKE = path.join(FIXTURES, 'fake-claude.mjs');
-const FAKE_CODEX = path.join(FIXTURES, 'fake-codex.mjs');
+const FAKE = fakeCli('claude');
+const FAKE_CODEX = fakeCli('codex');
 
 const api = async <T>(p: string, init?: RequestInit): Promise<{ status: number; body: T }> => {
   const res = await fetch(`${engine.url}${p}`, init);

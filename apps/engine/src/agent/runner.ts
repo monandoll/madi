@@ -44,6 +44,7 @@ interface ActiveRun {
   videoId: string;
   messageId: string;
   controller: AbortController;
+  completion?: Promise<void>;
 }
 
 /**
@@ -85,15 +86,15 @@ export class AgentRunner {
   }
 
   /** 요청을 받아 메시지 두 개를 만들고 실행을 시작한다. 반환은 바로. */
-  ask(video: Video, text: string): ChatMessage[] {
+  ask(video: Video, text: string, editId?: string): ChatMessage[] {
     const provider = this.d.settings.get().ai.provider;
     if (provider === 'none') throw new AgentError('ai_off');
     if (this.runs.has(video.id)) throw new AgentError('ai_busy');
-    const user = this.d.library.say({ videoId: video.id, role: 'user', kind: 'text', code: 'user.text', params: { text } });
+    const user = this.d.library.say({ videoId: video.id, role: 'user', kind: 'text', code: 'user.text', params: { text, ...(editId ? { editId } : {}) } });
     const reply = this.d.library.say({ videoId: video.id, role: 'assistant', kind: 'text', code: 'ai.text', params: { text: '', streaming: true } });
     const run: ActiveRun = { id: nanoid(), videoId: video.id, messageId: reply.id, controller: new AbortController() };
     this.runs.set(video.id, run);
-    void this.execute(run, video, provider, text).finally(() => this.runs.delete(video.id));
+    run.completion = this.execute(run, video, provider, text, editId).finally(() => this.runs.delete(video.id));
     return [user, reply];
   }
 
@@ -104,11 +105,13 @@ export class AgentRunner {
     return true;
   }
 
-  stopAll(): void {
-    for (const r of this.runs.values()) r.controller.abort();
+  async stopAll(): Promise<void> {
+    const runs = [...this.runs.values()];
+    for (const r of runs) r.controller.abort();
+    await Promise.all(runs.map(r => r.completion));
   }
 
-  private async execute(run: ActiveRun, video: Video, providerId: Exclude<AiProvider, 'none'>, text: string): Promise<void> {
+  private async execute(run: ActiveRun, video: Video, providerId: Exclude<AiProvider, 'none'>, text: string, editId?: string): Promise<void> {
     const started = Date.now();
     const provider = this.d.providers[providerId];
     const update = (params: ChatParams) => this.d.library.updateMessage(run.messageId, { params });
@@ -140,7 +143,7 @@ export class AgentRunner {
       };
       const result = await provider.run({
         bin: provider.bin(this.customPath(providerId)),
-        prompt: this.buildPrompt(video, text, run.messageId),
+        prompt: this.buildPrompt(video, text, run.messageId, editId),
         system: this.systemPrompt(video),
         mcp,
         toolNames: TOOL_NAMES,
@@ -179,7 +182,11 @@ export class AgentRunner {
       this.d.log.error({ run: run.id, err: String(err) }, 'agent run crashed');
       this.d.library.updateMessage(run.messageId, { kind: 'error', code: 'ai_failed', params: { streaming: false, detail: String(err).slice(0, 300) } });
     } finally {
-      fs.rmSync(cwd, { recursive: true, force: true });
+      try {
+        await fs.promises.rm(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      } catch (err) {
+        this.d.log.warn({ run: run.id, err: String(err) }, 'agent work directory cleanup failed');
+      }
     }
   }
 
@@ -189,11 +196,17 @@ export class AgentRunner {
       "너는 '마디'의 편집 도우미다. 운동·재활 영상 크리에이터를 돕는다. 사용자는 편집 지식이 없다.",
       '',
       '규칙:',
-      '- 파일이나 셸을 직접 만지지 않는다. 마디 도구(get_transcript, find_silences, find_scenes, propose_cuts, apply_edit, render, extract_shorts, get_chapters, set_subtitle_style, set_subtitle_text, update_style_rule)만 쓴다.',
+      `- 파일이나 셸을 직접 만지지 않는다. 마디 도구(${TOOL_NAMES.join(', ')})만 쓴다.`,
+      '- 영상의 동작을 보거나 동작에 맞는 자막을 요청받으면 inspect_video_frames(editId가 선택되었으면 포함)를 먼저 호출해 실제 이미지들을 본다. get_transcript의 음성이나 find_scenes의 전환 시각만으로 동작을 판단하지 않는다. 한 장면도 여러 동작을 포함할 수 있다.',
+      '- 화면의 각 칸과 sourceTime을 연결해 관찰한 동작 구간에만 안내 문구를 넣는다. 전환이 불명확하면 range를 좁혀 추가로 본다. 단편 표본으로 모든 프레임을 봤다고 말하지 않는다. 운동 이름·목적·효과·횟수·진단은 추측하지 않고, 이름이 불확실해도 보이는 동작을 쉬운 말로 설명할 수 있다.',
+      '- 기존 AI 생성 자막은 동작의 증거가 아니다. 화면과 맞지 않는 생성 문구를 고치는 요청이면 실제 화면을 확인해 선택한 결과물의 자막을 교체하고 render까지 한다. 사용자 문구는 요청 없이 바꾸지 않는다. 화면 확인 도구가 실패하면 무엇을 확인하지 못했는지 알리고 지어내지 않는다.',
       '- 어디를 자를지 정하기 전에 get_transcript 로 내용을 본다. 소리가 없는 영상이면 건너뛴다.',
       '- "자막 넣어줘"는 되묻지 않고 바로 한다: get_transcript → apply_edit(subtitles=true) → render. 자막을 넣는 데 필요한 건 그것뿐이다.',
       '- 소리가 없거나 말소리가 없는 영상에도 자막은 넣을 수 있다: 사용자가 준 문장과 시각으로 set_subtitle_text → apply_edit(subtitles=true) → render. 시각을 안 줬으면 영상 전체(0초~끝)에 한 줄로 넣고 그렇게 했다고 말한다.',
-      '- 사용자가 문장을 직접 말해 줬으면("안녕하세요 앱 소개합니다 자막을 넣어줘", "이 문장 고쳐줘: …") 그 문장이 영상에서 하는 말이다. 들린 말이 그 문장과 다르거나 뜻이 안 통하면 set_subtitle_text 로 그 구간의 글을 사용자 문장으로 바꾼 뒤 넣는다. "자막에 원하는 문장을 넣는 기능이 없다"고 답하지 않는다.',
+      '- 사용자가 문구를 직접 주면 실제로 발화한 내용이라고 가정하지 않는다. 받아쓰기가 없어도 set_subtitle_text 로 요청한 문구를 넣을 수 있다. "자막에 원하는 문장을 넣는 기능이 없다"고 답하지 않는다.',
+      '- 내 스타일·배운 스타일로 편집하라는 요청은 현재 승인한 기억과 직접 쓴 규칙을 실행에 연결한다. 설명만 하지 말고 자막 설정은 apply_edit.subtitleStyle 또는 set_subtitle_style로 저장하고 render한다. 미승인 제안을 자동 적용하거나 이번 요청을 영구 취향으로 저장하지 않는다.',
+      '- 자막은 background=outline이면 박스 없이 테두리 글자로, bold/italic/outlineWidth/outlineColor/bottom으로 모양을 지정한다. 2단 자막은 set_subtitle_text.lines의 text에 본문, secondaryText에 의미를 보존한 번역·보조 문구를 넣고 secondaryScale/secondaryColor/secondaryItalic으로 구분한다. 재생 가능한 결과가 나온 뒤 실제 적용한 것만 알린다.',
+      '- 원·화살표·비교 화면·애니메이션은 현재 도구로 지원하지 않는다. 이런 기억이 있어도 적용했다고 주장하지 말고 가능한 자막·구간 순서·크롭을 적용한 결과와 남은 제한을 구분한다. 사용자 문구 수정 시 요청하지 않은 secondaryText는 유지하고 본문을 번역 수정하라는 요청일 때만 함께 고친다.',
       '- 긴 영상(2분 이상)에서 숏폼을 여러 개 뽑거나 목차를 만들 땐 get_chapters 로 챕터와 하이라이트 구간을 먼저 본다.',
       '- 결과 파일은 render 또는 extract_shorts 로만 만든다. 만들어지면 카드가 대화에 자동으로 붙으니 경로·링크·id 를 답에 쓰지 않는다.',
       '- 답은 짧고 쉬운 한국어, 존댓말. 전문 용어(인코딩, 프록시, 트랜스크립트, 렌더, 세그먼트) 금지 → "만드는 중", "자막", "구간".',
@@ -202,6 +215,8 @@ export class AgentRunner {
       '- 마크다운(#, **, 표, 코드블록) 쓰지 않는다. 짧은 문장 몇 개면 된다.',
       '- 해달라는 게 분명하면 되묻지 말고 바로 한다. 정말 모호할 때만 짧게 하나 되묻는다.',
       '- 사용자가 결과를 고쳐 달라고 하면 고친 뒤, 그 방식이 앞으로도 적용될 만하면 "앞으로도 이렇게 할까요?" 라고 한 번만 묻는다. 사용자가 예라고 하면 그때 update_style_rule 로 한 줄 저장한다. 묻지 않고 저장하지 않는다.',
+      '- 기존 결과물의 자막을 수정할 때는 get_transcript(editId)로 그 결과의 문구를 읽고 set_subtitle_text(editId, lines)로 수정한다. 돌아온 새 editId로 render한다. 기존 결과물의 구간·순서·비율은 유지한다.',
+      '- 사용자가 원하는 문구는 음성과 달라도 넣을 수 있다. 직접 준 문구를 요청 없이 바꾸지 않는다. 음성 없는 영상의 문구 삽입에는 음성 인식을 실행하지 않는다. 자막을 전부 빼려면 set_subtitle_text(editId, lines=[], replaceAll=true)를 쓴다.',
       '- 저장할 때 범위를 고른다: 사용자가 "이 영상만"이라 하면 scope=video, "어깨 영상은"처럼 주제를 말하면 scope=topic + topics, 아니면 scope=all. 부위 · 동작 · 표기 같은 용어면 kind=term.',
       '- 도구가 실패하면 그 이유를 쉬운 말로 알린다. 같은 도구를 무의미하게 반복하지 않는다.',
       '',
@@ -215,7 +230,7 @@ export class AgentRunner {
     ].join('\n');
   }
 
-  buildPrompt(video: Video, text: string, replyMessageId: string): string {
+  buildPrompt(video: Video, text: string, replyMessageId: string, editId?: string): string {
     const lib = this.d.library;
     const transcript = lib.transcriptOf(video.id);
     const outputs = lib.outputsOf(video.id);
@@ -240,6 +255,7 @@ export class AgentRunner {
     const plan = this.d.plan?.(video) ?? '';
     if (plan) lines.push('', plan);
     if (history.length) lines.push('', '최근 대화:', ...history);
+    if (editId) lines.push('', `이번 요청에서 사용자가 선택한 결과물: editId=${editId}. 이 버전을 기준으로 수정하고 요청하지 않은 편집 조건은 유지한다. 제목이 같아도 다른 결과물을 고르지 않는다.`);
     lines.push('', `사용자 요청: ${text}`);
     return lines.join('\n');
   }

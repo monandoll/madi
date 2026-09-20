@@ -41,13 +41,13 @@ describe('ClaudeStream', () => {
   });
 
   it('claude 인자: 우리 MCP 만, 파일 도구 금지, 시스템 프롬프트 덧붙임', () => {
-    const args = claudeArgs({ mcpConfigPath: '/x/mcp.json', toolNames: ['render'], system: 'SYS' });
+    const args = claudeArgs({ mcpConfigPath: '/x/mcp.json', toolNames: ['render'], systemPath: '/x/system.txt' });
     expect(args.slice(0, 3)).toEqual(['-p', '--output-format', 'stream-json']);
     expect(args).toContain('--strict-mcp-config');
     expect(args).toContain('--include-partial-messages');
     expect(args[args.indexOf('--allowedTools') + 1]).toBe(claudeToolName('render'));
     expect(args).toContain('Bash');
-    expect(args[args.indexOf('--append-system-prompt') + 1]).toBe('SYS');
+    expect(args[args.indexOf('--append-system-prompt-file') + 1]).toBe('/x/system.txt');
   });
 });
 
@@ -68,12 +68,12 @@ describe('CodexStream', () => {
     expect(toml('a"b')).toBe('"a\\"b"');
     expect(toml(['x', 'y'])).toBe('["x", "y"]');
     expect(toml({ A: '1', B: 'two' })).toBe('{A = "1", B = "two"}');
-    const args = codexArgs({ mcp: { command: 'node', args: ['/m.mjs'], env: { K: 'v' } }, cwd: '/w', prompt: 'P' });
+    const args = codexArgs({ mcp: { command: 'node', args: ['/m.mjs'], env: { K: 'v' } }, cwd: '/w' });
     expect(args[0]).toBe('exec');
     expect(args).toContain('--json');
     expect(args).toContain('mcp_servers.madi.command="node"');
     expect(args).toContain('mcp_servers.madi.env={K = "v"}');
-    expect(args[args.length - 1]).toBe('P');
+    expect(args[args.length - 1]).toBe('-');
   });
 });
 
@@ -94,7 +94,7 @@ describe('StyleProfile', () => {
 });
 
 describe('MCP stdio 서버', () => {
-  it('initialize → tools/list(9개) → tools/call → 모르는 도구는 오류', async () => {
+  it('initialize → tools/list → tools/call → 모르는 도구는 오류', async () => {
     const stdin = new PassThrough();
     const stdout = new PassThrough();
     const lines: Record<string, unknown>[] = [];
@@ -109,6 +109,7 @@ describe('MCP stdio 서버', () => {
       stdout,
       call: async (name, input) => {
         calls.push([name, input]);
+        if (name === 'inspect_video_frames') return { ok: true, result: { sheets: [{ columns: 2, frames: [{ sourceTime: 3, outputTime: 0 }] }] }, images: [{ mimeType: 'image/jpeg', data: '/9j/test' }] };
         return name === 'render' ? { ok: false, error: '못 만들었어요' } : { ok: true, result: { editId: 'e1' } };
       },
     });
@@ -120,6 +121,7 @@ describe('MCP stdio 서버', () => {
     send({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'render', arguments: { editId: 'e1' } } });
     send({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'nope' } });
     send({ jsonrpc: '2.0', id: 6, method: 'ping' });
+    send({ jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'inspect_video_frames', arguments: { editId: 'e1' } } });
     await new Promise((r) => setTimeout(r, 50));
     const byId = (id: number) => lines.find((l) => l['id'] === id) as { result?: Record<string, unknown>; error?: { code: number } };
     expect((byId(1).result as { protocolVersion: string }).protocolVersion).toBe('2025-06-18');
@@ -130,9 +132,14 @@ describe('MCP stdio 서버', () => {
     expect(byId(4).result).toEqual({ content: [{ type: 'text', text: '못 만들었어요' }], isError: true });
     expect(byId(5).error?.code).toBe(-32602);
     expect(byId(6).result).toEqual({});
+    expect(byId(7).result).toEqual({ content: [
+      { type: 'text', text: JSON.stringify({ sheets: [{ columns: 2, frames: [{ sourceTime: 3, outputTime: 0 }] }] }) },
+      { type: 'image', mimeType: 'image/jpeg', data: '/9j/test' },
+    ], isError: false });
     expect(calls).toEqual([
       ['apply_edit', { crop: 'vertical' }],
       ['render', { editId: 'e1' }],
+      ['inspect_video_frames', { editId: 'e1' }],
     ]);
   });
 
@@ -158,22 +165,22 @@ describe('describeMessage', () => {
 
 describe('분석 모드 + 화면 시트 (기획안 §10)', () => {
   it('claude: 그림이 없으면 Read 까지 막고 한 턴, 있으면 sheets/ 만 Read 로 열고 턴을 더 준다', () => {
-    const plain = claudeAnalyzeArgs({ system: 'S' });
+    const plain = claudeAnalyzeArgs({ systemPath: '/w/system.txt' });
     expect(plain).not.toContain('--allowedTools');
-    expect(plain.slice(plain.indexOf('--disallowedTools') + 1, plain.indexOf('--append-system-prompt'))).toEqual(CLAUDE_DISALLOWED);
+    expect(plain.slice(plain.indexOf('--disallowedTools') + 1, plain.indexOf('--append-system-prompt-file'))).toEqual(CLAUDE_DISALLOWED);
     expect(plain[plain.indexOf('--max-turns') + 1]).toBe('1');
-    const withImg = claudeAnalyzeArgs({ system: 'S', images: ['/w/sheets/sheet-1.jpg'] });
+    const withImg = claudeAnalyzeArgs({ systemPath: '/w/system.txt', images: ['/w/sheets/sheet-1.jpg'] });
     expect(withImg[withImg.indexOf('--allowedTools') + 1]).toBe('Read(./sheets/**)');
-    const denied = withImg.slice(withImg.indexOf('--disallowedTools') + 1, withImg.indexOf('--append-system-prompt'));
+    const denied = withImg.slice(withImg.indexOf('--disallowedTools') + 1, withImg.indexOf('--append-system-prompt-file'));
     expect(denied).not.toContain('Read');
     expect(denied).toContain('Bash');
     expect(withImg[withImg.indexOf('--max-turns') + 1]).toBe('4');
   });
   it('codex: 그림은 -i 로 붙인다', () => {
-    const a = codexAnalyzeArgs({ cwd: '/w', prompt: 'P', images: ['/w/sheets/sheet-1.jpg', '/w/sheets/sheet-2.jpg'] });
+    const a = codexAnalyzeArgs({ cwd: '/w', images: ['/w/sheets/sheet-1.jpg', '/w/sheets/sheet-2.jpg'] });
     expect(a.filter((x) => x === '-i')).toHaveLength(2);
     expect(a[a.indexOf('-i') + 1]).toBe('/w/sheets/sheet-1.jpg');
-    expect(a.at(-1)).toBe('P');
-    expect(codexAnalyzeArgs({ cwd: '/w', prompt: 'P' })).not.toContain('-i');
+    expect(a.at(-1)).toBe('-');
+    expect(codexAnalyzeArgs({ cwd: '/w' })).not.toContain('-i');
   });
 });
