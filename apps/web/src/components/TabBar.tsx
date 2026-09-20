@@ -10,7 +10,7 @@ export function TabBar({ route }: { route: Route }) {
     { id: 'settings', label: copy.tabs.settings, icon: <GearIcon size={20} />, on: route.screen === 'settings', to: { screen: 'settings' } },
   ];
   return (
-    <nav className="flex flex-none border-t border-line-soft bg-surface px-2 pt-1.5 pb-2.5" role="tablist" data-testid="tab-bar">
+    <nav className="flex flex-none border-t border-line-soft bg-surface px-2 pt-1.5 pb-[calc(10px+env(safe-area-inset-bottom))]" role="tablist" data-testid="tab-bar">
       {tabs.map((t) => (
         <a
           key={t.id}
