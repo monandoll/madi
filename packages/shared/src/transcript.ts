@@ -16,11 +16,12 @@ export const Segment = z.object({
   start: z.number(),
   end: z.number(),
   text: z.string(),
+  secondaryText: z.string().max(200).optional(),
   words: z.array(Word),
 });
 export type Segment = z.infer<typeof Segment>;
 
-/** whisper 결과. 영상당 하나 (다시 만들면 덮어씀). */
+/** 자막의 불변 버전. 음성 인식 또는 사용자가 직접 지정한 문구. */
 export const Transcript = z.object({
   id: z.string(),
   videoId: z.string(),
@@ -34,3 +35,5 @@ export type Transcript = z.infer<typeof Transcript>;
 /** 시각 구간 [start, end) 초 */
 export const TimeRange = z.object({ start: z.number().min(0), end: z.number().min(0) });
 export type TimeRange = z.infer<typeof TimeRange>;
+
+export const CaptionLine = TimeRange.extend({ text: z.string().trim().min(1).max(200), secondaryText: z.string().trim().max(200).optional() }).refine((s) => s.end > s.start, 'end must follow start');

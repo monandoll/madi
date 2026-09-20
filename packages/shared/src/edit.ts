@@ -20,8 +20,28 @@ export const SubtitleStyle = z.object({
   bottom: z.number().min(0).max(1),
   /** 강조한 단어의 색 (기획안 §6 예시 2 — "견갑골 설명에만 단어를 강조") */
   emphasisColor: z.string().default('#3E6B8A'),
+  background: z.enum(['box', 'outline']).optional(),
+  outlineColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  outlineWidth: z.number().min(0).max(12).optional(),
+  bold: z.boolean().optional(),
+  italic: z.boolean().optional(),
+  /** 보조 문구(번역 등)는 본문 아래에 별도 크기·색으로 표시한다. */
+  secondaryScale: z.number().min(0.25).max(1).optional(),
+  secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  secondaryItalic: z.boolean().optional(),
 });
 export type SubtitleStyle = z.infer<typeof SubtitleStyle>;
+
+/** AI가 지정할 수 있는 렌더 설정. 빠진 값은 기존 스타일을 유지한다. */
+export const SubtitleStylePatch = SubtitleStyle.omit({ fontFamily: true, emphasisColor: true }).partial().extend({
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  boxColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  emphasisColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+});
+
+export function mergeSubtitleStyle(base: SubtitleStyle, patch: z.infer<typeof SubtitleStylePatch> = {}): SubtitleStyle {
+  return SubtitleStyle.parse({ ...base, ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) });
+}
 
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   fontFamily: 'Pretendard',
@@ -179,12 +199,15 @@ export interface EditDiff {
   subtitles?: { from: boolean; to: boolean };
   /** 자막 아래 여백 (커지면 위로 간 것) */
   subtitleBottom?: { from: number; to: number };
+  /** 결과물에 연결된 자막 버전이 변경됨 */
+  subtitleText?: boolean;
+  subtitleAppearance?: boolean;
   emphasis?: { added: string[]; removed: string[] };
   /** 하나라도 달라졌는지 */
   changed: boolean;
 }
 
-type Diffable = Pick<Edit, 'keep' | 'parts' | 'cuts' | 'crop' | 'cropFocus' | 'subtitles' | 'subtitleStyle' | 'emphasis'>;
+type Diffable = Pick<Edit, 'keep' | 'parts' | 'cuts' | 'crop' | 'cropFocus' | 'subtitles' | 'subtitleStyle' | 'emphasis'> & Partial<Pick<Edit, 'transcriptId'>>;
 
 const sameRange = (a: TimeRange | null, b: TimeRange | null) => (a === null || b === null ? a === b : Math.abs(a.start - b.start) < 0.05 && Math.abs(a.end - b.end) < 0.05);
 const sameRanges = (a: TimeRange[], b: TimeRange[]) => a.length === b.length && a.every((r, i) => sameRange(r, b[i]!));
@@ -198,12 +221,14 @@ export function editDiff(prev: Diffable, next: Diffable): EditDiff {
   if (prev.crop !== next.crop) d.crop = { from: prev.crop, to: next.crop };
   if (next.crop === 'vertical' && prev.cropFocus !== next.cropFocus) d.cropFocus = { from: prev.cropFocus, to: next.cropFocus };
   if (prev.subtitles !== next.subtitles) d.subtitles = { from: prev.subtitles, to: next.subtitles };
+  if (prev.transcriptId !== next.transcriptId) d.subtitleText = true;
+  if (JSON.stringify(prev.subtitleStyle) !== JSON.stringify(next.subtitleStyle)) d.subtitleAppearance = true;
   if (next.subtitles && Math.abs(prev.subtitleStyle.bottom - next.subtitleStyle.bottom) > 0.01) d.subtitleBottom = { from: prev.subtitleStyle.bottom, to: next.subtitleStyle.bottom };
   const pe = new Set(prev.emphasis.map((e) => e.term));
   const ne = new Set(next.emphasis.map((e) => e.term));
   const added = [...ne].filter((t) => !pe.has(t));
   const removed = [...pe].filter((t) => !ne.has(t));
   if (added.length || removed.length) d.emphasis = { added, removed };
-  d.changed = !!(d.keep || d.parts || d.cuts.added.length || d.cuts.removed.length || d.crop || d.cropFocus || d.subtitles || d.subtitleBottom || d.emphasis);
+  d.changed = !!(d.keep || d.parts || d.cuts.added.length || d.cuts.removed.length || d.crop || d.cropFocus || d.subtitles || d.subtitleText || d.subtitleAppearance || d.subtitleBottom || d.emphasis);
   return d;
 }

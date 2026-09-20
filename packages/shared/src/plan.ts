@@ -1,5 +1,18 @@
 import { z } from 'zod';
 import { InsightSectionKind, WhyRange } from './style.js';
+import { SubtitleStylePatch } from './edit.js';
+import { CaptionLine, TimeRange } from './transcript.js';
+
+/** 편집안 설명과 함께 저장하는 실행 결정. 기존 계획은 null로 호환된다. */
+export const PlanRecipe = z.object({
+  summary: z.string().max(300).default(''),
+  parts: z.array(TimeRange.refine((r) => r.end > r.start)).max(40).default([]),
+  subtitleStyle: SubtitleStylePatch.default({}),
+  captions: z.array(CaptionLine).max(200).default([]),
+  /** 자동 구현할 수 없는 제안. 적용 완료라고 표시하지 않는다. */
+  limitations: z.array(z.string().max(200)).max(10).default([]),
+});
+export type PlanRecipe = z.infer<typeof PlanRecipe>;
 
 /**
  * 편집안 — 촬영본 하나를 AI 가 자막 · 무음 · 움직임 · 장면으로 읽고 남긴 **초안** (기획안 §4 · §13).
@@ -44,6 +57,9 @@ export const EditPlan = z.object({
   videoId: z.string(),
   /** 이 영상이 전하려는 것 */
   purpose: z.string().max(300),
+  recipe: PlanRecipe.nullable().default(null),
+  /** 지침이 바뀐 뒤 과거 결정을 무심코 적용하지 않도록 서버가 찍는 지문. */
+  styleContextKey: z.string().default(''),
   audience: z.string().max(200).default(''),
   /** 어디서 어떻게 시작할지 */
   hook: z.string().max(200).default(''),

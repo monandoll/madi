@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Video } from './video.js';
 import { Job } from './job.js';
 import { AiProvider, RemoteMode, Settings } from './settings.js';
-import { Transcript, TimeRange } from './transcript.js';
+import { Transcript, TimeRange, CaptionLine } from './transcript.js';
 import { Edit } from './edit.js';
 import { Output } from './output.js';
 import { ChatMessage } from './chat.js';
@@ -68,7 +68,7 @@ export type OutputDetailResponse = z.infer<typeof OutputDetailResponse>;
  * - short:    구간 하나를 세로 숏폼으로
  */
 export const ActionRequest = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('subtitle') }),
+  z.object({ type: z.literal('subtitle'), editId: z.string().optional(), transcriptId: z.string().optional() }),
   z.object({ type: z.literal('silence') }),
   z.object({ type: z.literal('vertical') }),
   /** from: 어디서 골랐는지 — 직접 구간 선택 · 챕터 카드 · 편집안 카드. 기록(events)에만 쓴다 (기획안 §9: 무엇을 골랐는지가 피드백). */
@@ -94,7 +94,8 @@ export type PlanResponse = z.infer<typeof PlanResponse>;
 
 /** 자막 직접 쓰기/고치기: 자막 전체를 이 줄들로 바꾼다 (소리 없는 영상도 됨). */
 export const TranscriptPutRequest = z.object({
-  segments: z.array(z.object({ start: z.number().min(0), end: z.number().min(0), text: z.string().trim().min(1).max(200) })).min(1).max(500),
+  editId: z.string().optional(),
+  segments: z.array(CaptionLine).max(500),
 });
 export type TranscriptPutRequest = z.infer<typeof TranscriptPutRequest>;
 export const TranscriptResponse = z.object({ transcript: Transcript });
@@ -105,7 +106,7 @@ export type ActionResponse = z.infer<typeof ActionResponse>;
  * AI 연결 뒤의 채팅. 문장 하나를 보내면 엔진이 사용자 말풍선 + (쓰는 중인) 답 말풍선을 만들고
  * 에이전트를 띄운다. 답은 WS message.updated 로 채워진다.
  */
-export const ChatRequest = z.object({ text: z.string().trim().min(1).max(2000) });
+export const ChatRequest = z.object({ text: z.string().trim().min(1).max(2000), editId: z.string().optional() });
 export type ChatRequest = z.infer<typeof ChatRequest>;
 
 export const ChatResponse = z.object({ messages: z.array(ChatMessage) });
