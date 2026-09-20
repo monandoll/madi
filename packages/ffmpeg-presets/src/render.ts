@@ -147,6 +147,11 @@ export function buildAss(
       .join('');
   };
   const marginV = Math.round(frame.height * style.bottom);
+  const outline = style.background === 'outline';
+  const border = outline ? (style.outlineWidth ?? 2) : Math.round(style.fontSize * 0.22);
+  const borderColor = outline ? (style.outlineColor ?? '#000000') : style.boxColor;
+  const secondarySize = Math.round(style.fontSize * (style.secondaryScale ?? 0.55));
+  const fontFamily = style.fontFamily.replace(/[,\r\n]/g, ' ');
   const header = [
     '[Script Info]',
     'ScriptType: v4.00+',
@@ -157,31 +162,42 @@ export function buildAss(
     '',
     '[V4+ Styles]',
     'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-    `Style: Madi,${style.fontFamily},${style.fontSize},${assColor(style.color)},${assColor(style.color)},${assColor(style.boxColor)},${assColor(style.boxColor)},1,0,0,0,100,100,0,0,3,${Math.round(style.fontSize * 0.22)},0,2,40,40,${marginV},1`,
+    `Style: Madi,${fontFamily},${style.fontSize},${assColor(style.color)},${assColor(style.color)},${assColor(borderColor)},${assColor(style.boxColor)},${style.bold === false ? 0 : 1},${style.italic ? 1 : 0},0,0,100,100,0,0,${outline ? 1 : 3},${border},0,2,40,40,${marginV},1`,
+    `Style: Secondary,${fontFamily},${secondarySize},${assColor(style.secondaryColor ?? style.color)},${assColor(style.secondaryColor ?? style.color)},${assColor(borderColor)},${assColor(style.boxColor)},0,${style.secondaryItalic ? 1 : 0},0,0,100,100,0,0,${outline ? 1 : 3},${outline ? border : Math.round(secondarySize * 0.22)},0,2,40,40,${marginV},1`,
     '',
     '[Events]',
     'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
   ];
   const lines: string[] = [];
-  for (const seg of segments) {
-    // 구간 안에 남는 단어들만 모아서 문장을 다시 만든다
-    const words = seg.words.length ? seg.words : [{ start: seg.start, end: seg.end, text: seg.text, p: null }];
-    let cur: { start: number; end: number; text: string[] } | null = null;
-    const flush = () => {
-      if (cur && cur.text.length) lines.push(`Dialogue: 0,${assTime(cur.start)},${assTime(cur.end)},Madi,,0,0,0,,${cur.text.join(' ')}`);
-      cur = null;
-    };
-    for (const w of words) {
-      const r = remapRange({ start: w.start, end: Math.max(w.start, Math.min(w.end, seg.end)) }, keep);
-      if (!r) {
-        flush();
-        continue;
+  let offset = 0;
+  for (const part of keep) {
+    for (const seg of segments) {
+      // 구간 안에 남는 단어들만 모아서 문장을 다시 만든다
+      const words = seg.words.length ? seg.words : [{ start: seg.start, end: seg.end, text: seg.text, p: null }];
+      let cur: { start: number; end: number; text: string[] } | null = null;
+      const flush = () => {
+        if (cur && cur.text.length) {
+          const secondary = seg.secondaryText?.trim();
+          const rows = secondary ? Math.max(1, Math.ceil(secondary.length * secondarySize * 0.6 / Math.max(1, frame.width - 80))) : 0;
+          const primaryMargin = secondary ? marginV + Math.round(secondarySize * 1.4 * rows + style.fontSize * 0.15) : 0;
+          lines.push(`Dialogue: 0,${assTime(cur.start)},${assTime(cur.end)},Madi,,0,0,${primaryMargin},,${cur.text.join(' ')}`);
+          if (secondary) lines.push(`Dialogue: 0,${assTime(cur.start)},${assTime(cur.end)},Secondary,,0,0,0,,${escapeAss(secondary)}`);
+        }
+        cur = null;
+      };
+      for (const w of words) {
+        const r = remapRange({ start: w.start, end: Math.max(w.start, Math.min(w.end, seg.end)) }, [part]);
+        if (!r) {
+          flush();
+          continue;
+        }
+        if (!cur) cur = { start: offset + r.start, end: offset + r.end, text: [] };
+        cur.end = Math.max(cur.end, offset + r.end);
+        cur.text.push(wordText(w));
       }
-      if (!cur) cur = { start: r.start, end: r.end, text: [] };
-      cur.end = Math.max(cur.end, r.end);
-      cur.text.push(wordText(w));
+      flush();
     }
-    flush();
+    offset += part.end - part.start;
   }
   return [...header, ...lines, ''].join('\n');
 }

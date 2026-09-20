@@ -1,6 +1,7 @@
 /** 장면 전환 감지. 프레임 차이가 threshold(0..1) 를 넘는 시각을 stderr(showinfo) 로 낸다. */
 export function sceneDetectArgs(input: string, threshold = 0.4): string[] {
-  return ['-hide_banner', '-nostdin', '-i', input, '-an', '-vf', `select='gt(scene,${threshold})',showinfo`, '-vsync', 'vfr', '-f', 'null', '-'];
+  // null 출력은 프레임 동기화가 필요 없다. 최신 ffmpeg에서 제거된 -vsync도 쓰지 않는다.
+  return ['-hide_banner', '-nostdin', '-i', input, '-an', '-vf', `select='gt(scene,${threshold})',showinfo`, '-f', 'null', '-'];
 }
 
 /** showinfo 출력의 pts_time → 장면이 바뀌는 시각 목록(초, 오름차순, 중복 없음). */
