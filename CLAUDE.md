@@ -85,7 +85,7 @@ resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리
 - `Reference` — 완성본(배우는 대상). `stats`(숫자 + 장면 전환 시각) + `segments`(자막) + `insight`(AI 가 읽은 뜻: 취지·구성·보존 구간·숏폼 후보·용어·제목과 내용의 관계·태그)
 - `TermCorrection` — 자막에서 고친 말 한 쌍(틀린 말 → 바른 말 · 횟수). 바른 말은 whisper 에 알려 주고, 2번 이상이면 결과에서 바로 바꾼다. 사용자가 뺄 수 있다.
 - `Memory` — 제작자 기억 한 줄. `kind`(style·keep·avoid·term) · `scope`(all·topic·video) · `source`(reference·feedback·user) · `status`(proposed·approved). 완성본에서 추린 것은 **제안**으로 들어오고 사용자가 확인한 것만 편집에 쓴다. 사용자가 보고 고치고 지운다. 완성본은 `excluded` 로 학습에서 뺄 수 있다.
-- `EditPlan` — 촬영본 편집안 초안. AI 가 자막·무음·움직임·장면을 읽고 남긴 취지·구성(구간별 편집 초안)·남길 구간·잘라낼 후보·숏폼 후보(채널·이유). 파일은 만들지 않는다 — 사용자가 후보를 골라야 렌더. `feedback[]` 에 사용자가 뺀·만든 후보가 남고, 뺀 것은 다시 제안하지 않는다.
+- `EditPlan` — 촬영본 편집안 초안. AI 가 자막·무음·움직임·장면을 읽고 남긴 취지·구성(구간별 편집 초안)·남길 구간·잘라낼 후보·숏폼 후보(채널·이유). `recipe`에 실제 구간 순서·자막 설정·문구(`secondaryText` 보조 문구 포함)를 저장하며 적용 버튼에서 Edit로 변환한다. `styleContextKey`가 현재 승인 기억·규칙·설정과 다르면 재생성이 필요하다. 파일은 만들지 않는다 — 사용자가 후보를 골라야 렌더. `feedback[]` 에 사용자가 뺀·만든 후보가 남고, 뺀 것은 다시 제안하지 않는다.
 - `Chat` — `Video`별 대화. 메시지에 `Output` 카드가 붙는다.
 
 원칙: **렌더는 항상 `Edit`로부터 재현 가능**해야 한다. 결과 파일만 있고 결정이 없는 상태를 만들지 않는다.
@@ -93,7 +93,8 @@ resources/bin/        플랫폼별 ffmpeg, whisper.cpp, cloudflared 바이너리
 ## AI 에이전트 규칙
 
 - 에이전트는 파일을 직접 만지지 않는다. MCP 도구만 호출한다.
-- 도구 목록 (`apps/engine/src/mcp/tools.ts`): `get_transcript`, `find_silences`, `find_scenes`, `propose_cuts`, `apply_edit`, `render`, `extract_shorts`, `get_chapters`, `set_subtitle_style`, `set_subtitle_text`, `update_style_rule`
+- 도구 목록 (`apps/engine/src/mcp/tools.ts`): `inspect_video_frames`, `get_transcript`, `find_silences`, `find_scenes`, `propose_cuts`, `apply_edit`, `render`, `extract_shorts`, `get_chapters`, `set_subtitle_style`, `set_subtitle_text`, `update_style_rule`
+- 채팅에서 동작을 보고 자막을 만들 때는 `inspect_video_frames`의 실제 MCP 이미지 블록을 먼저 읽는다. 선택한 Edit의 컷·조각 순서를 반영한 원본 표본이며, 자막에는 sourceTime을 쓴다. 전환이 불명확하면 원본 range를 좁혀 다시 본다. 기존 생성 자막·노래·장면 전환 시각만으로 동작을 지어내지 않는다. `ai.frames=false`이면 이 도구도 화면을 보내지 않는다.
 - 에이전트 컨텍스트에 `StyleProfile.style.md`를 항상 주입한다.
 - 그 위에 **제작 지침**(`src/agent/playbook.ts`)과 **기억**(`styleService.recall(video)` — 이 영상과 관련 있는 것만)을 같이 넣는다. 세기 순서는 사용자가 쓴 규칙 > 기억 > 제작 지침.
 - 완성본은 AI 가 연결돼 있으면 자막을 읽어 `insight` 를 남기고(insight 잡, 도구 없는 한 턴), 여러 편에 반복되는 것만 `Memory` 로 **제안**한다. 사용자가 승인하지 않은 것을 영구 성향으로 확정하지 않는다 — 프롬프트에는 `approved` 만 들어간다. 영상을 매번 다시 읽지 않는다 — 저장한 메모만 꺼낸다.
