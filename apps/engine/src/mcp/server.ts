@@ -19,6 +19,8 @@ export interface ToolOutcome {
   /** ok=true 면 결과(JSON 직렬화), false 면 사람이 읽을 오류 */
   result?: unknown;
   error?: string;
+  /** 화면 확인 도구에서 추출한 JPEG. MCP에서는 텍스트가 아닌 이미지 블록으로 전달한다. */
+  images?: { data: string; mimeType: 'image/jpeg' }[];
 }
 
 interface Rpc {
@@ -84,7 +86,10 @@ export function serveStdio(o: StdioOptions): { close(): void } {
           outcome = { ok: false, error: err instanceof Error ? err.message : String(err) };
         }
         reply(id, {
-          content: [{ type: 'text', text: outcome.ok ? JSON.stringify(outcome.result ?? {}) : (outcome.error ?? 'error') }],
+          content: [
+            { type: 'text', text: outcome.ok ? JSON.stringify(outcome.result ?? {}) : (outcome.error ?? 'error') },
+            ...(outcome.ok ? (outcome.images ?? []).map(image => ({ type: 'image', ...image })) : []),
+          ],
           isError: !outcome.ok,
         });
         return;

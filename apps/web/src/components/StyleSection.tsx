@@ -26,7 +26,7 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
   const put = (data: StyleResponse) => qc.setQueryData(queryKeys.style, data);
   const add = useMutation({ mutationFn: (rule: string) => api.addRule(rule), onSuccess: put });
   const remove = useMutation({ mutationFn: (i: number) => api.removeRule(i), onSuccess: put });
-  const relearn = useMutation({ mutationFn: api.relearn, onSuccess: put });
+  const relearn = useMutation({ mutationFn: api.relearn, onSuccess: (data) => { put(data); setLinkError(null); } });
   const addLink = useMutation({
     mutationFn: (url: string) => api.addLink(url),
     onSuccess: (data) => {
@@ -230,9 +230,9 @@ export function StyleSection({ aiOn }: { aiOn: boolean }) {
           <p className="text-12 text-text-3" data-testid="link-help">
             {linkError ?? (!linkImport ? copy.settings.linksOff : copy.settings.linksHelp)}
           </p>
-          {(folders.length > 0 || links.length > 0) && (
+          {(!linkImport || folders.length > 0 || links.length > 0) && (
             <button type="button" onClick={() => relearn.mutate()} disabled={relearn.isPending} className="flex-none text-13 text-text-2 hover:text-accent" data-testid="relearn">
-              {copy.settings.referencesRelearn}
+              {linkImport ? copy.settings.referencesRelearn : copy.settings.linksRetry}
             </button>
           )}
         </div>
@@ -404,6 +404,8 @@ function InsightView({ insight: i }: { insight: ReferenceInsight }) {
       {i.terms.length > 0 && row(copy.settings.insightTerms, i.terms.join(', '))}
       {i.titleNote && row(copy.settings.insightTitle, i.titleNote)}
       {i.visual && row(copy.settings.insightVisual, i.visual)}
+      {i.styleObservations.map((o, n) => <div key={n}>{row(copy.settings.insightCategories[o.category], `${o.observation} (${copy.settings.insightEvidence[o.evidence]} ${o.times.map(clock).join(', ')})`)}</div>)}
+      {i.onScreenText.length > 0 && row(copy.settings.insightScreenText, i.onScreenText.map((t) => `${clock(t.at)} “${t.text}”`).join(' · '))}
     </div>
   );
 }

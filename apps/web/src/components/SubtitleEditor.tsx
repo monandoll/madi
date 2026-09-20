@@ -8,13 +8,14 @@ export interface SubtitleLineDraft {
   start: string;
   end: string;
   text: string;
+  secondaryText?: string;
 }
 
 interface Props {
   segments: Segment[];
   durationSec: number;
   saving: boolean;
-  onSave(lines: { start: number; end: number; text: string }[]): void;
+  onSave(lines: { start: number; end: number; text: string; secondaryText?: string }[]): void;
   onCancel(): void;
 }
 
@@ -25,7 +26,7 @@ interface Props {
 export function SubtitleEditor({ segments, durationSec, saving, onSave, onCancel }: Props) {
   const [lines, setLines] = useState<SubtitleLineDraft[]>(() =>
     segments.length
-      ? segments.map((s, i) => ({ key: `${i}`, start: formatClock(s.start), end: formatClock(s.end), text: s.text }))
+      ? segments.map((s, i) => ({ key: `${i}`, start: formatClock(s.start), end: formatClock(s.end), text: s.text, ...(s.secondaryText !== undefined ? { secondaryText: s.secondaryText } : {}) }))
       : [{ key: '0', start: formatClock(0), end: formatClock(Math.min(3, durationSec || 3)), text: '' }],
   );
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +40,7 @@ export function SubtitleEditor({ segments, durationSec, saving, onSave, onCancel
   const remove = (key: string) => setLines((ls) => ls.filter((l) => l.key !== key));
 
   const submit = () => {
-    const out: { start: number; end: number; text: string }[] = [];
+    const out: { start: number; end: number; text: string; secondaryText?: string }[] = [];
     for (const l of lines) {
       const text = l.text.trim();
       if (!text) continue;
@@ -49,22 +50,18 @@ export function SubtitleEditor({ segments, durationSec, saving, onSave, onCancel
         setError(copy.subtitleEditor.badTime);
         return;
       }
-      if (end <= start) {
+      if (end <= start || end > durationSec) {
         setError(copy.subtitleEditor.badRange);
         return;
       }
-      out.push({ start, end, text });
-    }
-    if (out.length === 0) {
-      setError(copy.subtitleEditor.empty);
-      return;
+      out.push({ start, end, text, ...(l.secondaryText !== undefined ? { secondaryText: l.secondaryText.trim() } : {}) });
     }
     setError(null);
     onSave(out);
   };
 
   return (
-    <div className="mb-1.5 flex flex-col gap-2 rounded-panel border border-line bg-surface p-3" data-testid="subtitle-editor">
+    <fieldset disabled={saving} className="mb-1.5 flex min-w-0 flex-col gap-2 rounded-panel border border-line bg-surface p-3" data-testid="subtitle-editor">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-14 font-semibold">{copy.subtitleEditor.title}</span>
         <span className="text-12 text-text-3">{copy.subtitleEditor.hint}</span>
@@ -89,6 +86,7 @@ export function SubtitleEditor({ segments, durationSec, saving, onSave, onCancel
               className="w-[58px] flex-none rounded-thumb border border-input bg-surface px-2 py-[7px] text-center text-13 outline-none focus:border-accent"
               data-testid="subtitle-editor-end"
             />
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
             <input
               value={l.text}
               onChange={(e) => patch(l.key, { text: e.target.value })}
@@ -98,6 +96,8 @@ export function SubtitleEditor({ segments, durationSec, saving, onSave, onCancel
               className="min-w-0 flex-1 rounded-thumb border border-input bg-surface px-3 py-[7px] text-14 outline-none placeholder:text-text-3 focus:border-accent"
               data-testid="subtitle-editor-text"
             />
+            {l.secondaryText !== undefined && <input value={l.secondaryText} onChange={(e) => patch(l.key, { secondaryText: e.target.value })} maxLength={200} aria-label={copy.subtitleEditor.secondary} className="min-w-0 rounded-thumb border border-input bg-surface px-3 py-[7px] text-13 outline-none focus:border-accent" data-testid="subtitle-editor-secondary" />}
+            </div>
             <button type="button" onClick={() => remove(l.key)} aria-label={copy.subtitleEditor.remove} className="flex-none px-1 text-13 text-text-3 hover:text-accent">
               ×
             </button>
@@ -116,6 +116,6 @@ export function SubtitleEditor({ segments, durationSec, saving, onSave, onCancel
           {copy.subtitleEditor.save}
         </button>
       </div>
-    </div>
+    </fieldset>
   );
 }

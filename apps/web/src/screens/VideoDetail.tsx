@@ -35,21 +35,35 @@ export function VideoDetail({ id, panelOutputId }: Props) {
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [prefill, setPrefill] = useState<{ text: string; at: number } | undefined>(undefined);
+  const [prefill, setPrefill] = useState<{ text: string; at: number; editId?: string | undefined } | undefined>(undefined);
   const panel = panelOutputId ?? null;
   const feedEnd = useRef<HTMLDivElement>(null);
   const storePrefill = useUi((s) => s.prefill);
   const storeEditor = useUi((s) => s.subtitleEditor);
   const [editingSubs, setEditingSubs] = useState(false);
+  const [editingOutputId, setEditingOutputId] = useState<string | null>(null);
+  const editingOutput = useQuery({ queryKey: queryKeys.output(editingOutputId ?? ''), queryFn: () => api.output(editingOutputId!), enabled: editingSubs && !!editingOutputId });
+
+  useEffect(() => {
+    setEditingSubs(false);
+    setEditingOutputId(null);
+  }, [id]);
 
   // 결과물 화면의 "자막 고치기"(AI 없이) 로 넘어온 경우
   useEffect(() => {
-    if (storeEditor && storeEditor.videoId === id) setEditingSubs(true);
-  }, [storeEditor, id]);
+    if (storeEditor && storeEditor.videoId === id && !panelOutputId) {
+      setEditingOutputId(storeEditor.outputId);
+      setEditingSubs(true);
+      useUi.getState().clearSubtitleEditor();
+    }
+  }, [storeEditor, id, panelOutputId]);
 
   // 결과물 화면에서 "이 문장 고쳐줘" 로 넘어온 말
   useEffect(() => {
-    if (storePrefill && storePrefill.videoId === id) setPrefill({ text: storePrefill.text, at: storePrefill.at });
+    if (storePrefill && storePrefill.videoId === id) {
+      setPrefill({ text: storePrefill.text, at: storePrefill.at, editId: storePrefill.editId });
+      useUi.getState().clearPrefill();
+    }
   }, [storePrefill, id]);
 
   const invalidate = () => void qc.invalidateQueries({ queryKey: queryKeys.video(id) });
@@ -63,7 +77,7 @@ export function VideoDetail({ id, panelOutputId }: Props) {
     onError,
   });
   const chat = useMutation({
-    mutationFn: (text: string) => api.chat(id, text),
+    mutationFn: (body: { text: string; editId?: string | undefined }) => api.chat(id, body.text, body.editId),
     onSuccess: () => {
       setLocalError(null);
       invalidate();
@@ -75,11 +89,13 @@ export function VideoDetail({ id, panelOutputId }: Props) {
     mutationFn: (b: { kind: 'cut' | 'short'; index: number; rejected: boolean }) => api.planFeedback(id, { kind: b.kind, index: b.index, verdict: b.rejected ? 'rejected' : null }),
     onSuccess: invalidate,
   });
-  // 자막 직접 쓰기: 자막을 통째로 바꾼 뒤 바로 "자막 넣기"
+  // 결과물에서 열었으면 그 버전의 자막과 편집을 수정한다.
   const saveSubs = useMutation({
-    mutationFn: async (lines: { start: number; end: number; text: string }[]) => {
-      await api.putTranscript(id, lines);
-      return api.act(id, { type: 'subtitle' });
+    mutationFn: async (lines: { start: number; end: number; text: string; secondaryText?: string }[]) => {
+      const editId = editingOutputId ? editingOutput.data?.edit.id : undefined;
+      if (editingOutputId && !editId) throw new Error('output not loaded');
+      const { transcript } = await api.putTranscript(id, lines, editId);
+      return api.act(id, { type: 'subtitle', transcriptId: transcript.id, ...(editId ? { editId } : {}) });
     },
     onSuccess: () => {
       setEditingSubs(false);
@@ -103,7 +119,7 @@ export function VideoDetail({ id, panelOutputId }: Props) {
   const chatBusy = aiBusy || messages.some(isStreaming) || chat.isPending;
   const hasAudio = video.hasAudio !== false;
   const longform = (video.durationSec ?? 0) >= LONGFORM_MIN_SEC;
-  const latest = outputs[outputs.length - 1];
+  const latest = outputs[0];
 
   const onAction = (key: ActionKey) => {
     if (key === 'short') {
@@ -121,8 +137,8 @@ export function VideoDetail({ id, panelOutputId }: Props) {
   const onShortFromChapter = onShortFrom('chapter');
   const onShortFromPlan = onShortFrom('plan');
   const planBusy = jobs.some((j) => j.type === 'plan');
-  const ask = (text: string) => setPrefill({ text, at: Date.now() });
-  const onRevise = (o: OutputCard) => ask(copy.detail.outputCard.revisePrefill(o.title));
+  const ask = (text: string, editId?: string) => setPrefill({ text, at: Date.now(), editId });
+  const onRevise = (o: OutputCard) => ask(copy.detail.outputCard.revisePrefill(o.title), o.editId);
   const openOutput = (o: OutputCard) => go({ screen: 'output', id: o.id });
   const closePanel = () => go({ screen: 'video', id });
   const meta = `${formatDuration(video.durationSec)} · ${formatDate(video.recordedAt)}`;
@@ -192,7 +208,7 @@ export function VideoDetail({ id, panelOutputId }: Props) {
         {/* 자막 직접 쓰기 — 소리가 없는 영상에도, AI 없이도. AI 가 있으면 편집안 (다시) 만들기 */}
         {!editingSubs && video.status === 'ready' && (
           <div className="mb-1 flex gap-4">
-            <button type="button" onClick={() => setEditingSubs(true)} className="self-start text-13 font-medium text-accent hover:text-accent-hover" data-testid="subtitle-editor-open">
+            <button type="button" onClick={() => { setEditingOutputId(null); setEditingSubs(true); }} className="self-start text-13 font-medium text-accent hover:text-accent-hover" data-testid="subtitle-editor-open">
               {transcript && transcript.segments.length ? copy.subtitleEditor.edit : copy.subtitleEditor.open}
             </button>
             {aiOn && (
@@ -203,7 +219,11 @@ export function VideoDetail({ id, panelOutputId }: Props) {
           </div>
         )}
         {editingSubs && (
-          <SubtitleEditor segments={transcript?.segments ?? []} durationSec={video.durationSec ?? 0} saving={saveSubs.isPending} onSave={(lines) => saveSubs.mutate(lines)} onCancel={() => setEditingSubs(false)} />
+          editingOutputId && !editingOutput.data ? (
+            <p className="text-13 text-text-3">{editingOutput.isError ? copy.output.notFound : copy.empty.loading}</p>
+          ) : (
+            <SubtitleEditor key={editingOutputId ?? 'source'} segments={(editingOutputId ? editingOutput.data?.transcript : transcript)?.segments ?? []} durationSec={video.durationSec ?? 0} saving={saveSubs.isPending} onSave={(lines) => saveSubs.mutate(lines)} onCancel={() => setEditingSubs(false)} />
+          )
         )}
         <ChatFeed
           messages={messages}
@@ -240,12 +260,12 @@ export function VideoDetail({ id, panelOutputId }: Props) {
       </main>
 
       {aiOn ? (
-        <ChatBar busy={chatBusy} disabled={video.status !== 'ready'} prefill={prefill} longform={longform} onSend={(t) => chat.mutate(t)} onStop={() => stop.mutate()} />
+        <ChatBar busy={chatBusy} disabled={video.status !== 'ready'} prefill={prefill} longform={longform} onSend={(text, fromInput) => { chat.mutate({ text, editId: fromInput ? prefill?.editId : undefined }); setPrefill(undefined); }} onStop={() => stop.mutate()} />
       ) : (
         <ActionBar hasAudio={hasAudio} hasTranscript={!!transcript && transcript.segments.length > 0} busy={busy || act.isPending} disabled={video.status !== 'ready'} longform={longform} onAction={onAction} />
       )}
 
-      {pc && panel && <OutputPanel outputId={panel} onClose={closePanel} onAsk={aiOn ? ask : undefined} onEdit={aiOn ? undefined : () => setEditingSubs(true)} />}
+      {pc && panel && <OutputPanel outputId={panel} onClose={closePanel} onAsk={aiOn ? ask : undefined} onEdit={() => { useUi.getState().openSubtitleEditor(id, panel); closePanel(); }} />}
     </div>
   );
 }
@@ -260,7 +280,7 @@ function Prop({ k, v }: { k: string; v: string }) {
 }
 
 /** PC 오른쪽 결과물 패널 (380px, 1px 왼선). 제목 · 메타 · 닫기 + OutputView. */
-function OutputPanel({ outputId, onClose, onAsk, onEdit }: { outputId: string; onClose(): void; onAsk?: ((text: string) => void) | undefined; onEdit?: (() => void) | undefined }) {
+function OutputPanel({ outputId, onClose, onAsk, onEdit }: { outputId: string; onClose(): void; onAsk?: ((text: string, editId?: string) => void) | undefined; onEdit?: (() => void) | undefined }) {
   const q = useQuery({ queryKey: queryKeys.output(outputId), queryFn: () => api.output(outputId) });
   const o = q.data?.output;
   const vertical = o ? o.width < o.height : true;
@@ -275,7 +295,7 @@ function OutputPanel({ outputId, onClose, onAsk, onEdit }: { outputId: string; o
           <CloseIcon />
         </button>
       </header>
-      {q.data ? <OutputView data={q.data} onAsk={onAsk} onEdit={onEdit} /> : <div className="flex flex-1 items-center justify-center p-4 text-13 text-text-3">{q.isError ? copy.output.notFound : copy.empty.loading}</div>}
+      {q.data ? <OutputView data={q.data} onAsk={onAsk ? (text) => onAsk(text, q.data!.edit.id) : undefined} onEdit={onEdit} /> : <div className="flex flex-1 items-center justify-center p-4 text-13 text-text-3">{q.isError ? copy.output.notFound : copy.empty.loading}</div>}
     </aside>
   );
 }

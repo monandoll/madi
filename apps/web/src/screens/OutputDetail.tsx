@@ -32,17 +32,17 @@ export function OutputDetail({ id }: { id: string }) {
   const vertical = output.width < output.height;
   const aiOn = health.data?.ai.connected ?? false;
   const ask = (text: string) => {
-    setPrefill(output.videoId, text);
+    setPrefill(output.videoId, text, output.editId);
     go({ screen: 'video', id: output.videoId });
   };
   const edit = () => {
-    openSubtitleEditor(output.videoId);
+    openSubtitleEditor(output.videoId, output.id);
     go({ screen: 'video', id: output.videoId });
   };
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface" data-testid="output-detail">
       <TopBar title={output.title} meta={`${formatDuration(output.durationSec)} · ${vertical ? '9:16' : '16:9'}`} showBack backFallback={{ screen: 'video', id: output.videoId }} />
-      <OutputView data={q.data} wide onAsk={aiOn ? ask : undefined} onEdit={aiOn ? undefined : edit} />
+      <OutputView data={q.data} wide onAsk={aiOn ? ask : undefined} onEdit={edit} />
     </div>
   );
 }

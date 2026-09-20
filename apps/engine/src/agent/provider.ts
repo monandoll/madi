@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn } from 'node:child_process';
+import { type ChildProcess, execFile, spawn } from 'node:child_process';
 import type { AiProvider } from '@madi/shared';
 import { withKnownDirs } from './detect.js';
 
@@ -76,6 +76,10 @@ export function runCli(
   opts: Pick<AgentRunOptions, 'cwd' | 'signal' | 'onText' | 'onTool' | 'onLog'> & { env?: Record<string, string> },
 ): Promise<AgentResult> {
   return new Promise((resolve) => {
+    if (opts.signal?.aborted) {
+      resolve({ text: '', toolCalls: 0, ok: false, error: 'aborted' });
+      return;
+    }
     // 트레이 앱엔 로그인 셸 PATH 가 없다 → node·codex·claude 가 있을 만한 곳을 붙인다
     const env = withKnownDirs({ ...process.env, ...opts.env });
     // 중첩 실행 가드: 이 엔진이 Claude Code 안에서 개발될 때 자식 claude 가 거부하지 않게
@@ -97,9 +101,14 @@ export function runCli(
       opts.signal?.removeEventListener('abort', onAbort);
       resolve(r);
     };
+    let aborted = false;
     const onAbort = () => {
-      child.kill('SIGKILL');
-      finish({ text: parser.text, toolCalls: parser.toolCalls, ok: false, error: 'aborted' });
+      aborted = true;
+      // .cmd 부모만 종료하면 AI/MCP 자식이 작업 폴더를 계속 잡고 있다.
+      // 이 호출에서 만든 프로세스 트리만 종료하고 close를 기다린다.
+      if (process.platform === 'win32' && child.pid) {
+        execFile('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }, (err) => { if (err) child.kill('SIGKILL'); });
+      } else child.kill('SIGKILL');
     };
     opts.signal?.addEventListener('abort', onAbort, { once: true });
 
@@ -130,6 +139,10 @@ export function runCli(
       finish({ text: parser.text, toolCalls: parser.toolCalls, ok: false, error: err.code === 'ENOENT' ? 'not_installed' : err.message });
     });
     child.on('close', (code) => {
+      if (aborted) {
+        finish({ text: parser.text, toolCalls: parser.toolCalls, ok: false, error: 'aborted' });
+        return;
+      }
       if (buf.trim()) handle(buf);
       const parsed = parser.feed('');
       void parsed;

@@ -59,6 +59,14 @@ export const WhyRange = z.object({
 export const InsightSectionKind = z.enum(['intro', 'setup', 'demo', 'qa', 'closing', 'other']);
 export type InsightSectionKind = z.infer<typeof InsightSectionKind>;
 
+/** 한 편에서 관찰한 편집 방식. 영구 취향으로 쓰기 전에 여러 영상의 근거와 사용자 확인이 필요하다. */
+export const StyleObservation = z.object({
+  category: z.enum(['hook', 'structure', 'pacing', 'captions', 'framing']),
+  observation: z.string().min(1).max(300),
+  evidence: z.enum(['visual', 'audio', 'timing']),
+  times: z.array(z.number().min(0)).min(1).max(12),
+});
+
 /**
  * 영상별 기억 — 완성본 하나를 AI 가 자막으로 읽고 남긴 메모.
  * 숫자(ReferenceStats)가 아니라 뜻이다: 무슨 영상인지, 어떻게 짜였는지, 어디가 지우면 안 되는 곳인지.
@@ -95,6 +103,9 @@ export const ReferenceInsight = z.object({
   visual: z.string().max(200).default(''),
   /** AI 가 본 화면의 시각들 (§8.1). 안 봤으면 빈 목록. */
   frameTimes: z.array(z.number().min(0)).default([]),
+  styleObservations: z.array(StyleObservation).max(20).default([]),
+  /** 화면에서 실제로 읽힌 문구만. 음성 받아쓰기와 구분한다. */
+  onScreenText: z.array(z.object({ text: z.string().min(1).max(200), at: z.number().min(0) })).max(20).default([]),
   /** 검색용 태그 — 부위 · 동작 · 고민 (예: 어깨, 견갑골, 거북목) */
   tags: z.array(z.string().max(30)).default([]),
   /** 어느 도구가 읽었는지 */

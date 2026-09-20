@@ -73,18 +73,18 @@ export const kv = sqliteTable('kv', {
   updatedAt: integer('updated_at').notNull(),
 });
 
-/** whisper 결과. 영상당 하나. segments 는 JSON. */
+/** 불변 자막 버전. 원본 자막(isSource)과 결과물 전용 문구를 구분한다. */
 export const transcripts = sqliteTable('transcripts', {
   id: text('id').primaryKey(),
   videoId: text('video_id')
     .notNull()
-    .unique()
     .references(() => videos.id, { onDelete: 'cascade' }),
   language: text('language').notNull(),
   model: text('model').notNull(),
+  isSource: integer('is_source', { mode: 'boolean' }).notNull().default(true),
   segments: text('segments', { mode: 'json' }).notNull(),
   createdAt: integer('created_at').notNull(),
-});
+}, (t) => [index('transcripts_video_created_idx').on(t.videoId, t.createdAt)]);
 
 /** 편집 결정 목록. 결과물은 항상 여기서 재현된다. */
 export const edits = sqliteTable('edits', {

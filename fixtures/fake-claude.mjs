@@ -32,7 +32,7 @@ if (args.includes('--version')) {
 }
 const flag = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 const mcpConfigPath = flag('--mcp-config');
-const system = flag('--append-system-prompt') ?? '';
+const system = flag('--append-system-prompt-file') ? fs.readFileSync(flag('--append-system-prompt-file'), 'utf8') : flag('--append-system-prompt') ?? '';
 const prompt = await new Promise((resolve) => {
   let s = '';
   process.stdin.setEncoding('utf8');
@@ -109,12 +109,13 @@ if (mcpConfigPath === '{"mcpServers":{}}') {
     });
   }
   if (prompt.includes('## 기억 정리')) {
+    // 기억은 완성본 두 편 이상이 근거여야 남는다 (parseMemory) — 주제 기억도 두 편을 근거로 단다
     const ids = [...prompt.matchAll(/\(id: ([^)]+)\)/g)].map((m) => m[1]);
     answer({
       items: [
         { text: '도입은 시청자의 불편함을 먼저 말하고 동작으로 넘어간다', kind: 'style', scope: 'all', topics: [], evidence: ids },
         { text: '동작 시범 중 말이 없는 구간은 잘라내지 않는다', kind: 'keep', scope: 'all', topics: [], evidence: ids },
-        { text: '어깨는 견갑골 움직임이 보이게 잡는다', kind: 'style', scope: 'topic', topics: ['어깨'], evidence: ids.slice(0, 1) },
+        { text: '어깨는 견갑골 움직임이 보이게 잡는다', kind: 'style', scope: 'topic', topics: ['어깨'], evidence: ids.slice(0, 2) },
         { text: '견갑골', kind: 'term', scope: 'all', topics: [], evidence: ids },
       ],
     });

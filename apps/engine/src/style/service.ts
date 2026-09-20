@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
+import { createHash } from 'node:crypto';
 import { type AiProvider, linkSiteLabel, normalizeVideoUrl, type Reference, type ReferenceStats, type Segment, type StyleResponse, type Video } from '@madi/shared';
 import type { AgentProvider } from '../agent/provider.js';
 import { insightPrompt, memoryBlock, memoryPrompt, parseInsight, parseMemory, retrieve } from './insight.js';
@@ -18,7 +19,7 @@ import type { JobQueue } from '../queue/index.js';
 import type { SettingsStore } from '../settings.js';
 import type { VideoStore } from '../videos.js';
 import type { Ffmpeg } from '../workers/ffmpeg.js';
-import { run, SpawnError } from '../workers/spawn.js';
+import { run, runAnalysis, SpawnError } from '../workers/spawn.js';
 import { termsPrompt, type Whisper } from '../workers/whisper.js';
 import { aggregate, aspectOf, learnedRuleLines, looksLikeSameVideo, pairDiff } from './learn.js';
 import { withKnownDirs } from '../agent/detect.js';
@@ -38,6 +39,7 @@ export interface StyleServiceDeps {
   ffmpegBin: string;
   /** yt-dlp. 없는 PC(개발)면 링크로 배우기가 꺼진다. */
   ytdlpBin: string;
+  resolveYtdlp?: () => string;
   whisper: () => Promise<Whisper>;
   events: EventLog;
   log: Logger;
@@ -66,6 +68,7 @@ export interface StyleServiceEvents {
 export class StyleService extends EventEmitter<StyleServiceEvents> {
   /** yt-dlp 가 이 PC 에 있는지. detectDownloader() 가 채운다. */
   private linkImport = false;
+  private downloaderBin: string;
   /** 기억 정리는 완성본 메모가 바뀔 때마다 하되, 연달아 끝나면 한 번만 (AI 한 턴이라 비싸다). */
   private rememoryTimer: ReturnType<typeof setTimeout> | null = null;
   private rememoryRunning = false;
@@ -73,12 +76,14 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
 
   constructor(private readonly d: StyleServiceDeps) {
     super();
+    this.downloaderBin = d.ytdlpBin;
   }
 
   /** yt-dlp --version 이 되면 링크로 배우기를 켠다. 기동 때 한 번 (몇 초 걸릴 수 있어 기다리지 않는다). */
   async detectDownloader(): Promise<boolean> {
     try {
-      const { stdout } = await run(this.d.ytdlpBin, ['--version']);
+      this.downloaderBin = this.d.resolveYtdlp?.() ?? this.d.ytdlpBin;
+      const { stdout } = await run(this.downloaderBin, ['--version'], { signal: AbortSignal.timeout(10_000) });
       this.linkImport = stdout.trim().length > 0;
     } catch (err) {
       this.linkImport = false;
@@ -106,7 +111,7 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
     // AI 를 나중에 연결한 경우: 숫자만 배운 완성본의 뜻을 이제 읽는다 (학습에서 뺀 것은 말고)
     if (this.insightOn()) {
       for (const ref of this.d.refs.learnable()) {
-        if (ref.status === 'done' && !ref.insight && (this.d.refs.segmentsOf(ref.id)?.length ?? 0) > 0) this.d.queue.enqueue({ type: 'insight', referenceId: ref.id });
+        if (ref.status === 'done' && !ref.insight && this.canInspect(ref)) this.d.queue.enqueue({ type: 'insight', referenceId: ref.id });
       }
     }
     if (opts.retryFailed) {
@@ -156,7 +161,7 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
     const next = this.d.refs.update(id, { excluded });
     this.relearn();
     if (next.insight) this.scheduleRememory();
-    else if (!excluded && this.insightOn() && next.status === 'done' && (this.d.refs.segmentsOf(id)?.length ?? 0) > 0) this.d.queue.enqueue({ type: 'insight', referenceId: id });
+    else if (!excluded && this.insightOn() && next.status === 'done' && this.canInspect(next)) this.d.queue.enqueue({ type: 'insight', referenceId: id });
     this.d.events.record('reference.excluded', { excluded });
     return next;
   }
@@ -166,12 +171,23 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
     return this.d.settings.get().ai.provider !== 'none';
   }
 
+  private canInspect(ref: Reference): boolean {
+    return (this.d.refs.segmentsOf(ref.id)?.length ?? 0) > 0 || (this.d.settings.get().ai.frames && fs.existsSync(ref.path));
+  }
+
   /** 새 영상을 편집할 때 붙일 "# 기억" 블록. 없으면 빈 문자열. */
   recall(video: Pick<Video, 'id' | 'title'>): string {
     const transcript = this.d.library.transcriptOf(video.id);
     // 사용자가 확인한 기억만 (제안은 설정 화면에만 보인다)
     const r = retrieve({ videoId: video.id, title: video.title, transcript: transcript?.segments ?? null }, this.d.memory.listApproved(), this.d.refs.withInsight());
     return memoryBlock(r);
+  }
+
+  contextKey(video: Pick<Video, 'id' | 'title'>): string {
+    const transcript = this.d.library.transcriptOf(video.id);
+    const relevant = retrieve({ videoId: video.id, title: video.title, transcript: transcript?.segments ?? null }, this.d.memory.listApproved(), this.d.refs.withInsight()).items;
+    const memories = relevant.map(({ text, kind, scope, topics }) => ({ text, kind, scope, topics })).sort((a, b) => a.text.localeCompare(b.text));
+    return createHash('sha256').update(JSON.stringify({ rules: this.d.style.rules(), subtitleStyle: this.d.style.params().subtitleStyle, memories })).digest('hex');
   }
 
   /** 분석이 끝난 완성본들을 합쳐 style.md 의 학습 블록과 params 를 갱신한다. */
@@ -214,7 +230,7 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
       try {
         // 유튜브는 JS 런타임이 있어야 한다. 트레이 앱엔 PATH 가 없으니 알려진 폴더를 붙이고, 우리 node(Electron 을 node 로) 를 직접 준다.
         const env = ytdlpEnv(withKnownDirs(process.env));
-        const { stdout } = await run(this.d.ytdlpBin, ytdlpArgs({ url: ref.url, outBase, ffmpeg: this.d.ffmpegBin, nodeBin: process.execPath }), { signal, stderrTail: 2000, env });
+        const { stdout } = await run(this.downloaderBin, ytdlpArgs({ url: ref.url, outBase, ffmpeg: this.d.ffmpegBin, nodeBin: process.execPath }), { signal, stderrTail: 2000, env });
         const got = parseYtdlpOutput(stdout);
         if (!got || !fs.existsSync(got.filePath)) throw new Error('yt-dlp finished without a file');
         const size = fs.statSync(got.filePath).size;
@@ -251,7 +267,7 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
         this.d.events.record('reference.analyzed', { aspect: stats.aspect, durationSec: stats.durationSec, paired: !!stats.pair }, Date.now() - started);
         this.relearn();
         // 자막이 있고 AI 가 연결돼 있으면 뜻까지 읽는다 (기획안 §7 · §10). 학습에서 뺀 것은 읽지 않는다.
-        if (this.insightOn() && !ref.excluded && (this.d.refs.segmentsOf(ref.id)?.length ?? 0) > 0) this.d.queue.enqueue({ type: 'insight', referenceId: ref.id });
+        if (this.insightOn() && !ref.excluded && this.canInspect(ref)) this.d.queue.enqueue({ type: 'insight', referenceId: ref.id });
       } catch (err) {
         // 사용자에겐 코드(쉬운 말)만, 원문은 로그에
         const message = err instanceof Error ? err.message : String(err);
@@ -267,8 +283,8 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
     this.d.queue.register('insight', async ({ job, signal }) => {
       const payload = job.payload as { type: 'insight'; referenceId: string };
       const ref = this.d.refs.get(payload.referenceId);
-      const segments = ref ? this.d.refs.segmentsOf(ref.id) : null;
-      if (!ref || ref.status !== 'done' || ref.excluded || !segments?.length) return;
+      const segments = (ref ? this.d.refs.segmentsOf(ref.id) : null) ?? [];
+      if (!ref || ref.status !== 'done' || ref.excluded || !this.canInspect(ref)) return;
       const providerId = this.d.settings.get().ai.provider;
       if (providerId === 'none') return;
       const provider = this.d.providers[providerId];
@@ -278,10 +294,11 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
       try {
         // 화면도 보여 준다 (기획안 §10) — 장면 전환 시각은 숫자 분석 때 재 두었다
         const sheets = this.d.settings.get().ai.frames && fs.existsSync(ref.path) ? await makeFrameSheets(this.d, ref.path, { durationSec: ref.stats?.durationSec ?? 0, scenes: ref.stats?.sceneTimes ?? [], dir: path.join(cwd, SHEETS_DIR), signal }) : [];
+        if (!segments.length && !sheets.length) throw new Error('no reference evidence');
         const { system, prompt } = insightPrompt(ref, segments, sheets.length ? { sheets: sheets.map((s) => ({ rel: s.rel, times: s.times })), attached: providerId === 'codex' } : undefined);
         const res = await provider.analyze({ system, prompt, cwd, images: sheets.map((s) => s.file), bin: provider.bin(this.d.settings.get().ai.paths?.[providerId] ?? null), signal });
         if (!res.ok) throw new Error(res.error ?? 'analyze failed');
-        const insight = parseInsight(res.text, { provider: providerId, durationSec: ref.stats?.durationSec ?? 0, frameTimes: sheets.flatMap((s) => s.times) });
+        const insight = parseInsight(res.text, { provider: providerId, durationSec: ref.stats?.durationSec ?? 0, frameTimes: sheets.flatMap((s) => s.times), hasSpeech: segments.length > 0 });
         if (!insight) throw new Error('no insight in answer');
         this.d.refs.update(ref.id, { insight });
         this.d.events.record('reference.insight', { provider: providerId, tags: insight.tags.length, shorts: insight.shortCandidates.length, frames: insight.frameTimes.length }, Date.now() - started);
@@ -315,7 +332,7 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
   async rememory(): Promise<void> {
     const refs = this.d.refs.withInsight();
     const providerId = this.d.settings.get().ai.provider;
-    if (refs.length === 0) {
+    if (refs.length < 2) {
       this.d.memory.replaceFromReferences([]);
       this.emit('style.updated');
       return;
@@ -356,10 +373,10 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
     const meta = await this.d.ffmpeg.probe(ref.path, signal);
     let silences: { start: number; end: number }[] = [];
     if (meta.hasAudio) {
-      const { stderr } = await run(this.d.ffmpegBin, silenceDetectArgs(ref.path, { minSec: 0.3 }), { signal });
+      const { stderr } = await runAnalysis(this.d.ffmpegBin, silenceDetectArgs(ref.path, { minSec: 0.3 }), { signal });
       silences = parseSilences(stderr, meta.durationSec);
     }
-    const scenes = parseScenes((await run(this.d.ffmpegBin, sceneDetectArgs(ref.path, 0.4), { signal })).stderr);
+    const scenes = parseScenes((await runAnalysis(this.d.ffmpegBin, sceneDetectArgs(ref.path, 0.4), { signal })).stderr);
     const minutes = Math.max(meta.durationSec / 60, 1 / 60);
     // 자막은 뜻을 읽는 재료라 소리가 있으면 항상 뜬다. whisper 가 없으면 건너뛴다 (숫자는 배운다).
     if (meta.hasAudio && !this.d.refs.segmentsOf(ref.id)) await this.transcribe(ref, signal);

@@ -17,29 +17,31 @@ export const FRAME_SHEET = {
 } as const;
 
 /**
- * 어느 시각의 화면을 볼지. 장면 전환 직후(+0.5초)를 먼저, 모자라면 고르게 나눈 지점을 더한다.
+ * 앞·중간·끝의 고른 표본을 확보한 뒤 장면 전환 직후(+0.5초)를 더한다.
  * 서로 1초 안에 붙은 것은 하나로. 앞뒤 0.2초는 피한다.
  */
 export function pickFrameTimes(durationSec: number, scenes: number[], max = FRAME_SHEET.perSheet * FRAME_SHEET.maxSheets): number[] {
   const dur = Math.max(0, durationSec);
-  if (dur <= 0.4) return [];
+  if (!Number.isFinite(dur) || dur <= 0.4 || max < 1) return [];
+  max = Math.floor(max);
   const lo = 0.2;
   const hi = Math.max(lo, dur - 0.2);
   const clamp = (t: number) => Math.min(hi, Math.max(lo, t));
   const out: number[] = [];
   const add = (t: number) => {
     const c = clamp(t);
-    if (out.some((x) => Math.abs(x - c) < 1)) return;
+    if (out.length >= max || out.some((x) => Math.abs(x - c) < 1)) return;
     out.push(c);
   };
-  for (const s of [...scenes].sort((a, b) => a - b)) {
-    if (out.length >= max) break;
-    add(s + 0.5);
-  }
-  // 고르게: 20초에 한 장쯤, 최소 6장, max 이하
-  const target = Math.min(max, Math.max(6, Math.round(dur / 20)));
+  // 장면 전환이 초반에 몰려도 후반을 놓치지 않도록 최소 절반은 전체에서 뽑는다.
+  const target = Math.min(max, Math.max(6, Math.ceil(max / 2)));
   const evenly = Math.min(target, Math.max(1, Math.round(dur / 0.9)));
-  for (let i = 0; i < evenly && out.length < target; i++) add(((i + 0.5) / evenly) * dur);
+  for (let i = 0; i < evenly; i++) add(evenly === 1 ? dur / 2 : lo + (i / (evenly - 1)) * (hi - lo));
+  const transitions = scenes.filter((t) => Number.isFinite(t) && t >= 0 && t < dur).sort((a, b) => a - b);
+  // 전환도 전체 길이에서 고르게 고른다. 슬롯 충돌 시 다음 전환으로 보충한다.
+  const slots = max - out.length;
+  for (let i = 0; i < slots && transitions.length; i++) add(transitions[Math.floor(((i + 0.5) / slots) * transitions.length)]! + 0.5);
+  for (const t of transitions) add(t + 0.5);
   return out.sort((a, b) => a - b).map((t) => Math.round(t * 10) / 10);
 }
 

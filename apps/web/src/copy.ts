@@ -161,8 +161,11 @@ export const copy = {
     referencesList: '완성본',
     insightOpen: '메모',
     insightClose: '닫기',
-    insightNone: 'AI 를 연결하면 자막을 읽고 취지 · 구성 · 숏폼 후보를 메모합니다.',
-    insightPending: '자막을 읽는 중',
+    insightNone: 'AI 를 연결하면 화면과 음성을 보고 구성 · 자막 · 편집 스타일을 메모합니다.',
+    insightPending: '화면과 음성을 분석할 예정',
+    insightCategories: { hook: '도입 방식', structure: '구성 방식', pacing: '편집 속도', captions: '자막 방식', framing: '구도' },
+    insightEvidence: { visual: '화면', audio: '음성', timing: '시간' },
+    insightScreenText: '화면 문구',
     insightPurpose: '취지',
     insightHook: '도입',
     insightSections: '구성',
@@ -207,7 +210,8 @@ export const copy = {
     linksPlaceholder: '유튜브 · 틱톡 · 릴스 링크 붙여넣기',
     linksAdd: '가져오기',
     linksHelp: '링크를 붙여 넣으면 내려받아 배웁니다. 공개 영상만 됩니다.',
-    linksOff: '링크를 읽는 도구가 없습니다. 마디를 다시 설치하세요.',
+    linksOff: '링크 도구를 찾지 못했습니다. 도구를 준비한 뒤 다시 확인해 주세요. 파일로도 등록할 수 있습니다.',
+    linksRetry: '다시 확인',
     linkBad: '영상 링크가 아닙니다.',
     linkStatus: {
       queued: '기다리는 중',
@@ -271,10 +275,11 @@ export const copy = {
   },
   /** 자막 직접 쓰기 (AI 없이, 소리 없는 영상에도) */
   subtitleEditor: {
+    secondary: '보조 문구·번역',
     open: '자막 직접 쓰기',
     edit: '자막 고치기',
     title: '자막 직접 쓰기',
-    hint: '시각은 초 또는 분:초 (예: 3, 0:03.5, 1:02)',
+    hint: '원본 영상 시각 · 초 또는 분:초. 모든 줄을 빼면 자막 없이 저장합니다.',
     start: '시작',
     end: '끝',
     text: '자막 글',
@@ -284,7 +289,7 @@ export const copy = {
     save: '저장하고 자막 넣기',
     cancel: '취소',
     badTime: '시각은 3 또는 0:03 형식으로 입력하세요.',
-    badRange: '끝 시각이 시작보다 뒤여야 합니다.',
+    badRange: '끝 시각은 시작보다 뒤이고 영상 길이 안이어야 합니다.',
     empty: '글을 한 줄 이상 써 주세요.',
   },
   /** 밖에서 처음 들어온 기기에 인증번호를 묻는 화면 */
@@ -372,6 +377,11 @@ export const copy = {
       title: '편집안',
       purpose: '취지',
       hook: '시작',
+      recipe: '반영할 방식',
+      order: '장면 순서',
+      captions: '자막 문구',
+      captionCount: (n: number, two: number) => `${n}개${two ? ` · 보조 문구 ${two}개` : ''}`,
+      limitations: '남은 제한',
       sections: '구성',
       sectionKind: { intro: '도입', setup: '준비', demo: '시범', qa: '질문', closing: '마무리', other: '' } as Record<string, string>,
       keeps: '남길 곳',
@@ -380,8 +390,8 @@ export const copy = {
       shorts: '숏폼 후보',
       channel: { reels: '릴스', shorts: '쇼츠', tiktok: '틱톡', any: '' } as Record<string, string>,
       makeShort: '숏폼으로',
-      apply: (cuts: number) => (cuts ? `잘라낼 후보 ${cuts}곳을 빼고 롱폼 만들기` : '이대로 롱폼 만들기'),
-      noTranscript: '자막 없이 장면과 쉬는 구간만 보고 만든 초안입니다.',
+      apply: (cuts: number) => (cuts ? `후보 ${cuts}곳을 빼고 이 편집안으로 만들기` : '이 편집안으로 만들기'),
+      noTranscript: '음성 받아쓰기 없이 화면과 장면 정보를 참고한 초안입니다.',
       terms: '용어',
       /** 후보 빼기 · 되돌리기 (뺀 것은 만들기에서 빠지고, 다시 제안하지 않는다) */
       reject: '빼기',
@@ -452,6 +462,8 @@ export const copy = {
       if (d.cropFocus) out.push(d.cropFocus.to === null ? '화면의 어느 쪽을 잡을지 다시 고릅니다.' : `화면 ${d.cropFocus.to < 0.25 ? '왼쪽' : d.cropFocus.to > 0.75 ? '오른쪽' : '가운데'}을 잡았습니다.`);
       if (d.subtitles) out.push(d.subtitles.to ? '자막을 넣었습니다.' : '자막을 뺐습니다.');
       if (d.subtitleBottom) out.push(d.subtitleBottom.to > d.subtitleBottom.from ? '자막을 위로 올렸습니다.' : '자막을 아래로 내렸습니다.');
+      if (d.subtitleText) out.push('자막 문구를 수정했습니다.');
+      if (d.subtitleAppearance) out.push('자막 모양을 수정했습니다.');
       if (d.emphasis?.added.length) out.push(`${d.emphasis.added.map((t) => `"${t}"`).join(', ')} 을 강조했습니다.`);
       if (d.emphasis?.removed.length) out.push(`${d.emphasis.removed.map((t) => `"${t}"`).join(', ')} 강조를 뺐습니다.`);
       return out;
@@ -525,6 +537,7 @@ export const copy = {
     too_short_for_chapters: '영상이 짧아 나눌 챕터가 없습니다.',
     plan_failed: '편집안을 만들지 못했습니다. 다시 시도하세요.',
     plan_missing: '편집안이 아직 없습니다. 먼저 편집안을 만드세요.',
+    plan_outdated: '편집 스타일이 바뀌었습니다. 편집안을 다시 만들면 최신 지침으로 반영됩니다.',
     edit_failed: '만드는 중에 문제가 생겼습니다. 한 번 더 시도합니다.',
     ai_off: 'AI가 연결되어 있지 않습니다. 설정에서 연결하세요.',
     ai_busy: '앞 요청을 처리하는 중입니다.',

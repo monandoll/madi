@@ -3,6 +3,17 @@ import { DEFAULT_SUBTITLE_STYLE } from '@madi/shared';
 import { parseSilences, silenceDetectArgs, silencesToCuts } from './silence.js';
 import { assColor, buildAss, escapeFilterPath, renderPlan } from './render.js';
 
+it('두 자막의 모양과 간격을 분리하고 조각 재배치·반복 후에도 같은 시각에 표시한다', () => {
+  const ass = buildAss([{ id: 'a', start: 0, end: 1, text: '첫 문구', secondaryText: 'First caption', words: [] }, { id: 'b', start: 1, end: 2, text: '둘째 문구', secondaryText: 'Second caption', words: [] }], [{ start: 1, end: 2 }, { start: 0, end: 1 }, { start: 1, end: 2 }], { ...DEFAULT_SUBTITLE_STYLE, background: 'outline', color: '#FFFFFF', outlineColor: '#000000', outlineWidth: 2, bottom: 0.4, secondaryColor: '#FFFF00', secondaryScale: 0.5, secondaryItalic: true }, { width: 1080, height: 1920 });
+  expect(ass).toContain('Style: Secondary,Pretendard,28,&H0000FFFF&');
+  expect(ass).toContain('100,100,0,0,1,2,0,2');
+  expect(ass).toContain('0:00:00.00,0:00:01.00,Secondary,,0,0,0,,Second caption');
+  expect(ass).toContain('0:00:01.00,0:00:02.00,Secondary,,0,0,0,,First caption');
+  expect(ass).toContain('0:00:02.00,0:00:03.00,Secondary,,0,0,0,,Second caption');
+  const primary = ass.split('\n').find((l) => l.startsWith('Dialogue:') && l.includes('Madi'))!;
+  expect(Number(primary.split(',')[7])).toBeGreaterThan(768);
+});
+
 describe('silence', () => {
   it('args 는 오디오만 훑는다', () => {
     const a = silenceDetectArgs('in.mp4');

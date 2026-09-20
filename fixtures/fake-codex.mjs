@@ -21,7 +21,12 @@ if (process.env['MADI_FAKE_CODEX'] === 'login') {
   process.stderr.write('Error: Not logged in. Run `codex login` to authenticate.\n');
   process.exit(1);
 }
-const prompt = args[args.length - 1] ?? '';
+const prompt = args.at(-1) === '-' ? await new Promise(resolve => {
+  let text = '';
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', chunk => { text += chunk; });
+  process.stdin.on('end', () => resolve(text));
+}) : args.at(-1) ?? '';
 const request = /사용자 요청: (.*)$/m.exec(prompt)?.[1] ?? '';
 const emit = (o) => process.stdout.write(`${JSON.stringify(o)}\n`);
 // 분석 모드: 완성본 읽기 · 기억 정리 (도구 없이 한 턴)

@@ -2,16 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { contactSheetArgs, FRAME_SHEET, frameSheets, pickFrameTimes } from './frames.js';
 
 describe('frames (대표 프레임 시트)', () => {
-  it('장면 전환 직후를 먼저, 모자라면 고르게 — 1초 안에 붙은 건 하나로, 앞뒤 0.2초는 피한다', () => {
+  it('전체 표본에 장면 전환을 보충 — 가까운 표본은 중복하지 않고 앞뒤 0.2초는 피한다', () => {
     const t = pickFrameTimes(60, [0, 10, 10.3, 40]);
-    expect(t[0]).toBe(0.5);
-    expect(t).toContain(10.5);
+    expect(t[0]).toBe(0.2);
+    expect(t.some((x) => Math.abs(x - 10.5) < 1)).toBe(true);
     expect(t).not.toContain(10.8);
     expect(t).toContain(40.5);
     expect(t.length).toBeGreaterThanOrEqual(6);
     for (const x of t) expect(x).toBeGreaterThanOrEqual(0.2);
     for (const x of t) expect(x).toBeLessThanOrEqual(59.8);
     expect([...t].sort((a, b) => a - b)).toEqual(t);
+  });
+  it('초반에 컷이 몰려도 중간·끝을 확인하고 유효한 시각만 선택한다', () => {
+    const t = pickFrameTimes(600, [...Array.from({ length: 100 }, (_, i) => i / 2), NaN, Infinity, -1]);
+    expect(t).toHaveLength(24);
+    expect(t.some((x) => x > 250 && x < 350)).toBe(true);
+    expect(t.at(-1)).toBe(599.8);
+    expect(t.every((x) => Number.isFinite(x) && x >= 0.2 && x <= 599.8)).toBe(true);
+    expect(pickFrameTimes(10, [], 0)).toEqual([]);
   });
   it('긴 영상도 최대 24장, 아주 짧은 영상은 0장', () => {
     expect(pickFrameTimes(1500, Array.from({ length: 200 }, (_, i) => i * 7)).length).toBe(FRAME_SHEET.perSheet * FRAME_SHEET.maxSheets);

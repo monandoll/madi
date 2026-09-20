@@ -26,7 +26,7 @@ export class Library extends EventEmitter<LibraryEvents> {
 
   // ---- transcripts ----
   transcriptOf(videoId: string): Transcript | null {
-    const row = this.db.select().from(transcripts).where(eq(transcripts.videoId, videoId)).get();
+    const row = this.db.select().from(transcripts).where(and(eq(transcripts.videoId, videoId), eq(transcripts.isSource, true))).orderBy(desc(transcripts.createdAt)).get();
     return row ? Transcript.parse(row) : null;
   }
 
@@ -35,17 +35,23 @@ export class Library extends EventEmitter<LibraryEvents> {
     return row ? Transcript.parse(row) : null;
   }
 
-  /** 영상당 하나. 다시 만들면 덮어쓴다. */
-  setTranscript(videoId: string, t: { language: string; model: string; segments: Segment[] }): Transcript {
-    const existing = this.transcriptOf(videoId);
-    const id = existing?.id ?? nanoid();
-    const row = { id, videoId, ...t, createdAt: Date.now() };
-    this.db
-      .insert(transcripts)
-      .values(row)
-      .onConflictDoUpdate({ target: transcripts.videoId, set: { language: t.language, model: t.model, segments: t.segments, createdAt: row.createdAt } })
-      .run();
+  /** 새 버전만 추가한다. 결과물 전용 문구는 원본 분석 자막을 바꾸지 않는다. */
+  setTranscript(videoId: string, t: { language: string; model: string; segments: Segment[] }, opts: { source?: boolean } = {}): Transcript {
+    const latest = this.db.select({ at: transcripts.createdAt }).from(transcripts).where(eq(transcripts.videoId, videoId)).orderBy(desc(transcripts.createdAt)).get();
+    const row = { id: nanoid(), videoId, ...t, isSource: opts.source ?? true, createdAt: Math.max(Date.now(), (latest?.at ?? 0) + 1) };
+    this.db.insert(transcripts).values(row).run();
     return Transcript.parse(row);
+  }
+
+  /** 지정 버전이 없어진 경우 최신 자막으로 조용히 바꾸지 않는다. */
+  transcriptForEdit(edit: Edit): Transcript | null {
+    return edit.transcriptId ? this.transcript(edit.transcriptId) : null;
+  }
+
+  /** 결과물은 항상 새 Edit로 수정한다. */
+  reviseEdit(existing: Edit, patch: Partial<EditInsert>): Edit {
+    const { id: _id, createdAt: _createdAt, ...rest } = existing;
+    return this.createEdit({ ...rest, ...patch, videoId: existing.videoId, revisionOf: existing.id });
   }
 
   // ---- edits ----

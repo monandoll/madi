@@ -8,13 +8,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ActionResponse, AiProvidersResponse, ChatResponse, HealthResponse, isStreaming, OutputDetailResponse, PlanResponse, VideoDetailResponse, VideosResponse } from '@madi/shared';
 import { resetCliCache } from '../src/agent/detect.js';
 import { type Engine, startEngine } from '../src/engine.js';
-import { FIXTURES, freePort, tempHome, waitFor } from './helpers.js';
+import { FIXTURES, fakeCli, freePort, tempHome, waitFor } from './helpers.js';
 
 let home: string;
 let engine: Engine;
 let videoId: string;
-const FAKE = path.join(FIXTURES, 'fake-claude.mjs');
-const FAKE_CODEX = path.join(FIXTURES, 'fake-codex.mjs');
+const FAKE = fakeCli('claude');
+const FAKE_CODEX = fakeCli('codex');
 
 const api = async <T>(p: string, init?: RequestInit): Promise<{ status: number; body: T }> => {
   const res = await fetch(`${engine.url}${p}`, init);
@@ -98,7 +98,20 @@ describe('AI 연결', () => {
     expect(busy.status).toBe(409);
     expect(errCode(busy.body)).toBe('ai_busy');
 
+    // 답 말풍선이 끝났다는 알림이 나가는 그 순간 busy 도 풀려 있어야 한다.
+    // 화면은 그 알림에 바로 다시 조회하고, 그 뒤엔 알림이 없다 — 아직 busy 면 "멈추기"에 멈춘다.
+    let busyWhenDone: boolean | null = null;
+    const onUpdated = (m: { id: string; params: Record<string, unknown> }) => {
+      if (m.id === messages[1]!.id && m.params['streaming'] === false && busyWhenDone === null) {
+        // 알림을 받은 화면의 조회는 빨라도 다음 틱에 도착한다
+        setImmediate(() => { busyWhenDone = engine.agent.isBusy(videoId); });
+      }
+    };
+    engine.library.on('message.updated', onUpdated);
+
     const reply = await waitReply();
+    engine.library.off('message.updated', onUpdated);
+    expect(busyWhenDone).toBe(false);
     expect(reply.code).toBe('ai.text');
     expect(String(reply.params['text'])).toContain('세로로 만들게요.');
     expect(String(reply.params['text'])).toContain('「AI 세로」 만들었어요');

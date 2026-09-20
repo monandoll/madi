@@ -11,12 +11,12 @@ interface Props {
   wide?: boolean;
   /** AI 연결 시 "이 문장 고쳐줘 / 이 부분 살려줘" 와 수정 요청 */
   onAsk?: ((text: string) => void) | undefined;
-  /** AI 없이 자막을 직접 고치기 (영상 상세의 자막 편집으로) */
+  /** 자막을 직접 고치기 (영상 상세의 자막 편집으로) */
   onEdit?: (() => void) | undefined;
 }
 
 /**
- * design/v2 결과물: 세로 프리뷰(자막 오버레이) · 4px 진행 바 · 재생 · 시각 · 자막 N문장/잘린 구간 N곳 · 자막 목록 · 다운로드/수정 요청.
+ * design/v2 결과물: 완성 영상 프리뷰 · 4px 진행 바 · 재생 · 시각 · 자막 N문장/잘린 구간 N곳 · 자막 목록 · 다운로드/수정 요청.
  * 잘린 문장은 취소선 + 'N초 잘림'. 고른 줄은 EEF5FA 배경에 "이 문장 고쳐줘/이 부분 살려줘".
  * 모바일 결과물 화면과 PC 옆 패널이 같은 컴포넌트를 쓴다.
  */
@@ -50,9 +50,7 @@ export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
   const vertical = output.width < output.height;
   const keep = keepSegments(edit, video.durationSec ?? output.durationSec);
   const rows = transcript ? rowsFor(transcript.segments, keep) : [];
-  const current = rows.find((r) => r.at !== null && t >= r.at && t < r.end!);
   const cuts = rows.filter((r) => r.at === null).length;
-  const selected = rows.find((r) => r.id === sel) ?? null;
 
   const toggle = () => {
     const v = videoRef.current;
@@ -70,11 +68,6 @@ export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
             style={{ width: vertical ? (wide ? 176 : 168) : '100%', maxWidth: vertical ? undefined : 340, aspectRatio: vertical ? '9/16' : '16/9' }}
           >
             <video ref={videoRef} src={output.url} poster={output.thumbnailUrl ?? undefined} playsInline preload="metadata" className="absolute inset-0 h-full w-full object-cover" data-testid="output-video" onClick={toggle} />
-            {current && edit.subtitles && (
-              <div className="pointer-events-none absolute inset-x-3 flex justify-center" style={{ bottom: '13%' }}>
-                <span className="rounded-[4px] bg-overlay-2 px-[7px] py-[3px] text-center text-12 leading-[1.45] font-semibold text-white">{current.text}</span>
-              </div>
-            )}
           </div>
         </div>
         <div className="relative h-1 rounded-pill bg-track">
@@ -179,6 +172,7 @@ export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
                         ),
                       )
                     : r.text}
+                  {r.secondaryText && <span className="block text-12 text-text-3">{r.secondaryText}</span>}
                 </span>
                 {cut && !on && <span className="flex-none text-11 text-text-3">{copy.output.cutMeta(Math.round(r.srcEnd - r.srcStart))}</span>}
                 {on && onAsk && (
@@ -194,7 +188,7 @@ export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
                     {cut ? copy.output.restoreLine : copy.output.fixLine}
                   </button>
                 )}
-                {on && !onAsk && onEdit && !cut && (
+                {on && onEdit && !cut && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -233,7 +227,6 @@ export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
           {copy.output.revise}
         </button>
       </div>
-      {selected && null}
     </div>
   );
 }
@@ -241,6 +234,7 @@ export function OutputView({ data, wide = false, onAsk, onEdit }: Props) {
 interface Row {
   id: string;
   text: string;
+  secondaryText?: string;
   srcStart: number;
   srcEnd: number;
   /** 결과물 시각. 잘린 문장은 null */
@@ -252,6 +246,6 @@ interface Row {
 function rowsFor(segments: Segment[], keep: { start: number; end: number }[]): Row[] {
   return segments.map((s) => {
     const r = remapRange({ start: s.start, end: s.end }, keep);
-    return { id: s.id, text: s.text, srcStart: s.start, srcEnd: s.end, at: r?.start ?? null, end: r?.end ?? null };
+    return { id: s.id, text: s.text, ...(s.secondaryText ? { secondaryText: s.secondaryText } : {}), srcStart: s.start, srcEnd: s.end, at: r?.start ?? null, end: r?.end ?? null };
   });
 }

@@ -124,7 +124,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
   }
   const ytdlpBin = resolveSidecar('ytdlp', cfg.binDir);
   const providers = { claude: new ClaudeProvider(writeMcpConfig), codex: new CodexProvider() };
-  const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, ytdlpBin, whisper, events, log, memory, corrections, providers });
+  const styleService = new StyleService({ cfg, settings, refs, queue, videos, library, style, ffmpeg, ffmpegBin, ytdlpBin, resolveYtdlp: () => resolveSidecar('ytdlp', cfg.binDir), whisper, events, log, memory, corrections, providers });
   styleService.registerWorker();
   const plans = new PlanStore(db);
   // 자막을 만들 때 whisper 에 알려 줄 용어: 확인한 용어 기억 + 완성본 메모의 용어 + 이 영상 편집안의 용어 (기획안 §5.2)
@@ -135,7 +135,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     ...corrections.rights(),
   ];
   registerEditWorkers({ cfg, queue, videos, library, ffmpeg, ffmpegBin, events, log, whisper, style, terms, corrections: () => corrections.active() });
-  registerPlanWorker({ cfg, queue, videos, library, plans, style, settings, providers, recall: (video) => styleService.recall(video), ffmpegBin, events, log });
+  registerPlanWorker({ cfg, queue, videos, library, plans, style, settings, providers, recall: (video) => styleService.recall(video), contextKey: (video) => styleService.contextKey(video), ffmpegBin, events, log });
 
   const tunnel = new Tunnel(resolveSidecar('cloudflared', cfg.binDir), log);
   const remoteAuth = new RemoteAuth(path.join(cfg.dataDir, 'pairs.json'));
@@ -146,7 +146,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     const s = settings.get();
     return { mode: s.remoteMode, token: s.tunnelToken, localUrl: url };
   };
-  const agentTools = new AgentTools({ cfg, library, videos, queue, ffmpegBin, style, chapters, events, log, memory, corrections });
+  const agentTools = new AgentTools({ cfg, library, videos, queue, ffmpegBin, style, chapters, events, log, memory, corrections, framesEnabled: () => settings.get().ai.frames });
   const agent = new AgentRunner({
     cfg,
     settings,
@@ -161,6 +161,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
     recall: (video) => styleService.recall(video),
     plan: (video) => {
       const p = plans.get(video.id);
+      if (p?.styleContextKey && p.styleContextKey !== styleService.contextKey(video)) return '이전 편집안은 스타일 설정 변경 전의 초안이다. 오래된 실행 설정을 쓰지 말고 현재 규칙·승인한 기억에 맞춰 도구로 편집한다.';
       return p ? planBlock(p) : '';
     },
   });
@@ -265,7 +266,7 @@ export async function startEngine(overrides: Partial<EngineConfig> = {}): Promis
       deps.pickFile = fn;
     },
     async stop() {
-      agent.stopAll();
+      await agent.stopAll();
       aiInstaller.stop();
       styleService.stop();
       tunnel.stop();

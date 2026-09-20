@@ -1,9 +1,11 @@
 import type { z } from 'zod';
-import { type ActionRequest, type ActionResponse, DEFAULT_SUBTITLE_STYLE, Edit, type Video } from '@madi/shared';
+import { type ActionRequest, type ActionResponse, DEFAULT_SUBTITLE_STYLE, Edit, mergeSubtitleStyle, type EditPlan, type SubtitleStyle, type TimeRange, type Video } from '@madi/shared';
 import type { EventLog } from './events.js';
 import type { Library } from './library.js';
 import type { PlanStore } from './plan/store.js';
 import { planCuts } from './plan/prompt.js';
+import { recipeForRange, parseRecipe } from './plan/execution.js';
+import { mergeSubtitleLines } from './agent/subtitles.js';
 import type { JobQueue } from './queue/index.js';
 import type { VideoStore } from './videos.js';
 
@@ -15,6 +17,8 @@ export interface ActionDeps {
   plans: PlanStore;
   /** AI 가 골라져 있는지 (편집안은 AI 한 턴이라 없으면 못 한다) */
   aiOn: () => boolean;
+  contextKey?: (video: Video) => string;
+  subtitleStyle?: () => SubtitleStyle;
 }
 
 export class ActionError extends Error {
@@ -39,9 +43,23 @@ export function runAction(d: ActionDeps, video: Video, req: ActionRequest): Acti
     crop: 'none',
     subtitles: false,
     transcriptId: transcript?.id ?? null,
-    subtitleStyle: DEFAULT_SUBTITLE_STYLE,
+    subtitleStyle: d.subtitleStyle?.() ?? DEFAULT_SUBTITLE_STYLE,
     speed: [],
   });
+  const planSettings = (plan: EditPlan, range?: TimeRange): Partial<z.input<typeof Edit>> => {
+    if (plan.styleContextKey && d.contextKey && plan.styleContextKey !== d.contextKey(video)) throw new ActionError('plan_outdated');
+    const recipe = recipeForRange(plan, range);
+    if (!recipe) return {};
+    const protectedRanges = [...plan.keepRanges, ...plan.cutCandidates.filter((_, i) => plan.feedback.some((f) => f.kind === 'cut' && f.index === i && f.verdict === 'rejected'))];
+    if (!range && !parseRecipe(recipe, duration, protectedRanges)) throw new ActionError('plan_outdated');
+    const caption = recipe.captions.length ? d.library.setTranscript(video.id, { language: transcript?.language ?? 'ko', model: 'ai-plan', segments: mergeSubtitleLines([], recipe.captions, true) }, { source: false }) : null;
+    return {
+      parts: recipe.parts,
+      subtitleStyle: mergeSubtitleStyle(d.subtitleStyle?.() ?? DEFAULT_SUBTITLE_STYLE, recipe.subtitleStyle),
+      subtitleAuto: recipe.subtitleStyle.bottom === undefined,
+      ...(caption ? { transcriptId: caption.id, subtitles: true } : {}),
+    };
+  };
   const messages: ActionResponse['messages'] = [];
   const user = (code: string, params: Record<string, string | number | boolean | null> = {}) =>
     messages.push(d.library.say({ videoId: video.id, role: 'user', kind: 'text', code, params }));
@@ -52,11 +70,16 @@ export function runAction(d: ActionDeps, video: Video, req: ActionRequest): Acti
 
   switch (req.type) {
     case 'subtitle': {
+      const existing = req.editId ? d.library.edit(req.editId) : null;
+      if (req.editId && (!existing || existing.videoId !== video.id)) throw new ActionError('not_found');
+      const selected = req.transcriptId ? d.library.transcript(req.transcriptId) : existing ? d.library.transcriptForEdit(existing) : transcript;
+      if (req.transcriptId && (!selected || selected.videoId !== video.id)) throw new ActionError('not_found');
       // 소리가 없어도 직접 쓴 자막(transcript)이 있으면 넣는다
-      if (video.hasAudio === false && !transcript) throw new ActionError('no_audio');
+      if (video.hasAudio === false && !selected) throw new ActionError('no_audio');
       user('action.subtitle');
-      const edit = d.library.createEdit({ ...baseEdit(`${video.title} · 자막`), subtitles: true });
-      if (transcript) {
+      const patch = { subtitles: selected ? selected.segments.length > 0 : true, transcriptId: selected?.id ?? null };
+      const edit = existing ? d.library.reviseEdit(existing, patch) : d.library.createEdit({ ...baseEdit(`${video.title} · 자막`), ...patch });
+      if (selected) {
         const job = d.queue.enqueue({ type: 'render', videoId: video.id, editId: edit.id });
         progress(job.id, 'progress.render', { step: 'render', action: 'subtitle' });
         return { messages, job };
@@ -86,18 +109,21 @@ export function runAction(d: ActionDeps, video: Video, req: ActionRequest): Acti
       if (end - start < 1) throw new ActionError('range_too_short');
       user('action.short', { start: Math.round(start), end: Math.round(end) });
       const n = d.library.shortEditCount(video.id) + 1;
-      const wantSubs = req.subtitles && (video.hasAudio !== false || !!transcript);
+      let wantSubs = req.subtitles && (video.hasAudio !== false || !!transcript);
       // 편집안의 숏폼 후보를 눌러 만든 거면 "골랐다"로 남기고, 화면을 보고 안 사람 위치가 있으면 그쪽을 잡는다 (기획안 §9 · §5.4)
       let cropFocus: number | null = null;
+      let recipePatch: Partial<z.input<typeof Edit>> = {};
       if (req.from === 'plan') {
         const plan = d.plans.get(video.id);
+        if (plan) recipePatch = planSettings(plan, { start, end });
         const idx = plan?.shortCandidates.findIndex((s) => Math.abs(s.start - start) < 0.5 && Math.abs(s.end - end) < 0.5) ?? -1;
         if (idx >= 0) d.plans.setFeedback(video.id, { kind: 'short', index: idx, verdict: 'accepted' });
         const side = plan?.framing?.side;
         cropFocus = side === 'left' ? 0 : side === 'right' ? 1 : null;
       }
-      const edit = d.library.createEdit({ ...baseEdit(`${video.title} · 숏폼 ${n}`), keep: { start, end }, crop: 'vertical', cropFocus, subtitles: wantSubs });
-      if (wantSubs && !transcript) {
+      wantSubs = req.subtitles && (wantSubs || !!recipePatch.transcriptId);
+      const edit = d.library.createEdit({ ...baseEdit(`${video.title} · 숏폼 ${n}`), ...recipePatch, keep: { start, end }, crop: 'vertical', cropFocus, subtitles: wantSubs });
+      if (wantSubs && !transcript && !recipePatch.transcriptId) {
         const job = d.queue.enqueue({ type: 'transcribe', videoId: video.id, renderEditId: edit.id });
         progress(job.id, 'progress.transcribe', { step: 'transcribe', action: 'short', durationSec: Math.round(duration) });
         return { messages, job };
@@ -128,9 +154,10 @@ export function runAction(d: ActionDeps, video: Video, req: ActionRequest): Acti
     case 'apply_plan': {
       const plan = d.plans.get(video.id);
       if (!plan) throw new ActionError('plan_missing');
+      const recipePatch = planSettings(plan);
       const cuts = planCuts(plan, duration);
       user('action.apply_plan', { cuts: cuts.length });
-      const edit = d.library.createEdit({ ...baseEdit(`${video.title} · 편집안`), cuts, subtitles: !!transcript });
+      const edit = d.library.createEdit({ ...baseEdit(`${video.title} · 편집안`), cuts, subtitles: !!transcript, ...recipePatch });
       const job = d.queue.enqueue({ type: 'render', videoId: video.id, editId: edit.id });
       const removed = Math.round(cuts.reduce((a, c) => a + (c.end - c.start), 0));
       progress(job.id, 'progress.render', { step: 'render', action: 'plan', cuts: cuts.length, removedSec: removed, title: edit.title });

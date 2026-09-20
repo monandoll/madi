@@ -68,6 +68,33 @@ describe('extractJson', () => {
   });
 });
 
+it('음성이 없어도 화면 분석을 요청하고, 실제 프레임에 근거한 문구·관찰만 저장한다', () => {
+  const material = { sheets: [{ rel: './sheets/a.jpg', times: [0.5, 8] }], attached: true };
+  const p = insightPrompt(ref(), [], material);
+  expect(p.prompt).toContain('음성 받아쓰기 (화면 자막 아님)');
+  expect(p.prompt).toContain('화면 시트에서 보이는 편집 방식');
+  const text = JSON.stringify({
+    purpose: '동작 시범', visual: '하단 문구', subtitleNotes: '한 줄',
+    styleObservations: [
+      { category: 'captions', observation: '하단 한 줄', evidence: 'visual', times: [0.5, 8, 12] },
+      { category: 'captions', observation: '음성에서 추측', evidence: 'audio', times: [8] },
+      { category: 'hook', observation: '듣지 않은 말', evidence: 'audio', times: [8] },
+      { category: 'framing', observation: '보지 않은 화면', evidence: 'visual', times: [12] },
+    ],
+    onScreenText: [{ text: '팔을 당겨주세요', at: 8 }, { text: '추측', at: 12 }, { text: '잘못된 시각', at: '8' }],
+  });
+  const insight = parseInsight(text, { provider: 'claude', durationSec: 15, frameTimes: [0.5, 8], hasSpeech: false })!;
+  expect(insight.styleObservations).toEqual([{ category: 'captions', observation: '하단 한 줄', evidence: 'visual', times: [0.5, 8] }]);
+  expect(insight.onScreenText).toEqual([{ text: '팔을 당겨주세요', at: 8 }]);
+  expect(memoryPrompt([ref({ insight })]).prompt).toContain('관찰(captions, visual, 0.5, 8초)');
+  expect(insightSummary(ref({ insight }))).toContain('팔을 당겨주세요');
+  const blind = parseInsight(text, { provider: 'claude', durationSec: 15, hasSpeech: false })!;
+  expect(blind.styleObservations).toEqual([]);
+  expect(blind.onScreenText).toEqual([]);
+  expect(blind.visual).toBe('');
+  expect(blind.subtitleNotes).toBe('');
+});
+
 describe('parseInsight', () => {
   const good = {
     purpose: '어깨가 뻐근한 사람을 위한 스트레칭',
@@ -133,18 +160,17 @@ describe('memoryPrompt / parseMemory', () => {
   it('답을 기억 줄로. 모르는 근거 id 는 버리고, topic 인데 topics 가 없으면 all', () => {
     const text = JSON.stringify({
       items: [
-        { text: '도입은 질문으로 연다', kind: 'style', scope: 'all', evidence: ['a', 'zzz'] },
-        { text: '시범 중 침묵은 남긴다', kind: 'keep', scope: 'topic', topics: [], evidence: ['b'] },
-        { text: '견갑골', kind: 'term', scope: 'topic', topics: ['어깨'], evidence: [] },
+        { text: '도입은 질문으로 연다', kind: 'style', scope: 'all', evidence: ['a', 'b', 'zzz'] },
+        { text: '시범 중 침묵은 남긴다', kind: 'keep', scope: 'topic', topics: [], evidence: ['b', 'a'] },
+        { text: '견갑골', kind: 'term', scope: 'topic', topics: ['어깨'], evidence: ['a', 'a', 'zzz'] },
         { text: '도입은 질문으로 연다', kind: 'style', scope: 'all' },
         { text: '', kind: 'style' },
       ],
     });
     const items = parseMemory(text, new Set(['a', 'b']));
     expect(items).toEqual([
-      { text: '도입은 질문으로 연다', kind: 'style', scope: 'all', topics: [], evidence: ['a'] },
-      { text: '시범 중 침묵은 남긴다', kind: 'keep', scope: 'all', topics: [], evidence: ['b'] },
-      { text: '견갑골', kind: 'term', scope: 'topic', topics: ['어깨'], evidence: [] },
+      { text: '도입은 질문으로 연다', kind: 'style', scope: 'all', topics: [], evidence: ['a', 'b'] },
+      { text: '시범 중 침묵은 남긴다', kind: 'keep', scope: 'all', topics: [], evidence: ['b', 'a'] },
     ]);
   });
 });

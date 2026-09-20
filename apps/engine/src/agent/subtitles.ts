@@ -6,6 +6,7 @@ export interface SubtitleLine {
   start: number;
   end: number;
   text: string;
+  secondaryText?: string | undefined;
 }
 
 /**
@@ -16,11 +17,14 @@ export interface SubtitleLine {
  */
 export function mergeSubtitleLines(existing: Segment[], lines: SubtitleLine[], replaceAll = false): Segment[] {
   const clean = lines
-    .map((l) => ({ start: Math.max(0, Math.min(l.start, l.end)), end: Math.max(l.start, l.end), text: l.text.replace(/\s+/g, ' ').trim() }))
+    .map((l) => ({ start: Math.max(0, Math.min(l.start, l.end)), end: Math.max(l.start, l.end), text: l.text.replace(/\s+/g, ' ').trim(), ...(l.secondaryText !== undefined ? { secondaryText: l.secondaryText.replace(/\s+/g, ' ').trim() } : {}) }))
     .filter((l) => l.text.length > 0)
     .map((l) => (l.end - l.start < 0.3 ? { ...l, end: l.start + 0.3 } : l))
     .sort((a, b) => a.start - b.start);
-  const fresh: Segment[] = clean.map((l) => ({ id: nanoid(8), start: l.start, end: l.end, text: l.text, words: [] }));
+  const fresh: Segment[] = clean.map((l) => {
+    const previous = !replaceAll && l.secondaryText === undefined ? existing.find((s) => overlapsMostly(s, l))?.secondaryText : undefined;
+    return { id: nanoid(8), ...l, ...(previous !== undefined ? { secondaryText: previous } : {}), words: [] };
+  });
   if (replaceAll || existing.length === 0) return fresh;
   const kept = existing.filter((s) => !clean.some((l) => overlapsMostly(s, l)));
   return [...kept, ...fresh].sort((a, b) => a.start - b.start);

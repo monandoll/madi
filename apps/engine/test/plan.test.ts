@@ -18,10 +18,13 @@ describe('planPrompt', () => {
       scenes: [12, 60],
       format: 'long',
       memory: '# 기억\n- [방식] 도입은 질문으로',
+      rules: '- 제목은 첫 2초에만 표시',
     });
     expect(system).toContain('파일은 만들지 않는다');
     expect(system).toContain('지어내지 않는다');
     expect(system).toContain('# 기억');
+    expect(system).toContain('제목은 첫 2초에만 표시');
+    expect(system).toContain('기억과 기본 제작 지침보다 우선');
     expect(prompt).toContain('## 편집안');
     expect(prompt).toContain('길이(초): 120');
     expect(prompt).toContain('16:9');

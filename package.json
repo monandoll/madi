@@ -22,6 +22,7 @@
     "e2e:web": "playwright test",
     "e2e:web:ui": "playwright test --ui",
     "sidecars": "node scripts/fetch-sidecars.mjs",
+    "setup:links": "node scripts/fetch-sidecars.mjs --only ytdlp,ffmpeg,ffprobe",
     "package": "pnpm build && pnpm --filter @madi/engine package"
   },
   "devDependencies": {
