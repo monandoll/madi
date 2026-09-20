@@ -7,10 +7,11 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { StyleResponse } from '@madi/shared';
 import { type Engine, startEngine } from '../src/engine.js';
-import { FIXTURES, freePort, tempHome, waitFor } from './helpers.js';
+import { fakeCli, FIXTURES, freePort, tempHome, waitFor } from './helpers.js';
 
 const FAKE_YTDLP = path.join(FIXTURES, 'fake-ytdlp.mjs');
-const FAKE_CLAUDE = path.join(FIXTURES, 'fake-claude.mjs');
+// 윈도우에서는 .mjs 를 바로 실행할 수 없어 .cmd 로 감싼다 (다른 OS 는 스크립트 그대로)
+const FAKE_CLAUDE = fakeCli('claude');
 
 let home: string;
 let refDir: string;
@@ -192,10 +193,12 @@ describe('완성본의 뜻 읽기 · 기억', () => {
     }
     // 숫자만 배운 완성본(자막 있음)을 이제 읽는다
     await api('/api/style/relearn', { method: 'POST' });
+    // 소리 없는 완성본도 화면 표본으로 읽으니 같이 기다린다 (ai.frames 기본 켜짐)
     await waitFor(async () => {
       const s = await style();
       const withAudio = s.references.filter((r) => r.stats?.hasAudio);
-      return withAudio.length > 0 && withAudio.every((r) => r.insight);
+      const silent = s.references.find((r) => r.title === '무음 완성');
+      return withAudio.length > 0 && withAudio.every((r) => r.insight) && !!silent?.insight;
     }, 90_000);
     const s = await style();
     const one = s.references.find((r) => r.title === '햄스트링 완성')!;
@@ -207,8 +210,11 @@ describe('완성본의 뜻 읽기 · 기억', () => {
     expect(one.insight!.frameTimes.length).toBeGreaterThan(0);
     // 시각은 영상 길이 안
     for (const k of one.insight!.keepRanges) expect(k.end).toBeLessThanOrEqual(one.stats!.durationSec);
-    // 소리 없는 완성본은 읽을 게 없다
-    expect(s.references.find((r) => r.title === '무음 완성')!.insight).toBeNull();
+    // 소리 없는 완성본은 자막 없이 화면만 보고 읽는다
+    const silent = s.references.find((r) => r.title === '무음 완성')!;
+    expect(engine.refs.segmentsOf(silent.id) ?? []).toEqual([]);
+    expect(silent.insight).toMatchObject({ provider: 'claude' });
+    expect(silent.insight!.frameTimes.length).toBeGreaterThan(0);
 
     // 완성본 메모들 → 제작자 기억 (2초 뒤 한 번)
     await waitFor(async () => (await style()).memory.some((m) => m.source === 'reference'), 30_000);
