@@ -1,19 +1,22 @@
 import { z } from 'zod';
-import { TimeRange } from '@madi/shared';
+import { TimeRange, VideoFramesRequest, SubtitleStylePatch, CaptionLine } from '@madi/shared';
 
 /**
  * 에이전트에 노출하는 편집 도구. 이름·설명·입력 스키마의 단일 출처.
  * MCP 서버(tools/list)와 엔진(입력 검증)이 같이 쓴다. 설명은 모델이 읽는다.
  */
-const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 /** 세로로 자를 때 잡을 쪽. auto 는 렌더할 때 움직이는 쪽을 고른다. */
 const Focus = z.enum(['auto', 'left', 'center', 'right']).describe('세로(9:16)로 자를 때 어느 쪽을 잡을지. 기본 auto = 화면에서 움직이는 쪽');
 
 export const TOOL_DEFS = {
+  inspect_video_frames: {
+    description: '영상의 실제 화면을 시각 순서의 이미지로 본다. 동작·자세 변화·화면 자막을 확인하거나 동작에 맞는 안내 자막을 요청받으면 반드시 먼저 사용한다. editId가 있으면 그 결과에 남는 원본 장면만 결과 순서로 본다. 반환 이미지의 각 칸은 왼쪽→오른쪽, 위→아래 순서이며 sourceTime은 자막 도구에 쓰는 원본 초, outputTime은 선택한 결과물 초다. 표본만 본 것이므로 동작 전환이 불명확하면 range를 좁혀 다시 본다. 장면 전환/음성/기존 생성 자막만으로 동작을 추측하지 않는다.',
+    input: VideoFramesRequest,
+  },
   get_transcript: {
     description:
       '영상의 자막(문장 단위, 초 단위 시각)을 돌려준다. 아직 없으면 지금 만든다(길이에 따라 수 분). 소리가 없는 영상이면 실패한다. 어디를 자를지 판단하기 전에 먼저 부른다.',
-    input: z.object({}),
+    input: z.object({ editId: z.string().optional().describe('기존 결과물 자막을 읽을 때 그 editId. 음성 인식을 다시 하지 않는다.') }),
   },
   find_silences: {
     description: '말이 없는 구간(무음) 목록을 돌려준다. 잘라내지는 않는다. moving=true 면 말은 없지만 동작이 이어지는 침묵(시범)이라 자르면 안 된다.',
@@ -22,7 +25,7 @@ export const TOOL_DEFS = {
     }),
   },
   find_scenes: {
-    description: '화면이 크게 바뀌는 시각(장면 전환) 목록을 돌려준다. 카메라 앵글이 바뀌거나 동작이 바뀌는 지점을 찾을 때.',
+    description: '화면이 크게 바뀌는 시각(장면 전환) 목록을 돌려준다. 동작의 의미를 보거나 이름을 식별하는 도구가 아니다. 한 장면에서도 동작은 여러 번 바뀔 수 있으며 실제 동작 확인은 inspect_video_frames를 쓴다.',
     input: z.object({
       threshold: z.number().min(0.1).max(0.9).optional().describe('민감도. 낮을수록 더 많이 찾는다. 기본 0.4'),
     }),
@@ -46,6 +49,7 @@ export const TOOL_DEFS = {
       crop: z.enum(['none', 'vertical']).optional(),
       focus: Focus.optional(),
       subtitles: z.boolean().optional(),
+      subtitleStyle: SubtitleStylePatch.optional().describe('이 편집에 실제 적용할 자막 설정. 기억·편집안의 모양을 여기에 전달한다. bottom 지정 시 자동 위치 변경을 끈다.'),
       emphasis: z
         .array(z.object({ term: z.string().trim().min(1).max(40), start: z.number().min(0).optional(), end: z.number().min(0).optional() }))
         .max(20)
@@ -77,23 +81,19 @@ export const TOOL_DEFS = {
     }),
   },
   set_subtitle_style: {
-    description: '자막 모양(글자 크기·색·박스 색·아래 여백)을 바꾼다. editId 가 있으면 그 편집만(결과물이 이미 있으면 새 편집이 되고 editId 가 돌아온다 — render 는 그걸로), remember=true 면 앞으로의 기본값도 바꾼다. bottom 을 주면 그 편집은 자동 위치(동작을 가리면 위로)를 쓰지 않는다.',
-    input: z.object({
+    description: '자막 모양을 실제로 바꾼다. background=outline은 박스 없는 테두리 글자, box는 배경 박스. 본문 크기·색·굵기·기울임·테두리·아래 여백과 보조 문구의 secondaryScale/secondaryColor/secondaryItalic을 지정한다. editId가 있으면 그 편집만(이미 출력했으면 새 editId 반환), remember=true는 사용자가 앞으로도 적용하라고 했을 때만 쓴다. bottom 지정 시 자동 위치를 끈다.',
+    input: SubtitleStylePatch.extend({
       editId: z.string().optional(),
-      fontSize: z.number().int().min(8).max(200).optional(),
-      color: Hex.optional(),
-      boxColor: Hex.optional(),
-      bottom: z.number().min(0).max(1).optional().describe('화면 아래에서 띄우는 비율'),
       remember: z.boolean().optional(),
     }),
   },
   set_subtitle_text: {
     description:
-      '자막 문장을 고친다. 들린 말이 틀렸거나 알아듣기 어려울 때, 또는 사용자가 문장을 직접 알려 줬을 때("○○라고 자막 넣어줘", "이 문장 고쳐줘"). lines 는 시작·끝 시각(초)과 글. 그 시각과 겹치는 기존 문장은 이 줄로 바뀐다. replaceAll=true 면 자막 전체를 이 줄들로 새로 만든다. 자막이 아직 없어도 된다. 고친 뒤 화면에 넣으려면 apply_edit(subtitles=true) → render.',
+      '사용자가 원하는 자막 문구를 넣거나 고친다. text는 본문, secondaryText는 그 아래에 표시할 번역·보조 문구(없으면 생략). 음성·음성 인식 없이도 된다. 기존 결과물 수정에는 editId를 지정하고 반환된 editId로 render한다. 시각은 원본 초. replaceAll=true는 전체 교체, 빈 lines는 전체 삭제. editId가 없으면 원본 자막 버전을 만들고 apply_edit(subtitles=true) → render로 출력한다.',
     input: z.object({
+      editId: z.string().optional(),
       lines: z
-        .array(z.object({ start: z.number().min(0), end: z.number().min(0), text: z.string().trim().min(1).max(200) }))
-        .min(1)
+        .array(CaptionLine)
         .max(200),
       replaceAll: z.boolean().optional(),
     }),
