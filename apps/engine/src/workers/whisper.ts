@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { parseSilences, silenceDetectArgs } from '@madi/ffmpeg-presets';
 import type { Segment, TimeRange, Word } from '@madi/shared';
-import { run } from './spawn.js';
+import { run, runAnalysis } from './spawn.js';
 
 /**
  * whisper.cpp 의 `-ojf`(full json) 출력. 토큰에 시각이 붙어 있어 단어를 만들 수 있다.
@@ -191,7 +191,7 @@ export class Whisper {
       // 무음 구간(0.5초 이상)을 재서 그 안에서 지어낸 문장을 버린다. 실패해도 자막은 살린다.
       let silences: TimeRange[] = [];
       try {
-        const { stderr } = await run(this.bins.ffmpeg, silenceDetectArgs(wav, { minSec: 0.5 }), { signal: opts.signal });
+        const { stderr } = await runAnalysis(this.bins.ffmpeg, silenceDetectArgs(wav, { minSec: 0.5 }), { signal: opts.signal });
         silences = parseSilences(stderr, Number.MAX_SAFE_INTEGER);
       } catch {
         /* 무음 측정 실패 → 걸러내지 않음 */

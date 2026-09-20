@@ -8,7 +8,7 @@ import type { Library } from '../library.js';
 import type { Logger } from '../log.js';
 import type { JobQueue } from '../queue/index.js';
 import type { VideoStore } from '../videos.js';
-import { run } from './spawn.js';
+import { runAnalysis } from './spawn.js';
 
 export interface ChapterWorkerDeps {
   queue: JobQueue;
@@ -88,11 +88,11 @@ export async function computeChapters(d: ChapterWorkerDeps, video: Video, signal
   setProgress?.(0.4);
   let silences: { start: number; end: number }[] = [];
   if (video.hasAudio !== false) {
-    const { stderr } = await run(d.ffmpegBin, silenceDetectArgs(video.path, { minSec: Math.max(1, d.style.params().silenceMinSec) }), { signal });
+    const { stderr } = await runAnalysis(d.ffmpegBin, silenceDetectArgs(video.path, { minSec: Math.max(1, d.style.params().silenceMinSec) }), { signal });
     silences = parseSilences(stderr, duration);
   }
   setProgress?.(0.6);
-  const scenes = parseScenes((await run(d.ffmpegBin, sceneDetectArgs(video.path, 0.4), { signal })).stderr);
+  const scenes = parseScenes((await runAnalysis(d.ffmpegBin, sceneDetectArgs(video.path, 0.4), { signal })).stderr);
   setProgress?.(0.9);
   const segments = transcript?.segments ?? [];
   const items = splitChapters({ segments, silences, scenes, durationSec: duration });

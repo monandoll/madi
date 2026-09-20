@@ -319,7 +319,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   // 버튼 액션 · 인사 · 자동 편집안이 같이 쓰는 것. AI 는 "골라져 있는지"만 본다 (설치 확인은 잡이 돌 때).
-  const actionDeps = { queue, videos, library: deps.library, events: deps.events, plans: deps.plans, aiOn: () => settings.get().ai.provider !== 'none' };
+  const actionDeps = { queue, videos, library: deps.library, events: deps.events, plans: deps.plans, aiOn: () => settings.get().ai.provider !== 'none', contextKey: (video: Video) => deps.styleService.contextKey(video), subtitleStyle: () => deps.styleService.response().subtitleStyle };
 
   app.get('/api/videos', (c) => {
     const body: VideosResponse = { videos: videos.listVisible().map((v) => toCard(v, deps)) };
@@ -371,8 +371,10 @@ export function createApp(deps: AppDeps): Hono {
     if (v.status !== 'ready') return c.json({ error: { code: 'video_not_ready', message: 'video not ready' } }, 409);
     const parsed = ChatRequest.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
+    const target = parsed.data.editId ? deps.library.edit(parsed.data.editId) : null;
+    if (parsed.data.editId && (!target || target.videoId !== v.id)) return c.json({ error: { code: 'bad_request', message: 'edit not found for video' } }, 400);
     try {
-      const body: ChatResponse = { messages: deps.agent.ask(v, parsed.data.text) };
+      const body: ChatResponse = { messages: deps.agent.ask(v, parsed.data.text, parsed.data.editId) };
       return c.json(body);
     } catch (err) {
       if (err instanceof AgentError) return c.json({ error: { code: err.code, message: err.code } }, 409);
@@ -401,16 +403,19 @@ export function createApp(deps: AppDeps): Hono {
     if (!video) return c.notFound();
     const parsed = TranscriptPutRequest.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ error: { code: 'bad_request', message: parsed.error.message } }, 400);
-    const existing = deps.library.transcriptOf(video.id);
+    const target = parsed.data.editId ? deps.library.edit(parsed.data.editId) : null;
+    if (parsed.data.editId && (!target || target.videoId !== video.id)) return c.json({ error: { code: 'not_found', message: 'edit not found' } }, 404);
+    if (parsed.data.segments.some((s) => video.durationSec !== null && s.end > video.durationSec)) return c.json({ error: { code: 'bad_request', message: 'subtitle outside video' } }, 400);
+    const existing = target ? deps.library.transcriptForEdit(target) : deps.library.transcriptOf(video.id);
     const fresh = mergeSubtitleLines([], parsed.data.segments, true);
     const segments = fresh.map((seg) => {
-      const same = existing?.segments.find((o) => o.text === seg.text && Math.abs(o.start - seg.start) < 0.05 && Math.abs(o.end - seg.end) < 0.05);
+      const same = existing?.segments.find((o) => o.text === seg.text && o.secondaryText === seg.secondaryText && Math.abs(o.start - seg.start) < 0.05 && Math.abs(o.end - seg.end) < 0.05);
       return same ?? seg;
     });
     // 고친 말을 남긴다 (틀린 말 → 바른 말) — 다음 자막부터 알려 주고, 반복되면 바로 바꾼다 (기획안 §5.2)
     const pairs = existing ? diffCorrections(existing.segments, segments) : [];
     if (pairs.length) deps.corrections.record(pairs, video.id);
-    const transcript = deps.library.setTranscript(video.id, { language: existing?.language ?? 'ko', model: existing?.model ?? 'manual', segments });
+    const transcript = deps.library.setTranscript(video.id, { language: existing?.language ?? 'ko', model: 'manual', segments }, { source: !target });
     deps.events.record('transcript.edited', { lines: segments.length, manual: true, total: segments.length, corrections: pairs.length });
     const body: TranscriptResponse = { transcript };
     return c.json(body);
@@ -447,7 +452,7 @@ export function createApp(deps: AppDeps): Hono {
     const body: OutputDetailResponse = {
       output: toOutputCard(o, cfg),
       edit,
-      transcript: (edit.transcriptId && deps.library.transcript(edit.transcriptId)) || deps.library.transcriptOf(v.id),
+      transcript: deps.library.transcriptForEdit(edit),
       video: toCard(v, deps),
       previous: prevEdit && prevOut ? { output: toOutputCard(prevOut, cfg), edit: prevEdit } : null,
     };
@@ -508,7 +513,8 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   /** 완성본 폴더를 다시 훑고, 실패한 것(링크 포함)도 다시 분석한다. */
-  app.post('/api/style/relearn', (c) => {
+  app.post('/api/style/relearn', async (c) => {
+    await deps.styleService.detectDownloader();
     deps.styleService.refresh({ retryFailed: true });
     const body: StyleResponse = deps.styleService.response();
     return c.json(body);
@@ -519,6 +525,7 @@ export function createApp(deps: AppDeps): Hono {
     const parsed = AddLinkRequest.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ error: { code: 'bad_link', message: parsed.error.message } }, 400);
     try {
+      if (!deps.styleService.response().linkImport) await deps.styleService.detectDownloader();
       deps.styleService.addLink(parsed.data.url);
     } catch (err) {
       if (err instanceof LinkError) return c.json({ error: { code: err.code, message: err.code } }, err.code === 'no_downloader' ? 501 : 400);

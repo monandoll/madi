@@ -238,7 +238,8 @@ describe('edit actions (AI off)', () => {
     const t2 = (await again.json()).transcript;
     expect(t2.segments[0].id).toBe(t.segments[0].id);
     expect(t2.segments[1].id).not.toBe(t.segments[1].id);
-    expect((await fetch(`${engine.url}/api/videos/${silent.id}/transcript`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ segments: [] }) })).status).toBe(400);
+    // 빈 목록은 자막을 모두 지우는 명시적 수정이다.
+    expect((await fetch(`${engine.url}/api/videos/${silent.id}/transcript`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ segments: [] }) })).status).toBe(200);
   });
 
   it('자막에서 고친 말은 남는다: 틀린 말 → 바른 말, 두 번이면 바로 바꿈, 빼면 사라진다 (기획안 §5.2)', async () => {

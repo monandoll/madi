@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEFAULT_SUBTITLE_STYLE, type Edit, editDiff, type Output, type TimeRange, type Video } from '@madi/shared';
+import { DEFAULT_SUBTITLE_STYLE, SubtitleStylePatch, mergeSubtitleStyle, type Edit, editDiff, type Output, type TimeRange, type Video } from '@madi/shared';
 import { parseScenes, parseSilences, sceneDetectArgs, scenesToRanges, silenceDetectArgs, silencesToCuts } from '@madi/ffmpeg-presets';
 import type { EngineConfig } from '../config.js';
 import type { EventLog } from '../events.js';
@@ -7,7 +7,7 @@ import type { Library } from '../library.js';
 import type { Logger } from '../log.js';
 import type { JobQueue } from '../queue/index.js';
 import type { VideoStore } from '../videos.js';
-import { run } from '../workers/spawn.js';
+import { runAnalysis } from '../workers/spawn.js';
 import { splitByMotion } from '../workers/edit.js';
 import { TOOL_DEFS, type ToolInput, type ToolName } from '../mcp/tools.js';
 import type { ToolOutcome } from '../mcp/server.js';
@@ -17,6 +17,7 @@ import type { StyleProfile } from './style.js';
 import type { MemoryStore } from '../style/memory.js';
 import { type CorrectionStore, diffCorrections } from '../style/corrections.js';
 import { mergeSubtitleLines } from './subtitles.js';
+import { inspectVideoFrames } from '../workers/inspect-video.js';
 
 export interface AgentToolDeps {
   cfg: EngineConfig;
@@ -32,6 +33,7 @@ export interface AgentToolDeps {
   memory: MemoryStore;
   /** 자막을 고치면 "틀린 말 → 바른 말" 을 남긴다 */
   corrections: CorrectionStore;
+  framesEnabled?: () => boolean;
 }
 
 export interface ToolContext {
@@ -60,6 +62,15 @@ export class AgentTools {
     if (!video) return { ok: false, error: '영상을 찾지 못했습니다.' };
     const started = Date.now();
     try {
+      if (name === 'inspect_video_frames') {
+        if (this.d.framesEnabled?.() === false) throw new ToolError('설정에서 영상 화면 분석이 꺼져 있습니다. 화면 분석을 켜면 동작을 확인할 수 있습니다.');
+        const request = parsed.data as ToolInput<'inspect_video_frames'>;
+        const edit = request.editId ? this.d.library.edit(request.editId) : null;
+        if (request.editId && (!edit || edit.videoId !== video.id)) throw new ToolError('그 편집을 찾지 못했습니다.');
+        const inspection = await inspectVideoFrames({ ffmpegBin: this.d.ffmpegBin, workDir: this.d.cfg.workDir, video, edit, request, signal: ctx.signal });
+        this.d.events.record('ai.tool', { name, ok: true, frames: request.count }, Date.now() - started);
+        return { ok: true, result: inspection.summary, images: inspection.images };
+      }
       const result = await this.dispatch(name, video, ctx, parsed.data);
       this.d.events.record('ai.tool', { name, ok: true }, Date.now() - started);
       return { ok: true, result };
@@ -73,8 +84,10 @@ export class AgentTools {
 
   private dispatch(name: ToolName, video: Video, ctx: ToolContext, input: unknown): Promise<unknown> {
     switch (name) {
+      case 'inspect_video_frames':
+        throw new ToolError('화면 확인은 전용 경로를 사용하세요.');
       case 'get_transcript':
-        return this.getTranscript(video, ctx);
+        return this.getTranscript(video, ctx, input as ToolInput<'get_transcript'>);
       case 'find_silences':
         return this.findSilences(video, ctx, input as ToolInput<'find_silences'>);
       case 'find_scenes':
@@ -100,14 +113,18 @@ export class AgentTools {
 
   /** 자막 문장 고치기. 자막이 없으면 준 줄들로 새로 만든다 (model=manual). */
   private setSubtitleText(video: Video, input: ToolInput<'set_subtitle_text'>) {
-    const existing = this.d.library.transcriptOf(video.id);
+    const target = input.editId ? this.d.library.edit(input.editId) : null;
+    if (input.editId && (!target || target.videoId !== video.id)) throw new ToolError('그 편집을 찾지 못했습니다.');
+    if (input.lines.some((s) => s.end <= s.start || (video.durationSec !== null && s.end > video.durationSec))) throw new ToolError('자막 시각을 영상 길이 안에서 시작보다 끝이 뒤가 되게 정하세요.');
+    if (input.lines.length === 0 && !input.replaceAll) throw new ToolError('문구를 주거나 전체 삭제에 replaceAll=true를 지정하세요.');
+    const existing = target ? this.d.library.transcriptForEdit(target) : this.d.library.transcriptOf(video.id);
     const segments = mergeSubtitleLines(existing?.segments ?? [], input.lines, input.replaceAll ?? false);
-    if (segments.length === 0) throw new ToolError('넣을 문장이 없습니다.');
     const pairs = existing ? diffCorrections(existing.segments, segments) : [];
     if (pairs.length) this.d.corrections.record(pairs, video.id);
-    const t = this.d.library.setTranscript(video.id, { language: existing?.language ?? 'ko', model: existing ? existing.model : 'manual', segments });
+    const t = this.d.library.setTranscript(video.id, { language: existing?.language ?? 'ko', model: 'manual', segments }, { source: !target });
+    const revised = target ? this.reviseEdit(target, { transcriptId: t.id, subtitles: segments.length > 0 }) : null;
     this.d.events.record('transcript.edited', { lines: input.lines.length, replaceAll: !!input.replaceAll, total: segments.length, corrections: pairs.length });
-    return { segments: t.segments.map((s, i) => ({ i, start: r2(s.start), end: r2(s.end), text: s.text })) };
+    return { ...(revised ? { editId: revised.id } : {}), transcriptId: t.id, segments: t.segments.map((s, i) => ({ i, start: r2(s.start), end: r2(s.end), text: s.text, ...(s.secondaryText ? { secondaryText: s.secondaryText } : {}) })) };
   }
 
   private async getChapters(video: Video, ctx: ToolContext, input: ToolInput<'get_chapters'>) {
@@ -127,7 +144,13 @@ export class AgentTools {
 
   // ---- 읽기 ----
 
-  private async getTranscript(video: Video, ctx: ToolContext) {
+  private async getTranscript(video: Video, ctx: ToolContext, input: ToolInput<'get_transcript'> = {}) {
+    if (input.editId) {
+      const edit = this.d.library.edit(input.editId);
+      if (!edit || edit.videoId !== video.id) throw new ToolError('그 편집을 찾지 못했습니다.');
+      const t = this.d.library.transcriptForEdit(edit);
+      return { language: t?.language ?? 'ko', segments: (t?.segments ?? []).map((s, i) => ({ i, start: r2(s.start), end: r2(s.end), text: s.text, ...(s.secondaryText ? { secondaryText: s.secondaryText } : {}) })) };
+    }
     let t = this.d.library.transcriptOf(video.id);
     if (!t) {
       if (video.hasAudio === false) throw new ToolError('소리가 없어 자막을 자동으로 만들 수 없습니다. 넣을 문장과 시각을 알면 set_subtitle_text 로 넣을 수 있습니다.');
@@ -142,14 +165,14 @@ export class AgentTools {
     return {
       language: t.language,
       durationSec: r2(video.durationSec ?? 0),
-      segments: t.segments.map((s, i) => ({ i, start: r2(s.start), end: r2(s.end), text: s.text })),
+      segments: t.segments.map((s, i) => ({ i, start: r2(s.start), end: r2(s.end), text: s.text, ...(s.secondaryText ? { secondaryText: s.secondaryText } : {}) })),
     };
   }
 
   private async findSilences(video: Video, ctx: ToolContext, input: ToolInput<'find_silences'>) {
     if (video.hasAudio === false) throw new ToolError('이 영상은 소리가 없습니다.');
     const duration = video.durationSec ?? 0;
-    const { stderr } = await run(this.d.ffmpegBin, silenceDetectArgs(video.path, { minSec: input.minSec ?? this.d.style.params().silenceMinSec }), { signal: ctx.signal });
+    const { stderr } = await runAnalysis(this.d.ffmpegBin, silenceDetectArgs(video.path, { minSec: input.minSec ?? this.d.style.params().silenceMinSec }), { signal: ctx.signal });
     const silences = parseSilences(stderr, duration);
     const { kept } = await splitByMotion(this.d, video.path, silences, duration, ctx.signal);
     const moving = new Set(kept);
@@ -161,7 +184,7 @@ export class AgentTools {
   }
 
   private async findScenes(video: Video, ctx: ToolContext, input: ToolInput<'find_scenes'>) {
-    const { stderr } = await run(this.d.ffmpegBin, sceneDetectArgs(video.path, input.threshold ?? 0.4), { signal: ctx.signal });
+    const { stderr } = await runAnalysis(this.d.ffmpegBin, sceneDetectArgs(video.path, input.threshold ?? 0.4), { signal: ctx.signal });
     const scenes = parseScenes(stderr);
     return { scenes: scenes.map(r2), ranges: scenesToRanges(scenes, video.durationSec ?? 0).map((r) => ({ start: r2(r.start), end: r2(r.end) })) };
   }
@@ -169,7 +192,7 @@ export class AgentTools {
   private async proposeCuts(video: Video, ctx: ToolContext, input: ToolInput<'propose_cuts'>) {
     if (video.hasAudio === false) throw new ToolError('소리가 없어 쉬는 구간을 찾을 수 없습니다.');
     const duration = video.durationSec ?? 0;
-    const { stderr } = await run(this.d.ffmpegBin, silenceDetectArgs(video.path, { minSec: input.minSilenceSec ?? this.d.style.params().silenceMinSec }), { signal: ctx.signal });
+    const { stderr } = await runAnalysis(this.d.ffmpegBin, silenceDetectArgs(video.path, { minSec: input.minSilenceSec ?? this.d.style.params().silenceMinSec }), { signal: ctx.signal });
     const silences = parseSilences(stderr, duration);
     // 동작이 이어지는 침묵(시범)은 제안에서 뺀다 — 에이전트가 따로 판단할 필요 없이 kept 로 알려 준다
     const { cut, kept } = await splitByMotion(this.d, video.path, silences, duration, ctx.signal);
@@ -190,7 +213,7 @@ export class AgentTools {
     const keep = input.keep === undefined ? undefined : input.keep === null ? null : { start: clamp(Math.min(input.keep.start, input.keep.end)), end: clamp(Math.max(input.keep.start, input.keep.end)) };
     if (keep && keep.end - keep.start < 1) throw new ToolError('구간이 너무 짧습니다. 1초보다 길게 정하세요.');
     const parts = input.parts === undefined ? undefined : this.cleanParts(video, input.parts);
-    if (input.subtitles && video.hasAudio === false && !transcript) throw new ToolError('소리가 없어 자막을 자동으로 만들 수 없습니다. set_subtitle_text 로 문장을 먼저 넣으세요.');
+    if (input.subtitles && !input.editId && video.hasAudio === false && !transcript) throw new ToolError('소리가 없어 자막을 자동으로 만들 수 없습니다. set_subtitle_text 로 문장을 먼저 넣으세요.');
     const cropFocus = input.focus === undefined ? undefined : focusValue(input.focus);
     const emphasis = input.emphasis?.map((e) => ({ term: e.term, start: e.start ?? null, end: e.end ?? null }));
 
@@ -198,7 +221,9 @@ export class AgentTools {
     if (input.editId) {
       const existing = this.d.library.edit(input.editId);
       if (!existing || existing.videoId !== video.id) throw new ToolError('그 편집을 찾지 못했습니다.');
+      if (input.subtitles && video.hasAudio === false && !this.d.library.transcriptForEdit(existing) && !transcript) throw new ToolError('넣을 자막 문구를 먼저 지정하세요.');
       edit = this.reviseEdit(existing, {
+        ...(input.subtitleStyle ? { subtitleStyle: mergeSubtitleStyle(existing.subtitleStyle, input.subtitleStyle), ...(input.subtitleStyle.bottom !== undefined ? { subtitleAuto: false } : {}) } : {}),
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(keep !== undefined ? { keep } : {}),
         ...(parts !== undefined ? { parts } : {}),
@@ -207,7 +232,7 @@ export class AgentTools {
         ...(cropFocus !== undefined ? { cropFocus } : {}),
         ...(input.subtitles !== undefined ? { subtitles: input.subtitles } : {}),
         ...(emphasis !== undefined ? { emphasis } : {}),
-        ...(transcript ? { transcriptId: transcript.id } : {}),
+        ...(!existing.transcriptId && input.subtitles && transcript ? { transcriptId: transcript.id } : {}),
       });
       return { ...summarizeEdit(edit), changes: editDiff(existing, edit) };
     } else {
@@ -223,7 +248,8 @@ export class AgentTools {
         subtitles: input.subtitles ?? false,
         emphasis: emphasis ?? [],
         transcriptId: transcript?.id ?? null,
-        subtitleStyle: this.d.style.params().subtitleStyle,
+        subtitleStyle: mergeSubtitleStyle(this.d.style.params().subtitleStyle, input.subtitleStyle),
+        subtitleAuto: input.subtitleStyle?.bottom === undefined,
         speed: [],
       });
     }
@@ -236,8 +262,7 @@ export class AgentTools {
    */
   private reviseEdit(existing: Edit, patch: Partial<Omit<Edit, 'id' | 'createdAt' | 'videoId'>>): Edit {
     if (this.d.library.outputsForEdit(existing.id).length === 0) return this.d.library.updateEdit(existing.id, patch);
-    const { id: _id, createdAt: _at, ...rest } = existing;
-    return this.d.library.createEdit({ ...rest, ...patch, revisionOf: existing.id });
+    return this.d.library.reviseEdit(existing, patch);
   }
 
   /** 조각 목록 정리: 뒤집힌 건 바로, 길이 밖은 잘라, 1초 미만은 오류. 순서는 그대로 (그게 구성이다). */
@@ -289,17 +314,12 @@ export class AgentTools {
   }
 
   private setSubtitleStyle(video: Video, input: ToolInput<'set_subtitle_style'>) {
-    const patch = {
-      ...(input.fontSize !== undefined ? { fontSize: input.fontSize } : {}),
-      ...(input.color !== undefined ? { color: input.color } : {}),
-      ...(input.boxColor !== undefined ? { boxColor: input.boxColor } : {}),
-      ...(input.bottom !== undefined ? { bottom: input.bottom } : {}),
-    };
-    let style = { ...this.d.style.params().subtitleStyle, ...patch };
+    const patch = SubtitleStylePatch.parse(input);
+    let style = mergeSubtitleStyle(this.d.style.params().subtitleStyle, patch);
     if (input.editId) {
       const edit = this.d.library.edit(input.editId);
       if (!edit || edit.videoId !== video.id) throw new ToolError('그 편집을 찾지 못했습니다.');
-      style = { ...edit.subtitleStyle, ...patch };
+      style = mergeSubtitleStyle(edit.subtitleStyle, patch);
       // 여백을 직접 정했으면 렌더가 자동으로 위로 올리지 않는다. 결과물이 있는 편집이면 새 편집이 된다.
       const revised = this.reviseEdit(edit, { subtitleStyle: style, ...(input.bottom !== undefined ? { subtitleAuto: false } : {}) });
       if (input.remember) this.d.style.writeParams({ ...this.d.style.params(), subtitleStyle: { ...DEFAULT_SUBTITLE_STYLE, ...style } });
@@ -379,6 +399,7 @@ export function summarizeEdit(e: Edit) {
     crop: e.crop,
     ...(e.crop === 'vertical' ? { focus: e.cropFocus === null ? 'auto' : e.cropFocus < 0.25 ? 'left' : e.cropFocus > 0.75 ? 'right' : 'center' } : {}),
     subtitles: e.subtitles,
+    subtitleStyle: e.subtitleStyle,
     ...(e.revisionOf ? { revisionOf: e.revisionOf } : {}),
     ...(e.emphasis.length ? { emphasis: e.emphasis.map((x) => ({ term: x.term, ...(x.start !== null ? { start: r2(x.start) } : {}), ...(x.end !== null ? { end: r2(x.end) } : {}) })) } : {}),
   };

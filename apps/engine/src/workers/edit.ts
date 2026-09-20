@@ -28,7 +28,7 @@ import type { JobQueue } from '../queue/index.js';
 import type { VideoStore } from '../videos.js';
 import type { StyleProfile } from '../agent/style.js';
 import type { Ffmpeg } from './ffmpeg.js';
-import { run } from './spawn.js';
+import { run, runAnalysis } from './spawn.js';
 import type { Whisper } from './whisper.js';
 import { termsPrompt, WhisperMissingError } from './whisper.js';
 import { applyCorrections, type CorrectionPair } from '../style/corrections.js';
@@ -110,7 +110,7 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
     try {
       if (video.hasAudio === false) throw new Error('no audio');
       const duration = video.durationSec ?? 0;
-      const { stderr } = await run(d.ffmpegBin, silenceDetectArgs(video.path, { minSec: d.style.params().silenceMinSec }), { signal });
+      const { stderr } = await runAnalysis(d.ffmpegBin, silenceDetectArgs(video.path, { minSec: d.style.params().silenceMinSec }), { signal });
       const silences = parseSilences(stderr, duration);
       // 말은 없지만 동작이 이어지는 침묵(시범)은 남긴다 — 기획안 §5.1
       const { cut, kept } = await splitByMotion(d, video.path, silences, duration, signal);
@@ -148,7 +148,8 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
       const encoder = await ffmpeg.detectEncoder();
       const duration = video.durationSec ?? 0;
       const segments = keepSegments(edit, duration);
-      const transcript = edit.subtitles ? (edit.transcriptId && library.transcript(edit.transcriptId)) || library.transcriptOf(video.id) : null;
+      const transcript = edit.subtitles ? library.transcriptForEdit(edit) : null;
+      if (edit.subtitles && edit.transcriptId && !transcript) throw new Error('subtitle version missing');
       // 세로 초점 · 자막 위치를 아직 안 정했으면 화면의 어느 쪽이 움직이는지 보고 정해 Edit 에 적는다 (기획안 §5.4 · §5.5)
       const placed = await placeEdit(d, video, edit, segments, !!transcript, path.join(cfg.dataDir, 'work', job.id), signal);
       edit = placed.edit;
@@ -236,7 +237,7 @@ export async function splitByMotion(
 ): Promise<{ cut: { start: number; end: number }[]; kept: { start: number; end: number }[] }> {
   if (silences.length === 0) return { cut: [], kept: [] };
   try {
-    const { stderr } = await run(d.ffmpegBin, motionDetectArgs(input), signal ? { signal } : {});
+    const { stderr } = await runAnalysis(d.ffmpegBin, motionDetectArgs(input), signal ? { signal } : {});
     const r = splitSilencesByMotion(silences, parseMotion(stderr), durationSec);
     if (r.kept.length) d.log.info({ kept: r.kept.length, speechLevel: r.speechLevel }, 'silences kept for motion');
     return { cut: r.cut, kept: r.kept };
