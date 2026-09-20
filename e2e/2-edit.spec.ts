@@ -134,6 +134,9 @@ test('소리 없는 영상: "자막 직접 쓰기"로 원하는 자리에 자막
   await page.getByTestId('subtitle-editor-open').click();
   const editor = page.getByTestId('subtitle-editor');
   await expect(editor.getByTestId('subtitle-editor-row')).toHaveCount(1);
+  // 원본 자막은 빈 채로 저장할 수 없다 (빈 자막이 생기면 "자막 만들기"가 음성 인식을 다시 안 돌린다)
+  await editor.getByTestId('subtitle-editor-save').click();
+  await expect(editor).toContainText('글을 한 줄 이상 써 주세요.');
   await editor.getByTestId('subtitle-editor-start').fill('0');
   await editor.getByTestId('subtitle-editor-end').fill('1.5');
   await editor.getByTestId('subtitle-editor-text').fill('무릎 펴기');

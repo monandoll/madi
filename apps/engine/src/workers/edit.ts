@@ -148,8 +148,13 @@ export function registerEditWorkers(d: EditWorkerDeps): void {
       const encoder = await ffmpeg.detectEncoder();
       const duration = video.durationSec ?? 0;
       const segments = keepSegments(edit, duration);
-      const transcript = edit.subtitles ? library.transcriptForEdit(edit) : null;
+      // 자막 버전을 고정한 편집은 그 버전만 쓴다 (없어졌으면 실패). 안 고정했으면 이 영상의 최신 원본 자막을 쓰고 그 결정을 Edit 에 적는다.
+      let transcript = edit.subtitles ? library.transcriptForEdit(edit) : null;
       if (edit.subtitles && edit.transcriptId && !transcript) throw new Error('subtitle version missing');
+      if (edit.subtitles && !edit.transcriptId) {
+        transcript = library.transcriptOf(video.id);
+        if (transcript) edit = library.updateEdit(edit.id, { transcriptId: transcript.id });
+      }
       // 세로 초점 · 자막 위치를 아직 안 정했으면 화면의 어느 쪽이 움직이는지 보고 정해 Edit 에 적는다 (기획안 §5.4 · §5.5)
       const placed = await placeEdit(d, video, edit, segments, !!transcript, path.join(cfg.dataDir, 'work', job.id), signal);
       edit = placed.edit;

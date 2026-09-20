@@ -406,6 +406,8 @@ export function createApp(deps: AppDeps): Hono {
     const target = parsed.data.editId ? deps.library.edit(parsed.data.editId) : null;
     if (parsed.data.editId && (!target || target.videoId !== video.id)) return c.json({ error: { code: 'not_found', message: 'edit not found' } }, 404);
     if (parsed.data.segments.some((s) => video.durationSec !== null && s.end > video.durationSec)) return c.json({ error: { code: 'bad_request', message: 'subtitle outside video' } }, 400);
+    // 원본 자막을 빈 버전으로 덮으면 "자막 만들기"가 자막이 있다고 보고 음성 인식을 다시 안 돌린다 → 결과물 자막을 뺄 때(editId)만 빈 목록을 받는다
+    if (parsed.data.segments.length === 0 && !target) return c.json({ error: { code: 'bad_request', message: 'no subtitle lines' } }, 400);
     const existing = target ? deps.library.transcriptForEdit(target) : deps.library.transcriptOf(video.id);
     const fresh = mergeSubtitleLines([], parsed.data.segments, true);
     const segments = fresh.map((seg) => {
