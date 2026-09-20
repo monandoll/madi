@@ -1,6 +1,7 @@
 import { type Cut, EditPlan, type PlanCutKind, planRejected, type Segment, type TimeRange, type Video } from '@madi/shared';
 import { type Format, formatLine } from '../agent/playbook.js';
 import { extractJson, transcriptText } from '../style/insight.js';
+import { parseRecipe } from './execution.js';
 
 /**
  * 촬영본 편집안 — 순수 함수 (기획안 §4 · §13). 파일 · DB · 프로세스를 모른다.
@@ -33,6 +34,7 @@ export interface PlanMaterial {
   format: Format;
   /** "# 기억" 블록 (관련 기억 + 비슷한 완성본 요약). 없으면 빈 문자열. */
   memory: string;
+  rules?: string;
   /** 대표 프레임 시트 (기획안 §10). attached 면 도구가 그림을 직접 붙인 것(Codex), 아니면 Read 로 열어 보라고 한다(Claude). */
   frames?: FrameMaterial | undefined;
 }
@@ -67,7 +69,12 @@ export function planPrompt(m: PlanMaterial): { system: string; prompt: string } 
     '- terms: 자막이 잘못 적었을 법한 운동 · 해부학 용어의 바른 표기. tags: 검색용 낱말(부위 · 동작 · 고민) 3~8개.',
     '- 화면 시트가 있으면 본다: 사람이 화면의 어느 쪽에 있는지(세로로 자를 때 그쪽을 잡는다), 앵글이 바뀌는 곳, 동작이 눈에 띄게 시작되는 칸의 시각을 framing 과 sections · keepRanges 에 반영한다. 자세가 맞는지는 판정하지 않는다. 시트가 없으면 framing 은 null.',
     '- 답은 JSON 하나만. 설명 · 마크다운 · 코드펜스 없이 `{` 로 시작해 `}` 로 끝낸다.',
+    '- recipe는 실제 실행 결정이다. summary에는 반영할 방식을 짧게 쓰고, parts에는 원본 구간을 출력 순서대로 쓴다. 재배치하지 않으면 빈 배열. 겹치는 조각이나 keepRanges를 누락하는 조각 목록은 금지한다.',
+    '- recipe.subtitleStyle에는 사용자 규칙과 승인한 기억을 실제 설정으로 옮긴다: fontSize(8~200), color/boxColor/outlineColor/secondaryColor(#RRGGBB), bottom(아래 여백 비율), background(box|outline), outlineWidth(0~12), bold/italic, secondaryScale(0.25~1), secondaryItalic. 정하지 않은 값은 생략한다. 특정 제작자의 색·배치를 기본으로 가정하지 않는다.',
+    '- recipe.captions에는 촬영본에 맞게 확정 가능한 짧은 문구와 원본 start/end를 쓴다. text는 본문, secondaryText는 번역·보조 문구다. 승인한 지침이 2단 자막을 요구하면 같은 시각의 두 문구를 작성한다. 번역은 본문 뜻을 유지하고 운동 지식·효과·횟수를 추가하지 않는다. 새 문구가 필요 없으면 빈 배열로 기존 받아쓰기를 유지한다.',
+    '- recipe의 스타일은 직접 쓴 규칙·승인한 기억에서만 가져온다. 개별 참고 영상 관찰을 승인된 취향으로 간주하지 않는다. 원·화살표·비교 화면·애니메이션은 아직 실행할 수 없으므로 recipe.limitations에 미지원으로 적고 summary에서 적용했다고 말하지 않는다.',
     ...(m.memory ? ['', '이 제작자에 대해 아는 것 (편집안에 반영한다):', m.memory] : []),
+    ...(m.rules ? ['', '사용자가 설정한 편집 규칙 (기억과 기본 제작 지침보다 우선):', m.rules] : []),
   ].join('\n');
   const prompt = [
     PLAN_MARKER,
@@ -95,6 +102,7 @@ export function planPrompt(m: PlanMaterial): { system: string; prompt: string } 
         terms: ['용어'],
         tags: ['태그'],
         framing: { side: 'left|center|right|unknown', note: '화면에서 본 것 한 줄 (사람 위치 · 앵글 · 동작이 시작되는 시각)' },
+        recipe: { summary: '이 촬영본에 실제 반영할 편집 방식', parts: [], subtitleStyle: {}, captions: [{ start: 0, end: 1, text: '촬영본 근거가 있는 문구', secondaryText: '번역이 필요한 경우만' }], limitations: [] },
       },
       null,
       2,
@@ -108,7 +116,7 @@ export function planPrompt(m: PlanMaterial): { system: string; prompt: string } 
 /** AI 답 → EditPlan. 시각은 길이 안으로, 뒤집힌 구간은 버린다. 취지가 없으면 null (지어내지 않는다). */
 export function parsePlan(
   text: string,
-  opts: { videoId: string; provider: 'claude' | 'codex'; durationSec: number; fromTranscript: boolean; now?: number; frameTimes?: number[] },
+  opts: { videoId: string; provider: 'claude' | 'codex'; durationSec: number; fromTranscript: boolean; now?: number; frameTimes?: number[]; styleContextKey?: string },
 ): EditPlan | null {
   const raw = extractJson(text);
   if (!raw || typeof raw !== 'object') return null;
@@ -133,6 +141,8 @@ export function parsePlan(
   const candidate = {
     videoId: opts.videoId,
     purpose: str(obj['purpose'], 300),
+    recipe: parseRecipe(obj['recipe'], dur, ranges(obj['keepRanges'])),
+    styleContextKey: opts.styleContextKey ?? '',
     audience: str(obj['audience'], 200),
     hook: str(obj['hook'], 200),
     sections: ranges(obj['sections'])
@@ -158,6 +168,7 @@ export function parsePlan(
     createdAt: opts.now ?? Date.now(),
   };
   if (!candidate.purpose) return null;
+  if (obj['recipe'] != null && !candidate.recipe) return null;
   const parsed = EditPlan.safeParse(candidate);
   return parsed.success ? parsed.data : null;
 }
@@ -215,6 +226,7 @@ export function planBlock(plan: EditPlan): string {
     out.push(`화면: ${side ? `사람이 ${side}에 있다 (세로로 자를 땐 focus=${plan.framing.side})` : ''}${plan.framing.note ? `${side ? ' — ' : ''}${plan.framing.note}` : ''}`);
   }
   if (plan.terms.length) out.push(`용어 표기: ${plan.terms.join(', ')}`);
+  if (plan.recipe) out.push(`실행할 편집 결정 (현재 요청과 승인한 지침이 우선): ${JSON.stringify(plan.recipe)}`, '위 subtitleStyle은 apply_edit에, captions는 set_subtitle_text에, parts는 apply_edit.parts에 전달한다. render까지 성공한 것만 적용했다고 말한다. limitations는 구현 완료로 말하지 않는다.');
   return out.join('\n');
 }
 

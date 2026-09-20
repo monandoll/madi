@@ -16,7 +16,7 @@ import type { SettingsStore } from '../settings.js';
 import type { VideoStore } from '../videos.js';
 import { splitByMotion } from './edit.js';
 import { makeFrameSheets } from './frames.js';
-import { run } from './spawn.js';
+import { runAnalysis } from './spawn.js';
 import { SHEETS_DIR } from '../agent/claude.js';
 
 export interface PlanWorkerDeps {
@@ -30,6 +30,7 @@ export interface PlanWorkerDeps {
   providers: Record<Exclude<AiProvider, 'none'>, AgentProvider>;
   /** 이 영상에 붙일 "# 기억" 블록 */
   recall: (video: Video) => string;
+  contextKey?: (video: Video) => string;
   ffmpegBin: string;
   events: EventLog;
   log: Logger;
@@ -60,14 +61,14 @@ export function registerPlanWorker(d: PlanWorkerDeps): void {
       let silences: { start: number; end: number }[] = [];
       let moving: { start: number; end: number }[] = [];
       if (video.hasAudio !== false) {
-        const { stderr } = await run(d.ffmpegBin, silenceDetectArgs(video.path, { minSec: Math.max(0.7, d.style.params().silenceMinSec) }), { signal });
+        const { stderr } = await runAnalysis(d.ffmpegBin, silenceDetectArgs(video.path, { minSec: Math.max(0.7, d.style.params().silenceMinSec) }), { signal });
         const all = parseSilences(stderr, duration);
         const split = await splitByMotion(d, video.path, all, duration, signal);
         silences = split.cut;
         moving = split.kept;
       }
       setProgress(0.5);
-      const scenes = parseScenes((await run(d.ffmpegBin, sceneDetectArgs(video.path, 0.4), { signal })).stderr);
+      const scenes = parseScenes((await runAnalysis(d.ffmpegBin, sceneDetectArgs(video.path, 0.4), { signal })).stderr);
       setProgress(0.6);
       const segments = transcript?.segments ?? null;
       const cwd = path.join(d.cfg.workDir, 'plan', video.id);
@@ -76,6 +77,7 @@ export function registerPlanWorker(d: PlanWorkerDeps): void {
         // 화면도 보여 준다 (기획안 §10): 장면 전환 직후 · 고르게 나눈 지점의 대표 프레임 시트 (설정에서 끌 수 있다)
         const sheets = d.settings.get().ai.frames ? await makeFrameSheets(d, video.path, { durationSec: duration, scenes, dir: path.join(cwd, SHEETS_DIR), signal }) : [];
         setProgress(0.7);
+        const styleContextKey = d.contextKey?.(video) ?? '';
         const { system, prompt } = planPrompt({
           video,
           segments,
@@ -84,11 +86,12 @@ export function registerPlanWorker(d: PlanWorkerDeps): void {
           scenes,
           format: formatOf(video),
           memory: d.recall(video),
+          rules: d.style.rules(),
           frames: sheets.length ? { sheets: sheets.map((s) => ({ rel: s.rel, times: s.times })), attached: providerId === 'codex' } : undefined,
         });
         const res = await provider.analyze({ system, prompt, cwd, images: sheets.map((s) => s.file), bin: provider.bin(d.settings.get().ai.paths?.[providerId] ?? null), signal });
         if (!res.ok) throw new Error(res.error === 'not_installed' ? 'ai_missing' : (res.error ?? 'analyze failed'));
-        const plan = parsePlan(res.text, { videoId: video.id, provider: providerId, durationSec: duration, fromTranscript: !!segments?.length, frameTimes: sheets.flatMap((s) => s.times) });
+        const plan = parsePlan(res.text, { videoId: video.id, provider: providerId, durationSec: duration, fromTranscript: !!segments?.length, frameTimes: sheets.flatMap((s) => s.times), styleContextKey });
         if (!plan) throw new Error('no plan in answer');
         d.plans.set(plan);
         if (m) {
