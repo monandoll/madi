@@ -117,6 +117,7 @@ export class AgentTools {
     if (input.editId && (!target || target.videoId !== video.id)) throw new ToolError('그 편집을 찾지 못했습니다.');
     if (input.lines.some((s) => s.end <= s.start || (video.durationSec !== null && s.end > video.durationSec))) throw new ToolError('자막 시각을 영상 길이 안에서 시작보다 끝이 뒤가 되게 정하세요.');
     if (input.lines.length === 0 && !input.replaceAll) throw new ToolError('문구를 주거나 전체 삭제에 replaceAll=true를 지정하세요.');
+    if (input.lines.length === 0 && !target) throw new ToolError('원본 자막을 비울 수는 없습니다. 결과물에서 자막을 빼려면 editId 를 주거나 apply_edit(subtitles=false) 를 쓰세요.');
     const existing = target ? this.d.library.transcriptForEdit(target) : this.d.library.transcriptOf(video.id);
     const segments = mergeSubtitleLines(existing?.segments ?? [], input.lines, input.replaceAll ?? false);
     const pairs = existing ? diffCorrections(existing.segments, segments) : [];

@@ -15,6 +15,8 @@ interface Props {
   segments: Segment[];
   durationSec: number;
   saving: boolean;
+  /** 결과물의 자막을 고칠 때만 줄을 다 빼고 저장할 수 있다 (자막 없는 결과물). 원본 자막은 비울 수 없다. */
+  allowEmpty?: boolean;
   onSave(lines: { start: number; end: number; text: string; secondaryText?: string }[]): void;
   onCancel(): void;
 }
@@ -23,7 +25,7 @@ interface Props {
  * 자막 직접 쓰기/고치기 (AI 없이도). 줄마다 시작·끝·글. 소리가 없는 영상에도 원하는 자리에 자막을 단다.
  * 저장하면 자막이 통째로 바뀌고 바로 "자막 넣기"가 돌아 결과물이 만들어진다.
  */
-export function SubtitleEditor({ segments, durationSec, saving, onSave, onCancel }: Props) {
+export function SubtitleEditor({ segments, durationSec, saving, allowEmpty = false, onSave, onCancel }: Props) {
   const [lines, setLines] = useState<SubtitleLineDraft[]>(() =>
     segments.length
       ? segments.map((s, i) => ({ key: `${i}`, start: formatClock(s.start), end: formatClock(s.end), text: s.text, ...(s.secondaryText !== undefined ? { secondaryText: s.secondaryText } : {}) }))
@@ -56,6 +58,10 @@ export function SubtitleEditor({ segments, durationSec, saving, onSave, onCancel
       }
       out.push({ start, end, text, ...(l.secondaryText !== undefined ? { secondaryText: l.secondaryText.trim() } : {}) });
     }
+    if (out.length === 0 && !allowEmpty) {
+      setError(copy.subtitleEditor.empty);
+      return;
+    }
     setError(null);
     onSave(out);
   };
@@ -64,7 +70,7 @@ export function SubtitleEditor({ segments, durationSec, saving, onSave, onCancel
     <fieldset disabled={saving} className="mb-1.5 flex min-w-0 flex-col gap-2 rounded-panel border border-line bg-surface p-3" data-testid="subtitle-editor">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-14 font-semibold">{copy.subtitleEditor.title}</span>
-        <span className="text-12 text-text-3">{copy.subtitleEditor.hint}</span>
+        <span className="text-12 text-text-3">{allowEmpty ? copy.subtitleEditor.hintOutput : copy.subtitleEditor.hint}</span>
       </div>
       <div className="flex flex-col gap-1.5">
         {lines.map((l) => (

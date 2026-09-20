@@ -222,7 +222,7 @@ export function VideoDetail({ id, panelOutputId }: Props) {
           editingOutputId && !editingOutput.data ? (
             <p className="text-13 text-text-3">{editingOutput.isError ? copy.output.notFound : copy.empty.loading}</p>
           ) : (
-            <SubtitleEditor key={editingOutputId ?? 'source'} segments={(editingOutputId ? editingOutput.data?.transcript : transcript)?.segments ?? []} durationSec={video.durationSec ?? 0} saving={saveSubs.isPending} onSave={(lines) => saveSubs.mutate(lines)} onCancel={() => setEditingSubs(false)} />
+            <SubtitleEditor key={editingOutputId ?? 'source'} segments={(editingOutputId ? editingOutput.data?.transcript : transcript)?.segments ?? []} durationSec={video.durationSec ?? 0} saving={saveSubs.isPending} allowEmpty={!!editingOutputId} onSave={(lines) => saveSubs.mutate(lines)} onCancel={() => setEditingSubs(false)} />
           )
         )}
         <ChatFeed

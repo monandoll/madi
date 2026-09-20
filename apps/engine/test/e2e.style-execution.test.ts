@@ -28,6 +28,9 @@ afterAll(async () => { await engine?.stop(); if (home) fs.rmSync(home, { recursi
 it('승인한 지침만 컨텍스트에 들어가고 삭제·승인 변경은 과거 실행안 적용을 막는다', async () => {
   const video = engine.videos.mustGet(id);
   const before = engine.styleService.contextKey(video);
+  // 자막이 생기는 것만으로는 지문이 안 바뀐다 — 사용자가 규칙 · 자막 설정 · 승인 기억을 바꿨을 때만
+  engine.library.setTranscript(id, { language: 'ko', model: 'manual', segments: [{ id: 'k', start: 0, end: 1, text: '어깨 견갑골 QA', words: [] }] });
+  expect(engine.styleService.contextKey(video)).toBe(before);
   const memory = engine.memory.add({ text: 'QA 두 언어 자막', kind: 'style', scope: 'all', source: 'reference', status: 'proposed', evidence: ['a', 'b'] });
   expect(engine.styleService.recall(video)).not.toContain('QA 두 언어');
   expect(engine.styleService.contextKey(video)).toBe(before);

@@ -183,10 +183,17 @@ export class StyleService extends EventEmitter<StyleServiceEvents> {
     return memoryBlock(r);
   }
 
+  /**
+   * 편집안이 기댄 지침의 지문 — 규칙 · 자막 설정 · 승인한 기억. 사용자가 이 셋을 바꿨을 때만 달라진다.
+   * "이 영상과 관련 있는" 기억으로 좁히지 않는다: 관련성은 자막 본문으로 고르므로 자막을 만들기만 해도 지문이 바뀌어
+   * 사용자가 아무것도 안 바꿨는데 편집안이 낡은 것으로 막히기 때문이다.
+   */
   contextKey(video: Pick<Video, 'id' | 'title'>): string {
-    const transcript = this.d.library.transcriptOf(video.id);
-    const relevant = retrieve({ videoId: video.id, title: video.title, transcript: transcript?.segments ?? null }, this.d.memory.listApproved(), this.d.refs.withInsight()).items;
-    const memories = relevant.map(({ text, kind, scope, topics }) => ({ text, kind, scope, topics })).sort((a, b) => a.text.localeCompare(b.text));
+    const memories = this.d.memory
+      .listApproved()
+      .filter((m) => m.scope !== 'video' || m.videoId === video.id)
+      .map(({ text, kind, scope, topics }) => ({ text, kind, scope, topics }))
+      .sort((a, b) => a.text.localeCompare(b.text) || a.scope.localeCompare(b.scope));
     return createHash('sha256').update(JSON.stringify({ rules: this.d.style.rules(), subtitleStyle: this.d.style.params().subtitleStyle, memories })).digest('hex');
   }
 

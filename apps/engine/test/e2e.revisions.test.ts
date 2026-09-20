@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { ActionResponse, OutputDetailResponse, TranscriptResponse, VideoDetailResponse, VideoFramesSummary } from '@madi/shared';
+import { ActionResponse, DEFAULT_SUBTITLE_STYLE, OutputDetailResponse, TranscriptResponse, VideoDetailResponse, VideoFramesSummary } from '@madi/shared';
 import { startEngine, type Engine } from '../src/engine.js';
 import { SAMPLE_SILENT, freePort, tempHome, waitFor } from './helpers.js';
 
@@ -78,6 +78,25 @@ it('rejects reversed and out-of-bounds subtitle timestamps at the API',async()=>
     const res=await fetch(`${engine.url}/api/videos/${videoId}/transcript`,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({segments:[{...range,text:'문구'}]})});
     expect(res.status).toBe(400);
   }
+});
+
+it('never creates an empty source subtitle version (API and tool), only an output-only one', async () => {
+  const before = engine.library.transcriptOf(videoId);
+  const res = await fetch(`${engine.url}/api/videos/${videoId}/transcript`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ segments: [] }) });
+  expect(res.status).toBe(400);
+  const viaTool = await request('/api/agent/tools/set_subtitle_text', { videoId, input: { replaceAll: true, lines: [] } }, 'POST', { 'x-madi-agent': engine.agent.token });
+  expect(viaTool.ok).toBe(false);
+  expect(viaTool.error).toContain('editId');
+  expect(engine.library.transcriptOf(videoId)?.id).toBe(before?.id);
+});
+
+it('renders an edit that asks for subtitles without a pinned version using the latest source subtitles, and records that choice', async () => {
+  const source = TranscriptResponse.parse(await request(`/api/videos/${videoId}/transcript`, { segments: [{ start: 0.5, end: 1.5, text: '원본 자막 문구' }] }, 'PUT')).transcript;
+  const edit = engine.library.createEdit({ videoId, title: '버전 미지정', keep: { start: 0.5, end: 2.5 }, parts: [], cuts: [], crop: 'vertical', cropFocus: null, subtitles: true, transcriptId: null, subtitleStyle: DEFAULT_SUBTITLE_STYLE, subtitleAuto: true, emphasis: [], speed: [] });
+  const rendered = await output((await tool('render', { editId: edit.id })).outputId);
+  expect(rendered.edit.transcriptId).toBe(source.id);
+  expect(rendered.transcript?.segments[0]?.text).toBe('원본 자막 문구');
+  expect(engine.queue.list().some((j) => j.type === 'transcribe')).toBe(false);
 });
 
 it('delivers real video images with source/output times and respects the frames setting', async () => {
