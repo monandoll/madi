@@ -72,6 +72,10 @@ body,
   height: 100%;
   margin: 0;
 }
+/* 폰에서 키보드가 올라오면 실제 보이는 높이 (src/lib/viewport.ts). 안 재면 100%. */
+#root {
+  height: var(--app-height, 100%);
+}
 
 body {
   background: var(--color-bg);
