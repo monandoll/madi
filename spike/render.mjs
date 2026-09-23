@@ -1,6 +1,7 @@
 // composition.json → out/final.mp4
 // stage-0.spec.md 작업순서 6
 import { bundle } from '@remotion/bundler';
+import { webpackOverride } from './webpack-override.mjs';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -16,7 +17,7 @@ const spec = JSON.parse(readFileSync(specPath, 'utf8'));
 mkdirSync('out', { recursive: true });
 
 console.log('[render] 번들링...');
-const serveUrl = await bundle({ entryPoint: root });
+const serveUrl = await bundle({ entryPoint: path.resolve('remotion/index.ts'), publicDir: path.resolve('public'), webpackOverride });
 
 const composition = await selectComposition({
   serveUrl,

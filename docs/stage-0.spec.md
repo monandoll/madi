@@ -38,6 +38,7 @@
 | `spike/remotion/Short.tsx` | 9:16 컴포지션 루트 |
 | `spike/render.mjs` | `composition.json` → `spike/out/final.mp4` |
 | `spike/compare.mjs` | `out/final.mp4`와 `reference/final.mp4`를 같은 시각에서 나란히 붙인 비교 시트 PNG |
+| `spike/probe.mjs` | ✅ 영상 없이 자막 한 장만 렌더 (`out/caption-probe.png`). 작업순서 4 용 |
 
 ## Files to Create/Modify
 
@@ -66,6 +67,12 @@ spike/remotion/Short.tsx
 spike/remotion/Caption.tsx
 spike/remotion/Overlay.tsx
 spike/remotion/tokens.ts
+spike/remotion/Probe.tsx
+spike/remotion/font.ts
+spike/probe.mjs
+spike/webpack-override.mjs
+spike/remotion.config.ts
+spike/public/fonts/PretendardVariable.woff2
 ```
 
 이 목록 밖의 파일을 만들어야 한다면 먼저 이 spec을 고친다.
@@ -107,3 +114,11 @@ spike/remotion/tokens.ts
 7. 비교 시트 보고 통과 조건 5개 판정
 
 4번을 건너뛰지 않는다. 자막 한 장이 원본과 다르면 영상 전체가 다르다.
+4번은 `pnpm --filter @madi/spike probe` 로 영상 없이 돌릴 수 있다.
+`PROBE_TEXT` · `PROBE_SECONDARY` · `PROBE_BACKDROP`(reference/frames 의 파일명) 환경변수로 바꾼다.
+
+## 알려진 환경 요구
+
+- 첫 렌더에서 Remotion 이 Chrome Headless Shell(약 94MB)을 자동으로 내려받는다.
+- `compare.mjs` · `frames.mjs` 는 시스템 `ffmpeg` 을 쓴다 (`brew install ffmpeg`). `FFMPEG_PATH` 로 지정 가능.
+- webpack 이 TS 의 `./x.js` 임포트를 풀도록 `webpack-override.mjs` 를 쓴다. 새 렌더 진입점을 만들면 이걸 같이 넘긴다.

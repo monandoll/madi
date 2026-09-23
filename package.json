@@ -5,13 +5,16 @@
   "type": "module",
   "description": "운동·재활 크리에이터를 위한 AI 숏폼 편집 도구 (Composition 기반 재작성)",
   "packageManager": "pnpm@10.33.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "spike": "pnpm --filter @madi/spike render && pnpm --filter @madi/spike compare",
     "spike:studio": "pnpm --filter @madi/spike studio",
     "spike:frames": "pnpm --filter @madi/spike frames",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "spike:probe": "pnpm --filter @madi/spike probe"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
