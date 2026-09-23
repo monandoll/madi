@@ -20,3 +20,6 @@ spike/reference/*.mov
 
 # Claude Code 로컬 설정 (훅은 .claude/settings.json 에 공유)
 .claude/settings.local.json
+
+# 참고용으로 받은 공개 영상 프레임 (커밋함 — 스타일 근거)
+!spike/reference/public/*.png
