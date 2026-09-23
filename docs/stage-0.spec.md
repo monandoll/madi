@@ -31,7 +31,7 @@
 
 | 파일 | 내용 |
 |---|---|
-| `packages/shared/src/composition.ts` | `AGENTS.md §5` zod 스키마. Composition · Scene · Caption · Overlay |
+| `packages/shared/src/composition.ts` | ✅ `AGENTS.md §5` zod 스키마. Composition · Scene · Caption · Overlay |
 | `spike/composition.json` | `final.mp4`을 손으로 옮겨 적은 Composition. 스키마 검증 통과해야 함 |
 | `spike/remotion/tokens.ts` | 폰트 · 색 · 크기 · 외곽선 · 모션 상수. `frames/`에서 실측한 값 |
 | `spike/remotion/Caption.tsx` | 자막 컴포넌트. pop-in, 외곽선, 보조문구, 강조 |
@@ -52,6 +52,10 @@ packages/shared/package.json
 packages/shared/tsconfig.json
 packages/shared/src/index.ts
 packages/shared/src/composition.ts
+packages/shared/src/composition.test.ts
+spike/composition.example.json
+spike/frames.mjs
+spike/remotion/index.ts
 spike/package.json
 spike/tsconfig.json
 spike/composition.json
@@ -88,14 +92,14 @@ spike/remotion/tokens.ts
 
 ## 선결 확인
 
-- **Remotion 상업 라이선스** (`AGENTS.md §13`). 이 단계 코드를 쓰기 전에 조건을 확인한다. 조건이 안 맞으면 Motion Canvas로 먼저 한다
+- ~~Remotion 상업 라이선스~~ — **해소됨 (2026-09-23).** 개인은 상업적 사용·판매 포함 무료. `AGENTS.md §13` 참조. 인원 4명이 되면 재계산
 - **Pretendard Variable** 번들 가능 여부 (OFL)
 - ffmpeg 설치 (`brew install ffmpeg`). 0단계는 사이드카 번들 없이 시스템 ffmpeg을 쓴다
 
 ## 작업 순서
 
-1. Remotion 라이선스 확인
-2. `packages/shared/src/composition.ts` — 스키마부터
+1. ~~Remotion 라이선스 확인~~ — 완료
+2. ~~`packages/shared/src/composition.ts`~~ — 완료 (테스트 7개 포함)
 3. `reference/frames/` 뽑고 자막 값 실측 → `tokens.ts`
 4. `Caption.tsx` 먼저 만들고 정지 프레임 1장으로 원본과 대조 (여기서 대부분 결판난다)
 5. `Short.tsx` + `composition.json` 채우기
