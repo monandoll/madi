@@ -71,6 +71,7 @@ spike/remotion/Probe.tsx
 spike/remotion/font.ts
 spike/probe.mjs
 spike/webpack-override.mjs
+spike/ensure-browser.mjs
 spike/remotion.config.ts
 spike/public/fonts/PretendardVariable.woff2
 ```
@@ -120,5 +121,9 @@ spike/public/fonts/PretendardVariable.woff2
 ## 알려진 환경 요구
 
 - 첫 렌더에서 Remotion 이 Chrome Headless Shell(약 94MB)을 자동으로 내려받는다.
+  - **macOS**: 받은 바이너리에 `com.apple.quarantine` 이 붙어 실행이 차단된다.
+    Remotion 은 "Failed to launch the browser process!" 만 보여줘서 원인을 알기 어렵다.
+    `ensure-browser.mjs` 가 렌더 진입점에서 자동으로 푼다. 새 진입점을 만들면 이것도 같이 부른다.
+    수동: `xattr -dr com.apple.quarantine spike/node_modules/.remotion`
 - `compare.mjs` · `frames.mjs` 는 시스템 `ffmpeg` 을 쓴다 (`brew install ffmpeg`). `FFMPEG_PATH` 로 지정 가능.
 - webpack 이 TS 의 `./x.js` 임포트를 풀도록 `webpack-override.mjs` 를 쓴다. 새 렌더 진입점을 만들면 이걸 같이 넘긴다.

@@ -3,6 +3,7 @@
 import { bundle } from '@remotion/bundler';
 import { webpackOverride } from './webpack-override.mjs';
 import { renderMedia, selectComposition } from '@remotion/renderer';
+import { ensureBrowserRunnable } from './ensure-browser.mjs';
 import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 
@@ -16,6 +17,7 @@ if (!existsSync(specPath)) {
 const spec = JSON.parse(readFileSync(specPath, 'utf8'));
 mkdirSync('out', { recursive: true });
 
+ensureBrowserRunnable();
 console.log('[render] 번들링...');
 const serveUrl = await bundle({ entryPoint: path.resolve('remotion/index.ts'), publicDir: path.resolve('public'), webpackOverride });
 

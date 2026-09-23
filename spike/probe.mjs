@@ -2,6 +2,7 @@
 import { bundle } from '@remotion/bundler';
 import { webpackOverride } from './webpack-override.mjs';
 import { renderStill, selectComposition } from '@remotion/renderer';
+import { ensureBrowserRunnable } from './ensure-browser.mjs';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
@@ -13,6 +14,7 @@ const inputProps = {
 };
 
 mkdirSync('out', { recursive: true });
+ensureBrowserRunnable();
 console.log('[probe] 번들링...');
 const serveUrl = await bundle({ entryPoint: path.resolve('remotion/index.ts'), publicDir: path.resolve('public'), webpackOverride });
 const composition = await selectComposition({ serveUrl, id: 'CaptionProbe', inputProps });
