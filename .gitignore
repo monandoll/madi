@@ -17,3 +17,6 @@ spike/reference/*.mov
 *.mov
 *.MOV
 !fixtures/*.mp4
+
+# Claude Code 로컬 설정 (훅은 .claude/settings.json 에 공유)
+.claude/settings.local.json
