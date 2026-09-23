@@ -31,7 +31,7 @@ pnpm frames        # reference/final.mp4 → reference/frames/*.png (0.5초 간�
 | tokens.ts 값 | 재는 법 |
 |---|---|
 | `CAPTION.fontSize` | 받침 없는 글자(예: "다", "이")의 **위아래 끝 픽셀 높이**. 글자 높이 ≈ fontSize × 0.72 이므로 잰 값 ÷ 0.72 |
-| `CAPTION.strokeWidth` | 글자 획 바깥 검은 테두리의 한쪽 두께(px). 양쪽 합이 아니다 |
+| `CAPTION.strokeWidth` | 글자 획 **바깥으로 나간** 검은 테두리 두께(px). 안쪽은 세지 않는다 |
 | `CAPTION.bottomRatio` | 자막 블록 **아래쪽 끝**에서 프레임 하단까지 픽셀 ÷ 1920 |
 | `CAPTION.maxWidthRatio` | 가장 긴 자막 줄의 좌우 폭 ÷ 1080. 보통 0.85~0.92 |
 | `CAPTION.maxChars` | 여러 프레임에서 한 번에 뜬 글자 수의 **최댓값** (공백 포함) |
@@ -41,6 +41,21 @@ pnpm frames        # reference/final.mp4 → reference/frames/*.png (0.5초 간�
 | `CAPTION_SECONDARY.*` | 보조 문구(영문 등)가 있으면. `scale` = 보조 fontSize ÷ 본문 fontSize |
 | `HOOK.fontSize` / `topRatio` | 0~1.5초 구간 프레임에서 같은 방식으로 |
 | `REFRAME.targetSubjectHeightRatio` | 인물의 **머리끝~발목** 픽셀 높이 ÷ 1920. 여러 프레임 평균 |
+
+### 주의: 외곽선
+
+`-webkit-text-stroke` 는 획을 글자 경계의 **가운데** 기준으로 그린다. 8px 를 주면 바깥은 4px 만 나간다.
+`Caption.tsx` 가 `strokeWidth × 2` 로 넘겨서 보정하므로, **재는 값은 "바깥으로 나간 두께"** 를 그대로 쓰면 된다.
+
+### 주의: 글자 크기 vs 폭
+
+`maxWidthRatio` 는 상한(clamp)이지 목표가 아니다. 실제 화면 폭을 채우는 건 `fontSize` 다.
+프로브 기준선(추정치 `fontSize: 92`, 1080x1920)에서 "골반 틀어졌으면" 8자가 **폭의 53.5%** 만 채웠다.
+원본 릴스가 같은 길이에서 85~90% 를 채운다면 `fontSize` 는 대략 150 근처가 된다.
+
+원본이 **글자 수와 무관하게 폭을 꽉 채우는지**(fit-to-width) 아니면 **크기가 고정인지** 를 프레임에서 먼저 판정한다.
+짧은 자막과 긴 자막 프레임 2장을 비교하면 바로 나온다. 둘이 같은 글자 높이면 고정, 다르면 fit-to-width 다.
+fit-to-width 라면 `Caption.tsx` 에 폭 기준 자동 스케일을 넣어야 한다. **재기 전에 만들지 않는다.**
 
 ### 애니메이션
 

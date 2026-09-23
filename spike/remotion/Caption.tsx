@@ -27,9 +27,15 @@ function split(text: string, emphasis: CaptionData['emphasis']) {
   return out.filter((p) => p.text.length > 0);
 }
 
-const stroke = (width: number, color: string) =>
+/**
+ * `-webkit-text-stroke` 는 획을 글자 경계의 **가운데** 기준으로 그린다.
+ * 즉 8px 를 주면 바깥으로 나가는 건 4px 뿐이고, 나머지 4px 는 글자 안쪽을 파먹는다.
+ * tokens.ts 의 strokeWidth 는 "눈에 보이는 바깥 두께"를 뜻하므로 2배로 넘긴다.
+ * (paintOrder: 'stroke fill' 이라 안쪽으로 들어간 절반은 글자 색이 덮는다)
+ */
+const stroke = (visibleWidth: number, color: string) =>
   ({
-    WebkitTextStrokeWidth: `${width}px`,
+    WebkitTextStrokeWidth: `${visibleWidth * 2}px`,
     WebkitTextStrokeColor: color,
     paintOrder: 'stroke fill',
   }) as React.CSSProperties;
