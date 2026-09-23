@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+
+# 스파이크 산출물
+spike/out/
+spike/reference/frames/
+spike/reference/*.mp4
+spike/reference/*.mov
+
+# 미디어 원본은 커밋하지 않는다 (git-lfs 도입 전까지)
+*.mp4
+*.mov
+*.MOV
+!fixtures/*.mp4
