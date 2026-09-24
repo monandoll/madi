@@ -179,6 +179,19 @@ case "frames":
         for url in written { print(url.path) }
     } catch { fail("\(error)") }
 
+case "sheet":
+    guard args.count > 2 else { fail("사용법: madi-spike sheet <영상> <out.png> [--at ...] [--cols 5]") }
+    do {
+        let times = (option("at") ?? "").split(separator: ",").compactMap { Double($0) }
+        let used = try await FrameSheet.grid(
+            from: URL(fileURLWithPath: args[1]),
+            at: times,
+            columns: Int(option("cols") ?? "") ?? 5,
+            to: URL(fileURLWithPath: args[2])
+        )
+        print("\(args[2])  " + used.map { String(format: "%.1fs", $0) }.joined(separator: " "))
+    } catch { fail("\(error)") }
+
 case "compare":
     guard args.count > 3 else {
         fail("사용법: madi-spike compare <원본> <렌더> <out.png> [--at 1,2] [--band 0.7,0.85]")
@@ -247,6 +260,7 @@ default:
       frames <영상> <디렉토리> [--at 1,2]  비교용 프레임 추출
       render <composition.json> <out.mp4>  영상 한 편
       compare <원본> <렌더> <out.png>     같은 시각을 나란히 (B 판정용)
+      sheet <영상> <out.png> [--cols 5]   한 편을 격자로 훑어본다
 
     공통 옵션: --text --secondary --width --height --style
     """)

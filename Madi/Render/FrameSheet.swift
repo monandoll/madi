@@ -156,3 +156,65 @@ extension FrameSheet {
         try StillRenderer.writePNG(image, to: outputURL)
     }
 }
+
+// MARK: - 격자 시트
+
+extension FrameSheet {
+    /// 여러 시각의 프레임을 격자로 붙여 한 장으로 만든다.
+    ///
+    /// `AGENTS.md §6` 의 다이제스트 `FRAMES` 가 쓰는 형태이고,
+    /// 레이아웃 어휘 조사처럼 "한 편을 훑어본다" 는 작업에도 쓴다.
+    @discardableResult
+    public static func grid(
+        from url: URL,
+        at times: [Double] = [],
+        columns: Int = 5,
+        cellWidth: Int = 340,
+        to outputURL: URL
+    ) async throws -> [Double] {
+        let asset = AVURLAsset(url: url)
+        let duration = try await asset.load(.duration).seconds
+        let wanted = times.isEmpty
+            ? stride(from: 0.05, through: 0.95, by: 0.1).map { $0 * duration }
+            : times
+
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
+
+        var images: [CGImage] = []
+        for t in wanted {
+            let (image, _) = try await generator.image(
+                at: CMTime(seconds: min(t, duration - 0.05), preferredTimescale: 600)
+            )
+            images.append(image)
+        }
+        guard let first = images.first else { return [] }
+
+        let cellHeight = Int(Double(cellWidth) * Double(first.height) / Double(first.width))
+        let rows = (images.count + columns - 1) / columns
+        let gap = 6
+        let width = columns * cellWidth + (columns + 1) * gap
+        let height = rows * cellHeight + (rows + 1) * gap
+
+        guard let ctx = CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { throw StillRenderer.Failure.contextCreationFailed }
+        ctx.setFillColor(CGColor(red: 0.08, green: 0.08, blue: 0.09, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
+
+        for (i, image) in images.enumerated() {
+            let col = i % columns, row = i / columns
+            let x = gap + col * (cellWidth + gap)
+            // 격자는 위에서 아래로 읽는다. CG 좌표는 아래가 0 이라 뒤집는다.
+            let y = height - gap - (row + 1) * cellHeight - row * gap
+            ctx.draw(image, in: CGRect(x: x, y: y, width: cellWidth, height: cellHeight))
+        }
+        guard let sheet = ctx.makeImage() else { throw StillRenderer.Failure.contextCreationFailed }
+        try StillRenderer.writePNG(sheet, to: outputURL)
+        return wanted
+    }
+}
