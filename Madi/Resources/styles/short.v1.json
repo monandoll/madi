@@ -1,0 +1,49 @@
+{
+  "id": "short.v1",
+  "name": "숏폼 기본",
+  "version": 1,
+  "measured": false,
+  "measuredNote": "자막 치수는 유튜브 숏츠 1편에서만 쟀다. docs/style-authoring.md §1 은 5편을 요구한다. 인스타 릴스 원본이 들어오면 5편으로 다시 재고 measured 를 true 로 바꾼다.",
+  "measuredFrom": [
+    "reference/yt_15s.png",
+    "reference/yt_11s.png",
+    "reference/yt_7s.png"
+  ],
+  "values": {
+    "caption": {
+      "weight": 480,
+      "inkHeightRatio": 0.0359,
+      "inkBottomRatio": 0.2352,
+      "strokeOuterRatio": 0.003125,
+      "maxWidthRatio": 0.9,
+      "maxChars": 13,
+      "maxLines": 2,
+      "lineGapRatio": 1.35,
+      "fill": "#FFFFFF",
+      "stroke": "#000000",
+      "emphasisFill": "#FFE04D",
+      "popInSec": 0.1,
+      "popInScaleFrom": 0.86
+    },
+    "secondary": {
+      "scale": 0.4444,
+      "weight": 400,
+      "baselineBottomRatio": 0.2023,
+      "fill": "#FEE374",
+      "italic": false,
+      "hasStroke": false
+    },
+    "shadow": {
+      "enabled": true,
+      "offsetXRatio": 0.00078,
+      "offsetYRatio": -0.00078,
+      "blurRatio": 0.0015625,
+      "fill": "#0000008C"
+    },
+    "reframe": {
+      "targetSubjectHeightRatio": 0.72,
+      "smoothingSec": 0.4,
+      "padding": 0.08
+    }
+  }
+}

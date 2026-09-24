@@ -34,11 +34,16 @@ targets:
       - path: Madi/Model
       - path: Madi/Render
       - path: Madi/Templates
-      - path: Madi/Resources
+      - path: Madi/Resources/Fonts
         buildPhase: resources
+      # 폴더 참조로 넣어야 번들 안에서 styles/short.v1.json 경로가 유지된다.
+      - path: Madi/Resources/styles
+        buildPhase: resources
+        type: folder
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.madi.kit
+        GENERATE_INFOPLIST_FILE: YES
         DYLIB_INSTALL_NAME_BASE: "@rpath"
         DEFINES_MODULE: YES
 
@@ -83,6 +88,8 @@ targets:
         embed: false
     settings:
       base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.madi.tests
         LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks @loader_path/../Frameworks"
 
 schemes:

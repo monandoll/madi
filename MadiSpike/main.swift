@@ -35,9 +35,19 @@ let goldenCaption = Caption(
 )
 
 let frameSize = CGSize(
-    width: Double(option("width") ?? "") ?? Double(SuhyunShortV1.Frame.width),
-    height: Double(option("height") ?? "") ?? Double(SuhyunShortV1.Frame.height)
+    width: Double(option("width") ?? "") ?? 1080,
+    height: Double(option("height") ?? "") ?? 1920
 )
+
+/// 스타일 값은 파일에서 읽는다. `MADI_STYLES_DIR` 로 레포의 JSON 을 바로 가리킬 수 있어서
+/// 값을 고치고 다시 그리는 데 빌드가 필요 없다 (AGENTS.md §9).
+let style: Style
+do {
+    style = try StyleStore.load(option("style") ?? StyleStore.defaultID)
+} catch {
+    fail("\(error)")
+}
+let values = style.values
 
 switch args.first {
 
@@ -55,8 +65,14 @@ case "font":
                      w, width, ink.height, ink.minY))
     }
 
+case "style":
+    print("\(style.id) v\(style.version) — \(style.name)")
+    print("확정 여부: \(style.measured ? "측정 완료" : "잠정값")")
+    if let note = style.measuredNote { print("메모: \(note)") }
+    print("근거 프레임: \(style.measuredFrom.joined(separator: ", "))")
+
 case "metrics":
-    let m = CaptionLayout.metrics(frameSize: frameSize)
+    let m = CaptionLayout.metrics(frameSize: frameSize, style: values)
     print("프레임 \(Int(frameSize.width))x\(Int(frameSize.height))")
     print(String(format: "본문 폰트 크기        %.2f pt   (토큰이 아니라 역산값)", m.fontSize))
     print(String(format: "  1pt 당 글자 높이    %.4f", m.inkHeightPerPoint))
@@ -70,7 +86,7 @@ case "metrics":
     print(String(format: "  베이스라인(아래에서) %.2f px", m.secondaryBaselineFromBottom))
     print(String(format: "줄 간격               %.2f px", m.lineStep))
 
-    let font = MadiFont.pretendard(size: m.fontSize, weight: SuhyunShortV1.Caption.weight)
+    let font = MadiFont.pretendard(size: m.fontSize, weight: CGFloat(values.caption.weight))
     print("\n문자열별 ink 높이 (크기가 문자열에 따라 흔들리면 기준 문자열을 고쳐야 한다):")
     for s in [CaptionLayout.metricProbe, "가능성이 높다는 겁니다", "어깨가", "골반 틀어졌으면", "하나 둘 셋"] {
         let ink = CaptionLayout.inkBounds(s, font: font)
@@ -80,11 +96,43 @@ case "metrics":
     }
 
     let sFont = MadiFont.pretendard(
-        size: m.secondaryFontSize, weight: SuhyunShortV1.Secondary.weight
+        size: m.secondaryFontSize, weight: CGFloat(values.secondary.weight)
     )
-    let sInk = CaptionLayout.inkBounds("Ilk", font: sFont)
+    let sInk = CaptionLayout.inkBounds(CaptionLayout.secondaryMetricProbe, font: sFont)
     print(String(format: "\n보조 라틴 어센더 높이 %.2f px  (원본 실측 16px @1280 = %.2f px @%d)",
                  sInk.height, 16.0 / 1280 * frameSize.height, Int(frameSize.height)))
+
+case "stems":
+    // 웨이트를 눈대중으로 고르지 않기 위한 도구.
+    // 원본 프레임과 내 렌더를 **같은 코드**로 재서 "세로획 두께 ÷ 글자 높이" 를 비교한다.
+    //   madi-spike stems --image reference/yt_15s.png   원본을 잰다
+    //   madi-spike stems                                웨이트를 훑는다
+    func report(_ label: String, _ scan: StillRenderer.StrokeScan) {
+        print(String(format: "%-28@ 글자높이 %5.1f   세로획 %5.2f (%d개)   비율 %.4f",
+                     label as NSString, scan.inkHeight, scan.medianStroke,
+                     scan.strokeCount, scan.medianStroke / scan.inkHeight))
+    }
+    if let path = option("image") {
+        guard let image = try? StillRenderer.loadImage(URL(fileURLWithPath: path)),
+              let scan = StillRenderer.scanStrokes(image)
+        else { fail("\(path) 에서 흰 글자를 찾지 못했습니다") }
+        report(path, scan)
+    } else {
+        for w in stride(from: 400.0, through: 900.0, by: 50.0) {
+            var probe = values
+            probe.caption.weight = w
+            guard let image = try? StillRenderer.renderCaption(
+                      goldenCaption, size: frameSize, style: probe,
+                      backdrop: .solid(RGBA(0, 0, 0, 1))
+                  ),
+                  let scan = StillRenderer.scanStrokes(image)
+            else {
+                print(String(format: "wght %4.0f  측정 실패", w))
+                continue
+            }
+            report(String(format: "wght %4.0f", w), scan)
+        }
+    }
 
 case "still":
     guard args.count > 1 else { fail("사용법: madi-spike still <out.png> [--backdrop <png>]") }
@@ -97,7 +145,7 @@ case "still":
     }
     do {
         let image = try StillRenderer.renderCaption(
-            goldenCaption, size: frameSize, backdrop: backdrop
+            goldenCaption, size: frameSize, style: values, backdrop: backdrop
         )
         try StillRenderer.writePNG(image, to: out)
         print("\(out.path)  \(image.width)x\(image.height)")
@@ -113,9 +161,11 @@ default:
     madi-spike — 0단계 측정 도구
 
       font                              등록된 폰트와 가변 축 확인
-      metrics                           토큰에서 역산된 실제 픽셀 치수
+      style                             지금 쓰는 스타일 값의 출처
+      stems [--image <png>]             세로획 두께 ÷ 글자 높이 (웨이트 고르기)
+      metrics                           스타일 값에서 역산된 실제 픽셀 치수
       still <out.png> [--backdrop <png>]  자막 한 장
 
-    공통 옵션: --text --secondary --width --height
+    공통 옵션: --text --secondary --width --height --style
     """)
 }

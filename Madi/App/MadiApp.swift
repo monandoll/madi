@@ -7,7 +7,9 @@ import MadiKit
 /// 갤러리 · 편집안 · 장면 카드 · 채팅은 6단계다. 여기에 기능을 붙이지 않는다.
 @main
 struct MadiApp: App {
-    var body: some Scene {
+    // `Scene` 은 SwiftUI 와 `Madi/Model` 양쪽에 있다. 모델 쪽 이름은 AGENTS.md §5 가 정한 것이라
+    // 바꾸지 않고, UI 코드에서 SwiftUI 쪽을 명시한다.
+    var body: some SwiftUI.Scene {
         Window("마디 — 자막 확인", id: "spike") {
             CaptionPreview()
         }
@@ -48,11 +50,12 @@ private struct CaptionPreview: View {
     }
 
     private var image: CGImage? {
+        guard let style = try? StyleStore.load() else { return nil }
         let caption = Caption(id: "preview", start: 0, end: 2, text: text, secondary: secondary)
-        let size = CGSize(width: SuhyunShortV1.Frame.width, height: SuhyunShortV1.Frame.height)
         return try? StillRenderer.renderCaption(
             caption,
-            size: size,
+            size: CGSize(width: 1080, height: 1920),
+            style: style.values,
             backdrop: backdrop.map { .image($0) } ?? .solid(RGBA(0.13, 0.13, 0.15, 1))
         )
     }
