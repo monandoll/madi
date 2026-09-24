@@ -90,6 +90,26 @@ curl -fsSL https://madi.<도메인>/install.sh | sh
 AI CLI 로그인(`claude login` 또는 `codex login`)은 설치 스크립트가 안내만 하고
 사람이 직접 한다. 이걸 자동화하려 하지 않는다.
 
+### 어디에 무엇이 있는가
+
+```
+Vercel    madi.<도메인>       설치 안내 + install.sh        공개 · 정적
+크리에이터 Mac  localhost:41520   엔진 · UI · 영상 · AI 전부   비공개 · 로컬
+```
+
+**엔진을 서버(Vercel 등)에 올리지 않는다.** 네 가지가 각각 막는다.
+
+1. ffmpeg · whisper — 서버리스 함수는 실행 시간 제한이 있고 파일시스템이 임시다.
+   3분 영상 전사 + 렌더가 함수 하나 수명 안에 안 끝난다
+2. Remotion 렌더 — Chrome Headless Shell(약 160MB)을 띄워야 한다
+3. AI 에이전트 — 서버는 크리에이터의 Claude/Codex 구독으로 로그인할 수 없다.
+   API 키를 쓰면 토큰 비용이 발생한다
+4. 영상 — 편당 수백 MB 업로드·저장. 비용보다 큰 문제는 **회원이 찍힌 촬영본이 서버로 가는 것**이다
+
+**UI 만 서버에 올리는 것도 안 된다.** HTTPS 페이지에서 `http://localhost:41520` 을 호출하면
+mixed content 로 차단된다. 로컬 인증서를 깔면 우회되지만 설치가 더 복잡해진다.
+엔진이 UI 까지 서빙하면 같은 origin 이라 이 문제가 아예 없다.
+
 ---
 
 ## 3. 스택
@@ -106,7 +126,7 @@ AI CLI 로그인(`claude login` 또는 `codex login`)은 설치 스크립트가 
 | 합성 | **Remotion** (React) | 자막·오버레이·모션. 라이선스는 `§13` 확인 |
 | 전사 | whisper.cpp (CoreML), word timestamps 필수 | Intel Mac 이면 처리 시간 목표가 깨진다 |
 | 사람 감지 | onnxruntime-node + YOLOv8n-pose (또는 `@vladmandic/human`) | bbox + 17 keypoint, 0.5s 간격 |
-| 에이전트 | `claude -p --output-format stream-json`, `codex exec` | `AgentProvider` 뒤에 숨김 |
+| 에이전트 | `claude -p --output-format stream-json`, `codex exec` | **둘 다 필수**. `AgentProvider` 뒤에 숨기고 설정에서 고른다 |
 | UI | Vite + React + TS, Tailwind, shadcn/ui(재테마) | TanStack Query + Zustand |
 | 업로드 | tus (재개 가능) | `@tus/server` |
 | 공유 | zod 스키마 | `packages/shared` |
@@ -130,7 +150,7 @@ apps/engine/            Node 서비스 — Hono + 큐 + 워커 + 러너 + MCP
   src/mcp/              MCP 서버 (도구 2개)
   src/watch/            폴더 감시 (chokidar)
 apps/web/               Vite React — 갤러리 · 편집안 · 장면 카드 · 채팅
-apps/site/              설치 안내 + install.sh 호스팅 (Cloudflare Pages)
+apps/site/              설치 안내 + install.sh 호스팅 (Vercel · Next.js)
 packages/shared/        zod 스키마 (Composition · Digest · Job · API 계약)
 packages/media/         ffmpeg 명령 빌더, probe, 인코더 선택, 프레임 시트
 packages/templates/     ★ 스타일 자산. Remotion 컴포지션 + 토큰 + spec

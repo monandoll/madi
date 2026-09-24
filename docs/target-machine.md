@@ -18,10 +18,10 @@
 
 | 항목 | 값 |
 |---|---|
-| AI 구독 | 보유 (제품 미확인 — Claude 계열이면 `claude`, ChatGPT 계열이면 `codex`) |
+| AI 구독 | 보유 |
 
-`AgentProvider` 가 둘 다 지원하므로 어느 쪽이든 동작한다. 다만 설치 안내 문구가 달라지므로
-어느 구독인지는 `install.sh` 를 쓰기 전에 확인한다.
+**Claude 와 Codex 를 둘 다 지원한다** (`AgentProvider`). 어느 구독이든 동작하므로
+구독 종류는 개발을 막지 않는다. `install.sh` 의 안내 문구를 고를 때만 알면 된다.
 
 ## 확인 방법
 
