@@ -36,6 +36,7 @@ system_profiler SPHardwareDataType | grep -E "Model Name|Chip|Memory"; sw_vers; 
 ## 전달 전 체크리스트 (§12-7)
 
 - [ ] `.dmg` 드래그 → 아이콘 클릭 → 준비 완료까지 터미널 0회
+- [ ] 앱 창이 주소창 없이 뜬다 (Safari 탭이 아니다)
 - [ ] 첫 실행 준비 화면이 ffmpeg · Chrome 다운로드 진행률을 보여준다
 - [ ] quarantine 자동 해제 (0단계에서 이미 겪은 문제)
 - [ ] claude / codex 감지 → 없으면 설치 → 브라우저 OAuth 로그인

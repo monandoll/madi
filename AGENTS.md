@@ -51,7 +51,8 @@ madi.app  (Swift · SwiftUI 메뉴바)
  ├─ 엔진 프로세스 관리 — spawn · 감시 · 재시작 · 종료
  ├─ 첫 실행 준비 — 사이드카 다운로드, quarantine 해제, 진행바
  ├─ AI 연결 — claude / codex 감지, 없으면 설치, 로그인은 브라우저 OAuth
- ├─ 브라우저 열기 + 모바일 접속 QR
+ ├─ 앱 창 (WKWebView) — localhost:41520 을 주소창 없이 띄운다
+ ├─ 모바일 접속 QR
  └─ Resources/
      ├─ node                    번들
      ├─ engine/                 Node 엔진 (Hono · SQLite · 큐 · 워커 · 러너 · MCP)
@@ -60,14 +61,22 @@ madi.app  (Swift · SwiftUI 메뉴바)
      │   └─ madi-whisper        Swift — word 단위 전사 (WhisperKit / CoreML)
      └─ (첫 실행 때 받음) ffmpeg, Chrome Headless Shell
 
-        ▲ http://localhost:41520          ▲ http://<mac>.local:41520/?t=<토큰>
-        │                                  │
-  [Mac 브라우저]                      [아이폰 Safari — 같은 와이파이]
+        ▲ WKWebView (앱 창)               ▲ http://<mac>.local:41520/?t=<토큰>
+        │  localhost:41520                 │
+  [Mac — 앱 창]                       [아이폰 Safari — 같은 와이파이]
    편집 · 결과 확인                     촬영본 업로드 · 결과 확인
 ```
 
 - **크리에이터가 하는 일은 `.dmg` 드래그와 아이콘 클릭뿐이다.** 설치 스크립트를 주지 않는다.
 - 엔진이 UI 까지 직접 서빙한다. 별도 프론트 배포 없음. CORS 없음. mixed content 없음.
+- **껍데기는 Swift, 화면은 웹이다.** 화면을 SwiftUI 로 짜지 않는다. 이유 세 가지:
+  (1) 같은 화면이 아이폰 Safari 에서 그대로 돌아 모바일이 공짜로 된다 —
+      SwiftUI 로 짜면 아이폰용을 따로 만들어야 하고 그건 iOS 앱을 만드는 일이다
+  (2) Remotion 미리보기가 React 다
+  (3) 0단계 자산(`Caption.tsx` · `tokens.ts`)이 그대로 간다
+  앱 창은 `WKWebView` 로 주소창 없이 띄운다. 기본 브라우저를 열어주지 않는다 —
+  `.dmg` 로 설치한 앱을 눌렀는데 Safari 탭이 뜨면 앱으로 느껴지지 않는다.
+  "브라우저에서 열기" 는 보조 수단으로만 둔다 (디버깅 · 다중 창).
 - **AI 는 크리에이터 본인 Claude/Codex 구독을 쓴다** (로컬 CLI 스폰). 둘 다 지원한다.
   앱이 CLI 설치와 로그인 진입까지 대신한다. 사람은 브라우저에서 OAuth 버튼만 누른다.
 - **애플 프레임워크로 다운로드를 줄인다.** whisper.cpp 바이너리와 onnx pose 모델이
@@ -105,7 +114,8 @@ madi.app  (Swift · SwiftUI 메뉴바)
 ### 이 선택이 만드는 부담 (숨기지 않는다)
 
 1. **Swift 코드가 생긴다.** 언어가 둘이 된다. 경계를 좁게 유지한다 —
-   앱은 프로세스 관리 · 준비 · QR 만, 헬퍼는 표준입출력 JSON 만. 제품 로직을 Swift 로 넘기지 않는다.
+   앱은 프로세스 관리 · 준비 · 창 · QR 만, 헬퍼는 표준입출력 JSON 만.
+   **제품 로직과 화면을 Swift 로 넘기지 않는다.** 넘기는 순간 모바일이 깨진다.
 2. **모바일은 같은 와이파이에서만 된다.** 밖에서 쓰려면 터널이 필요하다. 처음부터 말해 둔다.
 3. **Mac 이 깨어 있어야 아이폰에서 접속된다.** 잠들면 안 보인다. 앱이 이유를 알려줘야 한다.
 4. 크리에이터가 Claude/Codex 구독을 유지해야 한다. 끊기면 AI 기능이 멈춘다 — 조용히 실패하지 않는다.
@@ -116,7 +126,7 @@ madi.app  (Swift · SwiftUI 메뉴바)
 
 | 영역 | 선택 | 비고 |
 |---|---|---|
-| 앱 셸 | **Swift · SwiftUI 메뉴바 앱** | 프로세스 관리 · 첫 실행 준비 · QR. Electron 없음 |
+| 앱 셸 | **Swift · SwiftUI 메뉴바 + WKWebView 창** | 프로세스 관리 · 준비 · QR. 화면은 웹. Electron 없음 |
 | 엔진 | Node 22 (앱이 번들·스폰) | 프로세스명 `madi-engine` |
 | 배포·업데이트 | 공증 `.dmg` + Sparkle | $99 서명은 판매 시점에 |
 | 모바일 | 같은 와이파이 LAN + 페어링 토큰 QR | 터널은 요구 생기면 |
@@ -140,7 +150,7 @@ madi.app  (Swift · SwiftUI 메뉴바)
 
 ```
 apps/mac/               Swift 앱 (Xcode)
-  Madi/                 SwiftUI 메뉴바, 엔진 프로세스 관리, 첫 실행 준비, QR, 페어링 토큰
+  Madi/                 SwiftUI 메뉴바 + WKWebView 창, 엔진 프로세스 관리, 첫 실행 준비, QR
   Helpers/madi-vision/  Swift — 사람 bbox · 관절 (Vision). stdout 에 JSON
   Helpers/madi-whisper/ Swift — word 단위 전사 (WhisperKit). stdout 에 JSON
 apps/engine/            Node 서비스 — Hono + 큐 + 워커 + 러너 + MCP
@@ -451,7 +461,7 @@ BGM         -22dB, 말하는 구간 -6dB 추가 덕킹
 
 **7. 앱 껍데기 + 배포**
 Swift 앱으로 감싸서 크리에이터에게 건넬 수 있는 상태로 만든다.
-- SwiftUI 메뉴바, 엔진 프로세스 관리(spawn · 감시 · 재시작)
+- SwiftUI 메뉴바 + `WKWebView` 앱 창 (주소창 없음), 엔진 프로세스 관리(spawn · 감시 · 재시작)
 - 첫 실행 준비 화면: ffmpeg · Chrome 다운로드, quarantine 해제, 진행바
 - AI 연결: claude / codex 감지 → 없으면 설치 → 브라우저 OAuth 로그인 유도
 - Swift 헬퍼 2개 (`madi-vision` · `madi-whisper`) 를 1·2단계 워커와 교체
