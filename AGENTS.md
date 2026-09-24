@@ -93,11 +93,13 @@ AI CLI 로그인(`claude login` 또는 `codex login`)은 설치 스크립트가 
 ### 어디에 무엇이 있는가
 
 ```
-Vercel    madi.<도메인>       설치 안내 + install.sh        공개 · 정적
-크리에이터 Mac  localhost:41520   엔진 · UI · 영상 · AI 전부   비공개 · 로컬
+Cloudflare Pages   madi.<도메인>      설치 안내 + install.sh        공개 · 정적
+크리에이터 Mac      localhost:41520    엔진 · UI · 영상 · AI 전부   비공개 · 로컬
 ```
 
-**엔진을 서버(Vercel 등)에 올리지 않는다.** 네 가지가 각각 막는다.
+설치 페이지는 정적 HTML 과 `install.sh` 한 장뿐이다. 프레임워크를 얹지 않는다.
+
+**엔진을 서버(Cloudflare · Vercel 등)에 올리지 않는다.** 네 가지가 각각 막는다.
 
 1. ffmpeg · whisper — 서버리스 함수는 실행 시간 제한이 있고 파일시스템이 임시다.
    3분 영상 전사 + 렌더가 함수 하나 수명 안에 안 끝난다
@@ -150,7 +152,7 @@ apps/engine/            Node 서비스 — Hono + 큐 + 워커 + 러너 + MCP
   src/mcp/              MCP 서버 (도구 2개)
   src/watch/            폴더 감시 (chokidar)
 apps/web/               Vite React — 갤러리 · 편집안 · 장면 카드 · 채팅
-apps/site/              설치 안내 + install.sh 호스팅 (Vercel · Next.js)
+apps/site/              설치 안내 + install.sh 호스팅 (Cloudflare Pages · 정적)
 packages/shared/        zod 스키마 (Composition · Digest · Job · API 계약)
 packages/media/         ffmpeg 명령 빌더, probe, 인코더 선택, 프레임 시트
 packages/templates/     ★ 스타일 자산. Remotion 컴포지션 + 토큰 + spec
