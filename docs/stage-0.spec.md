@@ -2,6 +2,28 @@
 
 `AGENTS.md §12-0`. 이 단계를 통과하기 전에 1단계로 가지 않는다.
 
+## 상태 (2026-09-25)
+
+**A 통과 · B 4/5 통과 · B-2(구도)는 촬영 원본 대기.**
+
+| | 판정 | |
+|---|---|---|
+| A. 자막 한 장 | **통과** | 3.54% / 0.2354 / 0.2021 — 세 항목 전부 |
+| B-1 자막 | **통과** | 네이티브 1080p 원본과 측정값이 자릿수까지 같다 |
+| B-2 구도 | **보류** | 소스가 이미 9:16 크롭된 완성본이라 리프레이밍을 검증할 수 없다 |
+| B-3 리듬 | **통과** | 자막 전환 경계 60개 시각 전부 포개짐 |
+| B-4 훅 | **통과(제한적)** | 자막은 동일. 훅 *구성*은 이 소스로 검증 불가 |
+| B-5 종합 | **통과** | 나란히 놓고 구분되지 않는다 |
+
+근거와 프레임: `docs/findings/2026-09-25-coretext-caption-measurement.md`.
+
+**1단계(리프레이밍)는 촬영 원본(`spike/source/raw.mp4`)이 들어올 때까지 시작하지 않는다.**
+B-2 를 판정하지 못한 채로 리프레이밍을 만들면 무엇에 맞추는지 모르는 채로 만드는 것이다.
+채널에 16:9 롱폼도 없어서 대용도 없다.
+
+그동안은 **1단계를 막지 않는 준비 작업만** 한다 — 레이아웃 어휘 재조사(10편),
+스키마 갭 반영, `PoseProvider` 감지 정확도 스파이크.
+
 ## 목적
 
 **CoreText + CALayer 로 크리에이터 자막을 재현할 수 있는지** 확인한다.
@@ -45,7 +67,7 @@ CSS 줄상자 때문에 나온 보정값이다. CoreText 는 폰트 메트릭을
 | `Madi/Templates/StyleSchema.swift` | 스타일 파라미터 정의 · 검증 범위 · 기본값. **AI 접근 불가** |
 | `Resources/styles/short.v1.json` | 스타일 **값**. `§9` 실측표에서 역산. 빌드 없이 바뀐다 |
 | `Madi/Templates/CaptionLayer.swift` | CoreText 자막 레이어. 값은 주입받는다 |
-| `Madi/Render/Renderer.swift` | Composition → AVMutableComposition + CALayer → AVAssetWriter |
+| `Madi/Render/Renderer.swift` | Composition → AVMutableComposition + CALayer → AVAssetExportSession |
 | `Madi/Render/StillRenderer.swift` | 프레임 1장만 PNG 로. 측정·대조용 |
 | `MadiTests/CompositionTests.swift` | 파싱 · 길이 · 오프셋 · 스타일값 차단 · 역구간 |
 | `spike/composition.json` | `reference/` 1편을 손으로 옮겨 적은 것 |
@@ -61,6 +83,8 @@ CSS 줄상자 때문에 나온 보정값이다. CoreText 는 폰트 메트릭을
 | 본문 글자 높이 | 프레임 높이의 3.59% | ±0.1% |
 | 본문 아래끝 | 아래에서 0.2352 | ±0.003 |
 | 보조 문구 베이스라인 | 아래에서 0.2023 | ±0.003 |
+
+한 줄 최대 글자 수는 **15자**다 (`AGENTS.md §9`). 13자로 두면 원본이 한 줄로 쓰는 자막이 두 줄로 쪼개진다.
 
 배경 없이 재고, 그다음 `reference/` 프레임 위에 겹쳐서 눈으로 본다.
 **세 항목이 다 들어오기 전에 B 로 가지 않는다.** 자막 한 장이 틀리면 영상 전체가 틀린다.
@@ -82,8 +106,9 @@ CSS 줄상자 때문에 나온 보정값이다. CoreText 는 폰트 메트릭을
 합성 방식을 바꾼다. 1단계로 가지 않는다.
 
 1. `AVVideoCompositionCoreAnimationTool` 로 안 되는 게 정확히 무엇인지 적는다
-2. 프레임별 직접 합성(Core Image / Metal → `AVAssetWriter`)으로 같은 실험을 반복한다.
-   제어는 늘고 코드는 늘어난다
+   (이미 하나 나왔다 — **내보내기에서만 적용된다.** `AVAssetWriter` · `AVPlayer` ·
+   `AVAssetImageGenerator` 는 무시한다. `AGENTS.md §7` 참고)
+2. 커스텀 `AVVideoCompositing` 으로 프레임별 합성한다. 제어는 늘고 코드는 늘어난다
 3. 둘 다 안 되면 비용을 일정에 반영한 뒤 사람이 결정한다
 
 ## 알려진 함정
@@ -99,14 +124,15 @@ CSS 줄상자 때문에 나온 보정값이다. CoreText 는 폰트 메트릭을
   CoreText 는 다르다. 추측하지 말고 잰다.
 - **Pretendard Variable 의 웨이트** 지정. CoreText 에서 variable 축(`wght`)을 명시하지 않으면
   기본 웨이트로 그려진다. ExtraBold 가 나오는지 첫 장에서 확인한다.
-- 프리뷰(`AVPlayer`)와 최종 렌더가 같은 `videoComposition` 을 쓰는지 확인한다.
+- **프리뷰와 내보내기는 경로가 다르다.** `animationTool` 은 내보내기에서만 적용된다.
+  같아야 하는 것은 `videoComposition` 이 아니라 **레이어 트리를 만드는 함수**다 (`AGENTS.md §7`).
 
 ## 작업 순서
 
 1. `Composition.swift` + 테스트
 2. `reference/` 프레임에서 자막 값 역산 → `StyleSchema.swift`(스키마) + `short.v1.json`(값)
 3. `CaptionLayer.swift` + `StillRenderer` → **A 통과까지 반복**
-4. `Renderer.swift` (AVMutableComposition + CoreAnimationTool + AssetWriter)
+4. `Renderer.swift` (AVMutableComposition + CoreAnimationTool + AVAssetExportSession)
 5. `spike/composition.json` 손으로 작성
 6. 렌더 → 비교 → B 판정
 

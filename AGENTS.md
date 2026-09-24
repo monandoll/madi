@@ -75,7 +75,7 @@ madi.app  (Swift · SwiftUI · macOS 14+)
  │              AVMutableComposition            컷 · 순서 · 배속
  │              AVVideoCompositionCoreAnimationTool + CALayer   자막 · 오버레이 · 줌
  │              CoreText                        흰 글씨 + 검은 외곽선
- │              AVAssetWriter (VideoToolbox)    인코딩
+ │              AVAssetExportSession (VideoToolbox)  내보내기
  │
  ├─ Review      품질 게이트(측정) + self-eval (§8)
  │
@@ -146,7 +146,7 @@ madi.app  (Swift · SwiftUI · macOS 14+)
 | 컷·배속 | **AVMutableComposition** | |
 | 합성 | **AVVideoCompositionCoreAnimationTool** + CALayer | 자막 · 오버레이 · 줌 |
 | 글자 | **CoreText** `NSAttributedString` | 외곽선은 **stroke 패스 + fill 패스 2회**. 음수 strokeWidth 는 글자를 깎는다 |
-| 인코딩 | **AVAssetWriter** (VideoToolbox) | H.264 / HEVC |
+| 내보내기 | **AVAssetExportSession** (VideoToolbox) | H.264 / HEVC. `animationTool` 이 여기서만 적용된다 — `AVAssetWriter` 로는 자막이 안 붙는다 |
 | 에이전트 | `Process` → `claude -p --output-format stream-json` · `codex exec` | **둘 다 필수**. `AgentProvider` 프로토콜 뒤에 숨긴다 |
 | MCP | 앱 내장 stdio 서버 | 도구 2개 (`§10`) |
 | 배포 | 공증 `.dmg` + Sparkle | **Universal 2** (`ARCHS = arm64 x86_64`). App Store 안 함 (샌드박스 불가) |
@@ -175,7 +175,7 @@ Madi/
     Transcription/  TranscriptionProvider — WhisperKit(arm64) · WhisperCpp(x86_64)
     Pose/           PoseProvider — Vision
     Audio/ Scene/ Frames/
-  Render/           AVMutableComposition · CALayer 트리 · AVAssetWriter
+  Render/           AVMutableComposition · CALayer 트리 · AVAssetExportSession
   Review/           품질 게이트 측정 · self-eval 루프
   Agent/            AgentProvider · Claude · Codex · 프롬프트 조립
   MCP/              stdio 서버, 도구 2개
@@ -337,7 +337,7 @@ Composition
    ├─ 2. compose    AVMutableComposition — 컷 · 순서 · 배속
    ├─ 3. layers     CALayer 트리 — 리프레임 변환 · 자막 · 오버레이 · 줌
    │                AVVideoCompositionCoreAnimationTool 로 붙인다
-   ├─ 4. write      AVAssetWriter (VideoToolbox) → mp4
+   ├─ 4. write      AVAssetExportSession (VideoToolbox) → mp4
    ├─ 5. gate       §8 품질 게이트 측정
    └─ 6. self-eval  실패 항목이 있으면 프레임 시트 + 게이트 리포트를 AI 에 되먹임
                     → Composition 수정 → 2번부터 재실행 (최대 2회)
@@ -352,8 +352,28 @@ Composition
   0 을 그대로 쓰면 무시된다. `isRemovedOnCompletion = false`, `fillMode = .both`.
 - 리프레임 키프레임은 스무딩한다(0.4s 저역통과). 프레임이 떨리면 즉시 실패 (G3).
 - 중간 산출물은 `~/Library/Caches/madi/<compositionID>/`. 성공 시 정리, 실패 시 남긴다.
-- **프리뷰와 최종 렌더가 같은 레이어 코드를 쓴다.** `AVPlayer` + 같은 `videoComposition`.
-  프리뷰와 결과가 다르면 사용자가 신뢰를 잃는다.
+
+### 내보내기와 프리뷰는 경로가 다르다. 레이어 트리만 같다
+
+`AVVideoCompositionCoreAnimationTool` 은 **내보내기에서만** 적용된다.
+`AVAssetWriter` · `AVPlayer` · `AVAssetImageGenerator` 는 전부 무시한다.
+0단계에서 실측으로 확인했다 (`docs/findings/2026-09-25-coretext-caption-measurement.md §8`).
+
+| | 쓰는 것 |
+|---|---|
+| 내보내기 | `AVAssetExportSession` + `videoComposition.animationTool` |
+| 프리뷰 | `AVPlayer` + `AVSynchronizedLayer` 에 **같은 레이어 트리** |
+
+- **불변 조건은 "같은 `videoComposition`" 이 아니라 "레이어 트리를 만드는 함수가 하나" 다.**
+  `Composition` + 스타일 값 → `[CALayer]` 를 내는 함수는 하나뿐이고,
+  내보내기와 프리뷰가 그 하나를 부른다. 두 번째 구현이 생기면 그 순간 어긋나기 시작한다.
+- 같은 시각의 **프리뷰 스냅샷**과 **내보낸 프레임**을 `tools/measure.mjs` 와 같은 계산으로
+  대조하는 테스트를 둔다. 둘이 다르면 빌드를 깬다.
+- **self-eval 프레임은 반드시 내보낸 파일에서 뽑는다** (`§7-6`).
+  `AVAssetImageGenerator` 를 원본 컴포지션에 걸면 자막이 없는 프레임이 나오고,
+  AI 는 "자막이 없다" 고 판단해 엉뚱한 수정을 한다.
+- `AVAssetExportSession` 으로 막히는 게 나오면(프리셋 제약 등) 커스텀 `AVVideoCompositing` 으로
+  프레임별 합성한다. **비상구이지 기본값이 아니다.**
 
 ---
 
@@ -368,7 +388,7 @@ Composition
 | G2 | 피사체 잘림 | 머리 상단·발목 관절이 프레임 밖으로 나가는 구간 5% 이하 |
 | G3 | 리프레임 안정 | 인접 키프레임 간 중심 이동 <= 프레임 폭의 3%/frame |
 | G4 | 자막 크기 | 글자 높이 >= 프레임 높이 **3.2%** (원본 실측 3.59% 에 여유 -15%) |
-| G5 | 자막 분절 | 한 덩어리 <= 13자, 2줄 이내 (원본 실측: 12자까지 한 줄) |
+| G5 | 자막 분절 | 한 덩어리 <= **15자**, 2줄 이내 (원본 실측: 15자까지 한 줄) |
 | G6 | 자막 싱크 | 캡션 start 와 대응 word start 오차 <= 0.15s |
 | G7 | 자막 가림 | 자막 박스가 어깨선 위 관절을 덮지 않음 |
 | G8 | 훅 | 0~1.5초 구간에 `role == .hook` 장면 또는 titleCard 존재 |
@@ -379,9 +399,15 @@ Composition
 
 - **G1 · G4 · G6 은 하드 게이트.** 실패하면 사용자에게 보여주지 않고 self-eval 로 되돌린다.
 - 나머지는 소프트. 리포트에 남기고 채팅에서 한 줄로 알린다.
-- 게이트 수치는 **원본 실측에서 나온다.** 근거 없이 정한 숫자를 하드 게이트로 걸지 않는다
-  (G4 를 4.5% 로 뒀다가 크리에이터 실제 영상이 통과하지 못한 사례가 있다 —
-  `docs/findings/2026-09-23-reference-measurement.md §4`).
+- 게이트 수치는 **원본 실측에서 나온다.** 근거 없이 정한 숫자를 하드 게이트로 걸지 않는다.
+  두 번 겪었다:
+  - G4 를 4.5% 로 뒀다가 크리에이터 실제 영상(3.59%)이 통과하지 못했다
+    (`docs/findings/2026-09-23-reference-measurement.md §4`)
+  - G5 를 13자로 뒀다가 크리에이터 자막 "반대쪽도 똑같이 진행해주세요"(15자, 원본은 한 줄)가
+    **두 줄로 쪼개졌다.** 전편 자막 15개를 다 세어 15자로 고쳤다
+    (`docs/findings/2026-09-25-coretext-caption-measurement.md §9`).
+    글자 수는 실제 제약이 아니다 — **폭이 제약**이고 `maxWidthRatio` 가 이미 막는다.
+    15자가 폭의 0.844 를 쓰므로 상한 0.90 안에 들어온다
 - **G1~G12 는 아키텍처와 무관하다.** 품질은 Intel 에서도 같아야 한다.
   다른 것은 **시간**뿐이다 (`§17` 성능 등급). 느린 것을 품질 실패로 기록하지 않는다.
 
@@ -450,11 +476,14 @@ AI 는 여전히 스타일 값을 쓸 수 없다. 스키마가 막는다 (`§5 a
 | 보조 문구 베이스라인 | 아래에서 **0.2023** | 높음 — 4편 중 3편 동일 |
 | 외곽선 (바깥 두께) | 4~5px @720 → 6~7.5px @1080 | 중간 |
 | 보조 문구 크기 | 본문 폰트의 **0.4444** (라틴 어센더 24px @1920) | 중간 |
-| 한 줄 최대 | **12자** | 높음 |
-| 자막 크기 | **고정.** fit-to-width 아님 (글자 수 9~12자에서 높이 47~49px 일정) | 높음 |
+| 한 줄 최대 | **15자** | 높음 — 전편 자막 15개를 다 셌다 |
+| 자막 크기 | **고정.** fit-to-width 아님 (글자 수 6~15자에서 글자 높이 일정) | 높음 |
 | 강조색 | **쓰지 않는다.** 본문 전부 흰색 | 높음 |
 | 보조 문구 색 | 노란색 | 중간 |
 | 인물 화면 점유 높이 | 0.72 목표 | 중간 |
+
+"한 줄 최대" 는 공개 숏츠 1편(18.5초)의 자막 **15개를 전부 읽어서** 센 값이다.
+최댓값이 15자였고 원본은 그걸 한 줄로 쓴다. 이전 값 12자는 프레임 몇 장만 보고 정한 것이었다.
 
 **이 표는 CoreText 로 다시 그려도 그대로다.** 맞춰야 할 목표값이다.
 반면 이전 Remotion 스파이크에서 쓴 `fontSize 78` · `baselineNudgeRatio 0.153` 같은 값은
@@ -525,7 +554,7 @@ CSS 줄상자 때문에 나온 보정이라 **버린다.** CoreText 는 폰트 �
 `reference/` 프레임 위에 CoreText 자막을 겹쳐 그려 `§9` 실측표와 맞춘다.
 - 통과: 본문 글자 높이 **3.59% ±0.1%**, 본문 아래끝 **0.2352 ±0.003**, 보조 베이스라인 **0.2023 ±0.003**
 - 측정은 `tools/measure.mjs` 로 한다 (PNG 를 재므로 무엇이 그렸는지 무관)
-- 이어서 `reference/` 1편을 손으로 `Composition` 으로 재현 → AVAssetWriter 렌더 → 원본과 나란히 비교
+- 이어서 `reference/` 1편을 손으로 `Composition` 으로 재현 → 내보내기 → 원본과 나란히 비교
 - **눈으로 같은 채널 영상으로 보이지 않으면 여기서 멈춘다.** 1단계로 가지 않는다
 
 **1. 리프레이밍**

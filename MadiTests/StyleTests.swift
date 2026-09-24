@@ -81,7 +81,7 @@ struct CaptionGeometryTests {
 
     @Test("자막 길이가 달라도 글자 크기는 고정이다")
     func sizeIsFixedNotFitToWidth() throws {
-        // 원본 판정: 글자 수 9~12자에서 폭은 변해도 글자 높이는 일정했다
+        // 원본 판정: 글자 수 6~15자에서 폭은 변해도 글자 높이는 일정했다
         // (docs/findings/2026-09-23-reference-measurement.md §2).
         // 폭에 맞춰 키우는 코드(fit-to-width)가 들어오면 여기서 깨진다.
         //

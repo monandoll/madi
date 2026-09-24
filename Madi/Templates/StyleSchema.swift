@@ -104,7 +104,13 @@ public struct StyleValues: Codable, Hashable, Sendable {
         public var maxWidthRatio: Double
 
         /// 한 덩어리 최대 글자 수 · 최대 줄 수. 품질 게이트 G5.
-        /// 재는 법: 여러 프레임에서 한 번에 뜬 글자 수의 최댓값(공백 포함).
+        ///
+        /// 재는 법: **한 편을 처음부터 끝까지** 보고 한 번에 뜬 글자 수의 최댓값(공백 포함).
+        /// 프레임 몇 장만 보면 최댓값을 놓친다 — 12자로 뒀다가 원본의 15자 자막이
+        /// 두 줄로 쪼개진 적이 있다 (`docs/findings/2026-09-25-coretext-caption-measurement.md §9`).
+        ///
+        /// ★ 글자 수는 실제 제약이 아니다. **폭이 제약**이고 `maxWidthRatio` 가 이미 막는다.
+        ///   이 값은 근사치이므로 의심스러우면 느슨하게 두고 폭에 맡긴다.
         public var maxChars: Int
         public var maxLines: Int
 

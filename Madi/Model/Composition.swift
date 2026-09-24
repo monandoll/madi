@@ -42,7 +42,7 @@ public struct NormPoint: Codable, Hashable, Sendable {
 
 /// 자막 한 덩어리. **문장을 통째로 넣지 않는다.**
 /// whisper 문장 세그먼트를 그대로 그린 게 전작이 "자동 생성 자막"처럼 보인 이유다 (AGENTS.md §0-3).
-/// 품질 게이트 G5: 한 덩어리 13자 이내, 2줄 이내.
+/// 품질 게이트 G5: 한 덩어리 15자 이내, 2줄 이내 (원본 실측: 15자까지 한 줄).
 public struct Caption: Codable, Hashable, Sendable {
     public enum Slot: String, Codable, Sendable {
         /// 하단 본문. 대부분의 자막.
