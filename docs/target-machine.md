@@ -8,11 +8,13 @@
 | 항목 | 값 | 왜 중요한가 |
 |---|---|---|
 | 모델 | ? | |
-| 칩 | ? | **Apple Silicon 필수.** Vision(Neural Engine) · WhisperKit(CoreML) · VideoToolbox 가 전부 여기 붙는다. Intel 이면 "편집 10분" 목표가 깨진다 |
+| 칩 | ? | Apple Silicon = Tier 1 (10분 목표 보장). Intel = Tier 2 (동작 보장, 시간 목표 없음). `AGENTS.md §17` |
 | 메모리 | ? | Remotion 렌더 + 전사 동시 실행. 큐 동시성은 렌더 1 · 분석 1 |
 | macOS | ? | Vision 관절 API · Chrome Headless · 로컬 네트워크 권한(15+) |
 | 저장 여유 | ? | 촬영 원본 + 프록시 + 중간 산출물이 편당 수백 MB |
 | AI 구독 | 보유 | Claude · Codex 둘 다 지원. 어느 쪽이든 동작한다 |
+
+**둘 다 지원한다** (Universal 2). 다만 성능 등급이 다르므로 칩을 알아야 기대치를 정할 수 있다.
 
 확인 명령 (크리에이터에게 실행을 부탁하지 말 것 — 전달 시 직접 확인한다):
 
@@ -33,7 +35,7 @@ system_profiler SPHardwareDataType | grep -E "Model Name|Chip|Memory"; sw_vers; 
 
 집 밖에서는 안 된다. 터널은 요구가 실제로 생기면 붙인다 (`AGENTS.md §2`).
 
-## 전달 전 체크리스트 (§12-7)
+## 전달 전 체크리스트 (§12-6)
 
 - [ ] `.dmg` 드래그 → 아이콘 클릭 → 준비 완료까지 터미널 0회
 - [ ] 앱 창이 주소창 없이 뜬다 (Safari 탭이 아니다)

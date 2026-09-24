@@ -81,8 +81,9 @@ madi.app  (Swift · SwiftUI · macOS 14+)
                 MCP 서버 (stdio, 앱 내장) — 도구 2개
 ```
 
-- **외부 바이너리를 받지 않는다.** ffmpeg · whisper.cpp · onnxruntime · Chrome Headless 전부 불필요.
+- **Apple Silicon 에서는 외부 바이너리를 받지 않는다.** ffmpeg · onnxruntime · Chrome Headless 전부 불필요.
   애플 프레임워크로 대체된다. 첫 실행 준비 화면도, quarantine 해제도 필요 없다.
+  **Intel Mac 에서만** 전사 폴백으로 whisper.cpp 를 받는다 (`§17`). 그때는 quarantine 해제가 필요하다.
 - **HTTP 서버가 없다.** 화면이 같은 프로세스 안이라 함수 호출로 끝난다.
   포트 · CORS · WebSocket · mixed content · 페어링 토큰이 전부 소멸한다.
 - **영상이 기기를 떠나지 않는다.** 수강생·회원이 찍힌 촬영본이 섞일 수 있어
@@ -122,7 +123,9 @@ madi.app  (Swift · SwiftUI · macOS 14+)
    대신 Chrome 을 안 띄우니 더 빠르고, 라이선스 문제도 없다.
 2. **모바일 화면이 없다.** 아이폰에서 결과를 확인하려면 사진 앱으로 내보내야 한다.
    iOS 앱을 만들지 않는다 (`§16`). 요구가 실제로 생기면 그때 SwiftUI 멀티플랫폼으로 검토한다.
-3. **Apple Silicon 전용이다.** Vision · WhisperKit · VideoToolbox 가 전부 여기 붙는다.
+3. **아키텍처가 둘이다.** Apple Silicon 과 Intel 을 모두 지원하지만 **성능 등급이 다르다** (`§17`).
+   전사·사람감지 구현을 프로토콜로 감싸야 하고, Intel 경로는 별도로 테스트해야 한다.
+   "느리다"를 버그로 취급하지 않는다 — 등급이 다른 것이다.
 4. 크리에이터가 Claude/Codex 구독을 유지해야 한다. 끊기면 AI 기능이 멈춘다 — 조용히 실패하지 않는다.
 
 ---
@@ -136,18 +139,22 @@ madi.app  (Swift · SwiftUI · macOS 14+)
 | DB | **GRDB.swift** (SQLite) | 마이그레이션 · 관측 쿼리. SwiftData 쓰지 않는다 |
 | 큐 | Swift actor + SQLite `jobs` | 렌더 1 · 분석 1 동시 |
 | 가져오기 | **PhotoKit** + 폴더 감시(보조) | 업로드 없음 |
-| 전사 | **WhisperKit** (CoreML) | word timestamps 필수 |
-| 사람 감지 | **Vision** `VNDetectHumanBodyPoseRequest` | bbox + 19관절, 0.5s 간격. Neural Engine |
+| 전사 | **WhisperKit** (CoreML, Apple Silicon) / **whisper.cpp** (Intel 폴백) | `TranscriptionProvider` 프로토콜 뒤에 숨긴다. word timestamps 필수 |
+| 사람 감지 | **Vision** `VNDetectHumanBodyPoseRequest` | bbox + 19관절, 0.5s 간격. `PoseProvider` 프로토콜. Intel 에서도 동작(3~5배 느림) |
 | 컷·배속 | **AVMutableComposition** | |
 | 합성 | **AVVideoCompositionCoreAnimationTool** + CALayer | 자막 · 오버레이 · 줌 |
 | 글자 | **CoreText** `NSAttributedString` | `.strokeWidth` 음수 = 외곽선 + 채우기 |
 | 인코딩 | **AVAssetWriter** (VideoToolbox) | H.264 / HEVC |
 | 에이전트 | `Process` → `claude -p --output-format stream-json` · `codex exec` | **둘 다 필수**. `AgentProvider` 프로토콜 뒤에 숨긴다 |
 | MCP | 앱 내장 stdio 서버 | 도구 2개 (`§10`) |
-| 배포 | 공증 `.dmg` + Sparkle | App Store 안 함 (샌드박스 불가) |
+| 배포 | 공증 `.dmg` + Sparkle | **Universal 2** (`ARCHS = arm64 x86_64`). App Store 안 함 (샌드박스 불가) |
 | 폰트 | Pretendard Variable (OFL) | 앱 번들에 동봉 |
 
-Python 없음. 외부 바이너리 없음. 네트워크 요청은 AI CLI 가 하는 것 외에 없다.
+Python 없음. 네트워크 요청은 AI CLI 와 (Intel 전용) whisper.cpp 다운로드 외에 없다.
+
+**추상화는 두 개만 만든다.** `TranscriptionProvider` · `PoseProvider`.
+아키텍처 분기를 이 두 곳에 가두고 다른 데로 새지 않게 한다.
+`#if arch(arm64)` 를 코드 곳곳에 뿌리지 않는다 — 런타임에 한 번 골라 주입한다.
 
 ---
 
@@ -162,7 +169,10 @@ Madi/
   Store/            GRDB 스키마 · 마이그레이션 · 리포지토리
   Queue/            actor 기반 작업 큐
   Import/           PhotoKit, 폴더 감시, 프록시 생성
-  Analyze/          Vision · WhisperKit · 오디오 · 씬 · 프레임 시트 → Digest
+  Analyze/          Digest 생성
+    Transcription/  TranscriptionProvider — WhisperKit(arm64) · WhisperCpp(x86_64)
+    Pose/           PoseProvider — Vision
+    Audio/ Scene/ Frames/
   Render/           AVMutableComposition · CALayer 트리 · AVAssetWriter
   Review/           품질 게이트 측정 · self-eval 루프
   Agent/            AgentProvider · Claude · Codex · 프롬프트 조립
@@ -346,6 +356,8 @@ Composition
 - 게이트 수치는 **원본 실측에서 나온다.** 근거 없이 정한 숫자를 하드 게이트로 걸지 않는다
   (G4 를 4.5% 로 뒀다가 크리에이터 실제 영상이 통과하지 못한 사례가 있다 —
   `docs/findings/2026-09-23-reference-measurement.md §4`).
+- **G1~G12 는 아키텍처와 무관하다.** 품질은 Intel 에서도 같아야 한다.
+  다른 것은 **시간**뿐이다 (`§17` 성능 등급). 느린 것을 품질 실패로 기록하지 않는다.
 
 ---
 
@@ -460,7 +472,8 @@ Vision → bbox 트랙 → 키프레임 → CALayer 변환.
 
 **3. 파이프라인 연결**
 PhotoKit 가져오기 → 다이제스트 → 큐 → 렌더 → 갤러리. AI 없이 수동 Composition 으로.
-- 통과: 아이폰으로 찍은 영상이 앱에 저절로 뜨고, 3분 안에 완성 영상이 나온다
+- 통과: 아이폰으로 찍은 영상이 앱에 저절로 뜨고, 3분 안에 완성 영상이 나온다 (Apple Silicon 기준)
+- Intel 폴백(`WhisperCppProvider`)도 이 단계에서 붙이고 **동작만** 확인한다. 시간은 재지 않는다
 
 **4. AI 1턴**
 `Process` 스폰 + MCP 2도구 + 프롬프트 조립.
@@ -505,7 +518,10 @@ PhotoKit 가져오기 → 다이제스트 → 큐 → 렌더 → 갤러리. AI �
 - 로그는 `OSLog`. 사용자에게 경로를 노출하지 않는다.
 - 사용 이벤트(요청 종류, 소요 시간, 게이트 통과율)를 로컬 SQLite `events` 에 기록. 외부 전송 없음.
 - **"편집 시간 10분" 을 계속 측정한다.** 원본 투입부터 내보내기까지 실측을 `events` 에 남기고,
-  회귀하면 그 커밋을 되돌린다.
+  회귀하면 그 커밋을 되돌린다. `events` 에 **아키텍처(arm64/x86_64)를 같이 기록**하고
+  성능 회귀 판정은 Tier 1 수치로만 한다 (`§17`).
+- 아키텍처 분기는 `TranscriptionProvider` · `PoseProvider` 두 곳에만 둔다.
+  `#if arch(arm64)` 를 코드 곳곳에 뿌리지 않는다.
 - 테스트는 짧은 샘플 영상으로. Vision · WhisperKit 은 프로토콜로 감싸 테스트에서 대체한다.
 
 ---
@@ -534,7 +550,6 @@ node tools/measure.mjs <png> [<png> ...]      # 자막 지표 측정
 - Remotion · ffmpeg · whisper.cpp · onnxruntime — 애플 프레임워크로 대체
 - App Store 배포 (샌드박스에서 AI CLI 스폰 불가)
 - 코드 사이닝 · 공증 · Apple Developer 계정 (판매 시점까지 미룬다)
-- Intel Mac 지원
 - 다크 모드
 - 롱폼 (6단계 통과 전까지)
 
@@ -542,9 +557,31 @@ node tools/measure.mjs <png> [<png> ...]      # 자막 지표 측정
 
 ## 17. 타깃 환경
 
-- **크리에이터 Mac 한 대. Apple Silicon 필수.**
-  Vision · WhisperKit · VideoToolbox 가 전부 여기 붙는다. 사양은 `docs/target-machine.md`.
-  확인 전에는 단정하지 않는다.
-- macOS 14 이상 (SwiftUI Observation, Vision 관절 API).
+- 크리에이터 Mac 한 대. macOS 14 이상 (SwiftUI Observation, Vision 관절 API).
+- **Universal 2 로 빌드한다** (`ARCHS = arm64 x86_64`). 크리에이터 Mac 사양을 확정하기 전까지
+  어느 쪽이든 돌아가야 한다.
 - 아이폰은 **촬영 전용.** iCloud 사진으로 Mac 에 들어온다. 앱을 설치하지 않는다.
 - 개발 머신과 크리에이터 머신이 다르다. 개발자 Mac 에서만 되는 것을 만들지 않는다.
+
+### 성능 등급
+
+**"동작한다"와 "10분 안에 된다"는 다르다.** 둘을 섞지 않는다.
+
+| | Apple Silicon (Tier 1) | Intel x86_64 (Tier 2) |
+|---|---|---|
+| 동작 | ✅ | ✅ |
+| **편집 10분 목표 (`§14`)** | ✅ 보장 대상 | ❌ 목표를 적용하지 않는다 |
+| 품질 게이트 G1~G12 | ✅ | ✅ **동일하게 적용** |
+| 전사 | WhisperKit (ANE) | whisper.cpp 폴백 (Metal/CPU) |
+| 사람 감지 | Vision (ANE) | Vision (CPU/GPU, 3~5배 느림) |
+| 인코딩 | VideoToolbox | VideoToolbox (Quick Sync) |
+| 외부 바이너리 | 없음 | whisper.cpp 1개 (다운로드 + quarantine 해제) |
+
+- **Tier 2 에서 느린 것은 버그가 아니다.** `events` 에 아키텍처를 같이 기록하고
+  성능 회귀 판정은 Tier 1 수치로만 한다 (`§14`).
+- Intel 에서 처음 실행하면 앱이 **솔직하게 알린다** — "이 Mac 에서는 만드는 데 더 오래 걸립니다".
+  조용히 느려지게 두지 않는다.
+- Tier 2 는 **실제 Intel Mac 에서 최소 1회 검증**한다. Rosetta 로 x86_64 빌드를 돌리는 것은
+  동작 확인까지만 유효하고 성능 특성은 다르다. 그걸로 Tier 2 를 검증했다고 적지 않는다.
+- WhisperKit 이 x86_64 빌드조차 안 되면 Tier 2 에서는 아예 제외하고 whisper.cpp 만 쓴다.
+  1단계 전에 확인한다.
