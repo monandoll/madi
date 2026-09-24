@@ -13,10 +13,8 @@ AGENTS.md §9. **스타일은 학습하지 않는다. 사람이 잰다.**
 
 ## 1. 프레임 뽑기
 
-```bash
-cd spike
-pnpm frames        # reference/final.mp4 → public/frames/*.png (0.5초 간격)
-```
+공개 숏폼은 `reference/` 에 이미 34장 있다. 새로 뽑을 때는 브라우저에서
+`video` 를 canvas 로 캡처하거나 촬영 원본에서 직접 뽑는다.
 
 자막이 **가장 길게 나온 프레임**과 **가장 짧게 나온 프레임** 2장을 고른다.
 이 두 장이면 크기·줄바꿈·분절 규칙이 다 나온다.
@@ -28,24 +26,31 @@ pnpm frames        # reference/final.mp4 → public/frames/*.png (0.5초 간격)
 프레임을 이미지 편집기(미리보기 앱의 사각형 선택으로 충분)에서 열고 픽셀을 읽는다.
 **원본 프레임은 1080x1920이다.** 리사이즈된 걸 재면 값이 전부 틀어지므로 확인부터 한다.
 
-| tokens.ts 값 | 재는 법 |
+| Tokens.swift 값 | 재는 법 |
 |---|---|
-| `CAPTION.fontSize` | 받침 없는 글자(예: "다", "이")의 **위아래 끝 픽셀 높이**. 글자 높이 ≈ fontSize × 0.72 이므로 잰 값 ÷ 0.72 |
-| `CAPTION.strokeWidth` | 글자 획 **바깥으로 나간** 검은 테두리 두께(px). 안쪽은 세지 않는다 |
-| `CAPTION.bottomRatio` | 자막 블록 **아래쪽 끝**에서 프레임 하단까지 픽셀 ÷ 1920 |
-| `CAPTION.maxWidthRatio` | 가장 긴 자막 줄의 좌우 폭 ÷ 1080. 보통 0.85~0.92 |
-| `CAPTION.maxChars` | 여러 프레임에서 한 번에 뜬 글자 수의 **최댓값** (공백 포함) |
-| `CAPTION.lineHeight` | 2줄일 때 줄 기준선 간격 ÷ fontSize |
-| `CAPTION.color` / `strokeColor` | 스포이드. 안티에일리어싱 경계가 아니라 **글자 안쪽**을 찍는다 |
+| `caption.fontSize` | 받침 없는 글자(예: "다", "이")의 **위아래 끝 픽셀 높이**. 글자 높이 ≈ fontSize × 0.72 이므로 잰 값 ÷ 0.72 |
+| `caption.strokeWidth` | 글자 획 **바깥으로 나간** 검은 테두리 두께(px). 안쪽은 세지 않는다 |
+| `caption.bottomRatio` | 자막 블록 **아래쪽 끝**에서 프레임 하단까지 픽셀 ÷ 1920 |
+| `caption.maxWidthRatio` | 가장 긴 자막 줄의 좌우 폭 ÷ 1080. 보통 0.85~0.92 |
+| `caption.maxChars` | 여러 프레임에서 한 번에 뜬 글자 수의 **최댓값** (공백 포함) |
+| `caption.lineHeight` | 2줄일 때 줄 기준선 간격 ÷ fontSize |
+| `caption.color` / `strokeColor` | 스포이드. 안티에일리어싱 경계가 아니라 **글자 안쪽**을 찍는다 |
 | `CAPTION_EMPHASIS.color` | 색이 다른 단어가 있으면 그 색. 없으면 강조 기능을 쓰지 않는다 |
-| `CAPTION_SECONDARY.*` | 보조 문구(영문 등)가 있으면. `scale` = 보조 fontSize ÷ 본문 fontSize |
-| `HOOK.fontSize` / `topRatio` | 0~1.5초 구간 프레임에서 같은 방식으로 |
-| `REFRAME.targetSubjectHeightRatio` | 인물의 **머리끝~발목** 픽셀 높이 ÷ 1920. 여러 프레임 평균 |
+| `captionSecondary.*` | 보조 문구(영문 등)가 있으면. `scale` = 보조 fontSize ÷ 본문 fontSize |
+| `hook.fontSize` / `topRatio` | 0~1.5초 구간 프레임에서 같은 방식으로 |
+| `reframe.targetSubjectHeightRatio` | 인물의 **머리끝~발목** 픽셀 높이 ÷ 1920. 여러 프레임 평균 |
 
-### 주의: 외곽선
+### 주의: 외곽선 (CoreText)
 
-`-webkit-text-stroke` 는 획을 글자 경계의 **가운데** 기준으로 그린다. 8px 를 주면 바깥은 4px 만 나간다.
-`Caption.tsx` 가 `strokeWidth × 2` 로 넘겨서 보정하므로, **재는 값은 "바깥으로 나간 두께"** 를 그대로 쓰면 된다.
+`NSAttributedString.strokeWidth` 는 **음수**여야 외곽선 + 채우기가 함께 그려진다.
+양수면 외곽선만 나온다. 그리고 값은 절대 px 가 아니라 **폰트 크기 대비 백분율**이다.
+재는 값은 "바깥으로 나간 두께(px)" 이므로 폰트 크기로 나눠서 넣는다.
+
+### 주의: 글자 높이 ≠ 폰트 크기
+
+`CTFontGetBoundingBox` 또는 `CTLineGetBoundsWithOptions(.useGlyphPathBounds)` 로
+실제 그려지는 높이를 구해 목표에서 역산한다. Remotion(CSS) 때는 0.889 배였는데
+CoreText 는 다르다. **추측하지 말고 잰다.**
 
 ### 주의: 글자 크기 vs 폭
 
@@ -76,13 +81,13 @@ pnpm studio        # Remotion Studio
 
 더 확실한 방법은 원본 프레임 **위에 직접 겹치는** 것이다.
 
+`StillRenderer` 로 자막 한 장을 PNG 로 뽑고, `reference/` 프레임을 배경으로 깔아 겹친다.
+
 ```bash
-PROBE_BACKDROP=frames/0012.png pnpm spike:probe   # public/frames/ 안의 파일명
-PROBE_BACKDROP=reference/yt_11s.png pnpm spike:probe   # 공개본 참고 프레임
+node tools/measure.mjs out/caption-probe.png
 ```
 
-`spike/out/caption-probe.png` 에 우리 자막이 원본 프레임 위에 얹혀 나온다.
-크기·위치가 어긋나면 한눈에 보인다. Studio(`pnpm spike:studio`)는 값을 실시간으로 만질 때 쓴다.
+숫자로 PASS/FAIL 이 나온다. 크기·위치가 어긋나면 한눈에 보인다.
 
 여기서 다르면 영상 전체가 다르다. 이 단계를 건너뛰고 렌더부터 돌리지 않는다.
 
@@ -96,28 +101,22 @@ PROBE_BACKDROP=reference/yt_11s.png pnpm spike:probe   # 공개본 참고 프레
 
 ## 4. 확정
 
-`tokens.ts`의 `MEASURED`를 `true`로 바꾼다. 그 전에는 렌더할 때마다 경고가 뜬다.
-
-```ts
-export const MEASURED = true;
-```
+`Tokens.swift` 의 `measured` 를 `true` 로 바꾼다. 그 전에는 렌더할 때마다 경고 로그가 남는다.
 
 ---
 
-## 5. 템플릿으로 승격 (2단계)
-
-0단계를 통과하면 `spike/remotion/`을 `packages/templates/suhyun.short.v1/`로 옮긴다.
+## 5. 템플릿 구조
 
 ```
-packages/templates/suhyun.short.v1/
-  index.tsx        Remotion 루트
-  tokens.ts        여기서 잰 값
-  layout.ts        role 별 화면 구성, 리프레임 목표치
-  spec.json        AI 가 쓸 수 있는 role · slot · overlay kind 와 payload 스키마
-  reference/       근거로 쓴 프레임 캡처 (지우지 않는다)
+Madi/Templates/SuhyunShortV1/
+  Tokens.swift        여기서 잰 값
+  Layout.swift        role 별 화면 구성, 리프레임 목표치
+  CaptionLayer.swift  CoreText 자막 레이어
+  OverlayLayer.swift  타이틀 · 원 · 화살표 · 마크
+  Spec.json           AI 가 쓸 수 있는 role · slot · overlay kind 와 payload 스키마
 ```
 
-`reference/`를 지우지 않는 이유: 나중에 "자막이 좀 작은 것 같은데"라는 말이 나왔을 때
+근거 프레임은 레포 루트 `reference/` 에 둔다. 지우지 않는 이유: 나중에 "자막이 좀 작은 것 같은데"라는 말이 나왔을 때
 근거 없이 값을 흔들지 않기 위해서다. 값은 항상 프레임을 다시 보고 바꾼다.
 
 ---

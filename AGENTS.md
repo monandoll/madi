@@ -1,123 +1,128 @@
-# 마디 (madi) — 운동·재활 크리에이터를 위한 AI 숏폼 편집 도구
+# 마디 (madi) — 운동·재활 크리에이터를 위한 AI 숏폼 편집 앱
 
-전작(`monandoll/madi` v0.2.x)을 버리고 다시 만든다. 코드를 옮겨 오지 않는다.
+**macOS 네이티브 앱.** Swift · SwiftUI 단일 언어. 화면부터 합성 엔진까지 전부 앱 안에 있다.
+서버 없음, 웹 없음, 브라우저 없음.
+
+전작(`legacy/v0.2`, Electron + Node + ffmpeg)을 버리고 다시 만든다. 코드를 옮겨 오지 않는다.
 전작이 실패한 이유는 인프라가 아니라 **편집을 표현하는 자료구조**였다. 그 결론을 이 문서 전체가 전제한다.
 
-1차 사용자는 물리치료사 겸 숏폼 크리에이터 1명(팔로워 12만, 인스타 릴스 · 유튜브 숏츠 · 틱톡 동시 운영).
-편집 지식이 없다. 타임라인을 못 읽는다. 자연어로 요청하면 **바로 업로드 가능한 영상**이 나와야 한다.
+1차 사용자는 물리치료사 겸 숏폼 크리에이터 1명 (인스타 12.5만, 유튜브 4만, 릴스·숏츠·틱톡 동시 운영).
+편집 지식이 없다. 타임라인을 못 읽는다. 터미널을 열지 않는다.
+말로 요청하면 **바로 업로드 가능한 영상**이 나와야 한다.
+
 목표는 "AI가 도와준다"가 아니라 **편집 2~3시간 → 10분**이다. 이 수치가 유일한 성공 기준이다.
 
 ---
 
-## 0. 전작에서 배운 것 (반복 금지 목록)
+## 0. 반복 금지 목록
 
-이 6개는 실측으로 확인된 실패 원인이다. 코드 리뷰 때 이 목록을 기준으로 거절한다.
+전작에서 실측으로 확인된 실패 원인이다. 코드 리뷰 때 이 표를 기준으로 거절한다.
 
 | # | 전작이 한 것 | 왜 망했나 | 이번 규칙 |
 |---|---|---|---|
 | 1 | `Edit = {keep, parts, cuts, crop, subtitles}` | 표현 가능한 편집이 트림·크롭·자막뿐. 줌·BGM·효과음·오버레이·훅카드가 **구조적으로 불가능**. AI가 아무리 똑똑해도 출력 어휘가 없었다 | 코어 자료구조는 `Composition`(장면 · 레이어 · 키프레임). 편집 어휘를 먼저 넓히고 AI를 붙인다 |
-| 2 | 9:16 크롭이 `cropFocus: number` 하나 (정적 x좌표) | 인물이 화면 구석에 작게 박힘. 숏폼에서 피사체가 작으면 그 시점에 끝난 영상 | 리프레이밍은 **사람 bbox 추적 기반 시간축 키프레임**. 1단계 기능이다 |
-| 3 | 자막을 ASS(`buildAss`)로 번인. whisper 문장 통째로, `fontSize:56` on 1080 | 화면 폭의 5%짜리 자막. 딱 봐도 자동 생성 자막 | 자막은 **React 컴포넌트**. 분절·크기·모션·외곽선은 템플릿이 강제 |
+| 2 | 9:16 크롭이 `cropFocus: Double` 하나 (정적 x좌표) | 인물이 화면 구석에 작게 박힘. 숏폼에서 피사체가 작으면 그 시점에 끝난 영상 | 리프레이밍은 **사람 bbox 추적 기반 시간축 키프레임** |
+| 3 | 자막을 ffmpeg ASS 로 번인. 문장 통째로, 56pt on 1080 | 화면 폭의 5%짜리 자막. 딱 봐도 자동 생성 자막 | 자막은 **CoreText + CALayer**. 분절·크기·모션·외곽선은 템플릿이 강제 |
 | 4 | 스타일을 `style.md` 자연어 규칙으로 두고 AI가 매번 해석 | 같은 요청에 매번 다른 결과. 일관성이 없으면 "내 채널 영상"이 아니다 | **스타일은 코드 자산**. AI는 스타일 값을 쓸 수 없다. 슬롯만 채운다 |
-| 5 | 완성본(Reference)에서 스타일을 "학습" | 완성본은 자막·효과가 번인되어 있어 파라미터 역추출 불가. 원본↔완성본 쌍이 없으면 델타를 못 배움 | 학습하지 않는다. 사람이 릴스 5편 보고 템플릿을 **손으로 쓴다**. 10배 정확하고 100배 싸다 |
-| 6 | 렌더 결과를 아무도 다시 안 봄 | "처참하다"는 걸 코드가 모름. 품질 기준이 코드에 없었다 | `§8 품질 게이트` + `§7 self-eval`이 1단계부터 들어간다 |
+| 5 | 완성본에서 스타일을 "학습" | 완성본은 자막이 번인되어 있어 파라미터 역추출 불가 | 학습하지 않는다. 사람이 릴스 5편 보고 **손으로 잰다**. 10배 정확하고 100배 싸다 |
+| 6 | 렌더 결과를 아무도 다시 안 봄 | "처참하다"는 걸 코드가 모름. 품질 기준이 코드에 없었다 | `§8 품질 게이트` + `§7 self-eval` 이 1단계부터 들어간다 |
+| 7 | (재작성 중 학습) 프레임 1장 보고 스키마를 정하려 했다 | 5편을 세어 보니 우선순위가 뒤집혔다 | **5편 이상 보고 정한다.** `docs/findings/2026-09-23-layout-survey.md` |
 
-추가로 버리는 것: MCP 도구 12개(→2개), `Memory` 승인 플로우, `Reference.insight`, `TermCorrection` 자동 치환, "AI 없이도 동작" 이중 경로(유지비만 컸다).
+추가로 버리는 것: 자연어 스타일 규칙, `Memory` 승인 플로우, `Reference.insight`,
+"AI 없이도 동작" 이중 경로(유지비만 컸다).
 
 ---
 
 ## 1. 제품 원칙 (코드 판단 기준)
 
-1. **결과가 바로 올릴 수 있어야 한다.** "고치면 쓸 만함"은 실패다. 사용자는 CapCut을 다시 열지 않아야 한다.
+1. **결과가 바로 올릴 수 있어야 한다.** "고치면 쓸 만함"은 실패다. 크리에이터가 CapCut을 다시 열지 않아야 한다.
 2. **스타일은 자산, 콘텐츠는 AI.** 폰트·색·크기·모션·자막 위치를 AI가 정하면 버그다.
-3. **장면 단위로 보여준다.** 풀 타임라인 편집기는 만들지 않지만, 장면 카드(썸네일 + 자막 + 길이)는 반드시 보여준다. 전작은 "자막 목록"으로 대체했다가 사용자가 틀린 곳을 짚을 방법이 없었다.
+3. **장면 단위로 보여준다.** 풀 타임라인 편집기는 만들지 않지만, 장면 카드(썸네일 + 자막 + 길이)는 반드시 보여준다. 사용자가 틀린 곳을 짚을 방법이 없으면 안 된다.
 4. **AI는 자기 결과를 본다.** 렌더 → 프레임 추출 → 재검사 → 수정. 사람에게 보여주기 전에 최소 1회.
 5. UI에 전문 용어 금지. "인코딩"→"만드는 중", "컴포지션"→"편집안", "리프레임"→"화면 잡기".
-6. 오류는 토스트가 아니라 채팅 안에 AI 말투로. 상태는 조용하게, 붉은색은 진짜 실패에만.
-7. 개인화는 전부 설정값. 사용자 이름·워크스페이스명을 코드에 박지 않는다.
+6. 오류는 알림창이 아니라 채팅 안에 AI 말투로. 상태는 조용하게, 붉은색은 진짜 실패에만.
+7. 개인화는 전부 설정값. 사용자 이름·스튜디오명을 코드에 박지 않는다.
 8. **렌더는 항상 `Composition`으로부터 재현 가능**해야 한다. 결과 파일만 있고 결정이 없는 상태를 만들지 않는다.
-9. **크리에이터에게 설치·터미널·CLI 로그인을 요구하지 않는다.** 브라우저에서 끝나야 한다.
-   "한 줄만 붙여넣으면 된다"도 요구다. 운영자가 감당할 일을 크리에이터에게 넘기지 않는다.
+9. **크리에이터에게 설치 이상의 것을 요구하지 않는다.** 터미널·CLI·계정 설정은 앱이 대신한다.
+   "한 줄만 붙여넣으면 된다"도 요구다.
+10. **파일을 옮기게 하지 않는다.** 아이폰으로 찍으면 앱에 이미 있어야 한다.
+    편집을 10분으로 줄여 놓고 파일 옮기는 데 5분 쓰면 목표를 반쯤 버리는 것이다.
 
 ---
 
 ## 2. 아키텍처
 
-**크리에이터 Mac 에서 도는 네이티브 앱이다.** 영상도 AI 구독도 그 Mac 을 떠나지 않는다.
-크리에이터가 보는 것은 아이콘 하나와 브라우저 화면뿐이다. 터미널을 열게 하지 않는다 (`§1-9`).
+앱 하나다. 프로세스도 하나다 (AI CLI 자식 프로세스 제외).
 
 ```
-madi.app  (Swift · SwiftUI 메뉴바)
- ├─ 엔진 프로세스 관리 — spawn · 감시 · 재시작 · 종료
- ├─ 첫 실행 준비 — 사이드카 다운로드, quarantine 해제, 진행바
- ├─ AI 연결 — claude / codex 감지, 없으면 설치, 로그인은 브라우저 OAuth
- ├─ 앱 창 (WKWebView) — localhost:41520 을 주소창 없이 띄운다
- ├─ 모바일 접속 QR
- └─ Resources/
-     ├─ node                    번들
-     ├─ engine/                 Node 엔진 (Hono · SQLite · 큐 · 워커 · 러너 · MCP)
-     ├─ Helpers/
-     │   ├─ madi-vision         Swift — 사람 bbox · 관절 (Vision 프레임워크)
-     │   └─ madi-whisper        Swift — word 단위 전사 (WhisperKit / CoreML)
-     └─ (첫 실행 때 받음) ffmpeg, Chrome Headless Shell
-
-        ▲ WKWebView (앱 창)               ▲ http://<mac>.local:41520/?t=<토큰>
-        │  localhost:41520                 │
-  [Mac — 앱 창]                       [아이폰 Safari — 같은 와이파이]
-   편집 · 결과 확인                     촬영본 업로드 · 결과 확인
+madi.app  (Swift · SwiftUI · macOS 14+)
+ │
+ ├─ UI          SwiftUI — 갤러리 · 편집안 · 장면 카드 · 채팅 · 설정
+ ├─ Store       GRDB(SQLite) — 미디어 · 다이제스트 · 컴포지션 · 작업 · 설정
+ ├─ Queue       Swift actor + SQLite `jobs` — 렌더 1 · 분석 1 동시
+ │
+ ├─ Import      PhotoKit — iCloud 사진에서 촬영본을 읽는다 (업로드 없음)
+ │              + 폴더 감시 (보조)
+ │
+ ├─ Analyze     → Digest (§6)
+ │              Vision      VNDetectHumanBodyPoseRequest — 사람 bbox · 19관절
+ │              WhisperKit  word 단위 전사 (CoreML)
+ │              AVFoundation 오디오 에너지 · 무음 · 씬 컷 · 프레임 시트
+ │
+ ├─ Render      → Composition → mp4 (§7)
+ │              AVMutableComposition            컷 · 순서 · 배속
+ │              AVVideoCompositionCoreAnimationTool + CALayer   자막 · 오버레이 · 줌
+ │              CoreText                        흰 글씨 + 검은 외곽선
+ │              AVAssetWriter (VideoToolbox)    인코딩
+ │
+ ├─ Review      품질 게이트(측정) + self-eval (§8)
+ │
+ └─ Agent       Process 스폰 — claude -p / codex exec (§10)
+                MCP 서버 (stdio, 앱 내장) — 도구 2개
 ```
 
-- **크리에이터가 하는 일은 `.dmg` 드래그와 아이콘 클릭뿐이다.** 설치 스크립트를 주지 않는다.
-- 엔진이 UI 까지 직접 서빙한다. 별도 프론트 배포 없음. CORS 없음. mixed content 없음.
-- **껍데기는 Swift, 화면은 웹이다.** 화면을 SwiftUI 로 짜지 않는다. 이유 세 가지:
-  (1) 같은 화면이 아이폰 Safari 에서 그대로 돌아 모바일이 공짜로 된다 —
-      SwiftUI 로 짜면 아이폰용을 따로 만들어야 하고 그건 iOS 앱을 만드는 일이다
-  (2) Remotion 미리보기가 React 다
-  (3) 0단계 자산(`Caption.tsx` · `tokens.ts`)이 그대로 간다
-  앱 창은 `WKWebView` 로 주소창 없이 띄운다. 기본 브라우저를 열어주지 않는다 —
-  `.dmg` 로 설치한 앱을 눌렀는데 Safari 탭이 뜨면 앱으로 느껴지지 않는다.
-  "브라우저에서 열기" 는 보조 수단으로만 둔다 (디버깅 · 다중 창).
-- **AI 는 크리에이터 본인 Claude/Codex 구독을 쓴다** (로컬 CLI 스폰). 둘 다 지원한다.
+- **외부 바이너리를 받지 않는다.** ffmpeg · whisper.cpp · onnxruntime · Chrome Headless 전부 불필요.
+  애플 프레임워크로 대체된다. 첫 실행 준비 화면도, quarantine 해제도 필요 없다.
+- **HTTP 서버가 없다.** 화면이 같은 프로세스 안이라 함수 호출로 끝난다.
+  포트 · CORS · WebSocket · mixed content · 페어링 토큰이 전부 소멸한다.
+- **영상이 기기를 떠나지 않는다.** 수강생·회원이 찍힌 촬영본이 섞일 수 있어
+  제3자 개인정보가 들어올 수 있다. 로컬 처리가 기본값이고, 이걸 깨는 설계는 넣지 않는다.
+- AI 는 **크리에이터 본인 Claude/Codex 구독**을 쓴다 (`Process` 스폰). 둘 다 지원한다.
   앱이 CLI 설치와 로그인 진입까지 대신한다. 사람은 브라우저에서 OAuth 버튼만 누른다.
-- **애플 프레임워크로 다운로드를 줄인다.** whisper.cpp 바이너리와 onnx pose 모델이
-  Swift 헬퍼(WhisperKit · Vision)로 대체된다. Neural Engine 에서 돌아 더 빠르고,
-  받을 모델이 없어 첫 실행 대기가 짧다. 엔진은 여전히 **바이너리를 스폰할 뿐**이다 —
-  스폰 대상이 남의 바이너리에서 우리 Swift 헬퍼로 바뀌는 것뿐이고 워커 구조는 그대로다.
-- ffmpeg 과 Chrome Headless Shell 은 **번들하지 않고 첫 실행 때 받는다**.
-  받은 바이너리는 macOS Gatekeeper 격리(`com.apple.quarantine`)를 반드시 풀어야 실행된다.
-- Python 없음. TypeScript(엔진) + Swift(앱·헬퍼) 두 언어만.
-- Redis 없음. 큐는 SQLite 테이블.
+- 유일한 자식 프로세스는 AI CLI 다. 따라서 **App Sandbox 를 끈다** — App Store 배포를 하지 않는다.
 
-### 모바일 접근
+### 촬영본이 들어오는 길
 
-크리에이터는 아이폰으로 촬영한다. 파일을 Mac 으로 옮기는 단계를 만들지 않는다.
-편집을 10분으로 줄여 놓고 파일 옮기는 데 5분 쓰면 목표를 반쯤 버리는 것이다.
+```
+아이폰 촬영 → iCloud 사진 자동 동기화 → 앱이 PhotoKit 으로 읽음 → 갤러리에 바로 뜸
+```
 
-- 엔진은 `0.0.0.0:41520` 에 바인드한다.
-- 앱이 `http://<mac>.local:41520/?t=<페어링토큰>` 를 **QR 로 띄운다.** 아이폰 카메라로 스캔한다.
-- **토큰은 필수다.** 같은 와이파이에 붙은 아무나 열 수 있으면 안 된다.
-  로그인 화면은 만들지 않고 링크에 토큰만 넣는다. 토큰은 앱에서 재발급할 수 있다.
-- macOS 15+ 는 로컬 네트워크 접근에 권한 프롬프트를 띄운다. 첫 실행 때 한 번 허용받는다
-  (`NSLocalNetworkUsageDescription`).
-- 모바일 화면 우선순위: **업로드 → 진행 확인 → 결과 저장.** 편집 채팅은 그다음.
-- 집 밖 접속(Tailscale · Cloudflare Tunnel)은 **요구가 실제로 생기면** 앱 설정에 토글로 붙인다.
-  지금 만들지 않는다.
+업로드 화면이 없다. QR · 와이파이 · 토큰 · 터널 전부 필요 없다.
+
+주의할 것:
+- iCloud 사진 용량. 무료 5GB 로는 부족하다. 전달 전에 확인한다.
+- "저장 공간 최적화" 설정이면 Mac 에 저화질만 있다.
+  `PHImageRequestOptions.isNetworkAccessAllowed = true` 로 원본을 요청하고 진행률을 보여준다.
+- 사진 라이브러리 접근 권한 (`NSPhotoLibraryUsageDescription`). 첫 실행 때 한 번.
+- PhotoKit 이 막히거나 쓰기 싫어하면 **폴더 감시**로도 들어올 수 있게 둔다 (보조 경로).
 
 ### 배포
 
-- 형태: 공증된 `.dmg`. 드래그해서 설치한다.
+- 공증된 `.dmg`. 드래그해서 설치한다.
 - **Apple Developer Program($99/년)은 판매 시작 시점에 낸다.** 그 전에는 지인 1명 대상이므로
   첫 실행만 우클릭 → 열기로 넘긴다. 서명 파이프라인을 0단계 전에 만들지 않는다.
-- 자동 업데이트는 Sparkle. 크리에이터는 "업데이트 있음" 알림과 버튼만 본다.
-- 하드닝 런타임 엔타이틀먼트가 필요하다 (번들 node 스폰 · JIT). `§12-7` 에서 정리한다.
+- 자동 업데이트는 Sparkle. 사용자는 "업데이트 있음" 알림과 버튼만 본다.
+- App Sandbox 끔, Hardened Runtime 켬 + `com.apple.security.cs.allow-unsigned-executable-memory`
+  등 AI CLI 스폰에 필요한 엔타이틀먼트. `§12-6` 에서 정리한다.
 
 ### 이 선택이 만드는 부담 (숨기지 않는다)
 
-1. **Swift 코드가 생긴다.** 언어가 둘이 된다. 경계를 좁게 유지한다 —
-   앱은 프로세스 관리 · 준비 · 창 · QR 만, 헬퍼는 표준입출력 JSON 만.
-   **제품 로직과 화면을 Swift 로 넘기지 않는다.** 넘기는 순간 모바일이 깨진다.
-2. **모바일은 같은 와이파이에서만 된다.** 밖에서 쓰려면 터널이 필요하다. 처음부터 말해 둔다.
-3. **Mac 이 깨어 있어야 아이폰에서 접속된다.** 잠들면 안 보인다. 앱이 이유를 알려줘야 한다.
+1. **Remotion 을 버렸다.** 합성을 CoreAnimation/CoreText 로 직접 만든다.
+   React 컴포넌트로 공짜였던 것들(레이아웃·줄바꿈·애니메이션)을 손으로 짠다.
+   대신 Chrome 을 안 띄우니 더 빠르고, 라이선스 문제도 없다.
+2. **모바일 화면이 없다.** 아이폰에서 결과를 확인하려면 사진 앱으로 내보내야 한다.
+   iOS 앱을 만들지 않는다 (`§16`). 요구가 실제로 생기면 그때 SwiftUI 멀티플랫폼으로 검토한다.
+3. **Apple Silicon 전용이다.** Vision · WhisperKit · VideoToolbox 가 전부 여기 붙는다.
 4. 크리에이터가 Claude/Codex 구독을 유지해야 한다. 끊기면 AI 기능이 멈춘다 — 조용히 실패하지 않는다.
 
 ---
@@ -126,164 +131,156 @@ madi.app  (Swift · SwiftUI 메뉴바)
 
 | 영역 | 선택 | 비고 |
 |---|---|---|
-| 앱 셸 | **Swift · SwiftUI 메뉴바 + WKWebView 창** | 프로세스 관리 · 준비 · QR. 화면은 웹. Electron 없음 |
-| 엔진 | Node 22 (앱이 번들·스폰) | 프로세스명 `madi-engine` |
-| 배포·업데이트 | 공증 `.dmg` + Sparkle | $99 서명은 판매 시점에 |
-| 모바일 | 같은 와이파이 LAN + 페어링 토큰 QR | 터널은 요구 생기면 |
-| 외부 의존성 | ffmpeg · Chrome Headless → 첫 실행 때 다운로드 | 받은 뒤 quarantine 해제 필수 |
-| 웹 서버 | Hono + `ws` | 포트 `41520` 고정. `0.0.0.0` 바인드 (LAN 접속용) |
-| DB | SQLite + Drizzle ORM | `better-sqlite3` |
-| 큐 | 자체 구현 (SQLite `jobs`) | 렌더 동시 1, 분석 동시 1 |
-| 트림·인코딩 | ffmpeg (VideoToolbox) | `packages/media`. 타깃은 Apple Silicon |
-| 합성 | **Remotion** (React) | 자막·오버레이·모션. 라이선스는 `§13` 확인 |
-| 전사 | **WhisperKit (CoreML)** — Swift 헬퍼 `madi-whisper` | word timestamps 필수. 모델 다운로드 불필요 |
-| 사람 감지 | **Vision 프레임워크** — Swift 헬퍼 `madi-vision` | `VNDetectHumanBodyPoseRequest`, 19 관절. Neural Engine. 모델 다운로드 0 |
-| 에이전트 | `claude -p --output-format stream-json`, `codex exec` | **둘 다 필수**. `AgentProvider` 뒤에 숨기고 설정에서 고른다 |
-| UI | Vite + React + TS, Tailwind, shadcn/ui(재테마) | TanStack Query + Zustand |
-| 업로드 | tus (재개 가능) | `@tus/server`. 아이폰에서 직접 올린다 — 모바일 회선 끊김 대비 필수 |
-| 공유 | zod 스키마 | `packages/shared` |
-| 패키지 관리 | pnpm workspace (엔진·웹) / Xcode (앱) | Node 22 |
+| 언어 | **Swift 6** | 제품 코드는 Swift 단일. 측정 도구만 Node (`tools/`) |
+| UI | SwiftUI (macOS 14+) | Observation, `@Observable` |
+| DB | **GRDB.swift** (SQLite) | 마이그레이션 · 관측 쿼리. SwiftData 쓰지 않는다 |
+| 큐 | Swift actor + SQLite `jobs` | 렌더 1 · 분석 1 동시 |
+| 가져오기 | **PhotoKit** + 폴더 감시(보조) | 업로드 없음 |
+| 전사 | **WhisperKit** (CoreML) | word timestamps 필수 |
+| 사람 감지 | **Vision** `VNDetectHumanBodyPoseRequest` | bbox + 19관절, 0.5s 간격. Neural Engine |
+| 컷·배속 | **AVMutableComposition** | |
+| 합성 | **AVVideoCompositionCoreAnimationTool** + CALayer | 자막 · 오버레이 · 줌 |
+| 글자 | **CoreText** `NSAttributedString` | `.strokeWidth` 음수 = 외곽선 + 채우기 |
+| 인코딩 | **AVAssetWriter** (VideoToolbox) | H.264 / HEVC |
+| 에이전트 | `Process` → `claude -p --output-format stream-json` · `codex exec` | **둘 다 필수**. `AgentProvider` 프로토콜 뒤에 숨긴다 |
+| MCP | 앱 내장 stdio 서버 | 도구 2개 (`§10`) |
+| 배포 | 공증 `.dmg` + Sparkle | App Store 안 함 (샌드박스 불가) |
+| 폰트 | Pretendard Variable (OFL) | 앱 번들에 동봉 |
+
+Python 없음. 외부 바이너리 없음. 네트워크 요청은 AI CLI 가 하는 것 외에 없다.
 
 ---
 
 ## 4. 레포 구조
 
 ```
-apps/mac/               Swift 앱 (Xcode)
-  Madi/                 SwiftUI 메뉴바 + WKWebView 창, 엔진 프로세스 관리, 첫 실행 준비, QR
-  Helpers/madi-vision/  Swift — 사람 bbox · 관절 (Vision). stdout 에 JSON
-  Helpers/madi-whisper/ Swift — word 단위 전사 (WhisperKit). stdout 에 JSON
-apps/engine/            Node 서비스 — Hono + 큐 + 워커 + 러너 + MCP
-  src/main/             진입점, 종료 처리, 헬스체크
-  src/pairing/          LAN 페어링 토큰 발급·검증
-  src/server/           Hono 라우트, WebSocket, 업로드, 미디어 서빙
-  src/db/               Drizzle 스키마, 마이그레이션
-  src/queue/            작업 큐
-  src/analyze/          Digest 생성 (transcript · subject · audio · scene · frames)
-  src/render/           Composition → 클립 트림 → Remotion 렌더 → 먹싱
-  src/review/           품질 게이트(코드 측정) + self-eval(AI 재검사)
-  src/agent/            AgentProvider, Claude/Codex, 러너, 프롬프트 조립
-  src/mcp/              MCP 서버 (도구 2개)
-  src/watch/            폴더 감시 (chokidar)
-apps/web/               Vite React — 갤러리 · 편집안 · 장면 카드 · 채팅
-apps/site/              (선택) 랜딩 · `.dmg` 배포 (Cloudflare Pages · 정적)
-packages/shared/        zod 스키마 (Composition · Digest · Job · API 계약)
-packages/media/         ffmpeg 명령 빌더, probe, 인코더 선택, 프레임 시트
-packages/templates/     ★ 스타일 자산. Remotion 컴포지션 + 토큰 + spec
-  suhyun.short.v1/
-    index.tsx           Remotion 루트
-    tokens.ts           폰트 · 색 · 크기 · 모션 상수 (AI 접근 불가)
-    layout.ts           role/slot 별 좌표 규칙, 리프레임 목표치
-    spec.json           AI에게 보여줄 "이 템플릿이 지원하는 것" 목록
-    reference/          참고한 실제 릴스 캡처 (사람이 보고 맞춘 근거)
-(resources/bin 없음)    사이드카는 번들하지 않는다. 첫 실행 때 ~/.madi/bin 으로 받는다
-fixtures/               5초 샘플 영상, fake-claude / fake-codex
-docs/                   shooting.md(촬영 규칙), quality.md, style-authoring.md, packaging.md
+Madi.xcodeproj
+Madi/
+  App/              진입점, 메뉴바, 창, 설정, 권한 요청
+  UI/               SwiftUI — Gallery · PlanDetail · SceneCard · Chat · Settings
+  Model/            Composition · Scene · Caption · Overlay · Digest (Codable)  ← §5
+  Store/            GRDB 스키마 · 마이그레이션 · 리포지토리
+  Queue/            actor 기반 작업 큐
+  Import/           PhotoKit, 폴더 감시, 프록시 생성
+  Analyze/          Vision · WhisperKit · 오디오 · 씬 · 프레임 시트 → Digest
+  Render/           AVMutableComposition · CALayer 트리 · AVAssetWriter
+  Review/           품질 게이트 측정 · self-eval 루프
+  Agent/            AgentProvider · Claude · Codex · 프롬프트 조립
+  MCP/              stdio 서버, 도구 2개
+  Templates/        ★ 스타일 자산
+    SuhyunShortV1/
+      Tokens.swift        폰트 · 색 · 크기 · 모션 상수 (AI 접근 불가)
+      Layout.swift        role/slot 별 좌표 규칙, 리프레임 목표치
+      CaptionLayer.swift  CoreText 자막 레이어
+      OverlayLayer.swift  타이틀 · 원 · 화살표 · 마크
+      Spec.json           AI 에게 보여줄 "이 템플릿이 지원하는 것"
+  Resources/        Pretendard, 기본 BGM/SFX
+MadiTests/          단위 테스트
+MadiUITests/
+reference/          크리에이터 공개 숏폼 프레임 (스타일 근거. 지우지 않는다)
+tools/              measure.mjs — PNG 에서 자막 지표 측정 (Node, 개발용)
+docs/
+  stage-0.spec.md   렌더러 스파이크 spec
+  style-authoring.md 템플릿 작성법
+  target-machine.md
+  findings/         측정·조사 기록
+archive/
+  remotion-spike/   버린 웹/Remotion 스파이크. 측정 절차 참고용. 빌드하지 않는다
 ```
 
 ---
 
 ## 5. 코어 도메인 모델
 
-`packages/shared/src/composition.ts`. 모든 필드는 zod. 엔진과 UI와 AI가 같은 스키마를 쓴다.
+`Madi/Model/Composition.swift`. 모두 `Codable` + 검증.
 
-```ts
-Composition {
-  id, videoId, templateId: string, templateVersion: number
-  size: { w: 1080, h: 1920 }, fps: 30
-  meta: { title, platform: 'reels'|'shorts'|'tiktok', targetDurationSec: number }
-  scenes: Scene[]
-  audio: {
-    bgm?: { assetId, gainDb, duckDb }        // 말할 때 자동 덕킹
-    sfx: { assetId, at, gainDb }[]
-  }
-  revisionOf: string | null                   // 결과물이 있는 컴포지션은 제자리 수정 금지
-  createdAt: number
+```swift
+struct Composition: Codable {
+    let id: String
+    let videoID: String
+    let templateID: String          // Templates/<id>. 스타일은 전부 여기 있다
+    let templateVersion: Int
+    var size: CGSize                // 1080 x 1920
+    var fps: Int                    // 30
+    var meta: Meta                  // title, platform, targetDurationSec
+    var scenes: [Scene]             // 배열 순서 = 결과물 순서. 원본 순서와 달라도 된다
+    var audio: AudioTracks          // bgm(gain, duck), sfx[]
+    var revisionOf: String?         // 결과물이 있는 컴포지션은 제자리 수정 금지
+    var createdAt: Date
 }
 
-Scene {
-  id
-  role: 'hook' | 'demo' | 'explain' | 'cta' | 'filler'   // 템플릿이 role별로 다르게 그린다
-  source: { videoId, in: number, out: number }           // 원본 초
-  //
-  // ⚠ 미결. 공개 숏폼 5편 조사 결과 우선순위대로
-  //   (docs/findings/2026-09-23-layout-survey.md):
-  //   1) source 가 영상만 가정한다. 해부학 그림이 **장면 자체**인 경우가 5편 중 2편 —
-  //      source: { kind:'video', videoId, in, out } | { kind:'image', assetId, durationSec }
-  //   2) Overlay circle/arrow 의 payload 미정의 (5편 중 3편 · 2편). 템플릿 spec.json 에 확정
-  //   3) Caption.slot:'top' 렌더 검증 — Before/After 라벨 (5편 중 2편)
-  //   4) reframe 키프레임 보간 — 줌·클로즈업 (5편 중 3편, 1단계와 함께)
-  //   5) layout:'splitV' + sources[] + Overlay 'mark'(o/x) — 5편 중 1편. 가장 나중
-  //   구현 전에 10편까지 늘려 빈도를 다시 센다.
-  speed: number                                          // 기본 1. 0.5=슬로우, 1.5=빠르게
-  reframe: {
-    mode: 'auto' | 'fixed' | 'keyframes'
-    keyframes: { t: number, rect: { x, y, w, h } }[]     // 원본 정규화 좌표. auto면 렌더가 채워 되쓴다
-    padding: number                                      // 피사체 여백 비율
-  }
-  captions: Caption[]
-  overlays: Overlay[]
-  transitionIn: 'cut' | 'fade' | 'whip' | 'zoom'
+struct Scene: Codable {
+    let id: String
+    var role: Role                  // hook · demo · explain · cta · filler
+    var source: Source
+    var speed: Double               // 1 = 원속, 0.5 = 슬로우
+    var reframe: ReframeTrack       // mode: auto|fixed|keyframes, keyframes[{t, rect}], padding
+    var captions: [Caption]
+    var overlays: [Overlay]
+    var transitionIn: Transition    // cut · fade · whip · zoom
 }
 
-Caption {
-  id, start: number, end: number      // 장면 로컬 초
-  text: string                        // 2~7자 분절된 한 덩어리. 문장 통째로 넣지 않는다
-  secondary?: string                  // 영문 등 보조 문구
-  emphasis: { from: number, to: number }[]   // text 내 문자 인덱스
-  slot: 'main' | 'top'                // 실제 좌표는 템플릿이 결정
+// ⚠ 미결. 공개 숏폼 5편 조사 결과 우선순위대로
+//   (docs/findings/2026-09-23-layout-survey.md):
+//   1) source 가 영상만 가정한다. 해부학 그림이 **장면 자체**인 경우가 5편 중 2편 —
+//      enum Source { case video(id:String, in:Double, out:Double)
+//                    case image(assetID:String, duration:Double) }
+//   2) Overlay circle/arrow 의 payload 미정의 (5편 중 3편 · 2편). Spec.json 에 확정
+//   3) Caption.slot == .top 렌더 검증 — Before/After 라벨 (5편 중 2편)
+//   4) reframe 키프레임 보간 — 줌·클로즈업 (5편 중 3편, 1단계와 함께)
+//   5) layout: splitV + sources[] + Overlay .mark(o/x) — 5편 중 1편. 가장 나중
+//   구현 전에 10편까지 늘려 빈도를 다시 센다.
+
+struct Caption: Codable {
+    let id: String
+    var start: Double               // 장면 로컬 초
+    var end: Double
+    var text: String                // 2~7자 분절된 한 덩어리. 문장 통째로 넣지 않는다 (G5)
+    var secondary: String?          // 영문 등 보조 문구
+    var emphasis: [Range<Int>]      // text 안 강조 구간. 색은 템플릿이 정한다
+    var slot: Slot                  // main · top. 실제 좌표는 Layout.swift
 }
 
-Overlay {
-  id, kind: 'titleCard'|'arrow'|'circle'|'image'|'counter'|'progress'
-  start, end
-  anchor: { x: number, y: number }    // 0..1 정규화
-  payload: Record<string, unknown>    // kind별. spec.json이 스키마를 정의
+struct Overlay: Codable {
+    let id: String
+    var kind: Kind                  // titleCard · arrow · circle · image · counter · progress
+    var start: Double
+    var end: Double
+    var anchor: CGPoint             // 0..1 정규화
+    var payload: [String: JSONValue]  // kind별. Spec.json 이 스키마를 정의
 }
 ```
 
-**AI가 쓸 수 없는 것**: 폰트, 색, 글자 크기, 자막 절대 좌표, 애니메이션 곡선, 외곽선 두께.
-이 값들이 `Composition`에 나타나면 **스키마 검증에서 거절**한다. 그런 필드를 추가하지 않는다.
+**AI 가 쓸 수 없는 것**: 폰트, 색, 글자 크기, 자막 절대 좌표, 애니메이션 곡선, 외곽선 두께.
+`Composition` 에 그런 필드를 추가하지 않는다. `payload` 안쪽도 `assertNoStyleValues()` 로 막는다
+(금지 키: `font*`, `color`, `size`, `stroke*`, `opacity`, `easing`, `x`, `y`, `top`, `bottom` …).
 
-기타 테이블:
-
-- `Video` — 원본. `path`, `duration`, `kind: 'raw'|'reference'`, `status`
-- `Proxy` — 720p 프리뷰
-- `Digest` — `§6` 산출물 (JSON + 팩된 텍스트 + 프레임 시트 경로)
-- `Output` — 컴포지션 렌더 결과 파일. `compositionId`, `reviewReport`
-- `Job` — `type`, `status`, `progress`, `payload`, `error`
-- `Chat` — `Video`별 대화. 메시지에 `Output` 카드가 붙는다
+기타: `Video`, `Proxy`(720p 프리뷰), `Digest`, `Output`(+ `reviewReport`), `Job`, `Chat`.
 
 ---
 
 ## 6. 분석 파이프라인 — Digest
 
-AI가 영상을 "읽는" 유일한 창구. 영상을 프레임으로 통째로 넣지 않는다. 팩된 텍스트 + 소수 이미지.
+AI 가 영상을 "읽는" 유일한 창구. 프레임을 통째로 넣지 않는다. 팩된 텍스트 + 소수 이미지.
 
-워커 5개가 병렬로 돌고 하나의 `digest.md`로 합쳐진다.
-
-1. **transcript** — `madi-whisper` (WhisperKit), **word-level timestamp 필수**. 문장 단위로 묶어 표기
-2. **subject** — `madi-vision` (Vision). 0.5s 간격 사람 bbox + 19 관절.
-   리프레이밍 근거이자 "시범 중 / 말하는 중" 판정 근거
+1. **transcript** — WhisperKit, **word-level timestamp 필수**. 문장 단위로 묶어 표기
+2. **subject** — Vision, 0.5s 간격 사람 bbox + 19관절. 리프레이밍 근거이자 "시범 중 / 말하는 중" 판정 근거
 3. **audio** — 무음 구간, RMS 곡선 요약
-4. **scene** — ffmpeg scene score 기반 컷 지점
+4. **scene** — 프레임 차분 기반 컷 지점
 5. **frames** — 씬 전환 직후 프레임을 4칸 격자로, 최대 2장
 
 ```
-# VIDEO v_01   duration 182.4s   1920x1080   30fps   audio: yes
+# VIDEO v_01   duration 182.4s   1920x1080   30fps
 
 ## TRANSCRIPT
 [002.52-005.36] 오늘은 거북목 스트레칭 알려드릴게요
-[005.80-008.11] 이거 하나만 해도 목이 진짜 편해져요
 
 ## SUBJECT  (0.5s, 정규화 xywh, pose)
 002.5  0.41 0.22 0.18 0.62  .97  standing
-003.0  0.40 0.21 0.19 0.63  .96  standing
-...
-(요약) 인물 평균 화면 점유 높이 0.61 · 좌우 이동 0.12 · 12.4s~19.8s 바닥 자세
+(요약) 인물 평균 화면 점유 높이 0.61 · 좌우 이동 0.12 · 12.4~19.8s 바닥 자세
 
 ## AUDIO
-silence 012.4-014.1 (1.7s)   silence 041.0-041.9 (0.9s)
+silence 012.4-014.1 (1.7s)
 
 ## SCENES
 cut 031.2  cut 058.9
@@ -292,10 +289,8 @@ cut 031.2  cut 058.9
 sheets/v_01_0.png   (000s / 031s / 059s / 090s)
 ```
 
-규칙:
-- **동작을 추측하지 않는다.** 자막만 보고 "이때 스트레칭 중"이라고 쓰지 않는다. `SUBJECT`와 `FRAMES`로 확인한다.
+- **동작을 추측하지 않는다.** 자막만 보고 "이때 스트레칭 중"이라고 쓰지 않는다. `SUBJECT` 와 `FRAMES` 로 확인한다.
 - 다이제스트는 캐시한다. 원본이 바뀌지 않으면 재생성하지 않는다.
-- 사용자가 `ai.frames=false`로 끄면 `FRAMES` 섹션을 뺀다.
 
 ---
 
@@ -304,73 +299,89 @@ sheets/v_01_0.png   (000s / 031s / 059s / 090s)
 ```
 Composition
    │
-   ├─ 1. plan      장면별 필요한 원본 구간 계산, reframe.mode='auto'면 키프레임을 채워 되쓴다
-   ├─ 2. clips     ffmpeg: 장면별 trim + speed + reframe crop → 1080x1920 무자막 클립
-   ├─ 3. compose   Remotion: 클립 + 자막 + 오버레이 + BGM/SFX → out.mp4
-   ├─ 4. mux       ffmpeg: 최종 인코딩(NVENC/VideoToolbox), +faststart
-   ├─ 5. gate      §8 품질 게이트 코드 측정
-   └─ 6. self-eval 실패 항목이 있으면 프레임 시트 + 게이트 리포트를 AI에 되먹임
-                   → Composition 수정 → 2번부터 재실행 (최대 2회)
+   ├─ 1. plan       장면별 원본 구간 계산. reframe.mode == .auto 면 subject 트랙으로
+   │                키프레임을 채운 뒤 **Composition 에 다시 적는다** (재현 가능성)
+   ├─ 2. compose    AVMutableComposition — 컷 · 순서 · 배속
+   ├─ 3. layers     CALayer 트리 — 리프레임 변환 · 자막 · 오버레이 · 줌
+   │                AVVideoCompositionCoreAnimationTool 로 붙인다
+   ├─ 4. write      AVAssetWriter (VideoToolbox) → mp4
+   ├─ 5. gate       §8 품질 게이트 측정
+   └─ 6. self-eval  실패 항목이 있으면 프레임 시트 + 게이트 리포트를 AI 에 되먹임
+                    → Composition 수정 → 2번부터 재실행 (최대 2회)
 ```
 
-- ffmpeg 명령은 **문자열 조립 금지**. `packages/media`의 빌더만 쓴다.
-- 자막을 ffmpeg으로 그리지 않는다. `drawtext`, `subtitles`, ASS 전부 금지.
-- 리프레임 키프레임은 스무딩한다(0.4s 저역통과). 프레임이 떨리면 즉시 실패.
-- 3번은 Remotion 렌더 서버를 재사용한다. 매 렌더마다 Chromium을 새로 띄우면 10분 목표를 못 맞춘다.
-- 중간 산출물은 `~/.madi/work/<compositionId>/`. 성공 시 정리, 실패 시 남긴다.
+- 자막은 **CoreText** 로 그린다. `NSAttributedString` 의 `.strokeWidth` 를 **음수**로 주면
+  외곽선과 채우기가 함께 그려진다 (양수면 외곽선만). `.strokeColor` 로 색을 준다.
+- CALayer 애니메이션은 `beginTime` 을 `AVCoreAnimationBeginTimeAtZero` 기준으로 잡는다.
+  0 을 그대로 쓰면 무시된다. `isRemovedOnCompletion = false`, `fillMode = .both`.
+- 리프레임 키프레임은 스무딩한다(0.4s 저역통과). 프레임이 떨리면 즉시 실패 (G3).
+- 중간 산출물은 `~/Library/Caches/madi/<compositionID>/`. 성공 시 정리, 실패 시 남긴다.
+- **프리뷰와 최종 렌더가 같은 레이어 코드를 쓴다.** `AVPlayer` + 같은 `videoComposition`.
+  프리뷰와 결과가 다르면 사용자가 신뢰를 잃는다.
 
 ---
 
 ## 8. 품질 게이트
 
-`src/review/gate.ts`. **코드로 측정한다.** AI 판단에 맡기지 않는다.
-`Output.reviewReport`에 항목별 pass/fail + 측정값을 남긴다.
+`Madi/Review/Gate.swift`. **코드로 측정한다.** AI 판단에 맡기지 않는다.
+`Output.reviewReport` 에 항목별 pass/fail + 측정값을 남긴다.
 
 | # | 항목 | 기준 |
 |---|---|---|
-| G1 | 피사체 크기 | 인물 bbox 높이 >= 프레임 높이 55% 인 구간이 전체 길이의 80% 이상 |
-| G2 | 피사체 잘림 | 머리 상단·발목 keypoint가 프레임 밖으로 나가는 구간 5% 이하 |
+| G1 | 피사체 크기 | 인물 bbox 높이 >= 프레임 높이 55% 인 구간이 전체의 80% 이상 |
+| G2 | 피사체 잘림 | 머리 상단·발목 관절이 프레임 밖으로 나가는 구간 5% 이하 |
 | G3 | 리프레임 안정 | 인접 키프레임 간 중심 이동 <= 프레임 폭의 3%/frame |
-| G4 | 자막 크기 | 글자 높이 >= 프레임 높이 **3.2%** (실측 3.7% 에 여유 -15%. `docs/findings/2026-09-23-reference-measurement.md`) |
-| G5 | 자막 분절 | 한 덩어리 <= 13자, 2줄 이내 (실측: 12자까지 한 줄) |
-| G6 | 자막 싱크 | 캡션 start와 대응 word start 오차 <= 0.15s |
-| G7 | 자막 가림 | 자막 박스가 어깨선 위 keypoint를 덮지 않음 |
-| G8 | 훅 | 0~1.5초 구간에 `role:'hook'` 장면 또는 titleCard 존재 |
+| G4 | 자막 크기 | 글자 높이 >= 프레임 높이 **3.2%** (원본 실측 3.59% 에 여유 -15%) |
+| G5 | 자막 분절 | 한 덩어리 <= 13자, 2줄 이내 (원본 실측: 12자까지 한 줄) |
+| G6 | 자막 싱크 | 캡션 start 와 대응 word start 오차 <= 0.15s |
+| G7 | 자막 가림 | 자막 박스가 어깨선 위 관절을 덮지 않음 |
+| G8 | 훅 | 0~1.5초 구간에 `role == .hook` 장면 또는 titleCard 존재 |
 | G9 | 정적 구간 | 무음 + 저모션이 1.2초 이상 이어지는 구간 없음 |
 | G10 | 컷 리듬 | 장면 길이 중앙값 1.5~4.0초 |
 | G11 | 길이 | `meta.targetDurationSec` ±15% |
 | G12 | 오디오 | 클리핑 없음, LUFS -16 ~ -13, BGM 덕킹 동작 |
 
-- G1, G4, G6은 **하드 게이트**. 실패하면 사용자에게 보여주지 않고 self-eval로 되돌린다.
+- **G1 · G4 · G6 은 하드 게이트.** 실패하면 사용자에게 보여주지 않고 self-eval 로 되돌린다.
 - 나머지는 소프트. 리포트에 남기고 채팅에서 한 줄로 알린다.
-- 템플릿이 기준을 덮어쓸 수 있다 (`spec.json.gateOverrides`). 단 하드 게이트는 덮어쓸 수 없다.
+- 게이트 수치는 **원본 실측에서 나온다.** 근거 없이 정한 숫자를 하드 게이트로 걸지 않는다
+  (G4 를 4.5% 로 뒀다가 크리에이터 실제 영상이 통과하지 못한 사례가 있다 —
+  `docs/findings/2026-09-23-reference-measurement.md §4`).
 
 ---
 
 ## 9. 스타일 템플릿 규약
 
-**스타일은 학습하지 않는다. 사람이 쓴다.** 절차는 `docs/style-authoring.md`.
+**스타일은 학습하지 않는다. 사람이 잰다.** 절차는 `docs/style-authoring.md`.
 
-1. 크리에이터 실제 릴스 5편을 프레임 캡처해 `reference/`에 넣는다.
+1. 크리에이터 공개 숏폼 **5편 이상**을 프레임 캡처해 `reference/` 에 넣는다.
    **1편만 보고 토큰이나 스키마를 정하지 않는다.** 5편을 보면 우선순위가 뒤집힌다
    (실제로 뒤집혔다 — `docs/findings/2026-09-23-layout-survey.md`)
-2. 자막 폰트·크기·외곽선·위치·분절 길이·등장 모션을 눈으로 재서 `tokens.ts`에 적는다
-3. 훅 레이아웃, role별 화면 구성, 리프레임 목표 점유율을 `layout.ts`에 적는다
-4. `spec.json`에 AI가 쓸 수 있는 role·slot·overlay kind와 각 payload 스키마를 적는다
-5. `reference/` 중 1편을 손으로 `Composition`으로 재현해 렌더하고 원본과 나란히 본다 → **이게 통과 기준**
+2. 자막 폰트·크기·외곽선·위치·분절 길이·등장 모션을 눈으로 재서 `Tokens.swift` 에 적는다
+3. role 별 화면 구성과 리프레임 목표 점유율을 `Layout.swift` 에 적는다
+4. `Spec.json` 에 AI 가 쓸 수 있는 role · slot · overlay kind 와 payload 스키마를 적는다
+5. `reference/` 중 1편을 손으로 `Composition` 으로 재현해 렌더하고 원본과 나란히 본다 → **통과 기준**
 
-`suhyun.short.v1` 기준값 (실제 채널 관측):
+### `SuhyunShortV1` — 원본 실측값 (렌더러와 무관한 사실)
 
-```
-자막 본문   Pretendard ExtraBold, 폭 88% 이내, 흰색 #FFFFFF,
-            외곽선 검정 8px, 하단 26% 지점, 2~7자 분절, pop-in 100ms ease-out
-자막 보조   영문, 노란색 이탤릭, 본문 바로 아래, 본문의 0.55배
-훅          0~1.2초, 상단 대형 텍스트 + 줌 1.00→1.06
-리프레임    인물 bbox 높이가 프레임 높이의 72%를 채우도록, 스무딩 0.4s
-BGM         -22dB, 말하는 구간 -6dB 추가 덕킹
-```
+`docs/findings/2026-09-23-reference-measurement.md`. 720x1280 에서 재서 비율로 기록.
 
-전작의 기본값(노란 박스 `#E8C33F`, 56px)은 **디자인 시안 색이었지 크리에이터 스타일이 아니었다.** 같은 실수를 반복하지 않는다.
+| 항목 | 값 | 신뢰도 |
+|---|---|---|
+| 본문 글자 높이 | 프레임 높이의 **3.59%** (1920 기준 69px) | 높음 — 3편 동일 |
+| 본문 아래끝 | 아래에서 **0.2352** | 높음 — 4편 0.2344~0.2352 |
+| 보조 문구 아래끝 | 아래에서 **0.204** | 중간 |
+| 외곽선 (바깥 두께) | 4~5px @720 → 6~7.5px @1080 | 중간 |
+| 보조 문구 크기 | 본문의 약 **0.46** | 중간 |
+| 한 줄 최대 | **12자** | 높음 |
+| 자막 크기 | **고정.** fit-to-width 아님 (글자 수 9~12자에서 높이 47~49px 일정) | 높음 |
+| 강조색 | **쓰지 않는다.** 본문 전부 흰색 | 높음 |
+| 보조 문구 색 | 노란색 | 중간 |
+| 인물 화면 점유 높이 | 0.72 목표 | 중간 |
+
+**이 표는 CoreText 로 다시 그려도 그대로다.** 맞춰야 할 목표값이다.
+반면 이전 Remotion 스파이크에서 쓴 `fontSize 78` · `baselineNudgeRatio 0.153` 같은 값은
+CSS 줄상자 때문에 나온 보정이라 **버린다.** CoreText 는 폰트 메트릭을 직접 주므로
+`CTFontGetBoundingBox` / `CTLineGetBoundsWithOptions` 로 실제 글자 높이를 계산해 역산한다.
 
 ---
 
@@ -378,38 +389,38 @@ BGM         -22dB, 말하는 구간 -6dB 추가 덕킹
 
 ### 도구는 2개뿐
 
-`apps/engine/src/mcp/tools.ts`
-
 | 도구 | 하는 일 |
 |---|---|
-| `read_digest(videoId)` | `§6` 다이제스트 텍스트 반환. 프레임 시트는 MCP 이미지 블록으로 동봉 |
-| `write_composition(json)` | zod 검증 후 저장. 실패하면 에러 메시지를 그대로 돌려줘 고치게 한다 |
+| `read_digest(videoID)` | `§6` 다이제스트 텍스트 반환. 프레임 시트는 MCP 이미지 블록으로 동봉 |
+| `write_composition(json)` | 검증 후 저장. 실패하면 에러 메시지를 그대로 돌려줘 고치게 한다 |
 
-- **`render`는 AI가 호출하지 않는다.** 컴포지션이 저장되면 큐가 렌더한다.
-- 도구를 늘리고 싶어지면 먼저 "이게 없으면 AI가 뭘 못 하나"를 적는다. 대부분은 프롬프트나 템플릿 문제다.
-- 에이전트는 파일을 직접 만지지 않는다. 읽기는 `sheets/**`만 허용.
+- **`render` 는 AI 가 호출하지 않는다.** 컴포지션이 저장되면 큐가 렌더한다.
+- 도구를 늘리고 싶어지면 먼저 "이게 없으면 AI 가 뭘 못 하나"를 적는다. 대부분은 프롬프트나 템플릿 문제다.
+- 에이전트는 파일을 직접 만지지 않는다. 읽기는 프레임 시트 디렉토리만 허용.
 
-### 컨텍스트 조립 순서 (`src/agent/prompt.ts`)
+### 컨텍스트 조립 순서
 
 ```
-1. 제작 지침 (playbook)          — 숏폼 편집 일반 규칙. 고정
-2. 템플릿 spec.json               — 쓸 수 있는 role · slot · overlay와 payload 스키마
-3. 품질 게이트 요약 (§8)          — 지켜야 할 수치
+1. 제작 지침 (playbook)     — 숏폼 편집 일반 규칙. 고정
+2. 템플릿 Spec.json         — 쓸 수 있는 role · slot · overlay 와 payload 스키마
+3. 품질 게이트 요약 (§8)     — 지켜야 할 수치
 4. 사용자 규칙 (설정에서 직접 쓴 것)
-5. digest                         — read_digest 결과
+5. digest
 6. 대화 이력 / 수정 요청
 ```
 
-세기 순서: **사용자 규칙 > 템플릿 spec > 품질 게이트 > 제작 지침.**
+세기 순서: **사용자 규칙 > 템플릿 Spec > 품질 게이트 > 제작 지침.**
 
 ### 동작 규칙
 
-- 첫 진입: 다이제스트 생성 → AI 1턴 → `Composition` 초안 → 장면 카드로 표시. **자동 렌더하지 않는다.** 사용자가 고르면 렌더.
-- 수정 요청은 항상 새 `Composition`(`revisionOf`)을 만든다. 이전 결과물도 계속 자기 컴포지션으로 재현 가능해야 한다.
-- 수정 요청이 오면 고친 뒤 **"앞으로도 이렇게 할까요?"**를 한 번 묻고, 예일 때만 사용자 규칙에 적는다.
-- self-eval 턴은 사용자에게 보이지 않는다. 게이트 리포트 + 프레임 시트를 주고 컴포지션만 고치게 한다. 설명 문장을 요구하지 않는다.
+- 첫 진입: 다이제스트 생성 → AI 1턴 → `Composition` 초안 → 장면 카드로 표시.
+  **자동 렌더하지 않는다.** 사용자가 고르면 렌더.
+- 수정 요청은 항상 새 `Composition`(`revisionOf`)을 만든다.
+- 수정 요청이 오면 고친 뒤 **"앞으로도 이렇게 할까요?"** 를 한 번 묻고, 예일 때만 사용자 규칙에 적는다.
+- self-eval 턴은 사용자에게 보이지 않는다. 게이트 리포트 + 프레임 시트를 주고 컴포지션만 고치게 한다.
 - 응답은 채팅에 스트리밍. 도구 호출 내부는 노출하지 않는다.
-- AI 미연결 상태에서는 러너를 스폰하지 않는다. 이때 UI는 "AI를 연결하면 편집안을 만들어요" 한 줄만 보여준다. **AI 없는 편집 경로를 따로 만들지 않는다.**
+- AI 미연결 상태에서는 러너를 스폰하지 않는다. UI 는 "AI 를 연결하면 편집안을 만들어요" 한 줄만 보여준다.
+  **AI 없는 편집 경로를 따로 만들지 않는다.**
 
 ---
 
@@ -417,109 +428,95 @@ BGM         -22dB, 말하는 구간 -6dB 추가 덕킹
 
 편집 난이도를 낮추는 가장 싼 방법은 촬영을 규칙화하는 것이다. 크리에이터에게 A4 한 장으로 준다.
 
-- 가로가 아니라 **세로로**, 인물이 화면 높이의 70% 이상 차지하게
+- 세로로, 인물이 화면 높이의 70% 이상 차지하게
 - 순서 고정: 훅 멘트 → 동작 시범 3회 → 마무리 한마디
 - 각 블록 시작 전에 **1초 정지**. 컷 경계가 된다
 - 실수하면 **박수 한 번** 치고 다시. 박수 = "직전 테이크 버려" 신호로 자동 인식
-- 배경은 단색 벽. BGM은 나중에 넣으니 현장에서 틀지 않는다
+- 배경은 단색 벽. BGM 은 나중에 넣으니 현장에서 틀지 않는다
 
-이 규칙을 지킨 촬영본은 AI 판단이 90% 줄어든다. 지키지 않은 촬영본도 동작해야 하지만, 품질은 보장하지 않는다.
+이 규칙을 지킨 촬영본은 AI 판단이 90% 줄어든다. 지키지 않은 촬영본도 동작해야 하지만 품질은 보장하지 않는다.
 
 ---
 
 ## 12. 개발 단계
 
-각 단계는 **통과 조건을 만족하기 전에 다음으로 가지 않는다.** 전작은 이 게이트가 없어서 6단계까지 갔는데 0단계를 통과하지 못한 상태였다.
+각 단계는 **통과 조건을 만족하기 전에 다음으로 가지 않는다.**
+전작은 이 게이트가 없어서 6단계까지 갔는데 0단계를 통과하지 못한 상태였다.
 
-**0. 렌더러 스파이크** (AI 없음, DB 없음, UI 없음)
-크리에이터 실제 릴스 1편을 손으로 `Composition` JSON 작성 → Remotion 렌더.
-- 통과: 원본과 나란히 놓고 **자막·구도·리듬이 같은 채널 영상으로 보인다**
-- 실패 시 여기서 멈추고 컴포지터를 다시 고른다. 절대 다음으로 가지 않는다
+**0. 자막 렌더 스파이크** (AI 없음, DB 없음, UI 최소)
+`reference/` 프레임 위에 CoreText 자막을 겹쳐 그려 `§9` 실측표와 맞춘다.
+- 통과: 본문 글자 높이 **3.59% ±0.1%**, 본문 아래끝 **0.2352 ±0.003**, 보조 아래끝 **0.204 ±0.003**
+- 측정은 `tools/measure.mjs` 로 한다 (PNG 를 재므로 무엇이 그렸는지 무관)
+- 이어서 `reference/` 1편을 손으로 `Composition` 으로 재현 → AVAssetWriter 렌더 → 원본과 나란히 비교
+- **눈으로 같은 채널 영상으로 보이지 않으면 여기서 멈춘다.** 1단계로 가지 않는다
 
 **1. 리프레이밍**
-사람 감지 워커 → bbox 트랙 → 키프레임 → 클립 렌더.
-- 통과: G1 · G2 · G3 통과. 전작 출력과 before/after 비교 이미지
+Vision → bbox 트랙 → 키프레임 → CALayer 변환.
+- 통과: G1 · G2 · G3
 
-**2. 템플릿 + 자막**
-`suhyun.short.v1` 완성, 자막 분절 규칙, 강조.
-- 통과: G4 · G5 · G6 · G7 통과
+**2. 템플릿 완성**
+`SuhyunShortV1` 자막 분절 · 강조 · 훅 · 보조 문구.
+- 통과: G4 · G5 · G6 · G7
 
 **3. 파이프라인 연결**
-폴더 감시 → 다이제스트 → 큐 → 렌더 → 갤러리. AI 없이 수동 Composition으로.
-- 통과: 원본 넣고 3분 안에 무자막 아닌 완성 영상이 나온다
+PhotoKit 가져오기 → 다이제스트 → 큐 → 렌더 → 갤러리. AI 없이 수동 Composition 으로.
+- 통과: 아이폰으로 찍은 영상이 앱에 저절로 뜨고, 3분 안에 완성 영상이 나온다
 
 **4. AI 1턴**
-러너 + MCP 2도구 + 프롬프트 조립.
-- 통과: 새 촬영본에서 사람 손 없이 게이트 하드 3개 통과
+`Process` 스폰 + MCP 2도구 + 프롬프트 조립.
+- 통과: 새 촬영본에서 사람 손 없이 하드 게이트 3개 통과
 
 **5. self-eval 루프**
-게이트 실패 → 되먹임 → 재렌더.
 - 통과: 10편 중 8편이 1회 되먹임 안에 하드 게이트 통과
 
-**6. 채팅 수정 + 장면 카드 UI**
-- 통과: 크리에이터가 혼자 3편을 만들고, **각 편 10분 이내**
+**6. 채팅 수정 + 장면 카드 UI + 배포**
+- SwiftUI 편집안 · 장면 카드 · 채팅
+- 엔타이틀먼트, `.dmg`, Sparkle
+- 통과: 크리에이터가 혼자 3편을 만들고 **각 편 10분 이내**.
+  깨끗한 Mac 에서 `.dmg` 드래그 → 아이콘 클릭 → 사용까지 터미널 0회
 
-**7. 앱 껍데기 + 배포**
-Swift 앱으로 감싸서 크리에이터에게 건넬 수 있는 상태로 만든다.
-- SwiftUI 메뉴바 + `WKWebView` 앱 창 (주소창 없음), 엔진 프로세스 관리(spawn · 감시 · 재시작)
-- 첫 실행 준비 화면: ffmpeg · Chrome 다운로드, quarantine 해제, 진행바
-- AI 연결: claude / codex 감지 → 없으면 설치 → 브라우저 OAuth 로그인 유도
-- Swift 헬퍼 2개 (`madi-vision` · `madi-whisper`) 를 1·2단계 워커와 교체
-- LAN 바인드 + 페어링 토큰 + QR, `NSLocalNetworkUsageDescription`
-- 하드닝 런타임 엔타이틀먼트 (번들 node 스폰), `.dmg` 패키징, Sparkle
-- 통과: **깨끗한 Mac 에서 `.dmg` 드래그 → 아이콘 클릭 → 준비 완료까지 터미널 없이 끝나고,
-  아이폰으로 QR 찍어 촬영본을 올려 결과를 받는다**
-- 코드 사이닝·공증은 판매 시점에. 지인 전달 단계에서는 첫 실행만 우클릭 → 열기
-
-**8. 롱폼**
+**7. 롱폼**
 챕터 분리, 숏폼 자동 추출, 롱폼 구성 채팅.
-- 6단계 통과 전에는 시작하지 않는다. 숏폼이 안 되는데 롱폼을 붙이면 실패 면적만 넓어진다
+- 6단계 통과 전에는 시작하지 않는다
 
 ---
 
-## 13. 라이선스 확인 사항
+## 13. 라이선스
 
-- **Remotion — 확인 완료 (2026-09-23). 무료 라이선스로 진행한다.**
-  - Remotion은 source-available 자체 라이선스(OSI 오픈소스 아님). Free License 대상은 "개인" 또는 "직원 3인 이하 영리조직" 또는 비영리. **개인은 상업적 사용·수익화 모두 무료.**
-  - 이 앱처럼 "사용자가 자신의 영상을 템플릿 기반으로 만들고 렌더하게 하는 것"은 공식 FAQ가 허용 예시로 명시.
-  - 금지: Remotion 자체를 파생·재판매, 사용자가 **자기 Remotion 코드를 올려서** 렌더하게 하는 서비스. 우리는 둘 다 아니다.
-  - **스케일 리스크**: 인원이 4명이 되는 순간 Company License. 이 제품은 "Remotion for Automators"(렌더당 $0.01, 월 최소 $100)에 해당한다. **사람을 뽑기 전에 다시 계산한다.**
-  - Electron 번들 관련 우려는 해소됐다 — Electron 을 쓰지 않는다. 크리에이터 Mac 에서 크리에이터 본인이 렌더한다.
-  - 대안 유지: Motion Canvas는 현재 MIT(2024년 GPLv3 전환 논의가 있었으므로 의존할 버전의 LICENSE를 그때 확인). Remotion 조건이 바뀌면 이쪽.
-- **폰트**: Pretendard(OFL) 자체 호스팅. 다른 폰트를 쓰려면 번들 가능 여부를 먼저 본다.
-- **BGM/SFX**: 기본 제공 음원은 상업 이용 가능한 것만. 출처를 `resources/audio/LICENSE.md`에 남긴다.
-- **구독 CLI**: 유료 제품에 붙이기 전 Anthropic·OpenAI 약관 재확인.
+- **Remotion 문제가 사라졌다.** 쓰지 않는다. 연 비용 0, 인원 제한 0.
+- **Pretendard Variable** — OFL. 앱 번들 동봉 가능.
+- **WhisperKit** — MIT. 모델 가중치 라이선스는 채택 시점에 확인한다.
+- **GRDB.swift** — MIT.
+- **BGM/SFX** — 상업 이용 가능한 것만. 출처를 `Madi/Resources/audio/LICENSE.md` 에 남긴다.
+- **구독 CLI** — 크리에이터 본인 구독을 본인 기기에서 쓰는 것이므로 회색지대가 아니다.
+  다만 유료 판매로 넘어갈 때 Anthropic · OpenAI 약관을 그 시점에 재확인한다.
 
 ---
 
 ## 14. 개발 규칙
 
-- 커밋 단위는 작게. 워커 하나 또는 화면 하나.
-- 새 기능은 `packages/shared`의 zod 스키마부터. 엔진·UI·AI가 같은 타입을 쓴다.
-- ffmpeg 명령은 문자열 조립 금지. `packages/media` 빌더만.
-- 자막을 ffmpeg으로 그리지 않는다.
-- 워커는 순수 함수 + 스폰. 테스트는 `fixtures/`의 5초 샘플로.
-- 렌더 관련 변경은 **반드시 프레임 시트를 첨부**해 PR/커밋에 남긴다. 눈으로 확인하지 않은 렌더 변경은 머지하지 않는다.
-- UI 문구·에러 문구는 `apps/web/src/copy.ts` 한 파일에. 하드코딩 금지.
-- 로그는 `~/.madi/logs/`. 사용자에게 경로를 노출하지 않는다.
-- 사용 이벤트(요청 종류, 소요 시간, 게이트 통과율)를 로컬 SQLite `events`에 기록. 외부 전송 없음. 판매 판단 근거로 쓴다.
-- **"편집 시간 10분"을 계속 측정한다.** 원본 투입부터 다운로드까지 실측을 `events`에 남기고, 회귀하면 그 커밋을 되돌린다.
+- 커밋 단위는 작게. 화면 하나 또는 워커 하나.
+- 새 기능은 `Madi/Model` 의 타입부터. 저장·렌더·AI 가 같은 타입을 쓴다.
+- **자막을 이미지로 미리 굽지 않는다.** CoreText 로 매번 그린다. 굽는 순간 수정이 막힌다.
+- **렌더 관련 변경은 반드시 프레임 시트를 첨부**해 커밋에 남긴다.
+  눈으로 확인하지 않은 렌더 변경은 머지하지 않는다.
+- 프리뷰와 최종 렌더가 같은 레이어 코드를 쓰는지 테스트로 지킨다.
+- UI 문구·에러 문구는 `Madi/UI/Copy.swift` 한 파일에. 하드코딩 금지. AI 말투로.
+- 로그는 `OSLog`. 사용자에게 경로를 노출하지 않는다.
+- 사용 이벤트(요청 종류, 소요 시간, 게이트 통과율)를 로컬 SQLite `events` 에 기록. 외부 전송 없음.
+- **"편집 시간 10분" 을 계속 측정한다.** 원본 투입부터 내보내기까지 실측을 `events` 에 남기고,
+  회귀하면 그 커밋을 되돌린다.
+- 테스트는 짧은 샘플 영상으로. Vision · WhisperKit 은 프로토콜로 감싸 테스트에서 대체한다.
 
 ---
 
 ## 15. 명령
 
 ```
-pnpm i
-pnpm setup           # 개발용 1회: ffmpeg · Chrome 내려받기 + quarantine 해제
-pnpm dev             # engine(개발) + web(HMR)
-pnpm spike           # 0단계: fixtures의 수동 Composition 렌더 후 비교 시트 출력
-pnpm build
-pnpm test
-pnpm e2e
-pnpm db:migrate
-pnpm db:studio
-pnpm package
+open Madi.xcodeproj
+xcodebuild -scheme Madi -configuration Debug build
+xcodebuild -scheme Madi test
+node tools/measure.mjs <png> [<png> ...]      # 자막 지표 측정
 ```
 
 ---
@@ -530,20 +527,14 @@ pnpm package
 - 범용 편집 도구화. 타깃은 운동·재활 크리에이터로 고정
 - 스타일 자동 학습. 템플릿은 사람이 쓴다
 - AI 없이 동작하는 별도 편집 경로
-- SaaS 배포, 다중 사용자, 계정 시스템, 텔레메트리 전송 (설계상 막지는 않되 구현 안 함)
-- API 키 방식 AI 호출 (`AgentProvider` 구현 추가로 대응 가능하게만)
-- 브라우저 안에서만 도는 완전 웹앱 (ffmpeg.wasm · @remotion/web-renderer 등)
-  기술은 된다. 막히는 건 **AI 에이전트**다 — 브라우저는 `claude -p` 를 스폰하지 못하므로
-  구독 대신 API 키를 써야 하고, 그러면 이 제품의 제일 큰 이점이 사라진다.
-  덤으로 Safari 는 `showDirectoryPicker` 를 지원하지 않아 폴더 감시도 안 되고,
-  탭을 닫으면 렌더가 끊긴다. 로컬에 작은 엔진은 반드시 있어야 한다.
-- Electron (Swift 앱이 대신한다)
-- 크리에이터 쪽 설치 스크립트 · 터미널 요구
-- 서버 배포 · 서버리스 (영상이 기기를 떠나면 안 된다)
-- iOS 네이티브 앱 — iOS 는 프로세스를 못 띄워 구독 CLI 가 불가능하고 Remotion 도 못 돌린다.
-  모바일은 **브라우저로** 붙는다
+- **iOS 앱** — iOS 는 프로세스를 못 띄워 구독 CLI 가 불가능하다.
+  아이폰은 촬영만 하고, 결과 확인은 사진 앱으로 내보내 본다
+- **웹 UI · HTTP 서버 · 서버 배포** — 영상이 기기를 떠나면 안 된다
+- Electron · Node 제품 코드 (Node 는 `tools/` 측정 도구에만)
+- Remotion · ffmpeg · whisper.cpp · onnxruntime — 애플 프레임워크로 대체
+- App Store 배포 (샌드박스에서 AI CLI 스폰 불가)
 - 코드 사이닝 · 공증 · Apple Developer 계정 (판매 시점까지 미룬다)
-- 집 밖 접속 (터널 · Tailscale). 요구가 실제로 생기면
+- Intel Mac 지원
 - 다크 모드
 - 롱폼 (6단계 통과 전까지)
 
@@ -551,10 +542,9 @@ pnpm package
 
 ## 17. 타깃 환경
 
-- 1차 타깃은 **크리에이터 Mac 한 대**. Apple Silicon 을 전제한다 —
-  Vision · WhisperKit · VideoToolbox 가 전부 여기 붙는다. Intel Mac 이면 목표가 깨진다.
-  사양은 `docs/target-machine.md` 에 기록한다. 확인 전에는 단정하지 않는다.
-- 아이폰은 **브라우저로** 붙는다. 앱을 만들지 않는다. 같은 와이파이 필요.
-- 지원 브라우저: 데스크톱 Safari / Chrome + iOS Safari 최신.
-  **모바일 화면을 나중으로 미루지 않는다.** 아이폰이 촬영·업로드의 주 경로다.
+- **크리에이터 Mac 한 대. Apple Silicon 필수.**
+  Vision · WhisperKit · VideoToolbox 가 전부 여기 붙는다. 사양은 `docs/target-machine.md`.
+  확인 전에는 단정하지 않는다.
+- macOS 14 이상 (SwiftUI Observation, Vision 관절 API).
+- 아이폰은 **촬영 전용.** iCloud 사진으로 Mac 에 들어온다. 앱을 설치하지 않는다.
 - 개발 머신과 크리에이터 머신이 다르다. 개발자 Mac 에서만 되는 것을 만들지 않는다.

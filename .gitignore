@@ -1,26 +1,32 @@
-node_modules/
-dist/
-build/
-*.tsbuildinfo
+# macOS
 .DS_Store
-.env
-.env.*
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+xcuserdata/
+*.moved-aside
+.swiftpm/
+
+# Node (tools 전용)
+node_modules/
 
 # 스파이크 산출물
 spike/out/
-spike/public/frames/
-spike/reference/*.mp4
-spike/reference/*.mov
+out/
 
-# 미디어 원본은 커밋하지 않는다 (git-lfs 도입 전까지)
+# 미디어 원본은 커밋하지 않는다
 *.mp4
 *.mov
 *.MOV
-!fixtures/*.mp4
 
-# Claude Code 로컬 설정 (훅은 .claude/settings.json 에 공유)
-.claude/settings.local.json
+# 참고용 공개 영상 프레임은 커밋한다 (스타일 근거)
+!reference/*.png
+!reference/*.jpg
 
-# 참고용 공개 영상 프레임 (커밋함 — 스타일 근거)
-!spike/public/reference/*.png
-!spike/public/reference/*.jpg
+# 버린 시도
+archive/remotion-spike/node_modules/
+archive/remotion-spike/out/
+archive/node-packages/*/node_modules/

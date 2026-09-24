@@ -13,7 +13,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
-import { CAPTION, CAPTION_SECONDARY } from './remotion/tokens.ts';
+
 
 // --- 최소 PNG 디코더 (8-bit RGB/RGBA, non-interlaced) ---------------------
 
@@ -134,20 +134,18 @@ function analyze(file) {
 // --- 출력 --------------------------------------------------------------
 
 /**
- * 실제로 그려지는 글자 높이는 fontSize 그대로가 아니다.
- * Pretendard ExtraBold + 외곽선 조합에서 측정: 글자높이 = fontSize x 0.889
- * (fontSize 72 -> 64px, fontSize 78 -> 70px)
+ * 크리에이터 실제 업로드본 실측값. 맞춰야 할 목표다.
+ * docs/findings/2026-09-23-reference-measurement.md · AGENTS.md §9
+ * 렌더러(Remotion · CoreText · 무엇이든)와 무관한 사실이므로 여기 고정한다.
  */
-const GLYPH_RATIO = 0.889;
-
-/** 원본(크리에이터 실제 업로드본) 실측값. docs/findings/2026-09-23-reference-measurement.md */
-const REFERENCE = { hRatio: 0.0359, bottomRatio: 0.2352, secondaryBottomRatio: 0.204 };
-
-const targets = {
-  bottomRatio: CAPTION.bottomRatio,
-  hRatio: (CAPTION.fontSize * GLYPH_RATIO) / 1920,
-  secondaryHRatio: (CAPTION.fontSize * CAPTION_SECONDARY.scale * GLYPH_RATIO) / 1920,
+const REFERENCE = {
+  hRatio: 0.0359,             // 본문 글자 높이 / 프레임 높이
+  bottomRatio: 0.2352,        // 본문 아래끝에서 화면 아래까지
+  secondaryBottomRatio: 0.204, // 보조 문구 아래끝
 };
+
+/** 허용 오차. AGENTS.md §12-0 통과 조건 A */
+const TOL = { hRatio: 0.001, bottomRatio: 0.003, secondaryBottomRatio: 0.003 };
 
 const files = process.argv.slice(2);
 if (!files.length) {
@@ -171,9 +169,24 @@ for (const f of files) {
   }
 }
 console.log('-'.repeat(92));
-console.log(pad('tokens.ts 예상', 34), pad(`${(targets.hRatio * 100).toFixed(2)}%`, 18), pad(targets.bottomRatio.toFixed(4), 14), '');
-console.log(pad('원본 실측 (맞춰야 할 값)', 30), pad(`${(REFERENCE.hRatio * 100).toFixed(2)}%`, 18), pad(REFERENCE.bottomRatio.toFixed(4), 14), REFERENCE.secondaryBottomRatio.toFixed(4));
+console.log(pad('원본 실측 (목표)', 31), pad(`${(REFERENCE.hRatio * 100).toFixed(2)}%`, 18), pad(REFERENCE.bottomRatio.toFixed(4), 14), REFERENCE.secondaryBottomRatio.toFixed(4));
+console.log(pad('허용 오차', 33), pad(`+-${(TOL.hRatio * 100).toFixed(2)}%`, 18), pad(`+-${TOL.bottomRatio}`, 14), `+-${TOL.secondaryBottomRatio}`);
 console.log('');
-console.log('본문높이 하한은 G4 >= 3.2%. 하단여백은 본문 아래끝에서 화면 아래까지의 비율.');
-console.log('원본 실측 행과 +-0.003 안에 들어오면 통과다.');
+
+// 판정
+for (const f of files) {
+  try {
+    const m = analyze(f);
+    if (!m.main) continue;
+    const checks = [
+      ['본문높이', Math.abs(m.main.hRatio - REFERENCE.hRatio) <= TOL.hRatio],
+      ['하단여백', Math.abs(m.main.bottomRatio - REFERENCE.bottomRatio) <= TOL.bottomRatio],
+      ...(m.secondary ? [['보조하단', Math.abs(m.secondary.bottomRatio - REFERENCE.secondaryBottomRatio) <= TOL.secondaryBottomRatio]] : []),
+    ];
+    const bad = checks.filter(([, ok]) => !ok).map(([n]) => n);
+    console.log(`${bad.length ? 'FAIL' : 'PASS'}  ${f.slice(-40)}${bad.length ? '  — ' + bad.join(', ') : ''}`);
+  } catch { /* 위에서 이미 알렸다 */ }
+}
+console.log('');
+console.log('G4 하한은 본문높이 >= 3.2%. 하단여백은 본문 아래끝에서 화면 아래까지의 비율.');
 console.log('');
