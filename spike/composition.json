@@ -1,0 +1,67 @@
+{
+  "id": "spike-EDpBGkaNJmU",
+  "videoId": "EDpBGkaNJmU",
+  "templateId": "short",
+  "templateVersion": 1,
+  "size": { "w": 1080, "h": 1920 },
+  "fps": 30,
+  "meta": {
+    "title": "골반 틀어짐 자가진단",
+    "platform": "shorts",
+    "targetDurationSec": 18.5
+  },
+
+  "scenes": [
+    {
+      "id": "s1",
+      "role": "hook",
+      "source": { "videoId": "EDpBGkaNJmU", "in": 0.0, "out": 8.2 },
+      "reframe": {
+        "mode": "fixed",
+        "keyframes": [{ "t": 0, "rect": { "x": 0, "y": 0, "w": 1, "h": 1 } }]
+      },
+      "captions": [
+        { "id": "c01", "start": 0.0, "end": 1.0, "text": "골반이 틀어지신 분들은", "secondary": "If your pelvis is misaligned," },
+        { "id": "c02", "start": 1.0, "end": 2.5, "text": "이거 안되실껄요?", "secondary": "you probably can't do this." },
+        { "id": "c03", "start": 2.5, "end": 3.2, "text": "양쪽 다리를", "secondary": "Position both legs" },
+        { "id": "c04", "start": 3.2, "end": 4.2, "text": "ㄱ 자로 앉아주신 후", "secondary": "Position both legs" },
+        { "id": "c05", "start": 4.2, "end": 5.2, "text": "천천히 일어나주시면서", "secondary": "Slowly stand up," },
+        { "id": "c06", "start": 5.2, "end": 6.6, "text": "다시 천천히 앉아주세요", "secondary": "Slowly stand up," },
+        { "id": "c07", "start": 6.6, "end": 8.2, "text": "반대쪽도 똑같이 진행해주세요", "secondary": "Repeat on the other side." }
+      ]
+    },
+    {
+      "id": "s2",
+      "role": "demo",
+      "source": { "videoId": "EDpBGkaNJmU", "in": 8.2, "out": 10.5 },
+      "reframe": {
+        "mode": "fixed",
+        "keyframes": [{ "t": 0, "rect": { "x": 0, "y": 0, "w": 1, "h": 1 } }]
+      },
+      "captions": []
+    },
+    {
+      "id": "s3",
+      "role": "explain",
+      "source": { "videoId": "EDpBGkaNJmU", "in": 10.5, "out": 18.5 },
+      "reframe": {
+        "mode": "fixed",
+        "keyframes": [{ "t": 0, "rect": { "x": 0, "y": 0, "w": 1, "h": 1 } }]
+      },
+      "captions": [
+        { "id": "c08", "start": 0.0, "end": 1.1, "text": "양 쪽을 비교해봤을때,", "secondary": "Compare both sides." },
+        { "id": "c09", "start": 1.1, "end": 1.6, "text": "한쪽으로 너무", "secondary": "If you lean" },
+        { "id": "c10", "start": 1.6, "end": 2.4, "text": "기울어져있거나", "secondary": "too much to one side," },
+        { "id": "c11", "start": 2.4, "end": 3.8, "text": "일어나지 못한다면", "secondary": "or can't stand up," },
+        { "id": "c12", "start": 3.8, "end": 4.4, "text": "골반이 틀어져있을", "secondary": "your pelvis" },
+        { "id": "c13", "start": 4.4, "end": 5.8, "text": "가능성이 높다는 겁니다", "secondary": "is likely misaligned." },
+        { "id": "c14", "start": 5.8, "end": 6.5, "text": "만약 그러신 분들은", "secondary": "If that's the case," },
+        { "id": "c15", "start": 6.5, "end": 8.0, "text": "다음 영상으로 해결해보세요", "secondary": "check out the next video!" }
+      ]
+    }
+  ],
+
+  "audio": { "sfx": [] },
+  "revisionOf": null,
+  "createdAt": "2026-09-25T00:00:00Z"
+}

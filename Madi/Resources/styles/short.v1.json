@@ -7,7 +7,8 @@
   "measuredFrom": [
     "reference/yt_15s.png",
     "reference/yt_11s.png",
-    "reference/yt_7s.png"
+    "reference/yt_7s.png",
+    "spike/source/EDpBGkaNJmU.mp4 (18.5초 전편, 자막 15개)"
   ],
   "values": {
     "caption": {
@@ -16,7 +17,7 @@
       "inkBottomRatio": 0.2352,
       "strokeOuterRatio": 0.003125,
       "maxWidthRatio": 0.9,
-      "maxChars": 13,
+      "maxChars": 15,
       "maxLines": 2,
       "lineGapRatio": 1.35,
       "fill": "#FFFFFF",
