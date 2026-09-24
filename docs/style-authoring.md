@@ -26,7 +26,7 @@ AGENTS.md §9. **스타일은 학습하지 않는다. 사람이 잰다.**
 프레임을 이미지 편집기(미리보기 앱의 사각형 선택으로 충분)에서 열고 픽셀을 읽는다.
 **원본 프레임은 1080x1920이다.** 리사이즈된 걸 재면 값이 전부 틀어지므로 확인부터 한다.
 
-| Tokens.swift 값 | 재는 법 |
+| short.v1.json 키 | 재는 법 |
 |---|---|
 | `caption.fontSize` | 받침 없는 글자(예: "다", "이")의 **위아래 끝 픽셀 높이**. 글자 높이 ≈ fontSize × 0.72 이므로 잰 값 ÷ 0.72 |
 | `caption.strokeWidth` | 글자 획 **바깥으로 나간** 검은 테두리 두께(px). 안쪽은 세지 않는다 |
@@ -101,19 +101,21 @@ node tools/measure.mjs out/caption-probe.png
 
 ## 4. 확정
 
-`Tokens.swift` 의 `measured` 를 `true` 로 바꾼다. 그 전에는 렌더할 때마다 경고 로그가 남는다.
+`short.v1.json` 의 `measured` 를 `true` 로 바꾼다. 그 전에는 렌더할 때마다 경고 로그가 남는다.
 
 ---
 
 ## 5. 템플릿 구조
 
 ```
-Madi/Templates/SuhyunShortV1/
-  Tokens.swift        여기서 잰 값
+Madi/Templates/
+  StyleSchema.swift   파라미터 정의 · 검증 범위 (코드. 빌드 필요)
   Layout.swift        role 별 화면 구성, 리프레임 목표치
   CaptionLayer.swift  CoreText 자막 레이어
   OverlayLayer.swift  타이틀 · 원 · 화살표 · 마크
-  Spec.json           AI 가 쓸 수 있는 role · slot · overlay kind 와 payload 스키마
+  Spec.json           AI 가 쓸 수 있는 role · slot · overlay kind 와 payload
+Resources/styles/
+  short.v1.json       ★ 여기서 잰 값 (데이터. 빌드 불필요)
 ```
 
 근거 프레임은 레포 루트 `reference/` 에 둔다. 지우지 않는 이유: 나중에 "자막이 좀 작은 것 같은데"라는 말이 나왔을 때
@@ -121,9 +123,16 @@ Madi/Templates/SuhyunShortV1/
 
 ---
 
+## 스타일이 바뀌면
+
+`StyleFitter` 가 새 완성본 3~5편을 재서 새 값을 제안한다 (`AGENTS.md §9`).
+크리에이터가 직접 숫자를 만지게 하지 않는다. 승인 전에 before/after 프레임을 나란히 보여준다.
+새 `Style` 레코드(version+1)를 만들고 이전 버전은 지우지 않는다 — 옛 결과물이 재현돼야 한다.
+
 ## 새 크리에이터를 받을 때
 
-템플릿을 하나 더 만든다. 기존 것을 파라미터화하지 않는다.
-파라미터가 늘어나면 그게 곧 "AI가 스타일을 정하는" 상태로 되돌아가는 길이다 (§0-4).
+**새 `Style` 레코드를 하나 더 만든다** (`short.v2`, `short.v3` ...). 값만 다르면 그리기 로직은 재사용한다.
+그리기 로직이 달라야 하는 경우에만 새 템플릿을 만든다.
+어느 쪽이든 **AI 가 값을 정하게 하지 않는다** — 재서 넣는다.
 
 릴스 5편 보고 30분 재면 새 템플릿 하나가 나온다. 그게 학습보다 빠르고 정확하다.

@@ -42,8 +42,9 @@ CSS 줄상자 때문에 나온 보정값이다. CoreText 는 폰트 메트릭을
 | 파일 | 내용 |
 |---|---|
 | `Madi/Model/Composition.swift` | `AGENTS.md §5` Codable 타입 + `assertNoStyleValues()` |
-| `Madi/Templates/SuhyunShortV1/Tokens.swift` | 폰트 · 색 · 크기 · 외곽선 · 모션. `§9` 실측표에서 역산 |
-| `Madi/Templates/SuhyunShortV1/CaptionLayer.swift` | CoreText 자막 레이어 |
+| `Madi/Templates/StyleSchema.swift` | 스타일 파라미터 정의 · 검증 범위 · 기본값. **AI 접근 불가** |
+| `Resources/styles/short.v1.json` | 스타일 **값**. `§9` 실측표에서 역산. 빌드 없이 바뀐다 |
+| `Madi/Templates/CaptionLayer.swift` | CoreText 자막 레이어. 값은 주입받는다 |
 | `Madi/Render/Renderer.swift` | Composition → AVMutableComposition + CALayer → AVAssetWriter |
 | `Madi/Render/StillRenderer.swift` | 프레임 1장만 PNG 로. 측정·대조용 |
 | `MadiTests/CompositionTests.swift` | 파싱 · 길이 · 오프셋 · 스타일값 차단 · 역구간 |

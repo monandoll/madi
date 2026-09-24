@@ -67,7 +67,9 @@ AVMutableComposition + CoreAnimationTool + AVAssetWriter 로 렌더해서 원본
 3. **렌더 출력을 바꾸는 변경은 프레임을 뽑아서 눈으로 확인하고 커밋에 첨부한다.**
    측정 숫자만 보고 통과라고 하지 않는다.
 4. **자막을 이미지로 미리 굽지 않는다.** CoreText 로 매번 그린다.
-5. **스타일 값을 `Composition` 에 넣지 않는다.** 폰트·색·크기·좌표는 `Templates/` 가 정한다.
+5. **스타일 값을 `Composition` 에 넣지 않는다.** 폰트·색·크기·좌표는 스타일(JSON)이 정한다.
+   **스타일 값을 Swift 상수로 하드코딩하지도 않는다** — `short.v1.json` 에서 읽는다 (`AGENTS.md §9`).
+   빌드 없이 값을 바꿀 수 있어야 한다.
    `assertNoStyleValues()` 로 막고 테스트를 쓴다 (`AGENTS.md §5`).
 6. **Universal 2 로 빌드한다** (`ARCHS = arm64 x86_64`). 0단계에서 아키텍처 분기 코드는 필요 없다.
 7. `AGENTS.md` 를 네 판단으로 고치지 않는다. 충돌하는 게 있으면 발견을 보고하고 물어본다.
@@ -94,7 +96,8 @@ AVMutableComposition + CoreAnimationTool + AVAssetWriter 로 렌더해서 원본
 1. Xcode 프로젝트 생성 (`Madi.xcodeproj`), Universal 2 설정, Pretendard 번들
 2. `Madi/Model/Composition.swift` + `MadiTests/CompositionTests.swift`
    (`AGENTS.md §5` 그대로. 스타일 값 차단 테스트 포함)
-3. `reference/` 프레임에서 자막 값 역산 → `Madi/Templates/SuhyunShortV1/Tokens.swift`
+3. `reference/` 프레임에서 자막 값 역산 →
+   `Madi/Templates/StyleSchema.swift` (스키마·검증범위) + `Resources/styles/short.v1.json` (값)
 4. `CaptionLayer.swift` + `StillRenderer.swift` → **A 통과까지 반복**
 5. `Renderer.swift` (AVMutableComposition + CoreAnimationTool + AssetWriter)
 6. `spike/composition.json` 손으로 작성 → 렌더 → B 판정

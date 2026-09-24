@@ -24,7 +24,7 @@
 | 2 | 9:16 크롭이 `cropFocus: Double` 하나 (정적 x좌표) | 인물이 화면 구석에 작게 박힘. 숏폼에서 피사체가 작으면 그 시점에 끝난 영상 | 리프레이밍은 **사람 bbox 추적 기반 시간축 키프레임** |
 | 3 | 자막을 ffmpeg ASS 로 번인. 문장 통째로, 56pt on 1080 | 화면 폭의 5%짜리 자막. 딱 봐도 자동 생성 자막 | 자막은 **CoreText + CALayer**. 분절·크기·모션·외곽선은 템플릿이 강제 |
 | 4 | 스타일을 `style.md` 자연어 규칙으로 두고 AI가 매번 해석 | 같은 요청에 매번 다른 결과. 일관성이 없으면 "내 채널 영상"이 아니다 | **스타일은 코드 자산**. AI는 스타일 값을 쓸 수 없다. 슬롯만 채운다 |
-| 5 | 완성본에서 스타일을 "학습" | 완성본은 자막이 번인되어 있어 파라미터 역추출 불가 | 학습하지 않는다. 사람이 릴스 5편 보고 **손으로 잰다**. 10배 정확하고 100배 싸다 |
+| 5 | 완성본에서 스타일을 "학습" | AI 에게 자연어로 스타일을 추측하게 시켰다. 매번 다른 값이 나왔다 | **재지 말고 학습하라는 게 아니다. 학습 말고 재라.** 자막 크기·위치·색·분절은 픽셀로 **측정 가능하다** (실제로 했다 — `tools/measure.mjs`). 측정 불가한 것은 "무엇을 잘랐는지" 뿐이고 그건 원본이 있어야 한다 |
 | 6 | 렌더 결과를 아무도 다시 안 봄 | "처참하다"는 걸 코드가 모름. 품질 기준이 코드에 없었다 | `§8 품질 게이트` + `§7 self-eval` 이 1단계부터 들어간다 |
 | 7 | (재작성 중 학습) 프레임 1장 보고 스키마를 정하려 했다 | 5편을 세어 보니 우선순위가 뒤집혔다 | **5편 이상 보고 정한다.** `docs/findings/2026-09-23-layout-survey.md` |
 
@@ -179,14 +179,16 @@ Madi/
   Review/           품질 게이트 측정 · self-eval 루프
   Agent/            AgentProvider · Claude · Codex · 프롬프트 조립
   MCP/              stdio 서버, 도구 2개
-  Templates/        ★ 스타일 자산
-    SuhyunShortV1/
-      Tokens.swift        폰트 · 색 · 크기 · 모션 상수 (AI 접근 불가)
-      Layout.swift        role/slot 별 좌표 규칙, 리프레임 목표치
-      CaptionLayer.swift  CoreText 자막 레이어
-      OverlayLayer.swift  타이틀 · 원 · 화살표 · 마크
-      Spec.json           AI 에게 보여줄 "이 템플릿이 지원하는 것"
+  Templates/        ★ 스타일. 스키마는 코드, 값은 데이터 (§9)
+    StyleSchema.swift     파라미터 정의 · 검증 범위 · 기본값. **AI 접근 불가**
+    ShortFormTemplate.swift  레이어 트리 조립. 값을 받아 그린다
+    CaptionLayer.swift    CoreText 자막 레이어
+    OverlayLayer.swift    타이틀 · 원 · 화살표 · 마크
+    Layout.swift          role/slot 별 좌표 규칙, 리프레임 목표치
+    StyleFitter.swift     완성본 프레임 → 측정 → 새 값 제안 (2단계 이후)
+    Spec.json             AI 에게 보여줄 "이 템플릿이 지원하는 것"
   Resources/        Pretendard, 기본 BGM/SFX
+    styles/short.v1.json  기본 스타일 **값**. 측정에서 나온 숫자. 빌드 없이 바뀐다
   UI/Tokens.swift   design/ 시안에서 추출한 색 · 간격 · 타이포
   UI/Copy.swift     모든 UI 문구. 하드코딩 금지
 MadiTests/          단위 테스트
@@ -271,6 +273,22 @@ struct Overlay: Codable {
 (금지 키: `font*`, `color`, `size`, `stroke*`, `opacity`, `easing`, `x`, `y`, `top`, `bottom` …).
 
 기타: `Video`, `Proxy`(720p 프리뷰), `Digest`, `Output`(+ `reviewReport`), `Job`, `Chat`.
+
+```swift
+// 스타일 값. 코드가 아니라 데이터다 (§9)
+struct Style: Codable {
+    let id: String              // "short.v1"  ← 사람 이름을 넣지 않는다 (§1-7)
+    var name: String            // "수현쌤 숏폼"  ← 표시용. 설정값이다
+    var version: Int
+    var values: StyleValues     // StyleSchema 가 정의·검증한다
+    var measuredFrom: [String]  // 어떤 영상에서 재서 나온 값인지
+    var isActive: Bool
+    var createdAt: Date
+}
+```
+
+`Composition.templateID` 는 **그리기 로직**을 가리키고, `styleID` 는 **값**을 가리킨다.
+로직은 바꾸려면 빌드가 필요하지만 값은 아니다.
 
 ---
 
@@ -366,19 +384,59 @@ Composition
 
 ---
 
-## 9. 스타일 템플릿 규약
+## 9. 스타일 — 스키마는 코드, 값은 데이터
 
-**스타일은 학습하지 않는다. 사람이 잰다.** 절차는 `docs/style-authoring.md`.
+원칙과 구현을 섞지 않는다.
+
+- **원칙: AI 가 스타일을 정하지 않는다.** `§0-4` 실패 원인이다. 이건 바뀌지 않는다.
+- **구현: 스타일 값은 코드에 박지 않는다.** 데이터다. 빌드 없이 바뀐다.
+
+스타일이 Swift 상수로 박히면 크리에이터가 스타일을 바꿀 때마다 개발자가 코드를 고치고
+새 빌드를 배포해야 한다. 숏폼 스타일은 몇 달마다 바뀐다. 그건 제품이 아니다.
+
+### 3층
+
+| 층 | 어디 | 바꾸려면 |
+|---|---|---|
+| **스키마** | `Madi/Templates/StyleSchema.swift` | 빌드 필요. 어떤 파라미터가 존재하는가 + 검증 범위 |
+| **값** | `Resources/styles/short.v1.json` → DB `styles` 테이블 | **빌드 불필요** |
+| **그리기** | `ShortFormTemplate.swift` · `CaptionLayer.swift` · `Layout.swift` | 빌드 필요 |
+
+AI 는 여전히 스타일 값을 쓸 수 없다. 스키마가 막는다 (`§5 assertNoStyleValues`).
+값이 데이터가 된 것은 **사람이 고치기 쉬워진 것**이지 AI 에게 권한을 준 것이 아니다.
+
+### 이름에 사람 이름을 넣지 않는다
+
+`styleID` 는 `short.v1` 처럼 중립적이어야 한다. `SuhyunShortV1` 같은 이름은
+`§1-7`(개인화는 전부 설정값)과 충돌한다. "수현쌤 숏폼" 은 `Style.name` 필드다.
+
+### 값은 어떻게 채우나 — 재는 것이다
+
+**학습하지 않는다. 잰다.** 둘은 다르다.
 
 1. 크리에이터 공개 숏폼 **5편 이상**을 프레임 캡처해 `reference/` 에 넣는다.
-   **1편만 보고 토큰이나 스키마를 정하지 않는다.** 5편을 보면 우선순위가 뒤집힌다
+   **1편만 보고 값이나 스키마를 정하지 않는다.** 5편을 보면 우선순위가 뒤집힌다
    (실제로 뒤집혔다 — `docs/findings/2026-09-23-layout-survey.md`)
-2. 자막 폰트·크기·외곽선·위치·분절 길이·등장 모션을 눈으로 재서 `Tokens.swift` 에 적는다
+2. 자막 폰트·크기·외곽선·위치·분절 길이·등장 모션을 **픽셀로 재서** `short.v1.json` 에 적는다.
+   절차는 `docs/style-authoring.md`. 검증은 `tools/measure.mjs`
 3. role 별 화면 구성과 리프레임 목표 점유율을 `Layout.swift` 에 적는다
 4. `Spec.json` 에 AI 가 쓸 수 있는 role · slot · overlay kind 와 payload 스키마를 적는다
 5. `reference/` 중 1편을 손으로 `Composition` 으로 재현해 렌더하고 원본과 나란히 본다 → **통과 기준**
 
-### `SuhyunShortV1` — 원본 실측값 (렌더러와 무관한 사실)
+### 스타일이 바뀌면 (2단계 이후)
+
+크리에이터가 직접 숫자를 만지게 하지 않는다. "외곽선 7px" 을 알 리가 없다.
+
+`StyleFitter` 가 새로 올린 완성본 3~5편의 프레임을 **재서** 새 값을 제안한다.
+
+> "요즘 자막이 조금 커졌네요. 새 스타일로 맞출까요?"
+
+- 사용자가 승인하면 새 `Style` 레코드(version+1)를 만들고 `isActive` 를 옮긴다.
+  **이전 버전을 지우지 않는다** — 옛 결과물이 자기 스타일로 계속 재현돼야 한다 (`§1-8`).
+- 측정은 결정론적이다. AI 가 추측하는 게 아니다. `tools/measure.mjs` 와 같은 계산이다.
+- 승인 전에 **before/after 프레임을 나란히 보여준다.** 숫자만 보여주지 않는다.
+
+### `short.v1` — 원본 실측값 (렌더러와 무관한 사실)
 
 `docs/findings/2026-09-23-reference-measurement.md`. 720x1280 에서 재서 비율로 기록.
 
@@ -398,7 +456,7 @@ Composition
 **이 표는 CoreText 로 다시 그려도 그대로다.** 맞춰야 할 목표값이다.
 반면 이전 Remotion 스파이크에서 쓴 `fontSize 78` · `baselineNudgeRatio 0.153` 같은 값은
 CSS 줄상자 때문에 나온 보정이라 **버린다.** CoreText 는 폰트 메트릭을 직접 주므로
-`CTFontGetBoundingBox` / `CTLineGetBoundsWithOptions` 로 실제 글자 높이를 계산해 역산한다.
+`CTLineGetBoundsWithOptions(.useGlyphPathBounds)` 로 실제 글자 높이를 계산해 역산한다.
 
 ---
 
