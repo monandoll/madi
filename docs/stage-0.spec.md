@@ -102,7 +102,7 @@ CSS 줄상자 때문에 나온 보정값이다. CoreText 는 폰트 메트릭을
 ## 작업 순서
 
 1. `Composition.swift` + 테스트
-2. `reference/` 프레임에서 자막 값 역산 → `Tokens.swift`
+2. `reference/` 프레임에서 자막 값 역산 → `StyleSchema.swift`(스키마) + `short.v1.json`(값)
 3. `CaptionLayer.swift` + `StillRenderer` → **A 통과까지 반복**
 4. `Renderer.swift` (AVMutableComposition + CoreAnimationTool + AssetWriter)
 5. `spike/composition.json` 손으로 작성
