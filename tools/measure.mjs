@@ -135,7 +135,14 @@ function analyze(file) {
   const white = bands(textRows, minPx);
 
   const cols = whiteCols.map((n, x) => (n >= 2 ? x : -1)).filter((x) => x >= 0);
-  const main = white.length ? white[white.length - 1] : null; // 가장 아래 흰 글자 줄 = 본문
+
+  // 본문 = 가장 아래 흰 **글자** 줄.
+  // ★ 그냥 "가장 아래 묶음" 을 쓰면 안 된다. 자막 아래에도 밝은 것이 있다(흰 양말 · 벤치
+  //   하이라이트). 글자 줄은 두껍고 배경 얼룩은 얇으므로 **가장 두꺼운 묶음 급**만 남기고
+  //   그중 가장 아래를 쓴다. 2줄 자막이면 마지막 줄이 뽑힌다 — 하단여백이 마지막 줄 기준이므로 맞다.
+  const tallest = white.length ? Math.max(...white.map((b) => b.h)) : 0;
+  const textBands = white.filter((b) => b.h >= tallest * 0.6);
+  const main = textBands.length ? textBands[textBands.length - 1] : null;
 
   // 보조 문구는 **본문보다 아래**에 있다. 위쪽을 잘라내야 살색·벽이 노랑으로 오인되지 않는다.
   const minYellow = Math.max(4, Math.round(W * 0.005));
@@ -164,7 +171,7 @@ function analyze(file) {
       baselineRatio: +((H - baselineRow(yellowSearch, secondaryBand) - 1) / H).toFixed(4),
     },
     widthRatio: cols.length ? +((cols[cols.length - 1] - cols[0] + 1) / W).toFixed(4) : 0,
-    lines: white.length,
+    lines: textBands.length,
   };
 }
 

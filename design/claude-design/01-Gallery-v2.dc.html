@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+body{margin:0;background:#E7E4DF;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard Variable",Pretendard,sans-serif;color:#1F1D1A;-webkit-font-smoothing:antialiased}
+a{color:#2D6A55;text-decoration:none}a:hover{color:#23574A}
+</style>
+</helmet>
+
+<section style="padding:64px;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em">1단계 v2 · 갤러리 (네이티브)</div>
+    <div style="font-size:14px;color:#5E5952"><a href="#1a">1a</a> 촬영본 있음 · 우클릭 메뉴 · <a href="#1b">1b</a> 빈 상태 · <a href="#1c">1c</a> 가져오는 중</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start">
+
+    <div id="1a" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">1a</span><span style="font-size:14px;color:#5E5952">촬영본 있음 · 클릭으로 선택, 우클릭으로 메뉴</span></div>
+      <div style="width:1440px;height:900px;background:#fff;border:0.5px solid #BDB8B0;border-radius:16px;overflow:hidden;display:flex">
+        <dc-import name="MacSidebar" active="shots" making-count="{{ 1 }}" hint-size="232px,100%" style="height:100%;flex-shrink:0"></dc-import>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:56px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 12px 0 16px">
+            <div style="display:flex;flex-direction:column;min-width:0;margin-right:12px"><span style="font-size:15px;font-weight:700;line-height:1.2">촬영본</span><span style="font-size:11px;color:#78726A">24개</span></div>
+            <div style="flex:1"></div>
+            <div style="display:flex;flex-shrink:0;background:#EBE9E5;border-radius:999px;padding:2px;height:30px;box-sizing:border-box;border:0.5px solid #DAD6CF">
+              <div style="font-size:12px;padding:0 10px;display:flex;align-items:center;white-space:nowrap;flex-shrink:0;border-radius:999px;background:#fff;border:0.5px solid #D6D2CB">전체</div>
+              <div style="font-size:12px;padding:0 10px;display:flex;align-items:center;white-space:nowrap;flex-shrink:0;color:#1F1D1A">편집 전</div>
+              <div style="font-size:12px;padding:0 10px;display:flex;align-items:center;white-space:nowrap;flex-shrink:0;color:#1F1D1A">결과물 있음</div>
+            </div>
+            <div style="width:4px"></div>
+            <div title="Mac에 있는 영상 넣기" style="width:32px;height:30px;box-sizing:border-box;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#fff;border:0.5px solid #DAD6CF" style-hover="background:#EFEDE9"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.5"><path d="M8 3v10M3 8h10"></path></svg></div>
+            <div style="width:32px;height:30px;box-sizing:border-box;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#fff;border:0.5px solid #DAD6CF;background:#E3E1DC"><svg width="17" height="16" viewBox="0 0 17 16" fill="none" stroke="#5E5952" stroke-width="1.3"><rect x="1.5" y="2.5" width="14" height="11" rx="2"></rect><path d="M10.5 2.5v11"></path></svg></div>
+            <div style="width:190px;flex-shrink:0;height:30px;box-sizing:border-box;background:#fff;border:0.5px solid #DAD6CF;border-radius:999px;display:flex;align-items:center;gap:6px;padding:0 8px;margin-left:4px;font-size:13px;color:#A39D95"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#78726A" stroke-width="1.7"><circle cx="7" cy="7" r="4.6"></circle><path d="m10.5 10.5 3.2 3.2"></path></svg>검색</div>
+          </div>
+          <div style="flex:1;min-height:0;overflow:auto;padding:14px 20px 20px;display:flex;flex-direction:column;gap:22px">
+            <sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:15px;font-weight:700">{{ g.label }}</span><span style="font-size:12px;color:#78726A">{{ g.sub }}</span></div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:18px 14px">
+                  <sc-for list="{{ g.items }}" as="c" hint-placeholder-count="5">
+                    <div onClick="{{ c.select }}" onContextMenu="{{ c.menu }}" style="position:relative;display:flex;flex-direction:column;gap:7px;cursor:default">
+                      <div style="position:relative;aspect-ratio:3/4;border-radius:8px;background:{{ c.tone }};outline:{{ c.ring }};outline-offset:2px">
+                        <div style="position:absolute;right:5px;bottom:5px;font-size:11px;font-weight:600;color:#fff;background:rgba(24,22,19,.6);padding:1px 5px;border-radius:4px;font-variant-numeric:tabular-nums">{{ c.dur }}</div>
+                        <sc-if value="{{ c.isMaking }}"><div style="position:absolute;left:5px;bottom:5px;width:18px;height:18px;border-radius:50%;background:rgba(24,22,19,.6);display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke-width="2.4"><circle cx="8" cy="8" r="5.5" stroke="rgba(255,255,255,.35)"></circle><path d="M8 2.5a5.5 5.5 0 0 1 5.5 5.5" stroke="#fff" stroke-linecap="round"></path></svg></div></sc-if>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:2px;padding:0 1px">
+                        <div style="display:flex;gap:5px;align-items:flex-start">
+                          <sc-if value="{{ c.isNew }}"><span style="width:7px;height:7px;border-radius:50%;background:#2D6A55;margin-top:5px;flex-shrink:0"></span></sc-if>
+                          <div style="font-size:12px;font-weight:500;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ c.title }}</div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:#78726A">
+                          <span>{{ c.date }}</span>
+                          <sc-if value="{{ c.hasResults }}"><span>·</span><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#2D6A55" stroke-width="1.6"><rect x="3.2" y="1.8" width="9.6" height="12.4" rx="2"></rect><path d="m6.2 9.6 1.4 1.4 2.6-2.8"></path></svg><span style="color:#2D6A55">{{ c.resultLabel }}</span></sc-if>
+                          <sc-if value="{{ c.isMaking }}"><span>· 만드는 중</span></sc-if>
+                        </div>
+                      </div>
+                      <sc-if value="{{ c.menuOpen }}">
+                        <div onClick="{{ stop }}" style="position:absolute;left:58%;top:34%;z-index:20;width:210px;background:#F7F6F4;border:1px solid #CFCAC2;border-radius:12px;padding:5px;display:flex;flex-direction:column;font-size:13px">
+                          <div onClick="{{ closeMenu }}" style="height:22px;display:flex;align-items:center;padding:0 9px;border-radius:6px" style-hover="background:#2D6A55;color:#fff"><span style="flex:1">편집안 열기</span><span style="font-size:12px;opacity:.6">⌘O</span></div>
+                          <div onClick="{{ closeMenu }}" style="height:22px;display:flex;align-items:center;padding:0 9px;border-radius:6px" style-hover="background:#2D6A55;color:#fff"><span style="flex:1">바로 숏폼 뽑기</span></div>
+                          <div style="height:1px;background:#E3E0DA;margin:4px 8px"></div>
+                          <div onClick="{{ closeMenu }}" style="height:22px;display:flex;align-items:center;padding:0 9px;border-radius:6px" style-hover="background:#2D6A55;color:#fff"><span style="flex:1">재생</span><span style="font-size:12px;opacity:.6">스페이스</span></div>
+                          <div onClick="{{ closeMenu }}" style="height:22px;display:flex;align-items:center;padding:0 9px;border-radius:6px" style-hover="background:#2D6A55;color:#fff"><span style="flex:1">사진 앱에서 보기</span></div>
+                          <div style="height:1px;background:#E3E0DA;margin:4px 8px"></div>
+                          <div onClick="{{ closeMenu }}" style="height:22px;display:flex;align-items:center;padding:0 9px;border-radius:6px" style-hover="background:#2D6A55;color:#fff"><span style="flex:1">보관함에서 빼기</span><span style="font-size:12px;opacity:.6">⌘⌫</span></div>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="height:28px;flex-shrink:0;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;color:#78726A">{{ statusText }}</div>
+        </div>
+        <div style="width:288px;flex-shrink:0;box-sizing:border-box;margin:8px 8px 8px 0;border:0.5px solid #D6D2CB;border-radius:14px;display:flex;flex-direction:column;background:#FAF9F7;overflow:hidden">
+          <div style="height:4px;flex-shrink:0"></div>
+          <div style="flex:1;min-height:0;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;justify-content:center"><div style="height:260px;aspect-ratio:9/16;border-radius:6px;background:{{ sel.tone }};position:relative"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div style="width:34px;height:34px;border-radius:50%;background:rgba(24,22,19,.55);display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 16 16"><path d="M5 3v10l8-5z" fill="#fff"></path></svg></div></div></div></div>
+            <div style="font-size:13px;font-weight:600;line-height:1.4;text-wrap:pretty">{{ sel.title }}</div>
+            <div style="display:grid;grid-template-columns:64px 1fr;gap:6px 10px;font-size:12px">
+              <span style="color:#78726A;text-align:right">찍은 날</span><span>{{ sel.full }}</span>
+              <span style="color:#78726A;text-align:right">길이</span><span>{{ sel.dur }}</span>
+              <span style="color:#78726A;text-align:right">말소리</span><span>잘 들려요</span>
+              <span style="color:#78726A;text-align:right">결과물</span><span>{{ sel.resultText }}</span>
+            </div>
+            <sc-if value="{{ sel.hasList }}">
+              <div style="display:flex;flex-direction:column;gap:2px;border-top:1px solid #E3E0DA;padding-top:10px">
+                <sc-for list="{{ sel.results }}" as="r" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:8px;height:28px;padding:0 6px;border-radius:5px" style-hover="background:#EFEDE9">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#2D6A55" stroke-width="1.4"><rect x="3.2" y="1.8" width="9.6" height="12.4" rx="2"></rect></svg>
+                    <span style="flex:1;font-size:12px">{{ r.name }}</span><span style="font-size:11px;color:#78726A">{{ r.meta }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+          <div style="border-top:1px solid #E3E0DA;padding:12px 16px;display:flex;gap:8px;justify-content:flex-end">
+            <div style="height:28px;padding:0 14px;border-radius:999px;background:#fff;border:0.5px solid #CFCAC2;font-size:13px;display:flex;align-items:center" style-hover="background:#F4F3F0">바로 숏폼 뽑기</div>
+            <div style="height:28px;padding:0 14px;border-radius:999px;background:#2D6A55;color:#fff;font-size:13px;display:flex;align-items:center" style-hover="background:#23574A">편집안 열기</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1b" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">1b</span><span style="font-size:14px;color:#5E5952">빈 상태</span></div>
+      <div style="width:1440px;height:900px;background:#fff;border:0.5px solid #BDB8B0;border-radius:16px;overflow:hidden;display:flex">
+        <dc-import name="MacSidebar" active="shots" shots-count="{{ 0 }}" results-count="{{ 0 }}" hint-size="232px,100%" style="height:100%;flex-shrink:0"></dc-import>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:56px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 12px 0 16px">
+            <span style="font-size:15px;font-weight:700">촬영본</span><div style="flex:1"></div>
+            <div style="width:32px;height:30px;box-sizing:border-box;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#fff;border:0.5px solid #DAD6CF"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.5"><path d="M8 3v10M3 8h10"></path></svg></div>
+            <div style="width:190px;flex-shrink:0;height:30px;box-sizing:border-box;background:#fff;border:0.5px solid #DAD6CF;border-radius:999px;display:flex;align-items:center;gap:6px;padding:0 8px;font-size:13px;color:#A39D95;opacity:.6"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#78726A" stroke-width="1.7"><circle cx="7" cy="7" r="4.6"></circle><path d="m10.5 10.5 3.2 3.2"></path></svg>검색</div>
+          </div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px">
+            <div style="max-width:360px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center">
+              <svg width="44" height="44" viewBox="0 0 16 16" fill="none" stroke="#A39D95" stroke-width="0.9"><rect x="1.8" y="3.2" width="12.4" height="9.6" rx="2"></rect><path d="M6.6 6.2v3.6L9.8 8z" fill="#A39D95" stroke="none"></path></svg>
+              <div style="font-size:17px;font-weight:700;margin-top:6px">아이폰으로 찍으면 여기 자동으로 들어와요</div>
+              <div style="font-size:13px;color:#5E5952;line-height:1.5;text-wrap:pretty">iCloud 사진에 새 영상이 올라오면 1~2분 안에 나타나요.</div>
+              <div style="display:flex;gap:8px;margin-top:10px">
+                <div style="height:28px;padding:0 14px;border-radius:999px;background:#fff;border:0.5px solid #CFCAC2;font-size:13px;display:flex;align-items:center" style-hover="background:#F4F3F0">Mac에 있는 영상 넣기…</div>
+              </div>
+            </div>
+          </div>
+          <div style="height:28px;flex-shrink:0;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;color:#78726A">iCloud 사진과 맞춰져 있음 · 1분 전 확인</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1c" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">1c</span><span style="font-size:14px;color:#5E5952">가져오는 중</span></div>
+      <div style="width:1440px;height:900px;background:#fff;border:0.5px solid #BDB8B0;border-radius:16px;overflow:hidden;display:flex">
+        <dc-import name="MacSidebar" active="shots" shots-count="{{ 3 }}" results-count="{{ 0 }}" hint-size="232px,100%" style="height:100%;flex-shrink:0"></dc-import>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:56px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 12px 0 16px">
+            <div style="display:flex;flex-direction:column"><span style="font-size:15px;font-weight:700;line-height:1.2">촬영본</span><span style="font-size:11px;color:#78726A">가져오는 중…</span></div><div style="flex:1"></div>
+            <div style="width:32px;height:30px;box-sizing:border-box;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#fff;border:0.5px solid #DAD6CF"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.5"><path d="M8 3v10M3 8h10"></path></svg></div>
+            <div style="width:190px;flex-shrink:0;height:30px;box-sizing:border-box;background:#fff;border:0.5px solid #DAD6CF;border-radius:999px;display:flex;align-items:center;gap:6px;padding:0 8px;font-size:13px;color:#A39D95"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#78726A" stroke-width="1.7"><circle cx="7" cy="7" r="4.6"></circle><path d="m10.5 10.5 3.2 3.2"></path></svg>검색</div>
+          </div>
+          <div style="flex:1;min-height:0;overflow:hidden;padding:14px 20px 20px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:15px;font-weight:700">오늘</span></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:18px 14px">
+              <sc-for list="{{ skeletons }}" as="s" hint-placeholder-count="12">
+                <div style="display:flex;flex-direction:column;gap:7px">
+                  <div style="aspect-ratio:3/4;border-radius:8px;background:{{ s.tone }}"></div>
+                  <div style="height:10px;width:85%;border-radius:3px;background:#EFEDE9"></div>
+                  <div style="height:9px;width:{{ s.w }};border-radius:3px;background:#EFEDE9"></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="height:28px;flex-shrink:0;background:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;color:#5E5952">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke-width="2.2"><circle cx="8" cy="8" r="6" stroke="#DAD6CF"></circle><path d="M8 2a6 6 0 0 1 6 6" stroke="#5E5952" stroke-linecap="round"></path></svg>
+            iCloud 사진에서 가져오는 중 · 7개 중 3개
+            <div style="width:90px;height:4px;border-radius:2px;background:#E3E0DA;overflow:hidden"><div style="width:43%;height:100%;background:#2D6A55"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const T = ['#E9E6E1', '#DDD9D2', '#CFCAC2'];
+const R = [
+  { name: '인스타 릴스', meta: '어제' }, { name: '유튜브 쇼츠', meta: '어제' }, { name: '인스타 릴스 · 편집안 2', meta: '오늘' },
+];
+const DATA = [
+  { label: '오늘', sub: '9월 25일', items: [
+    { id: 'a1', title: '골반이 틀어져있다면, 이 동작 안되실걸요?', date: '오후 2:14', full: '9월 25일 오후 2:14', dur: '0:42', n: 3 },
+    { id: 'a2', title: '거북목 스트레칭, 하루 3번이면 충분합니다', date: '오후 2:31', full: '9월 25일 오후 2:31', dur: '0:38', n: 0, isNew: true },
+    { id: 'a3', title: '라운드숄더 자가 체크 먼저 해보세요', date: '오후 2:48', full: '9월 25일 오후 2:48', dur: '0:51', n: 0, isNew: true, making: true },
+  ]},
+  { label: '이번 주', sub: '9월 21일–23일', items: [
+    { id: 'b1', title: '허리 아플 때 폼롤러 이렇게 쓰세요', date: '9월 23일', full: '9월 23일 오전 11:02', dur: '1:04', n: 2 },
+    { id: 'b2', title: '고관절 가동성 루틴 3분', date: '9월 23일', full: '9월 23일 오전 11:20', dur: '0:47', n: 1 },
+    { id: 'b3', title: '계단 오를 때 무릎이 아프다면', date: '9월 22일', full: '9월 22일 오후 4:15', dur: '0:36', n: 0 },
+    { id: 'b4', title: '굽은 등, 벽 하나로 펴는 방법', date: '9월 22일', full: '9월 22일 오후 4:40', dur: '0:44', n: 3 },
+    { id: 'b5', title: '승모근이 솟았다면 이것부터', date: '9월 21일', full: '9월 21일 오전 10:05', dur: '0:29', n: 1 },
+  ]},
+  { label: '지난주', sub: '9월 16일–18일', items: [
+    { id: 'c1', title: '발목 가동성, 스쿼트가 달라집니다', date: '9월 18일', full: '9월 18일 오후 3:12', dur: '0:55', n: 2 },
+    { id: 'c2', title: '골반 전방경사 교정 운동', date: '9월 17일', full: '9월 17일 오후 2:00', dur: '1:12', n: 3 },
+    { id: 'c3', title: '양 쪽을 비교해봤을때, 차이가 크다면', date: '9월 16일', full: '9월 16일 오전 9:48', dur: '0:33', n: 0 },
+  ]},
+];
+class Component extends DCLogic {
+  state = { sel: 'a1', menu: 'b2' };
+  componentDidMount() { this.off = () => this.state.menu && this.setState({ menu: null }); window.addEventListener('click', this.off); }
+  componentWillUnmount() { window.removeEventListener('click', this.off); }
+  renderVals() {
+    let sel = null;
+    const groups = DATA.map((g, gi) => ({ label: g.label, sub: g.sub, items: g.items.map((c, i) => {
+      const x = { ...c, tone: T[(gi + i) % 3] };
+      if (c.id === this.state.sel) sel = x;
+      return { ...x, isNew: !!c.isNew, isMaking: !!c.making, hasResults: c.n > 0 && !c.making, resultLabel: '결과물 ' + c.n,
+        ring: c.id === this.state.sel ? '3px solid #2D6A55' : '0px solid transparent',
+        menuOpen: this.state.menu === c.id,
+        select: () => this.setState({ sel: c.id, menu: null }),
+        menu: e => { e.preventDefault(); e.stopPropagation(); this.setState({ sel: c.id, menu: c.id }); } };
+    }) }));
+    return {
+      groups,
+      sel: { ...sel, results: R.slice(0, sel.n), hasList: sel.n > 0, resultText: sel.n ? sel.n + '개' : '아직 없음' },
+      statusText: '24개 중 1개 선택됨 · iCloud 사진과 맞춰져 있음',
+      stop: e => e.stopPropagation(),
+      closeMenu: e => { e.stopPropagation(); this.setState({ menu: null }); },
+      skeletons: Array.from({ length: 12 }, (_, i) => ({ tone: i < 3 ? T[i] : '#EFEDE9', w: ['55%', '40%', '62%', '48%'][i % 4] })),
+    };
+  }
+}
+</script>
+</body>
+</html>

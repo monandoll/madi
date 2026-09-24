@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="width:220px;height:100%;box-sizing:border-box;background:#F4F3F0;border-right:1px solid #E6E3DE;display:flex;flex-direction:column;font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;color:#1F1D1A">
+  <div style="height:52px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 20px"><span style="width:12px;height:12px;border-radius:50%;background:#FF5F57;border:0.5px solid #E0443E"></span><span style="width:12px;height:12px;border-radius:50%;background:#FEBC2E;border:0.5px solid #DEA123"></span><span style="width:12px;height:12px;border-radius:50%;background:#28C840;border:0.5px solid #1AAB29"></span></div>
+  <div style="padding:4px 10px;display:flex;flex-direction:column;gap:2px">
+    <div style="font-size:11px;font-weight:600;color:#78726A;padding:8px 10px 4px">보관함</div>
+    <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px;background:{{ shotsBg }};font-weight:{{ shotsW }}">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.4"><rect x="2" y="3" width="12" height="10" rx="2"></rect><path d="M6.5 6.2v3.6L9.7 8z" fill="#5E5952" stroke="none"></path></svg>
+      <span style="flex:1">촬영본</span><span style="font-size:12px;color:#78726A">24</span></div>
+    <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px;background:{{ resultsBg }};font-weight:{{ resultsW }}">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.4"><rect x="3" y="2" width="10" height="12" rx="2"></rect><path d="M6 6h4M6 8.5h4M6 11h2.5"></path></svg>
+      <span style="flex:1">결과물</span><span style="font-size:12px;color:#78726A">{{ resultsCount }}</span></div>
+    <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px;background:{{ makingBg }};font-weight:{{ makingW }}">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.4"><circle cx="8" cy="8" r="5.5"></circle><path d="M8 5v3l2 1.5"></path></svg>
+      <span style="flex:1">만드는 중</span>
+      <sc-if value="{{ hasMaking }}"><span style="width:7px;height:7px;border-radius:50%;background:#C98A2B"></span><span style="font-size:12px;color:#78726A">{{ makingCount }}</span></sc-if>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:#78726A;padding:16px 10px 4px">스튜디오</div>
+    <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px;background:{{ settingsBg }};font-weight:{{ settingsW }}">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"></circle><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M3.6 12.4 5 11M11 5l1.4-1.4"></path></svg>
+      <span style="flex:1">설정</span></div>
+  </div>
+  <div style="margin-top:auto;border-top:1px solid #E6E3DE;padding:12px 20px;display:flex;flex-direction:column;gap:4px">
+    <div style="font-size:13px;font-weight:600">{{ studio }}</div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#5E5952"><span style="width:6px;height:6px;border-radius:50%;background:{{ aiDot }}"></span>{{ aiText }}</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:220,&quot;height&quot;:900},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;shots&quot;,&quot;results&quot;,&quot;making&quot;,&quot;settings&quot;],&quot;default&quot;:&quot;shots&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;makingCount&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:0,&quot;tsType&quot;:&quot;number&quot;},&quot;resultsCount&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:31,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const a = this.props.active ?? 'shots';
+    const v = k => ({ [k + 'Bg']: a === k ? '#E6E3DC' : 'transparent', [k + 'W']: a === k ? 600 : 400 });
+    const mc = this.props.makingCount ?? 0;
+    return { ...v('shots'), ...v('results'), ...v('making'), ...v('settings'),
+      resultsCount: this.props.resultsCount ?? 31, makingCount: mc, hasMaking: mc > 0,
+      studio: this.props.studio ?? '바른몸 스튜디오',
+      aiText: { ok: 'Claude 연결됨', off: 'AI 연결 안 됨', checking: '연결 확인 중' }[this.props.ai ?? 'ok'],
+      aiDot: { ok: '#4E9A73', off: '#D6D2CB', checking: '#C98A2B' }[this.props.ai ?? 'ok'] };
+  }
+}
+</script>
+</body>
+</html>

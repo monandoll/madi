@@ -148,7 +148,7 @@ extension StillRenderer {
         }
 
         // 자막은 화면 아래쪽 = 버퍼의 마지막 40% 행. 가장 아래 흰 글자 줄을 본문으로 본다.
-        let minPx = max(8, w * 12 / 1000)
+        let minPx = max(8, Int((Double(w) * 0.012).rounded()))
         let maxPx = w * 6 / 10
         var rows: [Int] = []
         for y in (h * 6 / 10)..<h {
@@ -157,12 +157,36 @@ extension StillRenderer {
             if n >= minPx && n <= maxPx { rows.append(y) }
         }
         guard !rows.isEmpty else { return nil }
-        // 끊긴 구간이 있으면 가장 위 묶음(=본문. 버퍼에서는 가장 작은 y)을 쓴다.
-        var band = [rows[0]]
+
+        // 이어지는 행들을 묶고, 너무 얇은 묶음은 버린다 (`tools/measure.mjs` 의 bands 와 같은 규칙).
+        // 최소 높이를 두지 않으면 배경의 한두 행짜리 밝은 픽셀이 묶음 행세를 한다.
+        var bands: [(lo: Int, hi: Int)] = []
+        var start = rows[0], previous = rows[0]
         for y in rows.dropFirst() {
-            if y - band[band.count - 1] <= 2 { band.append(y) } else { break }
+            if y - previous > 2 {
+                if previous - start + 1 >= 6 { bands.append((start, previous)) }
+                start = y
+            }
+            previous = y
         }
-        let lo = band[0], hi = band[band.count - 1]
+        if previous - start + 1 >= 6 { bands.append((start, previous)) }
+
+        // ★ 본문 자막은 화면에서 **가장 아래** 흰 글자 줄이다 (measure.mjs 와 같은 규칙).
+        //   위쪽 묶음을 쓰면 벽·옷 같은 밝은 배경을 자막으로 착각한다 — 실제로 착각했다.
+        //   버퍼는 행 0 이 이미지 위쪽이므로 마지막 묶음이 화면 아래다.
+        // ★ "가장 아래 묶음" 으로는 부족하다. 자막 **아래쪽**에도 밝은 것이 있다
+        //   (흰 양말 · 벤치 하이라이트). 실제로 그걸 자막으로 잡았다.
+        //   글자 줄은 두껍고 배경 얼룩은 얇으므로, **가장 두꺼운 묶음 급**만 남기고
+        //   그중 가장 아래를 쓴다. 2줄 자막이면 두 줄 다 남고 마지막 줄이 뽑힌다
+        //   — `inkBottomRatio` 가 마지막 줄 기준이므로 그게 맞다.
+        guard let tallest = bands.map({ $0.hi - $0.lo }).max(), tallest > 0 else { return nil }
+        let textBands = bands.filter { Double($0.hi - $0.lo) >= Double(tallest) * 0.6 }
+        if ProcessInfo.processInfo.environment["MADI_SCAN_DEBUG"] != nil {
+            FileHandle.standardError.write(Data(
+                "  [scan] 흰 행 \(rows.count)개, 밴드 \(bands) → 글자 줄 \(textBands)\n".utf8))
+        }
+        guard let band = textBands.last else { return nil }
+        let lo = band.lo, hi = band.hi
         guard hi > lo else { return nil }
 
         // 글자 중간 높이 스캔라인에서 루마 50% 교차로 획 폭을 잰다.
@@ -181,6 +205,10 @@ extension StillRenderer {
                 if width > 0, width < CGFloat(hi - lo) / 2 { widths.append(width) }
                 enter = nil
             }
+        }
+        if ProcessInfo.processInfo.environment["MADI_SCAN_DEBUG"] != nil {
+            FileHandle.standardError.write(Data(
+                "  [scan] 밴드 \(lo)..\(hi), midY \(midY), 획 \(widths.count)개\n".utf8))
         }
         guard !widths.isEmpty else { return nil }
         let sorted = widths.sorted()

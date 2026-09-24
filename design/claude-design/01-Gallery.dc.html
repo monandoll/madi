@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+body{margin:0;background:#E7E4DF;font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif;color:#1F1D1A;-webkit-font-smoothing:antialiased}
+a{color:#2D6A55;text-decoration:none}a:hover{color:#23574A}
+</style>
+</helmet>
+
+<section style="padding:64px;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em">1단계 · 갤러리</div>
+    <div style="font-size:14px;color:#5E5952">1440×900 기준 · <a href="#1a">1a</a> 촬영본 있음 · <a href="#1b">1b</a> 빈 상태 · <a href="#1c">1c</a> 불러오는 중</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start">
+
+    <!-- 1a -->
+    <div id="1a" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">1a</span><span style="font-size:14px;color:#5E5952">촬영본 있음 · 카드 선택됨</span></div>
+      <div style="width:1440px;height:900px;background:#fff;border:1px solid #CFCAC2;border-radius:10px;overflow:hidden;display:flex">
+        <!-- sidebar -->
+        <div style="width:220px;flex-shrink:0;background:#F4F3F0;border-right:1px solid #E6E3DE;display:flex;flex-direction:column">
+          <div style="height:52px;display:flex;align-items:center;gap:8px;padding:0 20px"><span style="width:12px;height:12px;border-radius:50%;background:#FF5F57;border:0.5px solid #E0443E"></span><span style="width:12px;height:12px;border-radius:50%;background:#FEBC2E;border:0.5px solid #DEA123"></span><span style="width:12px;height:12px;border-radius:50%;background:#28C840;border:0.5px solid #1AAB29"></span></div>
+          <div style="padding:4px 10px;display:flex;flex-direction:column;gap:2px">
+            <div style="font-size:11px;font-weight:600;color:#78726A;padding:8px 10px 4px">보관함</div>
+            <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;background:#E6E3DC;font-size:13px;font-weight:500">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#2D6A55" stroke-width="1.4"><rect x="2" y="3" width="12" height="10" rx="2"></rect><path d="M6.5 6.2v3.6L9.7 8z" fill="#2D6A55" stroke="none"></path></svg>
+              <span style="flex:1">촬영본</span><span style="font-size:12px;color:#5E5952">24</span></div>
+            <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px" style-hover="background:#F1EFEB">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.4"><rect x="3" y="2" width="10" height="12" rx="2"></rect><path d="M6 6h4M6 8.5h4M6 11h2.5"></path></svg>
+              <span style="flex:1">결과물</span><span style="font-size:12px;color:#78726A">31</span></div>
+            <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px" style-hover="background:#F1EFEB">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.4"><circle cx="8" cy="8" r="5.5"></circle><path d="M8 5v3l2 1.5"></path></svg>
+              <span style="flex:1">만드는 중</span><span style="width:7px;height:7px;border-radius:50%;background:#C98A2B"></span><span style="font-size:12px;color:#78726A">1</span></div>
+            <div style="font-size:11px;font-weight:600;color:#78726A;padding:16px 10px 4px">스튜디오</div>
+            <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px" style-hover="background:#F1EFEB">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"></circle><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M3.6 12.4 5 11M11 5l1.4-1.4"></path></svg>
+              <span style="flex:1">설정</span></div>
+          </div>
+          <div style="margin-top:auto;border-top:1px solid #E6E3DE;padding:12px 20px;display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:13px;font-weight:600">바른몸 스튜디오</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#5E5952"><span style="width:6px;height:6px;border-radius:50%;background:#4E9A73"></span>Claude 연결됨</div>
+          </div>
+        </div>
+        <!-- content -->
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;gap:12px;padding:0 20px">
+            <div style="display:flex;align-items:baseline;gap:8px;min-width:0"><span style="font-size:15px;font-weight:700">촬영본</span><span style="font-size:12px;color:#78726A">24개</span></div>
+            <div style="flex:1"></div>
+            <div style="display:flex;background:#F1EFEB;border-radius:6px;padding:2px;gap:2px">
+              <div style="font-size:12px;font-weight:500;padding:3px 10px;border-radius:5px;background:#fff;border:1px solid #DAD6CF">전체</div>
+              <div style="font-size:12px;color:#5E5952;padding:3px 10px;border:1px solid transparent">편집 전</div>
+              <div style="font-size:12px;color:#5E5952;padding:3px 10px;border:1px solid transparent">결과물 있음</div>
+            </div>
+            <div style="width:180px;height:26px;border:1px solid #DAD6CF;border-radius:6px;display:flex;align-items:center;gap:6px;padding:0 8px;font-size:12px;color:#A39D95"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#78726A" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"></circle><path d="m10.5 10.5 3 3"></path></svg>제목, 말한 내용으로 찾기</div>
+          </div>
+          <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:20px">
+            <sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:13px;font-weight:600">{{ g.label }}</span><span style="font-size:12px;color:#78726A">{{ g.count }}</span></div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(164px,1fr));gap:12px">
+                  <sc-for list="{{ g.items }}" as="c" hint-placeholder-count="5">
+                    <div onClick="{{ c.select }}" style="display:flex;flex-direction:column;gap:8px;padding:6px;border-radius:10px;cursor:default;background:{{ c.bg }};outline:{{ c.ring }};outline-offset:-1px">
+                      <div style="position:relative;aspect-ratio:3/4;border-radius:8px;background:{{ c.tone }};overflow:hidden">
+                        <div style="position:absolute;right:6px;bottom:6px;font-size:11px;font-weight:600;color:#fff;background:rgba(24,22,19,.72);padding:2px 6px;border-radius:999px;font-variant-numeric:tabular-nums">{{ c.dur }}</div>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:4px;padding:0 2px">
+                        <div style="display:flex;gap:6px;align-items:flex-start">
+                          <sc-if value="{{ c.isNew }}"><span style="width:6px;height:6px;border-radius:50%;background:#2D6A55;margin-top:6px;flex-shrink:0"></span></sc-if>
+                          <div style="font-size:13px;font-weight:500;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty">{{ c.title }}</div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                          <span style="font-size:11px;color:#78726A">{{ c.date }}</span>
+                          <sc-if value="{{ c.hasResults }}"><span style="font-size:11px;font-weight:600;color:#2D6A55;background:#E2EEE8;padding:1px 7px;border-radius:999px">{{ c.resultLabel }}</span></sc-if>
+                          <sc-if value="{{ c.isMaking }}"><span style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#7F5A17;background:#F6EBD5;padding:1px 7px;border-radius:999px"><span style="width:5px;height:5px;border-radius:50%;background:#C98A2B"></span>만드는 중</span></sc-if>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="height:28px;flex-shrink:0;border-top:1px solid #F1EFEB;display:flex;align-items:center;gap:6px;padding:0 20px;font-size:11px;color:#78726A"><span style="width:6px;height:6px;border-radius:50%;background:#4E9A73"></span>iCloud 사진과 맞춰져 있어요 · 방금 확인</div>
+        </div>
+        <!-- inspector -->
+        <div style="width:300px;flex-shrink:0;border-left:1px solid #ECE9E4;display:flex;flex-direction:column">
+          <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;padding:0 16px;font-size:13px;font-weight:600">자세히</div>
+          <div style="flex:1;min-height:0;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:16px">
+            <div style="background:#FAF9F7;border:1px solid #EFEDE9;border-radius:10px;height:300px;display:flex;align-items:center;justify-content:center">
+              <div style="height:268px;aspect-ratio:9/16;border-radius:8px;background:{{ sel.tone }};position:relative">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div style="width:36px;height:36px;border-radius:50%;background:rgba(24,22,19,.72);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 16 16"><path d="M5 3.5v9L12.5 8z" fill="#fff"></path></svg></div></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="font-size:15px;font-weight:700;line-height:1.4;text-wrap:pretty">{{ sel.title }}</div>
+              <div style="font-size:12px;color:#78726A">처음 말한 문장으로 제목을 붙였어요</div>
+            </div>
+            <div style="display:flex;flex-direction:column;border:1px solid #EFEDE9;border-radius:8px">
+              <div style="display:flex;justify-content:space-between;padding:8px 12px;font-size:12px;border-bottom:1px solid #F1EFEB"><span style="color:#5E5952">찍은 날</span><span>{{ sel.fullDate }}</span></div>
+              <div style="display:flex;justify-content:space-between;padding:8px 12px;font-size:12px;border-bottom:1px solid #F1EFEB"><span style="color:#5E5952">길이</span><span>{{ sel.dur }}</span></div>
+              <div style="display:flex;justify-content:space-between;padding:8px 12px;font-size:12px"><span style="color:#5E5952">말소리</span><span style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:50%;background:#4E9A73"></span>잘 들려요</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:12px;font-weight:600;color:#5E5952">결과물</span><span style="font-size:11px;color:#78726A">{{ sel.resultLabel }}</span></div>
+              <sc-for list="{{ sel.results }}" as="r" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;padding:6px;border-radius:6px" style-hover="background:#F1EFEB">
+                  <div style="width:24px;height:36px;border-radius:4px;background:{{ sel.tone }};flex-shrink:0"></div>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px">{{ r.name }}</span><span style="font-size:11px;color:#78726A">{{ r.meta }}</span></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="border-top:1px solid #ECE9E4;padding:12px 16px 16px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <span style="font-size:12px;padding:4px 10px;border-radius:10px;border:1px solid #DAD6CF;color:#1F1D1A" style-hover="background:#F1EFEB">숏폼 뽑아줘</span>
+              <span style="font-size:12px;padding:4px 10px;border-radius:10px;border:1px solid #DAD6CF;color:#1F1D1A" style-hover="background:#F1EFEB">자막 넣어줘</span>
+              <span style="font-size:12px;padding:4px 10px;border-radius:10px;border:1px solid #DAD6CF;color:#1F1D1A" style-hover="background:#F1EFEB">인스타 규격으로</span>
+            </div>
+            <div style="height:32px;border-radius:8px;background:#2D6A55;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center" style-hover="background:#23574A">편집안 열기</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1b -->
+    <div id="1b" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">1b</span><span style="font-size:14px;color:#5E5952">빈 상태 · 첫 실행 직후</span></div>
+      <div style="width:1440px;height:900px;background:#fff;border:1px solid #CFCAC2;border-radius:10px;overflow:hidden;display:flex">
+        <div style="width:220px;flex-shrink:0;background:#F4F3F0;border-right:1px solid #E6E3DE;display:flex;flex-direction:column">
+          <div style="height:52px;display:flex;align-items:center;gap:8px;padding:0 20px"><span style="width:12px;height:12px;border-radius:50%;background:#FF5F57;border:0.5px solid #E0443E"></span><span style="width:12px;height:12px;border-radius:50%;background:#FEBC2E;border:0.5px solid #DEA123"></span><span style="width:12px;height:12px;border-radius:50%;background:#28C840;border:0.5px solid #1AAB29"></span></div>
+          <div style="padding:4px 10px;display:flex;flex-direction:column;gap:2px">
+            <div style="font-size:11px;font-weight:600;color:#78726A;padding:8px 10px 4px">보관함</div>
+            <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;background:#E6E3DC;font-size:13px;font-weight:500"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#2D6A55" stroke-width="1.4"><rect x="2" y="3" width="12" height="10" rx="2"></rect><path d="M6.5 6.2v3.6L9.7 8z" fill="#2D6A55" stroke="none"></path></svg><span style="flex:1">촬영본</span></div>
+            <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px;color:#78726A"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#A39D95" stroke-width="1.4"><rect x="3" y="2" width="10" height="12" rx="2"></rect><path d="M6 6h4M6 8.5h4M6 11h2.5"></path></svg><span style="flex:1">결과물</span></div>
+            <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px;color:#78726A"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#A39D95" stroke-width="1.4"><circle cx="8" cy="8" r="5.5"></circle><path d="M8 5v3l2 1.5"></path></svg><span style="flex:1">만드는 중</span></div>
+            <div style="font-size:11px;font-weight:600;color:#78726A;padding:16px 10px 4px">스튜디오</div>
+            <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"></circle><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M3.6 12.4 5 11M11 5l1.4-1.4"></path></svg><span style="flex:1">설정</span></div>
+          </div>
+          <div style="margin-top:auto;border-top:1px solid #E6E3DE;padding:12px 20px;display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:13px;font-weight:600">바른몸 스튜디오</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#5E5952"><span style="width:6px;height:6px;border-radius:50%;background:#4E9A73"></span>Claude 연결됨</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;padding:0 20px"><span style="font-size:15px;font-weight:700">촬영본</span></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px">
+            <div style="max-width:380px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center">
+              <div style="width:56px;height:56px;border-radius:10px;background:#EFF6F2;border:1px solid #E2EEE8;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 16 16" fill="none" stroke="#2D6A55" stroke-width="1.2"><rect x="2" y="3" width="12" height="10" rx="2"></rect><path d="M6.5 6.2v3.6L9.7 8z" fill="#2D6A55" stroke="none"></path></svg></div>
+              <div style="font-size:20px;font-weight:700;letter-spacing:-0.01em">아이폰으로 찍으면 여기 자동으로 들어와요</div>
+              <div style="font-size:13px;color:#5E5952;line-height:1.6;text-wrap:pretty">iCloud 사진에 올라온 새 영상을 계속 확인하고 있어요.<br>찍고 나서 1~2분 정도 기다리면 여기에 나타나요.</div>
+              <div style="display:flex;gap:8px;margin-top:4px">
+                <div style="height:28px;padding:0 14px;border-radius:8px;border:1px solid #DAD6CF;font-size:13px;display:flex;align-items:center" style-hover="background:#F1EFEB">지금 다시 확인</div>
+                <div style="height:28px;padding:0 14px;border-radius:8px;font-size:13px;color:#2D6A55;display:flex;align-items:center" style-hover="background:#EFF6F2">Mac에 있는 영상 넣기</div>
+              </div>
+            </div>
+          </div>
+          <div style="height:28px;flex-shrink:0;border-top:1px solid #F1EFEB;display:flex;align-items:center;gap:6px;padding:0 20px;font-size:11px;color:#78726A"><span style="width:6px;height:6px;border-radius:50%;background:#4E9A73"></span>iCloud 사진과 맞춰져 있어요 · 1분 전 확인</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1c -->
+    <div id="1c" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">1c</span><span style="font-size:14px;color:#5E5952">불러오는 중 · 새 촬영본 가져오기</span></div>
+      <div style="width:1440px;height:900px;background:#fff;border:1px solid #CFCAC2;border-radius:10px;overflow:hidden;display:flex">
+        <div style="width:220px;flex-shrink:0;background:#F4F3F0;border-right:1px solid #E6E3DE;display:flex;flex-direction:column">
+          <div style="height:52px;display:flex;align-items:center;gap:8px;padding:0 20px"><span style="width:12px;height:12px;border-radius:50%;background:#FF5F57;border:0.5px solid #E0443E"></span><span style="width:12px;height:12px;border-radius:50%;background:#FEBC2E;border:0.5px solid #DEA123"></span><span style="width:12px;height:12px;border-radius:50%;background:#28C840;border:0.5px solid #1AAB29"></span></div>
+          <div style="padding:4px 10px;display:flex;flex-direction:column;gap:2px">
+            <div style="font-size:11px;font-weight:600;color:#78726A;padding:8px 10px 4px">보관함</div>
+            <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;background:#E6E3DC;font-size:13px;font-weight:500"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#2D6A55" stroke-width="1.4"><rect x="2" y="3" width="12" height="10" rx="2"></rect><path d="M6.5 6.2v3.6L9.7 8z" fill="#2D6A55" stroke="none"></path></svg><span style="flex:1">촬영본</span><span style="width:24px;height:8px;border-radius:4px;background:#E9E6E1"></span></div>
+            <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.4"><rect x="3" y="2" width="10" height="12" rx="2"></rect><path d="M6 6h4M6 8.5h4M6 11h2.5"></path></svg><span style="flex:1">결과물</span><span style="width:24px;height:8px;border-radius:4px;background:#E9E6E1"></span></div>
+            <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.4"><circle cx="8" cy="8" r="5.5"></circle><path d="M8 5v3l2 1.5"></path></svg><span style="flex:1">만드는 중</span></div>
+            <div style="font-size:11px;font-weight:600;color:#78726A;padding:16px 10px 4px">스튜디오</div>
+            <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;font-size:13px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"></circle><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M3.6 12.4 5 11M11 5l1.4-1.4"></path></svg><span style="flex:1">설정</span></div>
+          </div>
+          <div style="margin-top:auto;border-top:1px solid #E6E3DE;padding:12px 20px;display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:13px;font-weight:600">바른몸 스튜디오</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#5E5952"><span style="width:6px;height:6px;border-radius:50%;background:#4E9A73"></span>Claude 연결됨</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;gap:12px;padding:0 20px">
+            <span style="font-size:15px;font-weight:700">촬영본</span>
+            <div style="flex:1"></div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#5E5952">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="2"><circle cx="8" cy="8" r="6" stroke="#E2EEE8"></circle><path d="M8 2a6 6 0 0 1 6 6" stroke="#2D6A55" stroke-linecap="round"></path></svg>
+              사진에서 새 영상 가져오는 중 · 3 / 7
+              <div style="width:120px;height:4px;border-radius:999px;background:#E2EEE8;overflow:hidden"><div style="width:43%;height:100%;background:#2D6A55"></div></div>
+            </div>
+          </div>
+          <div style="flex:1;min-height:0;overflow:hidden;padding:16px 20px 24px;display:flex;flex-direction:column;gap:10px">
+            <div style="width:40px;height:12px;border-radius:4px;background:#F1EFEB;margin:3px 0"></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(164px,1fr));gap:12px">
+              <sc-for list="{{ skeletons }}" as="s" hint-placeholder-count="10">
+                <div style="display:flex;flex-direction:column;gap:8px;padding:6px">
+                  <div style="aspect-ratio:3/4;border-radius:8px;background:{{ s.tone }}"></div>
+                  <div style="height:11px;width:90%;border-radius:4px;background:#F1EFEB"></div>
+                  <div style="height:11px;width:{{ s.w }};border-radius:4px;background:#F1EFEB"></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="height:28px;flex-shrink:0;border-top:1px solid #F1EFEB;display:flex;align-items:center;gap:6px;padding:0 20px;font-size:11px;color:#78726A"><span style="width:6px;height:6px;border-radius:50%;background:#C98A2B"></span>iCloud 사진에서 받는 중이에요 · 앱을 닫아도 이어서 받아요</div>
+        </div>
+        <div style="width:300px;flex-shrink:0;border-left:1px solid #ECE9E4;display:flex;flex-direction:column">
+          <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;padding:0 16px;font-size:13px;font-weight:600">자세히</div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:12px;color:#78726A;line-height:1.6">영상을 고르면<br>여기에 자세히 보여요</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { sel: 'a1' };
+  data() {
+    const T = ['#E9E6E1', '#DDD9D2', '#CFCAC2'];
+    const R = [
+      { name: '인스타 릴스', meta: '0:28 · 어제 오후 6:02' },
+      { name: '유튜브 쇼츠', meta: '0:31 · 어제 오후 6:10' },
+      { name: '인스타 릴스 · 자막 위로', meta: '0:28 · 오늘 오전 9:40' },
+    ];
+    return [
+      { label: '오늘', items: [
+        { id: 'a1', title: '골반이 틀어져있다면, 이 동작 안되실걸요?', date: '오후 2:14', full: '9월 25일 오후 2:14', dur: '0:42', n: 3, isNew: false },
+        { id: 'a2', title: '거북목 스트레칭, 하루 3번이면 충분합니다', date: '오후 2:31', full: '9월 25일 오후 2:31', dur: '0:38', n: 0, isNew: true },
+        { id: 'a3', title: '라운드숄더 자가 체크 먼저 해보세요', date: '오후 2:48', full: '9월 25일 오후 2:48', dur: '0:51', n: 0, isNew: true, making: true },
+      ]},
+      { label: '이번 주', items: [
+        { id: 'b1', title: '허리 아플 때 폼롤러 이렇게 쓰세요', date: '9월 23일', full: '9월 23일 오전 11:02', dur: '1:04', n: 2 },
+        { id: 'b2', title: '고관절 가동성 루틴 3분', date: '9월 23일', full: '9월 23일 오전 11:20', dur: '0:47', n: 1 },
+        { id: 'b3', title: '계단 오를 때 무릎이 아프다면', date: '9월 22일', full: '9월 22일 오후 4:15', dur: '0:36', n: 0 },
+        { id: 'b4', title: '굽은 등, 벽 하나로 펴는 방법', date: '9월 22일', full: '9월 22일 오후 4:40', dur: '0:44', n: 3 },
+        { id: 'b5', title: '승모근이 솟았다면 이것부터', date: '9월 21일', full: '9월 21일 오전 10:05', dur: '0:29', n: 1 },
+      ]},
+      { label: '지난주', items: [
+        { id: 'c1', title: '발목 가동성, 스쿼트가 달라집니다', date: '9월 18일', full: '9월 18일 오후 3:12', dur: '0:55', n: 2 },
+        { id: 'c2', title: '골반 전방경사 교정 운동', date: '9월 17일', full: '9월 17일 오후 2:00', dur: '1:12', n: 3 },
+        { id: 'c3', title: '양 쪽을 비교해봤을때, 차이가 크다면', date: '9월 16일', full: '9월 16일 오전 9:48', dur: '0:33', n: 0 },
+      ]},
+    ].map((g, gi) => ({ ...g, items: g.items.map((c, i) => ({ ...c, tone: T[(gi + i) % 3], results: R.slice(0, c.n) })) }));
+  }
+  renderVals() {
+    const groups = this.data();
+    let sel = null;
+    const out = groups.map(g => ({
+      label: g.label, count: g.items.length + '개',
+      items: g.items.map(c => {
+        const on = c.id === this.state.sel;
+        if (on) sel = c;
+        return { ...c, hasResults: c.n > 0 && !c.making, resultLabel: '결과물 ' + c.n + '개', isMaking: !!c.making,
+          bg: on ? '#EFF6F2' : 'transparent', ring: on ? '1px solid #2D6A55' : 'none',
+          select: () => this.setState({ sel: c.id }) };
+      })
+    }));
+    const tones = ['#E9E6E1', '#DDD9D2', '#CFCAC2'], ws = ['55%', '40%', '62%', '48%'];
+    return {
+      groups: out,
+      sel: { ...sel, fullDate: sel.full, resultLabel: sel.n ? sel.n + '개' : '아직 없어요' },
+      skeletons: Array.from({ length: 10 }, (_, i) => ({ tone: i < 3 ? tones[i] : '#F1EFEB', w: ws[i % 4] })),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="width:720px;height:540px;box-sizing:border-box;background:#fff;border:1px solid #CFCAC2;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;position:relative;font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;color:#1F1D1A">
+  <div style="height:28px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 12px"><span style="width:12px;height:12px;border-radius:50%;background:#FF5F57;border:0.5px solid #E0443E"></span><span style="width:12px;height:12px;border-radius:50%;background:#E6E3DE;border:0.5px solid #DAD6CF"></span><span style="width:12px;height:12px;border-radius:50%;background:#E6E3DE;border:0.5px solid #DAD6CF"></span></div>
+  <div style="flex:1;min-height:0;padding:16px 48px 0;display:flex;flex-direction:column;gap:22px">
+    <sc-if value="{{ notDone }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:13px;font-weight:700;color:#2D6A55;letter-spacing:0.02em">마디</span>
+        <span style="flex:1"></span>
+        <div style="display:flex;gap:4px"><span style="width:24px;height:3px;border-radius:999px;background:{{ bar1 }}"></span><span style="width:24px;height:3px;border-radius:999px;background:{{ bar2 }}"></span><span style="width:24px;height:3px;border-radius:999px;background:{{ bar3 }}"></span></div>
+        <span style="font-size:11px;color:#78726A;font-variant-numeric:tabular-nums">{{ step }} / 3</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isS1 }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em">사진 보관함을 볼 수 있게 해주세요</div>
+        <div style="font-size:14px;color:#5E5952;line-height:1.6;text-wrap:pretty">아이폰으로 찍은 영상이 iCloud 사진으로 Mac에 들어오면, 마디가 알아서 가져와요.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;border:1px solid #ECE9E4;border-radius:10px">
+        <div style="display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid #F1EFEB"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#2D6A55" stroke-width="1.4" style="margin-top:2px;flex-shrink:0"><rect x="2" y="3" width="12" height="10" rx="2"></rect><path d="M6.5 6.2v3.6L9.7 8z" fill="#2D6A55" stroke="none"></path></svg><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:600">영상만 읽어요</span><span style="font-size:12px;color:#5E5952">사진이나 다른 앨범은 건드리지 않아요</span></div></div>
+        <div style="display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid #F1EFEB"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#2D6A55" stroke-width="1.4" style="margin-top:2px;flex-shrink:0"><rect x="3" y="2" width="10" height="12" rx="2"></rect><path d="M6 6h4M6 8.5h4"></path></svg><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:600">원본은 그대로 둬요</span><span style="font-size:12px;color:#5E5952">편집은 복사본으로 하고, 아이폰 사진은 바뀌지 않아요</span></div></div>
+        <div style="display:flex;gap:12px;padding:12px 16px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#2D6A55" stroke-width="1.4" style="margin-top:2px;flex-shrink:0"><circle cx="8" cy="8" r="2.2"></circle><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2"></path></svg><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:600">언제든 끌 수 있어요</span><span style="font-size:12px;color:#5E5952">설정에서 다시 바꿀 수 있어요</span></div></div>
+      </div>
+      <sc-if value="{{ pIdle }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex"><div onClick="{{ ask }}" style="height:32px;padding:0 16px;border-radius:8px;background:#2D6A55;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center" style-hover="background:#23574A">사진 접근 허용</div></div>
+      </sc-if>
+      <sc-if value="{{ pAllowed }}">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#E2EEE8"></circle><path d="m5 8.3 2 2 4-4.3" stroke="#2D6A55" stroke-width="1.6"></path></svg><span style="font-weight:600">허용했어요</span><span style="color:#5E5952">· 영상 24개를 찾았어요</span></div>
+      </sc-if>
+      <sc-if value="{{ pDenied }}">
+        <div style="display:flex;gap:10px;align-items:flex-start;background:#FAF9F7;border:1px solid #EFEDE9;border-radius:8px;padding:10px 12px">
+          <div style="width:22px;height:22px;flex-shrink:0;border-radius:6px;background:#2D6A55;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">마</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:13px;line-height:1.55">괜찮아요. 사진 없이도 Mac에 있는 영상을 직접 넣어서 쓸 수 있어요. 나중에 허용하려면 시스템 설정을 열어주세요.</div>
+            <div style="display:flex"><span style="font-size:12px;padding:4px 12px;border-radius:8px;border:1px solid #DAD6CF;background:#fff" style-hover="background:#F1EFEB">시스템 설정 열기</span></div>
+          </div>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <sc-if value="{{ isS2 }}">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em">어떤 AI와 함께 편집할까요?</div>
+        <div style="font-size:14px;color:#5E5952;line-height:1.6;text-wrap:pretty">말로 부탁한 걸 알아듣고 편집안을 만드는 역할이에요. 이미 쓰고 있는 계정으로 로그인하면 돼요.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <sc-for list="{{ ais }}" as="a" hint-placeholder-count="2">
+          <div onClick="{{ a.pick }}" style="display:flex;align-items:flex-start;gap:12px;padding:16px;border-radius:10px;border:1px solid {{ a.bd }};background:{{ a.bg }}">
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:15px;font-weight:700">{{ a.name }}</span><span style="font-size:12px;color:#5E5952">{{ a.sub }}</span></div>
+            <span style="width:16px;height:16px;box-sizing:border-box;border-radius:50%;border:{{ a.ring }};flex-shrink:0"></span>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ aIdle }}">
+        <div style="display:flex;align-items:center;gap:12px"><div onClick="{{ login }}" style="height:32px;padding:0 16px;border-radius:8px;background:#2D6A55;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center" style-hover="background:#23574A">{{ aiName }}로 로그인</div><span style="font-size:12px;color:#78726A">브라우저가 열리고, 로그인하면 자동으로 돌아와요</span></div>
+      </sc-if>
+      <sc-if value="{{ aWaiting }}">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="2"><circle cx="8" cy="8" r="6" stroke="#E2EEE8"></circle><path d="M8 2a6 6 0 0 1 6 6" stroke="#2D6A55" stroke-linecap="round"></path></svg><span>브라우저에서 로그인을 마쳐주세요</span><span onClick="{{ cancelLogin }}" style="font-size:12px;color:#5E5952;padding:3px 8px;border-radius:6px" style-hover="background:#F1EFEB">취소</span></div>
+      </sc-if>
+      <sc-if value="{{ aConnected }}">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#E2EEE8"></circle><path d="m5 8.3 2 2 4-4.3" stroke="#2D6A55" stroke-width="1.6"></path></svg><span style="font-weight:600">{{ aiName }} 연결됨</span><span style="color:#5E5952">· kim.physio@gmail.com</span><span onClick="{{ cancelLogin }}" style="font-size:12px;color:#2D6A55;padding:3px 8px;border-radius:6px" style-hover="background:#EFF6F2">다른 계정으로</span></div>
+      </sc-if>
+      <sc-if value="{{ aFailed }}">
+        <div style="display:flex;gap:10px;align-items:flex-start;background:#FAF9F7;border:1px solid #EFEDE9;border-radius:8px;padding:10px 12px">
+          <div style="width:22px;height:22px;flex-shrink:0;border-radius:6px;background:#2D6A55;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">마</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:8px"><div style="font-size:13px;line-height:1.55">로그인이 끝나지 않았어요. 브라우저 창을 닫으셨다면 다시 눌러주세요.</div><div style="display:flex"><span onClick="{{ login }}" style="font-size:12px;font-weight:600;padding:4px 12px;border-radius:8px;background:#2D6A55;color:#fff">다시 로그인</span></div></div>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <sc-if value="{{ isS3 }}">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em">스튜디오 이름을 정해주세요</div>
+        <div style="font-size:14px;color:#5E5952;line-height:1.6">앱 왼쪽 아래와 결과물 이름에 쓰여요. 나중에 설정에서 바꿀 수 있어요.</div>
+      </div>
+      <input value="{{ name }}" onChange="{{ onName }}" placeholder="예: 바른몸 스튜디오" style="height:40px;border:1px solid #DAD6CF;border-radius:8px;padding:0 12px;font-size:15px;font-family:inherit;color:#1F1D1A;outline:none">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:12px;color:#78726A">결과물은 이런 이름으로 저장돼요</span>
+        <div style="font-size:13px;padding:10px 12px;background:#FAF9F7;border:1px solid #EFEDE9;border-radius:8px">{{ namePreview }} · 골반이 틀어져있다면, 이 동작 안되실걸요?</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isDone }}">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding-bottom:20px">
+        <svg width="56" height="56" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7.5" fill="#E2EEE8"></circle><path d="m5 8.3 2 2 4-4.3" stroke="#2D6A55" stroke-width="1"></path></svg>
+        <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em">준비됐어요</div>
+        <div style="font-size:14px;color:#5E5952;line-height:1.6">아이폰으로 찍으면 촬영본에 자동으로 들어와요.<br>처음 가져오는 데 1~2분쯤 걸려요.</div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="height:64px;flex-shrink:0;border-top:1px solid #ECE9E4;display:flex;align-items:center;gap:8px;padding:0 20px 0 48px">
+    <sc-if value="{{ canSkip }}"><span onClick="{{ skip }}" style="font-size:13px;color:#5E5952;padding:5px 10px;margin-left:-10px;border-radius:6px" style-hover="background:#F1EFEB">{{ skipLabel }}</span></sc-if>
+    <sc-if value="{{ isS2 }}"><span style="font-size:12px;color:#78726A">AI를 연결해야 편집을 부탁할 수 있어요</span></sc-if>
+    <span style="flex:1"></span>
+    <sc-if value="{{ canBack }}"><div onClick="{{ back }}" style="height:32px;padding:0 16px;border-radius:8px;border:1px solid #DAD6CF;font-size:13px;display:flex;align-items:center" style-hover="background:#F1EFEB">이전</div></sc-if>
+    <div onClick="{{ next }}" style="height:32px;padding:0 18px;border-radius:8px;background:{{ nextBg }};color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center">{{ nextLabel }}</div>
+  </div>
+
+  <sc-if value="{{ pAsking }}">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(24,22,19,.08)">
+      <div style="width:260px;background:#F4F3F0;border:1px solid #CFCAC2;border-radius:12px;padding:20px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
+        <div style="width:56px;height:56px;border-radius:12px;background:#2D6A55;color:#fff;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center">마</div>
+        <div style="font-size:13px;font-weight:700;line-height:1.4">‘마디’에서 사진 보관함에 접근하려고 합니다.</div>
+        <div style="font-size:11px;color:#5E5952;line-height:1.5">아이폰으로 찍은 영상을 자동으로 가져오는 데 필요해요.</div>
+        <div style="display:flex;gap:8px;width:100%;margin-top:4px">
+          <div onClick="{{ deny }}" style="flex:1;height:28px;border-radius:6px;background:#fff;border:1px solid #DAD6CF;font-size:13px;display:flex;align-items:center;justify-content:center">허용 안 함</div>
+          <div onClick="{{ allow }}" style="flex:1;height:28px;border-radius:6px;background:#2D6A55;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center">허용</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:720,&quot;height&quot;:540},&quot;step&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[1,2,3,4],&quot;default&quot;:1,&quot;tsType&quot;:&quot;number&quot;},&quot;photo&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;idle&quot;,&quot;asking&quot;,&quot;allowed&quot;,&quot;denied&quot;],&quot;default&quot;:&quot;idle&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;aiChoice&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;claude&quot;,&quot;codex&quot;],&quot;default&quot;:&quot;claude&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;aiState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;idle&quot;,&quot;waiting&quot;,&quot;connected&quot;,&quot;failed&quot;],&quot;default&quot;:&quot;idle&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;name&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;바른몸 스튜디오&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = {
+    step: this.props.step ?? 1, photo: this.props.photo ?? 'idle',
+    ai: this.props.aiChoice ?? 'claude', aiState: this.props.aiState ?? 'idle',
+    name: this.props.name ?? '바른몸 스튜디오',
+  };
+  componentWillUnmount() { clearTimeout(this.t); }
+  renderVals() {
+    const s = this.state, go = p => this.setState(p);
+    const names = { claude: 'Claude', codex: 'Codex' };
+    const photoDone = s.photo === 'allowed' || s.photo === 'denied';
+    const canNext = s.step === 1 ? photoDone : s.step === 2 ? s.aiState === 'connected' : true;
+    const bar = n => (n <= s.step ? '#2D6A55' : '#ECE9E4');
+    return {
+      step: s.step, notDone: s.step < 4, isS1: s.step === 1, isS2: s.step === 2, isS3: s.step === 3, isDone: s.step === 4,
+      bar1: bar(1), bar2: bar(2), bar3: bar(3),
+      pIdle: s.photo === 'idle' || s.photo === 'asking', pAsking: s.photo === 'asking', pAllowed: s.photo === 'allowed', pDenied: s.photo === 'denied',
+      ask: () => go({ photo: 'asking' }), allow: () => go({ photo: 'allowed' }), deny: () => go({ photo: 'denied' }),
+      ais: ['claude', 'codex'].map(k => ({ name: names[k], sub: k === 'claude' ? 'Anthropic 계정으로 로그인' : 'OpenAI 계정으로 로그인',
+        bd: s.ai === k ? '#2D6A55' : '#ECE9E4', bg: s.ai === k ? '#EFF6F2' : '#fff',
+        ring: s.ai === k ? '5px solid #2D6A55' : '1px solid #CFCAC2',
+        pick: () => go({ ai: k, aiState: 'idle' }) })),
+      aiName: names[s.ai],
+      aIdle: s.aiState === 'idle', aWaiting: s.aiState === 'waiting', aConnected: s.aiState === 'connected', aFailed: s.aiState === 'failed',
+      login: () => { go({ aiState: 'waiting' }); clearTimeout(this.t); this.t = setTimeout(() => this.setState({ aiState: 'connected' }), 2200); },
+      cancelLogin: () => { clearTimeout(this.t); go({ aiState: 'idle' }); },
+      name: s.name, onName: e => go({ name: e.target.value }), namePreview: s.name.trim() || '내 스튜디오',
+      canSkip: s.step === 1 || s.step === 3, skipLabel: s.step === 3 ? '건너뛰기 (‘내 스튜디오’로 시작)' : '건너뛰기',
+      skip: () => go(s.step === 3 ? { step: 4, name: s.name || '내 스튜디오' } : { step: 2 }),
+      canBack: s.step === 2 || s.step === 3, back: () => go({ step: s.step - 1 }),
+      nextLabel: s.step === 3 ? '시작하기' : s.step === 4 ? '마디 시작하기' : '계속',
+      nextBg: canNext ? '#2D6A55' : '#DAD6CF',
+      next: () => canNext && s.step < 4 && go({ step: s.step + 1 }),
+    };
+  }
+}
+</script>
+</body>
+</html>

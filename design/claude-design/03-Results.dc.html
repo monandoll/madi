@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+body{margin:0;background:#E7E4DF;font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif;color:#1F1D1A;-webkit-font-smoothing:antialiased}
+a{color:#2D6A55;text-decoration:none}a:hover{color:#23574A}
+</style>
+</helmet>
+
+<section style="padding:64px;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em">3단계 · 결과물 · 만드는 중 · 실패</div>
+    <div style="font-size:14px;color:#5E5952">결과물 <a href="#3a">3a</a> <a href="#3b">3b</a> <a href="#3c">3c</a> · 만드는 중 <a href="#3d">3d</a> <a href="#3e">3e</a> · 실패 <a href="#3f">3f</a></div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start">
+
+    <!-- 3a -->
+    <div id="3a" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">3a</span><span style="font-size:14px;color:#5E5952">결과물 · 이전 버전과 나란히 (목록·내보내기 눌러보세요)</span></div>
+      <div style="width:1440px;height:900px;background:#fff;border:1px solid #CFCAC2;border-radius:10px;overflow:hidden;display:flex">
+        <dc-import name="Sidebar" active="results" making-count="{{ 2 }}" hint-size="220px,100%" style="height:100%;flex-shrink:0"></dc-import>
+        <div style="width:300px;flex-shrink:0;border-right:1px solid #ECE9E4;display:flex;flex-direction:column">
+          <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:baseline;gap:8px;padding:0 16px;box-sizing:border-box;padding-top:17px"><span style="font-size:15px;font-weight:700">결과물</span><span style="font-size:12px;color:#78726A">31개</span></div>
+          <div style="flex:1;min-height:0;overflow-y:auto;padding:8px 8px 16px;display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <div style="font-size:12px;font-weight:600;color:#5E5952;padding:6px 8px 4px;line-height:1.4">{{ g.title }}</div>
+                <sc-for list="{{ g.items }}" as="r" hint-placeholder-count="2">
+                  <div onClick="{{ r.select }}" style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;background:{{ r.bg }}">
+                    <div style="width:30px;height:53px;border-radius:4px;background:{{ r.tone }};flex-shrink:0"></div>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+                      <span style="font-size:13px;font-weight:500">{{ r.name }}</span>
+                      <span style="font-size:11px;color:#78726A">{{ r.meta }}</span>
+                    </div>
+                    <sc-if value="{{ r.isNew }}"><span style="font-size:11px;font-weight:600;color:#23574A;background:#E2EEE8;padding:1px 7px;border-radius:999px">새로</span></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;gap:10px;padding:0 20px">
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+              <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ sel.shoot }}</span>
+              <span style="font-size:11px;color:#78726A">{{ sel.name }} · {{ sel.ver }}</span>
+            </div>
+            <div style="display:flex;background:#F1EFEB;border-radius:6px;padding:2px;gap:2px">
+              <div onClick="{{ setSide }}" style="font-size:12px;padding:3px 10px;border-radius:5px;background:{{ sideBg }};border:1px solid {{ sideBd }}">나란히</div>
+              <div onClick="{{ setSingle }}" style="font-size:12px;padding:3px 10px;border-radius:5px;background:{{ singleBg }};border:1px solid {{ singleBd }}">하나만</div>
+            </div>
+            <div style="height:26px;display:flex;align-items:center;padding:0 10px;border:1px solid #DAD6CF;border-radius:8px;font-size:12px" style-hover="background:#F1EFEB">편집안 열기</div>
+            <div style="position:relative">
+              <div onClick="{{ toggleExport }}" style="height:26px;display:flex;align-items:center;gap:6px;padding:0 14px;border-radius:8px;background:#2D6A55;color:#fff;font-size:12px;font-weight:600" style-hover="background:#23574A">내보내기</div>
+              <sc-if value="{{ exportOpen }}">
+                <div style="position:absolute;top:34px;right:0;width:300px;z-index:10;background:#fff;border:1px solid #DAD6CF;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
+                  <div style="font-size:13px;font-weight:600">어디로 보낼까요?</div>
+                  <div style="display:flex;flex-direction:column;gap:2px">
+                    <sc-for list="{{ dests }}" as="d" hint-placeholder-count="3">
+                      <div onClick="{{ d.pick }}" style="display:flex;gap:10px;align-items:flex-start;padding:8px;border-radius:6px;background:{{ d.bg }}" style-hover="background:#F1EFEB">
+                        <span style="width:14px;height:14px;box-sizing:border-box;border-radius:50%;border:{{ d.ring }};margin-top:1px;flex-shrink:0"></span>
+                        <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px">{{ d.label }}</span><span style="font-size:11px;color:#78726A">{{ d.sub }}</span></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;gap:6px;justify-content:flex-end">
+                    <span onClick="{{ toggleExport }}" style="font-size:12px;padding:5px 12px;border-radius:8px;border:1px solid #DAD6CF" style-hover="background:#F1EFEB">취소</span>
+                    <span onClick="{{ doExport }}" style="font-size:12px;font-weight:600;padding:5px 12px;border-radius:8px;background:#2D6A55;color:#fff">내보내기</span>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+          <div style="flex:1;min-height:0;overflow-y:auto;padding:24px;display:flex;flex-direction:column;align-items:center;gap:24px">
+            <sc-if value="{{ exported }}">
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#23574A;background:#EFF6F2;border:1px solid #E2EEE8;padding:6px 12px;border-radius:999px"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#2D6A55" stroke-width="2"><path d="m3 8.5 3 3 7-7"></path></svg>{{ exportedText }}</div>
+            </sc-if>
+            <div style="display:flex;gap:40px;justify-content:center;align-items:flex-start">
+              <sc-if value="{{ showPrev }}">
+                <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+                  <div style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="font-weight:600;color:#5E5952;background:#F1EFEB;padding:2px 8px;border-radius:999px">이전</span><span>{{ prev.ver }}</span><span style="color:#78726A">· {{ prev.when }}</span></div>
+                  <div style="width:236px;height:420px;border-radius:8px;background:{{ prev.tone }};position:relative">
+                    <div style="position:absolute;left:12px;right:12px;bottom:23.5%;text-align:center;font-size:15.1px;font-weight:700;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 1px 0 #000,0 -1px 0 #000,1px 0 0 #000,-1px 0 0 #000">양 쪽을 비교해봤을때,</div>
+                  </div>
+                  <div style="font-size:12px;color:#5E5952">{{ prev.len }} · 장면 {{ prev.scenes }}개</div>
+                </div>
+              </sc-if>
+              <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="font-weight:600;color:#23574A;background:#E2EEE8;padding:2px 8px;border-radius:999px">지금</span><span>{{ sel.ver }}</span><span style="color:#78726A">· {{ sel.when }}</span></div>
+                <div style="width:236px;height:420px;border-radius:8px;background:{{ sel.tone }};position:relative">
+                  <div style="position:absolute;left:12px;right:12px;bottom:23.5%;text-align:center;font-size:15.1px;font-weight:700;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 1px 0 #000,0 -1px 0 #000,1px 0 0 #000,-1px 0 0 #000">양 쪽을 비교해봤을때,</div>
+                </div>
+                <div style="font-size:12px;color:#5E5952">{{ sel.len }} · 장면 {{ sel.scenes }}개</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="height:30px;display:flex;align-items:center;gap:8px;padding:0 14px;border-radius:999px;background:#E2EEE8;color:#23574A;font-size:12px;font-weight:600" style-hover="background:#D4E6DD"><svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 2.5v11L13 8z" fill="#2D6A55"></path></svg>{{ playLabel }}</div>
+            </div>
+            <div style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:12px;font-weight:600;color:#5E5952">{{ diffTitle }}</div>
+              <div style="display:flex;flex-direction:column;border:1px solid #EFEDE9;border-radius:8px">
+                <sc-for list="{{ sel.diffs }}" as="d" hint-placeholder-count="3">
+                  <div style="display:flex;gap:8px;padding:9px 12px;font-size:12px;border-bottom:1px solid #F1EFEB"><span style="flex:1">{{ d.a }}</span><span style="color:#78726A">{{ d.b }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3b -->
+    <div id="3b" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">3b</span><span style="font-size:14px;color:#5E5952">결과물 · 빈 상태</span></div>
+      <div style="width:1440px;height:900px;background:#fff;border:1px solid #CFCAC2;border-radius:10px;overflow:hidden;display:flex">
+        <dc-import name="Sidebar" active="results" results-count="{{ 0 }}" hint-size="220px,100%" style="height:100%;flex-shrink:0"></dc-import>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;padding:0 20px"><span style="font-size:15px;font-weight:700">결과물</span></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px">
+            <div style="max-width:380px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center">
+              <div style="width:56px;height:56px;border-radius:10px;background:#EFF6F2;border:1px solid #E2EEE8;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="#2D6A55" stroke-width="1.2"><rect x="3" y="2" width="10" height="12" rx="2"></rect><path d="M6 6h4M6 8.5h4M6 11h2.5"></path></svg></div>
+              <div style="font-size:20px;font-weight:700;letter-spacing:-0.01em">아직 만든 영상이 없어요</div>
+              <div style="font-size:13px;color:#5E5952;line-height:1.6;text-wrap:pretty">촬영본에서 편집안을 열고 ‘만들기’를 누르면<br>다 만든 영상이 여기에 모여요.</div>
+              <div style="height:28px;padding:0 14px;border-radius:8px;border:1px solid #DAD6CF;font-size:13px;display:flex;align-items:center;margin-top:4px" style-hover="background:#F1EFEB">촬영본 보기</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3c -->
+    <div id="3c" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">3c</span><span style="font-size:14px;color:#5E5952">결과물 · 불러오는 중</span></div>
+      <div style="width:1440px;height:900px;background:#fff;border:1px solid #CFCAC2;border-radius:10px;overflow:hidden;display:flex">
+        <dc-import name="Sidebar" active="results" making-count="{{ 2 }}" hint-size="220px,100%" style="height:100%;flex-shrink:0"></dc-import>
+        <div style="width:300px;flex-shrink:0;border-right:1px solid #ECE9E4;display:flex;flex-direction:column">
+          <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;padding:0 16px"><span style="font-size:15px;font-weight:700">결과물</span></div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px">
+            <sc-for list="{{ skelRows }}" as="k" hint-placeholder-count="7">
+              <div style="display:flex;gap:10px;align-items:center">
+                <div style="width:30px;height:53px;border-radius:4px;background:{{ k.tone }}"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:6px"><div style="height:11px;width:{{ k.w }};border-radius:4px;background:#F1EFEB"></div><div style="height:9px;width:70%;border-radius:4px;background:#F1EFEB"></div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;gap:10px;padding:0 20px">
+            <div style="height:12px;width:260px;border-radius:4px;background:#F1EFEB"></div><div style="flex:1"></div>
+            <div style="height:26px;display:flex;align-items:center;padding:0 14px;border-radius:8px;background:#DAD6CF;color:#fff;font-size:12px;font-weight:600">내보내기</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px">
+            <div style="display:flex;gap:40px;margin-top:34px"><div style="width:236px;height:420px;border-radius:8px;background:#F1EFEB"></div><div style="width:236px;height:420px;border-radius:8px;background:#F1EFEB"></div></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#5E5952"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="2"><circle cx="8" cy="8" r="6" stroke="#E2EEE8"></circle><path d="M8 2a6 6 0 0 1 6 6" stroke="#2D6A55" stroke-linecap="round"></path></svg>결과물을 불러오고 있어요</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3d -->
+    <div id="3d" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">3d</span><span style="font-size:14px;color:#5E5952">만드는 중 · 진행 · 기다리는 중 · 멈춘 것</span></div>
+      <div style="width:1440px;height:900px;background:#fff;border:1px solid #CFCAC2;border-radius:10px;overflow:hidden;display:flex">
+        <dc-import name="Sidebar" active="making" making-count="{{ 2 }}" hint-size="220px,100%" style="height:100%;flex-shrink:0"></dc-import>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;gap:8px;padding:0 20px"><span style="font-size:15px;font-weight:700">만드는 중</span><span style="font-size:12px;color:#78726A">2개</span></div>
+          <div style="flex:1;min-height:0;overflow-y:auto;padding:24px 32px;display:flex;flex-direction:column;gap:28px;max-width:880px;width:100%;box-sizing:border-box">
+            <div style="border:1px solid #ECE9E4;border-radius:10px;padding:20px;display:flex;gap:24px">
+              <div style="width:124px;height:220px;border-radius:8px;background:#CFCAC2;flex-shrink:0"></div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:18px">
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <div style="font-size:15px;font-weight:700;line-height:1.4">골반이 틀어져있다면, 이 동작 안되실걸요?</div>
+                  <div style="font-size:12px;color:#78726A">인스타 릴스 · 편집안 2 · 0:37</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:26px;font-weight:700;font-variant-numeric:tabular-nums">{{ pct }}%</span><span style="font-size:13px;color:#5E5952">약 1분 남았어요</span></div>
+                  <div style="height:6px;border-radius:999px;background:#F1EFEB;overflow:hidden"><div style="height:100%;width:{{ pctW }};background:#2D6A55;border-radius:999px"></div></div>
+                </div>
+                <div style="display:flex;gap:24px;flex-wrap:wrap">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#5E5952"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#E2EEE8"></circle><path d="m5 8.3 2 2 4-4.3" stroke="#2D6A55" stroke-width="1.6"></path></svg>자막 만들기</div>
+                  <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="2"><circle cx="8" cy="8" r="6" stroke="#E2EEE8"></circle><path d="M8 2a6 6 0 0 1 6 6" stroke="#2D6A55" stroke-linecap="round"></path></svg>화면 잡는 중</div>
+                  <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#78726A"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.3" stroke="#DAD6CF" stroke-width="1.4"></circle></svg>영상 만들기</div>
+                </div>
+                <div style="margin-top:auto;display:flex;align-items:center;gap:12px">
+                  <div style="height:28px;padding:0 14px;border-radius:8px;border:1px solid #DAD6CF;font-size:12px;display:flex;align-items:center" style-hover="background:#F1EFEB">멈추기</div>
+                  <span style="font-size:12px;color:#78726A">창을 닫아도 계속 만들어요. 다 되면 알림으로 알려드려요.</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:12px;font-weight:600;color:#5E5952">기다리는 중</div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #EFEDE9;border-radius:8px">
+                <div style="width:30px;height:53px;border-radius:4px;background:#CFCAC2"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="font-size:13px;font-weight:500">골반이 틀어져있다면, 이 동작 안되실걸요?</span><span style="font-size:11px;color:#78726A">유튜브 쇼츠 · 편집안 2 · 앞 영상이 끝나면 바로 시작해요</span></div>
+                <span style="font-size:12px;color:#5E5952;padding:4px 10px;border-radius:6px" style-hover="background:#F1EFEB">취소</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:12px;font-weight:600;color:#5E5952">멈춘 것</div>
+              <div style="display:flex;flex-direction:column;gap:12px;padding:12px;border:1px solid #EFEDE9;border-radius:8px">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div style="width:30px;height:53px;border-radius:4px;background:#DDD9D2"></div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="font-size:13px;font-weight:500">허리 아플 때 폼롤러 이렇게 쓰세요</span><span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#78726A"><span style="width:6px;height:6px;border-radius:50%;background:#B4533F"></span>인스타 릴스 · 71%에서 멈췄어요</span></div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:flex-start;background:#FAF9F7;border-radius:8px;padding:10px 12px">
+                  <div style="width:22px;height:22px;flex-shrink:0;border-radius:6px;background:#2D6A55;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">마</div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+                    <div style="font-size:13px;line-height:1.55;text-wrap:pretty">Mac 저장 공간이 모자라서 만들다 멈췄어요. 2GB 정도만 비워주시면 멈춘 곳부터 이어서 만들게요.</div>
+                    <div style="display:flex;gap:6px">
+                      <span style="font-size:12px;font-weight:600;padding:4px 12px;border-radius:8px;background:#2D6A55;color:#fff" style-hover="background:#23574A">이어서 만들기</span>
+                      <span style="font-size:12px;padding:4px 12px;border-radius:8px;border:1px solid #DAD6CF;background:#fff" style-hover="background:#F1EFEB">저장 공간 확인하기</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:12px;font-weight:600;color:#5E5952">오늘 다 만든 것</div>
+              <div style="display:flex;flex-direction:column;border:1px solid #EFEDE9;border-radius:8px">
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #F1EFEB;font-size:13px"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#4E9A73" stroke-width="2"><path d="m3 8.5 3 3 7-7"></path></svg><span style="flex:1">굽은 등, 벽 하나로 펴는 방법 · 인스타 릴스</span><span style="font-size:11px;color:#78726A">오후 1:12</span><a href="#3a" style="font-size:12px">결과물 보기</a></div>
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:13px"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#4E9A73" stroke-width="2"><path d="m3 8.5 3 3 7-7"></path></svg><span style="flex:1">거북목 스트레칭, 하루 3번이면 충분합니다 · 유튜브 쇼츠</span><span style="font-size:11px;color:#78726A">오전 11:40</span><a href="#3a" style="font-size:12px">결과물 보기</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3e -->
+    <div id="3e" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">3e</span><span style="font-size:14px;color:#5E5952">만드는 중 · 빈 상태</span></div>
+      <div style="width:1440px;height:900px;background:#fff;border:1px solid #CFCAC2;border-radius:10px;overflow:hidden;display:flex">
+        <dc-import name="Sidebar" active="making" hint-size="220px,100%" style="height:100%;flex-shrink:0"></dc-import>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;padding:0 20px"><span style="font-size:15px;font-weight:700">만드는 중</span></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px">
+            <div style="max-width:380px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center">
+              <div style="width:56px;height:56px;border-radius:10px;background:#EFF6F2;border:1px solid #E2EEE8;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="#2D6A55" stroke-width="1.2"><circle cx="8" cy="8" r="5.5"></circle><path d="M8 5v3l2 1.5"></path></svg></div>
+              <div style="font-size:20px;font-weight:700;letter-spacing:-0.01em">지금 만드는 영상이 없어요</div>
+              <div style="font-size:13px;color:#5E5952;line-height:1.6;text-wrap:pretty">편집안에서 ‘만들기’를 누르면<br>여기서 얼마나 남았는지 볼 수 있어요.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3f -->
+    <div id="3f" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">3f</span><span style="font-size:14px;color:#5E5952">실패 · 편집안 채팅 안에서 알려줌</span></div>
+      <div style="width:1440px;height:900px;background:#fff;border:1px solid #CFCAC2;border-radius:10px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:52px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;gap:8px;padding:0 16px 0 20px;background:#F4F3F0">
+          <div style="display:flex;gap:8px;margin-right:12px"><span style="width:12px;height:12px;border-radius:50%;background:#FF5F57;border:0.5px solid #E0443E"></span><span style="width:12px;height:12px;border-radius:50%;background:#FEBC2E;border:0.5px solid #DEA123"></span><span style="width:12px;height:12px;border-radius:50%;background:#28C840;border:0.5px solid #1AAB29"></span></div>
+          <div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.3"><rect x="1.5" y="2.5" width="13" height="11" rx="2"></rect><path d="M6 2.5v11"></path></svg></div>
+          <div style="height:28px;display:flex;align-items:center;gap:4px;padding:0 8px 0 4px;font-size:13px;color:#5E5952"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.6"><path d="M10 3 5 8l5 5"></path></svg>촬영본</div>
+          <div style="flex:1"></div>
+          <div style="height:26px;display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid #DAD6CF;border-radius:8px;background:#fff;font-size:12px">편집안 1 · 인스타 릴스<svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#5E5952" stroke-width="1.8"><path d="m4 6 4 4 4-4"></path></svg></div>
+          <div style="height:26px;display:flex;align-items:center;padding:0 14px;border-radius:8px;background:#2D6A55;color:#fff;font-size:12px;font-weight:600">만들기</div>
+        </div>
+        <div style="flex:1;min-height:0;display:flex">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow-y:auto">
+            <div style="height:380px;flex-shrink:0;display:flex;gap:28px;padding:20px 24px;border-bottom:1px solid #ECE9E4;box-sizing:border-box">
+              <div style="width:190px;height:338px;flex-shrink:0;border-radius:8px;background:#DDD9D2;position:relative"><div style="position:absolute;top:8px;left:8px;font-size:11px;font-weight:600;color:#fff;background:rgba(24,22,19,.72);padding:2px 7px;border-radius:999px">장면 1 · 훅</div></div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding-top:4px">
+                <div style="font-size:20px;font-weight:700;letter-spacing:-0.01em;line-height:1.35">라운드숄더 자가 체크 먼저 해보세요</div>
+                <div style="font-size:12px;color:#78726A">9월 25일 촬영 · 원본 0:51 · 장면 5개 · 말소리 없음</div>
+              </div>
+            </div>
+            <div style="flex:1 0 auto;display:flex;flex-direction:column;gap:12px;padding:16px 0">
+              <div style="display:flex;align-items:baseline;gap:8px;padding:0 24px"><span style="font-size:13px;font-weight:600">장면</span><span style="font-size:12px;color:#78726A">5개 · 0:51</span></div>
+              <div style="display:flex;gap:10px;overflow-x:auto;padding:0 24px 8px;align-items:flex-start">
+                <sc-for list="{{ failScenes }}" as="s" hint-placeholder-count="5">
+                  <div style="width:184px;flex-shrink:0;display:flex;flex-direction:column;border-radius:10px;border:1px solid #ECE9E4;background:#fff;overflow:hidden">
+                    <div style="display:flex;flex-direction:column;gap:8px;padding:10px 10px 8px">
+                      <div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;font-weight:600;color:#78726A;width:12px">{{ s.num }}</span><span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;background:{{ s.roleBg }};color:{{ s.roleFg }}">{{ s.role }}</span><span style="flex:1"></span><span style="font-size:11px;color:#5E5952">{{ s.dur }}</span></div>
+                      <div style="height:80px;border-radius:8px;background:{{ s.tone }}"></div>
+                      <div style="font-size:13px;line-height:1.4;min-height:36px;color:#A39D95">자막 없음</div>
+                    </div>
+                    <div style="margin-top:auto;display:flex;border-top:1px solid #EFEDE9">
+                      <div style="flex:1;height:30px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#5E5952">빼기</div><div style="width:1px;background:#EFEDE9"></div>
+                      <div style="flex:1;height:30px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#5E5952">늘리기</div><div style="width:1px;background:#EFEDE9"></div>
+                      <div style="flex:1.5;height:30px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#5E5952">자막 적기</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="width:384px;flex-shrink:0;border-left:1px solid #ECE9E4;display:flex;flex-direction:column;background:#FAF9F7">
+            <div style="height:40px;flex-shrink:0;border-bottom:1px solid #ECE9E4;display:flex;align-items:center;padding:0 16px"><span style="font-size:13px;font-weight:600">대화</span></div>
+            <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px">
+              <div style="text-align:center;font-size:11px;color:#78726A">오늘 오후 3:05</div>
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="width:22px;height:22px;flex-shrink:0;border-radius:6px;background:#2D6A55;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">마</div>
+                <div style="font-size:13px;line-height:1.55">51초짜리 영상을 장면 5개로 나눴어요.</div>
+              </div>
+              <div style="align-self:flex-end;max-width:80%;background:#E2EEE8;font-size:13px;line-height:1.5;padding:8px 12px;border-radius:10px">자막 넣어줘</div>
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="width:22px;height:22px;flex-shrink:0;border-radius:6px;background:#2D6A55;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">마</div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+                  <div style="font-size:13px;line-height:1.55;text-wrap:pretty">이 영상은 소리가 없어서 자막을 못 만들었어요. 찍을 때 마이크가 꺼져 있었던 것 같아요.</div>
+                  <div style="font-size:13px;line-height:1.55;color:#5E5952">이렇게 해볼까요?</div>
+                  <div style="display:flex;flex-direction:column;background:#fff;border:1px solid #ECE9E4;border-radius:8px">
+                    <div style="display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-bottom:1px solid #F1EFEB" style-hover="background:#FAF9F7"><span style="font-size:13px;font-weight:500">자막 없이 만들기</span><span style="font-size:11px;color:#78726A">동작 위주 영상이면 이대로도 괜찮아요</span></div>
+                    <div style="display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-bottom:1px solid #F1EFEB" style-hover="background:#FAF9F7"><span style="font-size:13px;font-weight:500">자막 직접 적기</span><span style="font-size:11px;color:#78726A">장면 카드마다 한 줄씩 적으면 돼요</span></div>
+                    <div style="display:flex;flex-direction:column;gap:2px;padding:9px 12px" style-hover="background:#FAF9F7"><span style="font-size:13px;font-weight:500">같은 날 찍은 다른 영상 보기</span><span style="font-size:11px;color:#78726A">오후 2:31에 찍은 영상은 소리가 있어요</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="flex-shrink:0;border-top:1px solid #ECE9E4;padding:12px 16px 14px 24px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span style="font-size:12px;height:26px;display:flex;align-items:center;padding:0 12px;border-radius:10px;border:1px solid #DAD6CF" style-hover="background:#F1EFEB">자막 없이 만들기</span>
+            <span style="font-size:12px;height:26px;display:flex;align-items:center;padding:0 12px;border-radius:10px;border:1px solid #DAD6CF" style-hover="background:#F1EFEB">자막 직접 적기</span>
+            <span style="font-size:12px;height:26px;display:flex;align-items:center;padding:0 12px;border-radius:10px;border:1px solid #DAD6CF" style-hover="background:#F1EFEB">숏폼 뽑아줘</span>
+            <span style="font-size:12px;height:26px;display:flex;align-items:center;padding:0 12px;border-radius:10px;border:1px solid #DAD6CF" style-hover="background:#F1EFEB">인스타 규격으로</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div style="flex:1;height:36px;border:1px solid #DAD6CF;border-radius:8px;display:flex;align-items:center;padding:0 12px;font-size:13px;color:#A39D95">말로 요청해보세요</div>
+            <div style="height:36px;padding:0 16px;border-radius:8px;background:#2D6A55;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center">보내기</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const TONES = ['#E9E6E1', '#DDD9D2', '#CFCAC2'];
+const ROLES = { 훅: ['#F6E9E1', '#9A4C2B'], 시범: ['#E2EEE8', '#23574A'], 설명: ['#E6E9F4', '#3F5190'], 마무리: ['#EFEDE9', '#5E5952'] };
+const DATA = [
+  { shoot: '골반이 틀어져있다면, 이 동작 안되실걸요?', items: [
+    { id: 'r1', name: '인스타 릴스', ver: '편집안 2', len: '0:37', scenes: 7, when: '오늘 오후 2:40', isNew: true, prev: 'r3',
+      diffs: [{ a: '쉬는 구간 2곳을 뺐어요', b: '−5초' }, { a: '아래쪽 동작을 가리지 않게 자막을 위에 뒀어요', b: '' }, { a: '인스타 규격으로 화면을 잡았어요', b: '세로' }] },
+    { id: 'r2', name: '유튜브 쇼츠', ver: '편집안 2', len: '0:37', scenes: 7, when: '오늘 오후 2:44', isNew: true, prev: 'r3',
+      diffs: [{ a: '쉬는 구간 2곳을 뺐어요', b: '−5초' }, { a: '유튜브 쇼츠 규격으로 화면을 잡았어요', b: '세로' }] },
+    { id: 'r3', name: '인스타 릴스', ver: '편집안 1', len: '0:42', scenes: 9, when: '어제 오후 6:02',
+      diffs: [{ a: '처음 만든 버전이에요', b: '' }] },
+  ]},
+  { shoot: '굽은 등, 벽 하나로 펴는 방법', items: [
+    { id: 'r4', name: '인스타 릴스', ver: '편집안 3', len: '0:31', scenes: 6, when: '오늘 오후 1:12', prev: 'r5',
+      diffs: [{ a: '마무리 장면을 짧게 줄였어요', b: '−3초' }, { a: '훅을 맨 앞으로 옮겼어요', b: '' }] },
+    { id: 'r5', name: '인스타 릴스', ver: '편집안 2', len: '0:34', scenes: 6, when: '9월 23일', prev: 'r6',
+      diffs: [{ a: '설명 장면 하나를 뺐어요', b: '−10초' }] },
+    { id: 'r6', name: '인스타 릴스', ver: '편집안 1', len: '0:44', scenes: 7, when: '9월 22일', diffs: [{ a: '처음 만든 버전이에요', b: '' }] },
+  ]},
+  { shoot: '허리 아플 때 폼롤러 이렇게 쓰세요', items: [
+    { id: 'r7', name: '유튜브 쇼츠', ver: '편집안 2', len: '0:48', scenes: 8, when: '9월 23일', prev: 'r8',
+      diffs: [{ a: '쉬는 구간 3곳을 뺐어요', b: '−10초' }] },
+    { id: 'r8', name: '유튜브 쇼츠', ver: '편집안 1', len: '0:58', scenes: 10, when: '9월 23일', diffs: [{ a: '처음 만든 버전이에요', b: '' }] },
+  ]},
+];
+const DESTS = [
+  { k: 'photos', label: '사진 앱에 저장', sub: '아이폰 사진에도 바로 보여요', done: '사진 앱에 저장했어요. 아이폰에서 바로 올릴 수 있어요.' },
+  { k: 'airdrop', label: '아이폰으로 보내기 (AirDrop)', sub: '가까이 있는 아이폰으로 보내요', done: '아이폰으로 보냈어요.' },
+  { k: 'folder', label: 'Mac 폴더에 저장', sub: '다운로드 폴더에 저장해요', done: '다운로드 폴더에 저장했어요.' },
+];
+class Component extends DCLogic {
+  state = { sel: 'r1', side: true, exportOpen: false, dest: 'photos', exported: null };
+  componentDidMount() { this.t = setInterval(() => this.setState(s => ({ pct: ((s.pct ?? 62) + 1) > 96 ? 62 : (s.pct ?? 62) + 1 })), 900); }
+  componentWillUnmount() { clearInterval(this.t); }
+  renderVals() {
+    const st = this.state;
+    const all = {}; let ti = 0;
+    DATA.forEach(g => g.items.forEach(r => { all[r.id] = { ...r, shoot: g.shoot, tone: TONES[ti++ % 3] }; }));
+    const sel = all[st.sel];
+    const prev = sel.prev ? all[sel.prev] : null;
+    const showPrev = st.side && !!prev;
+    const pct = st.pct ?? 62;
+    return {
+      groups: DATA.map(g => ({ title: g.shoot, items: g.items.map(r => ({
+        ...r, tone: all[r.id].tone, meta: `${r.ver} · ${r.len} · ${r.when}`,
+        bg: r.id === st.sel ? '#E6E3DC' : 'transparent',
+        select: () => this.setState({ sel: r.id, exported: null, exportOpen: false }) })) })),
+      sel, prev: prev || {}, showPrev,
+      playLabel: showPrev ? '둘 다 처음부터 재생' : '처음부터 재생',
+      diffTitle: prev ? `${prev.ver}와 달라진 점` : '이 버전은',
+      sideBg: st.side ? '#fff' : 'transparent', sideBd: st.side ? '#DAD6CF' : 'transparent',
+      singleBg: !st.side ? '#fff' : 'transparent', singleBd: !st.side ? '#DAD6CF' : 'transparent',
+      setSide: () => this.setState({ side: true }), setSingle: () => this.setState({ side: false }),
+      exportOpen: st.exportOpen, toggleExport: () => this.setState(s => ({ exportOpen: !s.exportOpen })),
+      dests: DESTS.map(d => ({ ...d, bg: d.k === st.dest ? '#EFF6F2' : 'transparent',
+        ring: d.k === st.dest ? '4px solid #2D6A55' : '1px solid #CFCAC2', pick: () => this.setState({ dest: d.k }) })),
+      doExport: () => this.setState({ exportOpen: false, exported: DESTS.find(d => d.k === st.dest).done }),
+      exported: !!st.exported, exportedText: st.exported,
+      pct, pctW: pct + '%',
+      skelRows: Array.from({ length: 8 }, (_, i) => ({ tone: i < 3 ? TONES[i] : '#F1EFEB', w: ['60%', '45%', '70%', '52%'][i % 4] })),
+      failScenes: [['훅', '4.1초'], ['시범', '12.3초'], ['시범', '14.0초'], ['설명', '11.6초'], ['마무리', '9.0초']].map(([role, dur], i) => ({
+        num: i + 1, role, dur, tone: TONES[i % 3], roleBg: ROLES[role][0], roleFg: ROLES[role][1] })),
+    };
+  }
+}
+</script>
+</body>
+</html>
