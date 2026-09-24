@@ -179,6 +179,52 @@ case "frames":
         for url in written { print(url.path) }
     } catch { fail("\(error)") }
 
+case "pose":
+    // 1단계 준비. **감지 정확도만** 본다 — 리프레이밍은 아직 만들지 않는다.
+    guard args.count > 2 else { fail("사용법: madi-spike pose <영상> <출력디렉토리> [--at 1,2] [--conf 0.3]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let outDir = URL(fileURLWithPath: args[2])
+        let times = (option("at") ?? "").split(separator: ",").compactMap { Double($0) }
+        let frames = try await FrameSheet.extract(
+            from: video, at: times, into: outDir.appending(path: "raw"), prefix: ""
+        )
+        let provider = VisionPoseProvider(
+            minJointConfidence: Float(option("conf") ?? "") ?? 0.3,
+            includePersonBox: true
+        )
+        var detected = 0, withHead = 0, withAnkles = 0
+        var heights: [Double] = []
+        print("  프레임                 사람  관절  신뢰도  점유높이  머리  발목")
+        for url in frames {
+            let image = try StillRenderer.loadImage(url)
+            let observations = try provider.detect(in: image)
+            let name = url.deletingPathExtension().lastPathComponent
+            guard let best = observations.max(by: { $0.jointBox.h < $1.jointBox.h }) else {
+                print("  \(name.padding(toLength: 22, withPad: " ", startingAt: 0))  없음")
+                continue
+            }
+            detected += 1
+            if best.hasHead { withHead += 1 }
+            if best.hasAnkles { withAnkles += 1 }
+            heights.append(best.jointBox.h)
+            print(String(format: "  %-22@ %4d %5d  %6.2f  %7.3f  %@  %@",
+                         name as NSString, observations.count, best.joints.count,
+                         best.confidence, best.jointBox.h,
+                         best.hasHead ? "  O " : "  X ", best.hasAnkles ? " O" : " X"))
+            let annotated = try PoseOverlay.draw(observations, on: image)
+            try StillRenderer.writePNG(annotated, to: outDir.appending(path: "\(name).png"))
+        }
+        let sorted = heights.sorted()
+        print("")
+        print("  프레임 \(frames.count)장 중 감지 \(detected)장 · 머리 \(withHead)장 · 발목 \(withAnkles)장")
+        if !sorted.isEmpty {
+            print(String(format: "  관절 상자 높이  중앙값 %.3f  최소 %.3f  최대 %.3f  (품질 게이트 G1 하한 0.55)",
+                         sorted[sorted.count / 2], sorted[0], sorted[sorted.count - 1]))
+        }
+        print("  겹쳐 그린 프레임: \(outDir.path)")
+    } catch { fail("\(error)") }
+
 case "sheet":
     guard args.count > 2 else { fail("사용법: madi-spike sheet <영상> <out.png> [--at ...] [--cols 5]") }
     do {
@@ -261,6 +307,7 @@ default:
       render <composition.json> <out.mp4>  영상 한 편
       compare <원본> <렌더> <out.png>     같은 시각을 나란히 (B 판정용)
       sheet <영상> <out.png> [--cols 5]   한 편을 격자로 훑어본다
+      pose <영상> <디렉토리> [--conf 0.3]  사람 감지 정확도 (1단계 준비)
 
     공통 옵션: --text --secondary --width --height --style
     """)

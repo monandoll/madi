@@ -32,6 +32,7 @@ targets:
     platform: macOS
     sources:
       - path: Madi/Model
+      - path: Madi/Analyze
       - path: Madi/Render
       - path: Madi/Templates
       - path: Madi/Resources/Fonts
