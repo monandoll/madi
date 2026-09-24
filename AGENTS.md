@@ -45,8 +45,9 @@
 8. **렌더는 항상 `Composition`으로부터 재현 가능**해야 한다. 결과 파일만 있고 결정이 없는 상태를 만들지 않는다.
 9. **크리에이터에게 설치 이상의 것을 요구하지 않는다.** 터미널·CLI·계정 설정은 앱이 대신한다.
    "한 줄만 붙여넣으면 된다"도 요구다.
-10. **디자인 시안이 정답이다.** `design/` 의 Claude Design 내보내기를 픽셀 단위로 따른다.
-    임의로 컴포넌트를 "개선"하지 않는다. 다르게 해야 할 이유가 생기면 고치지 말고 물어본다.
+10. **확정된 화면이 정답이다.** 디자인 AI 가 SwiftUI 로 만들고 사람이 확인한 뷰(`Madi/UI/`)를
+    개발이 그대로 쓴다. 임의로 "개선"하지 않는다. 다르게 해야 할 이유가 생기면 고치지 말고 물어본다.
+    `design/claude-design/` 은 참고 자료이지 정답이 아니다 (`docs/prompts/design.md`).
 11. **파일을 옮기게 하지 않는다.** 아이폰으로 찍으면 앱에 이미 있어야 한다.
     편집을 10분으로 줄여 놓고 파일 옮기는 데 5분 쓰면 목표를 반쯤 버리는 것이다.
 
@@ -150,7 +151,7 @@ madi.app  (Swift · SwiftUI · macOS 14+)
 | 에이전트 | `Process` → `claude -p --output-format stream-json` · `codex exec` | **둘 다 필수**. `AgentProvider` 프로토콜 뒤에 숨긴다 |
 | MCP | 앱 내장 stdio 서버 | 도구 2개 (`§10`) |
 | 배포 | 공증 `.dmg` + Sparkle | **Universal 2** (`ARCHS = arm64 x86_64`). App Store 안 함 (샌드박스 불가) |
-| 폰트 | Pretendard Variable (OFL) | 앱 번들에 동봉 |
+| 폰트 | UI: **시스템 글꼴(SF)** / 영상 자막: **Pretendard Variable** (OFL, 번들) | 둘을 섞지 않는다 |
 
 Python 없음. 네트워크 요청은 AI CLI 와 (Intel 전용) whisper.cpp 다운로드 외에 없다.
 
@@ -193,7 +194,7 @@ Madi/
   UI/Copy.swift     모든 UI 문구. 하드코딩 금지
 MadiTests/          단위 테스트
 MadiUITests/
-design/             Claude Design 시안 내보내기. **읽기 전용.** 개발이 픽셀 단위로 따른다
+design/claude-design/  Claude Design 시안 (참고용, 읽기 전용). 디자인은 AI 가 SwiftUI 로 직접 한다
 reference/          크리에이터 공개 숏폼 프레임 (스타일 근거. 지우지 않는다)
 tools/              measure.mjs — PNG 에서 자막 지표 측정 (Node, 개발용)
 docs/
