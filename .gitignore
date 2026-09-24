@@ -23,3 +23,4 @@ spike/reference/*.mov
 
 # 참고용 공개 영상 프레임 (커밋함 — 스타일 근거)
 !spike/public/reference/*.png
+!spike/public/reference/*.jpg
