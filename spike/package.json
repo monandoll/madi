@@ -9,7 +9,8 @@
     "compare": "node compare.mjs",
     "frames": "node frames.mjs",
     "typecheck": "tsc --noEmit",
-    "probe": "node probe.mjs"
+    "probe": "node probe.mjs",
+    "measure": "node measure.mjs"
   },
   "dependencies": {
     "@madi/shared": "workspace:*",

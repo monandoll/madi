@@ -60,54 +60,65 @@ export const Caption: React.FC<{ caption: CaptionData }> = ({ caption }) => {
   return (
     <div
       style={{
+        // ★ bottomRatio 는 **본문 아래끝** 기준이다. 본문+보조 블록 전체의 아래끝이 아니다.
+        //   전에는 flex column 전체를 bottom 에 붙여서, 보조 문구가 있으면 본문이
+        //   보조 높이만큼 위로 밀려 올라갔다 (원본 대비 약 54px @1920).
+        //   보조는 본문 아래에 매달리게 absolute 로 뺀다.
         position: 'absolute',
         left: 0,
         right: 0,
         bottom: height * CAPTION.bottomRatio,
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: CAPTION.fontSize * CAPTION_SECONDARY.gapRatio,
+        justifyContent: 'center',
         transform: `scale(${scale})`,
         opacity,
       }}
     >
-      <div
-        style={{
-          maxWidth: width * CAPTION.maxWidthRatio,
-          textAlign: 'center',
-          fontFamily: CAPTION.fontFamily,
-          fontSize: CAPTION.fontSize,
-          fontWeight: CAPTION.fontWeight,
-          lineHeight: CAPTION.lineHeight,
-          color: CAPTION.color,
-          wordBreak: 'keep-all',
-          ...stroke(CAPTION.strokeWidth, CAPTION.strokeColor),
-        }}
-      >
-        {parts.map((p, i) => (
-          <span key={i} style={p.strong ? { color: CAPTION_EMPHASIS.color } : undefined}>
-            {p.text}
-          </span>
-        ))}
-      </div>
-
-      {caption.secondary ? (
+      <div style={{ position: 'relative' }}>
         <div
           style={{
             maxWidth: width * CAPTION.maxWidthRatio,
             textAlign: 'center',
             fontFamily: CAPTION.fontFamily,
-            fontSize: secondarySize,
-            fontWeight: 600,
-            fontStyle: CAPTION_SECONDARY.italic ? 'italic' : 'normal',
-            color: CAPTION_SECONDARY.color,
-            ...stroke(CAPTION_SECONDARY.strokeWidth, CAPTION.strokeColor),
+            fontSize: CAPTION.fontSize,
+            fontWeight: CAPTION.fontWeight,
+            lineHeight: CAPTION.lineHeight,
+            color: CAPTION.color,
+            wordBreak: 'keep-all',
+            ...stroke(CAPTION.strokeWidth, CAPTION.strokeColor),
           }}
         >
-          {caption.secondary}
+          {parts.map((p, i) => (
+            <span key={i} style={p.strong ? { color: CAPTION_EMPHASIS.color } : undefined}>
+              {p.text}
+            </span>
+          ))}
         </div>
-      ) : null}
+
+        {caption.secondary ? (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginTop: CAPTION.fontSize * CAPTION_SECONDARY.gapRatio,
+              width: 'max-content',
+              maxWidth: width * CAPTION.maxWidthRatio,
+              textAlign: 'center',
+              fontFamily: CAPTION.fontFamily,
+              fontSize: secondarySize,
+              fontWeight: 600,
+              fontStyle: CAPTION_SECONDARY.italic ? 'italic' : 'normal',
+              color: CAPTION_SECONDARY.color,
+              whiteSpace: 'nowrap',
+              ...stroke(CAPTION_SECONDARY.strokeWidth, CAPTION.strokeColor),
+            }}
+          >
+            {caption.secondary}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 };

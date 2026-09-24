@@ -14,7 +14,8 @@
     "spike:frames": "pnpm --filter @madi/spike frames",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "spike:probe": "pnpm --filter @madi/spike probe"
+    "spike:probe": "pnpm --filter @madi/spike probe",
+    "spike:measure": "pnpm --filter @madi/spike measure"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

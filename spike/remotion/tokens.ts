@@ -59,7 +59,7 @@ export const CAPTION = {
   /** 화면 폭 대비 최대 사용 비율 */
   maxWidthRatio: 0.88,
   /**
-   * 화면 아래에서 띄우는 비율.
+   * 화면 아래에서 띄우는 비율. **본문 아래끝** 기준이다 (보조 문구는 이 아래에 매달린다).
    * 실측: 4개 프레임에서 0.2344~0.2352 로 거의 흔들리지 않았다. 가장 신뢰도 높은 값.
    */
   bottomRatio: 0.235,
@@ -88,8 +88,12 @@ export const CAPTION_SECONDARY = {
   color: '#FFE04D',
   italic: true,
   strokeWidth: 5,
-  /** 본문과의 간격 (본문 fontSize 대비) */
-  gapRatio: 0.18,
+  /**
+   * 본문 아래끝과 보조 문구 윗끝 사이 간격 (본문 fontSize 대비).
+   * 실측: 본문 아래끝 0.235H, 보조 아래끝 0.204H → 둘의 아래끝 차이 60px @1920.
+   * 보조 글자 높이 약 35px 을 빼면 간격 25px ≈ fontSize(72) x 0.34
+   */
+  gapRatio: 0.34,
 } as const;
 
 /** 훅 타이틀. 품질 게이트 G8: 0~1.5초. */
