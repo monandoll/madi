@@ -1,7 +1,7 @@
 /**
  * 스타일 자산. AGENTS.md §9.
  *
- * ★ 이 파일의 값은 **`spike/reference/frames/` 를 눈으로 재서** 채운다.
+ * ★ 이 파일의 값은 **`spike/public/frames/` 를 눈으로 재서** 채운다.
  *   추측해서 채우지 않는다. 전작이 기본값을 디자인 시안 색(#E8C33F 노란 박스)으로
  *   박아 놓고 "스타일 학습"이라고 부른 게 §0-4 실패 원인이다.
  *
@@ -132,7 +132,7 @@ export const AUDIO = {
 export function warnIfUnmeasured(): void {
   if (!MEASURED) {
     console.warn(
-      '\n[tokens] 아직 실측 전 값입니다. spike/reference/frames/ 를 보고 채운 뒤 MEASURED=true 로 바꾸세요.\n' +
+      '\n[tokens] 아직 실측 전 값입니다. spike/public/frames/ 를 보고 채운 뒤 MEASURED=true 로 바꾸세요.\n' +
         '  AGENTS.md §9 / docs/stage-0.spec.md 작업순서 3~4\n',
     );
   }

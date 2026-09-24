@@ -1,4 +1,4 @@
-// reference/final.mp4 → reference/frames/*.png (0.5초 간격)
+// reference/final.mp4 → public/frames/*.png (0.5초 간격)
 // AGENTS.md §9 / stage-0.spec.md 작업순서 3
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';

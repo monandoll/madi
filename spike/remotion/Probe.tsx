@@ -5,7 +5,7 @@ import { loadPretendard } from './font.js';
 
 /**
  * 0단계 작업순서 4용. 영상 없이 자막 한 장만 그린다.
- * reference/frames/ 의 원본 프레임과 나란히 놓고 tokens.ts 값을 맞추는 데 쓴다.
+ * public/frames/ 의 원본 프레임과 나란히 놓고 tokens.ts 값을 맞추는 데 쓴다.
  *
  * 영상이 들어오기 전에 렌더 파이프라인(번들 · 폰트 · 외곽선 · 레이아웃)이
  * 도는지 먼저 확인하는 용도이기도 하다.

@@ -15,7 +15,7 @@ AGENTS.md §9. **스타일은 학습하지 않는다. 사람이 잰다.**
 
 ```bash
 cd spike
-pnpm frames        # reference/final.mp4 → reference/frames/*.png (0.5초 간격)
+pnpm frames        # reference/final.mp4 → public/frames/*.png (0.5초 간격)
 ```
 
 자막이 **가장 길게 나온 프레임**과 **가장 짧게 나온 프레임** 2장을 고른다.
@@ -74,8 +74,15 @@ fit-to-width 라면 `Caption.tsx` 에 폭 기준 자동 스케일을 넣어야 �
 pnpm studio        # Remotion Studio
 ```
 
-Studio에서 자막 한 덩어리만 띄우고, 같은 문구가 나온 `reference/frames/` 프레임과
-**나란히 놓고** 본다. 화면 캡처해서 겹쳐 봐도 좋다.
+더 확실한 방법은 원본 프레임 **위에 직접 겹치는** 것이다.
+
+```bash
+PROBE_BACKDROP=frames/0012.png pnpm spike:probe   # public/frames/ 안의 파일명
+PROBE_BACKDROP=reference/yt_11s.png pnpm spike:probe   # 공개본 참고 프레임
+```
+
+`spike/out/caption-probe.png` 에 우리 자막이 원본 프레임 위에 얹혀 나온다.
+크기·위치가 어긋나면 한눈에 보인다. Studio(`pnpm spike:studio`)는 값을 실시간으로 만질 때 쓴다.
 
 여기서 다르면 영상 전체가 다르다. 이 단계를 건너뛰고 렌더부터 돌리지 않는다.
 

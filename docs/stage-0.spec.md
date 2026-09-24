@@ -25,7 +25,7 @@
 
 - `spike/reference/final.mp4` — 크리에이터가 실제 업로드한 숏폼 1편 (목표)
 - `spike/reference/raw.mp4` — 같은 편의 편집 전 촬영본 (있으면. 없으면 final을 소스로 쓰고 자막만 다시 얹는다)
-- `spike/reference/frames/` — `final.mp4`에서 0.5초 간격으로 뽑은 캡처. 자막 크기·위치·색·분절을 눈으로 재는 근거
+- `spike/public/frames/` — `final.mp4`에서 0.5초 간격으로 뽑은 캡처. 자막 크기·위치·색·분절을 눈으로 재는 근거
 
 ## 산출물
 
@@ -109,7 +109,7 @@ spike/public/reference/*.png
 
 1. ~~Remotion 라이선스 확인~~ — 완료
 2. ~~`packages/shared/src/composition.ts`~~ — 완료 (테스트 7개 포함)
-3. `reference/frames/` 뽑고 자막 값 실측 → `tokens.ts`
+3. `public/frames/` 뽑고 자막 값 실측 → `tokens.ts`
 4. `Caption.tsx` 먼저 만들고 정지 프레임 1장으로 원본과 대조 (여기서 대부분 결판난다)
 5. `Short.tsx` + `composition.json` 채우기
 6. `render.mjs` → `compare.mjs`
