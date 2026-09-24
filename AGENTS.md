@@ -145,7 +145,7 @@ madi.app  (Swift · SwiftUI · macOS 14+)
 | 사람 감지 | **Vision** `VNDetectHumanBodyPoseRequest` | bbox + 19관절, 0.5s 간격. `PoseProvider` 프로토콜. Intel 에서도 동작(3~5배 느림) |
 | 컷·배속 | **AVMutableComposition** | |
 | 합성 | **AVVideoCompositionCoreAnimationTool** + CALayer | 자막 · 오버레이 · 줌 |
-| 글자 | **CoreText** `NSAttributedString` | `.strokeWidth` 음수 = 외곽선 + 채우기 |
+| 글자 | **CoreText** `NSAttributedString` | 외곽선은 **stroke 패스 + fill 패스 2회**. 음수 strokeWidth 는 글자를 깎는다 |
 | 인코딩 | **AVAssetWriter** (VideoToolbox) | H.264 / HEVC |
 | 에이전트 | `Process` → `claude -p --output-format stream-json` · `codex exec` | **둘 다 필수**. `AgentProvider` 프로토콜 뒤에 숨긴다 |
 | MCP | 앱 내장 stdio 서버 | 도구 2개 (`§10`) |
@@ -343,8 +343,11 @@ Composition
                     → Composition 수정 → 2번부터 재실행 (최대 2회)
 ```
 
-- 자막은 **CoreText** 로 그린다. `NSAttributedString` 의 `.strokeWidth` 를 **음수**로 주면
-  외곽선과 채우기가 함께 그려진다 (양수면 외곽선만). `.strokeColor` 로 색을 준다.
+- 자막은 **CoreText** 로 그린다. 외곽선은 **두 번 그린다** — 양수 `strokeWidth` 로 획만 깔고
+  그 위에 fill 을 얹는다. 음수로 주면 CoreText 가 fill → stroke 순으로 그려서 획 절반이
+  글자 안쪽을 파먹고, 글자 높이가 획 두께만큼 줄어든다.
+  크리에이터 원본은 검은 외곽선 바로 안쪽이 온전한 흰색이다 — 안 깎인 쪽이 맞다
+  (`docs/findings/2026-09-25-coretext-caption-measurement.md §1`).
 - CALayer 애니메이션은 `beginTime` 을 `AVCoreAnimationBeginTimeAtZero` 기준으로 잡는다.
   0 을 그대로 쓰면 무시된다. `isRemovedOnCompletion = false`, `fillMode = .both`.
 - 리프레임 키프레임은 스무딩한다(0.4s 저역통과). 프레임이 떨리면 즉시 실패 (G3).
@@ -444,9 +447,9 @@ AI 는 여전히 스타일 값을 쓸 수 없다. 스키마가 막는다 (`§5 a
 |---|---|---|
 | 본문 글자 높이 | 프레임 높이의 **3.59%** (1920 기준 69px) | 높음 — 3편 동일 |
 | 본문 아래끝 | 아래에서 **0.2352** | 높음 — 4편 0.2344~0.2352 |
-| 보조 문구 아래끝 | 아래에서 **0.204** | 중간 |
+| 보조 문구 베이스라인 | 아래에서 **0.2023** | 높음 — 4편 중 3편 동일 |
 | 외곽선 (바깥 두께) | 4~5px @720 → 6~7.5px @1080 | 중간 |
-| 보조 문구 크기 | 본문의 약 **0.46** | 중간 |
+| 보조 문구 크기 | 본문 폰트의 **0.4444** (라틴 어센더 24px @1920) | 중간 |
 | 한 줄 최대 | **12자** | 높음 |
 | 자막 크기 | **고정.** fit-to-width 아님 (글자 수 9~12자에서 높이 47~49px 일정) | 높음 |
 | 강조색 | **쓰지 않는다.** 본문 전부 흰색 | 높음 |
@@ -520,7 +523,7 @@ CSS 줄상자 때문에 나온 보정이라 **버린다.** CoreText 는 폰트 �
 
 **0. 자막 렌더 스파이크** (AI 없음, DB 없음, UI 최소)
 `reference/` 프레임 위에 CoreText 자막을 겹쳐 그려 `§9` 실측표와 맞춘다.
-- 통과: 본문 글자 높이 **3.59% ±0.1%**, 본문 아래끝 **0.2352 ±0.003**, 보조 아래끝 **0.204 ±0.003**
+- 통과: 본문 글자 높이 **3.59% ±0.1%**, 본문 아래끝 **0.2352 ±0.003**, 보조 베이스라인 **0.2023 ±0.003**
 - 측정은 `tools/measure.mjs` 로 한다 (PNG 를 재므로 무엇이 그렸는지 무관)
 - 이어서 `reference/` 1편을 손으로 `Composition` 으로 재현 → AVAssetWriter 렌더 → 원본과 나란히 비교
 - **눈으로 같은 채널 영상으로 보이지 않으면 여기서 멈춘다.** 1단계로 가지 않는다

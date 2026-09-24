@@ -39,7 +39,7 @@ CoreText 로 자막을 그려 PNG 로 뽑고, `tools/measure.mjs` 로 재서 목
 |---|---|---|
 | 본문 글자 높이 | 프레임 높이의 3.59% | ±0.1% |
 | 본문 아래끝 | 아래에서 0.2352 | ±0.003 |
-| 보조 문구 아래끝 | 아래에서 0.204 | ±0.003 |
+| 보조 문구 베이스라인 | 아래에서 0.2023 | ±0.003 |
 
 ```bash
 node tools/measure.mjs out/caption-probe.png
@@ -80,8 +80,9 @@ AVMutableComposition + CoreAnimationTool + AVAssetWriter 로 렌더해서 원본
 
 `docs/stage-0.spec.md` 의 "알려진 함정" 을 반드시 읽어라. 요약:
 
-- `NSAttributedString.strokeWidth` 는 **음수**여야 외곽선+채우기가 함께 그려진다.
-  값은 절대 px 가 아니라 폰트 크기 대비 백분율이다.
+- 외곽선은 **두 번 그린다** — 양수 `strokeWidth` 로 획만 깔고 그 위에 fill.
+  음수로 주면 획 절반이 글자 안쪽을 파먹는다. 값은 px 가 아니라 폰트 크기 대비 백분율이고
+  획 가운데 기준이다.
 - CALayer 애니메이션 `beginTime` 은 `AVCoreAnimationBeginTimeAtZero` 기준이어야 한다.
   0 을 쓰면 무시된다. `isRemovedOnCompletion = false`, `fillMode = .both`.
 - **글자 높이 ≠ 폰트 크기.** `CTLineGetBoundsWithOptions(.useGlyphPathBounds)` 로 실제 높이를

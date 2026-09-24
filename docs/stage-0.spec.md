@@ -60,7 +60,7 @@ CSS 줄상자 때문에 나온 보정값이다. CoreText 는 폰트 메트릭을
 |---|---|---|
 | 본문 글자 높이 | 프레임 높이의 3.59% | ±0.1% |
 | 본문 아래끝 | 아래에서 0.2352 | ±0.003 |
-| 보조 문구 아래끝 | 아래에서 0.204 | ±0.003 |
+| 보조 문구 베이스라인 | 아래에서 0.2023 | ±0.003 |
 
 배경 없이 재고, 그다음 `reference/` 프레임 위에 겹쳐서 눈으로 본다.
 **세 항목이 다 들어오기 전에 B 로 가지 않는다.** 자막 한 장이 틀리면 영상 전체가 틀린다.
@@ -88,8 +88,10 @@ CSS 줄상자 때문에 나온 보정값이다. CoreText 는 폰트 메트릭을
 
 ## 알려진 함정
 
-- **`NSAttributedString.strokeWidth` 는 음수여야** 외곽선 + 채우기가 함께 그려진다.
-  양수면 외곽선만 나온다. 값은 폰트 크기 대비 백분율이다 (절대 px 가 아니다).
+- **외곽선은 두 번 그린다.** 양수 `strokeWidth` 로 획만 깔고 그 위에 fill 을 얹는다.
+  음수로 주면 fill → stroke 순이라 획 절반이 글자 안쪽을 파먹는다. 원본은 안 깎였다
+  (`docs/findings/2026-09-25-coretext-caption-measurement.md §1`).
+  값은 폰트 크기 대비 백분율이고 획 **가운데** 기준이다 (절대 px 가 아니다).
 - **CALayer 애니메이션의 `beginTime`** 은 `AVCoreAnimationBeginTimeAtZero` 기준이어야 한다.
   0 을 그대로 쓰면 무시된다. `isRemovedOnCompletion = false`, `fillMode = .both`.
 - **글자 높이 ≠ 폰트 크기.** `CTFontGetBoundingBox` / `CTLineGetBoundsWithOptions(.useGlyphPathBounds)`

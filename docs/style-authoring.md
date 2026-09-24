@@ -36,15 +36,17 @@ AGENTS.md §9. **스타일은 학습하지 않는다. 사람이 잰다.**
 | `caption.lineHeight` | 2줄일 때 줄 기준선 간격 ÷ fontSize |
 | `caption.color` / `strokeColor` | 스포이드. 안티에일리어싱 경계가 아니라 **글자 안쪽**을 찍는다 |
 | `CAPTION_EMPHASIS.color` | 색이 다른 단어가 있으면 그 색. 없으면 강조 기능을 쓰지 않는다 |
-| `captionSecondary.*` | 보조 문구(영문 등)가 있으면. `scale` = 보조 fontSize ÷ 본문 fontSize |
+| `secondary.baselineBottomRatio` | 보조 문구 **베이스라인**에서 프레임 하단까지 ÷ 1920. 행별 픽셀 수가 뚝 떨어지는 행이 베이스라인이다. ★ 아래끝으로 재지 않는다 — `y` · `g` 디센더 유무로 문구마다 흔들린다 |
+| `secondary.scale` | 보조 fontSize ÷ 본문 fontSize. 라틴 어센더 높이를 재서 맞춘다 |
 | `hook.fontSize` / `topRatio` | 0~1.5초 구간 프레임에서 같은 방식으로 |
 | `reframe.targetSubjectHeightRatio` | 인물의 **머리끝~발목** 픽셀 높이 ÷ 1920. 여러 프레임 평균 |
 
 ### 주의: 외곽선 (CoreText)
 
-`NSAttributedString.strokeWidth` 는 **음수**여야 외곽선 + 채우기가 함께 그려진다.
-양수면 외곽선만 나온다. 그리고 값은 절대 px 가 아니라 **폰트 크기 대비 백분율**이다.
-재는 값은 "바깥으로 나간 두께(px)" 이므로 폰트 크기로 나눠서 넣는다.
+외곽선은 **두 번 그린다.** 양수 `strokeWidth` 로 획만 깔고 그 위에 fill 을 얹는다.
+음수로 주면 fill → stroke 순이라 획 절반이 글자 안쪽을 파먹는다 — 글자가 얇아지고 낮아진다.
+값은 절대 px 가 아니라 **폰트 크기 대비 백분율**이고 획 **가운데** 기준이라,
+바깥으로 나가는 두께는 그 절반이다. 재는 값은 "바깥으로 나간 두께" 이므로 2배로 환산한다.
 
 ### 주의: 글자 높이 ≠ 폰트 크기
 
