@@ -67,7 +67,8 @@ export const Caption: React.FC<{ caption: CaptionData }> = ({ caption }) => {
         position: 'absolute',
         left: 0,
         right: 0,
-        bottom: height * CAPTION.bottomRatio,
+        // 줄상자 아래 여백만큼 내려서 bottomRatio 가 실제 '글자 아래끝' 을 가리키게 한다
+        bottom: height * CAPTION.bottomRatio - CAPTION.fontSize * CAPTION.baselineNudgeRatio,
         display: 'flex',
         justifyContent: 'center',
         transform: `scale(${scale})`,

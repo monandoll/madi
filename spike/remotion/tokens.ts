@@ -46,10 +46,12 @@ export const CAPTION = {
   fontFamily: 'Pretendard Variable, Pretendard, sans-serif',
   /**
    * px. 1920 높이 기준.
-   * 실측: 글자 높이 47~49px @1280 = 프레임의 3.7% → 1920 환산 71px.
-   * 프로브에서 fontSize 92 가 글자 높이 91px 을 냈으므로 92 x (71/91) ≈ 72.
+   * 원본 실측: 글자 높이 46px @1280 = 3.59% → 1920 환산 69px.
+   * 프로브 측정: fontSize 72 가 글자 높이 64px 을 냈다 (글자높이 ≈ fontSize x 0.889).
+   *   → 69 / 0.889 ≈ 78
+   * 바꾸면 `pnpm spike:measure out/caption-probe.png` 로 다시 확인한다.
    */
-  fontSize: 72,
+  fontSize: 78,
   fontWeight: 800,
   color: '#FFFFFF',
   /** 검은 외곽선. strokeWidth 는 **바깥으로 나간** 두께다 (Caption.tsx 가 2배로 넘긴다). */
@@ -64,6 +66,16 @@ export const CAPTION = {
    */
   bottomRatio: 0.235,
   lineHeight: 1.18,
+  /**
+   * 줄상자(line box) 아래쪽 여백 보정. fontSize 대비 비율.
+   *
+   * bottomRatio 는 **글자 아래끝**을 뜻하는데, CSS 는 글자가 아니라 줄상자를 배치한다.
+   * 줄상자 아래에는 leading 과 디센더 공간이 남아서 글자가 그만큼 위로 뜬다.
+   * 프로브 측정: 목표 0.2350 에 0.2406 이 나왔다 = 11px @1920 떠 있었다. 11/72 ≈ 0.153.
+   *
+   * 폰트 · lineHeight · fontSize 를 바꾸면 다시 잰다. measure.mjs 가 바로 잡아낸다.
+   */
+  baselineNudgeRatio: 0.153,
   /** 한 덩어리 최대 글자 수. 실측: 12자까지 한 줄로 갔다. 품질 게이트 G5 */
   maxChars: 13,
   maxLines: 2,
@@ -90,10 +102,12 @@ export const CAPTION_SECONDARY = {
   strokeWidth: 5,
   /**
    * 본문 아래끝과 보조 문구 윗끝 사이 간격 (본문 fontSize 대비).
-   * 실측: 본문 아래끝 0.235H, 보조 아래끝 0.204H → 둘의 아래끝 차이 60px @1920.
-   * 보조 글자 높이 약 35px 을 빼면 간격 25px ≈ fontSize(72) x 0.34
+   * 원본 실측: 본문 아래끝 0.235H, 보조 아래끝 0.204H → 둘의 차이 59.5px @1920.
+   * 프로브 측정: fontSize 72 · gapRatio 0.34 에서 차이가 75px 이었다.
+   *   75 = 72 x (0.34 + C)  ->  C = 0.701 (보조 줄상자 + 글자 높이 몫)
+   *   fontSize 78 에서 59.5 를 맞추려면 78 x (g + 0.701) = 59.5  ->  g ~= 0.062
    */
-  gapRatio: 0.34,
+  gapRatio: 0.062,
 } as const;
 
 /** 훅 타이틀. 품질 게이트 G8: 0~1.5초. */
