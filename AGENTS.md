@@ -36,81 +36,80 @@
 6. 오류는 토스트가 아니라 채팅 안에 AI 말투로. 상태는 조용하게, 붉은색은 진짜 실패에만.
 7. 개인화는 전부 설정값. 사용자 이름·워크스페이스명을 코드에 박지 않는다.
 8. **렌더는 항상 `Composition`으로부터 재현 가능**해야 한다. 결과 파일만 있고 결정이 없는 상태를 만들지 않는다.
+9. **크리에이터에게 설치·터미널·CLI 로그인을 요구하지 않는다.** 브라우저에서 끝나야 한다.
+   "한 줄만 붙여넣으면 된다"도 요구다. 운영자가 감당할 일을 크리에이터에게 넘기지 않는다.
 
 ---
 
 ## 2. 아키텍처
 
-**크리에이터 Mac 한 대에서 전부 돌아간다.** 설치형 앱이 아니라 로컬 서비스 + 브라우저 UI 다.
+**크리에이터는 아무것도 설치하지 않는다.** 브라우저에서 URL 을 열면 끝이다.
+설치·터미널·로그인 절차를 크리에이터에게 요구하는 설계는 전부 거절한다 (`§1-9`).
+
+엔진은 운영자(선물하는 사람) Mac 한 대에서 상시로 돈다. 크리에이터는 그걸 웹으로 쓴다.
 
 ```
-[브라우저] ──localhost:41520──▶ madi-engine (Node 22, launchd 로 상시 구동)
-                                    ├─ Hono 웹 서버 (UI 정적 서빙 + REST + WS)
-                                    ├─ SQLite (Drizzle) — 미디어/다이제스트/컴포지션/작업
-                                    ├─ 작업 큐 (SQLite 기반, 인프로세스)
-                                    ├─ 분석 워커  → Digest
-                                    │    whisper.cpp / 사람감지(onnx) / silence / scene / frames
-                                    ├─ 렌더 워커  → Composition → mp4
-                                    │    ffmpeg(클립) → Remotion(합성) → ffmpeg(먹싱)
-                                    ├─ 검수 워커  → 품질 게이트 + self-eval
-                                    ├─ 에이전트 러너 — claude -p / codex exec 스폰
-                                    ├─ MCP 서버 (stdio) — 도구 2개
-                                    └─ ~/.madi/bin — 첫 실행 때 **받는다**
-                                         ffmpeg, whisper.cpp, onnx 모델, Chrome Headless Shell
+[크리에이터 브라우저]              [운영자 Mac — 상시 구동]
+  아이폰 Safari                     madi-engine (Node 22, launchd)
+  Mac Safari / Chrome                 ├─ Hono (UI 정적 서빙 + REST + WS)
+        │                             ├─ SQLite (Drizzle)
+        │  HTTPS                      ├─ 작업 큐 (SQLite, 인프로세스)
+        ▼                             ├─ 분석 워커 → Digest
+  madi.<도메인>                        │    whisper.cpp / 사람감지(onnx) / silence / scene
+        │                             ├─ 렌더 워커 → Composition → mp4
+  Cloudflare Access                   │    ffmpeg(클립) → Remotion(합성) → ffmpeg(먹싱)
+  (이메일 OTP · 허용 목록)             ├─ 검수 워커 → 품질 게이트 + self-eval
+        │                             ├─ 에이전트 러너 — claude -p / codex exec
+  Cloudflare Tunnel ────────────▶     ├─ MCP 서버 (stdio) — 도구 2개
+                                      └─ ~/.madi/bin (첫 실행 때 받는다)
+                                           ffmpeg, whisper.cpp, onnx, Chrome Headless
 ```
 
-- 엔진이 UI까지 직접 서빙. 별도 프론트 배포 없음. CORS 없음.
-- **Electron 없다.** 트레이·자동업데이트·사이드카 번들을 위한 껍데기였는데 셀 다 대체된다.
-  상시 구동은 `launchd`, 업데이트는 git pull + 재시작, 사이드카는 런타임 다운로드,
-  트레이는 브라우저 탭이 대신한다. 코드 사이닝·공증·플랫폼별 빌드가 통째로 사라진다.
+- **크리에이터 쪽 준비물은 브라우저와 이메일뿐이다.** 앱 없음, 설치 없음, 터미널 없음.
+- 아이폰에서 촬영본을 **바로 업로드**한다 (tus, 재개 가능). 파일을 Mac 으로 옮기는 단계가 없다.
+  편집을 10분으로 줄여 놓고 파일 옮기는 데 5분 쓰게 만들면 목표를 반쯤 버리는 것이다.
+- 인증은 **Cloudflare Access 이메일 OTP + 허용 목록**. 앱 안에 로그인 화면을 만들지 않는다.
+- 엔진이 UI 까지 직접 서빙한다. 별도 프론트 배포 없음. CORS 없음. mixed content 없음.
+- **Electron 없다.** 설치형 앱이 아니므로 트레이·자동업데이트·코드 사이닝·공증·
+  플랫폼별 빌드·Apple Developer 계정이 전부 불필요하다.
 - **사이드카를 번들하지 않는다.** 첫 실행 때 `~/.madi/bin` 으로 받는다.
-  Remotion 이 Chrome Headless Shell 을 받는 방식 그대로다. 받은 바이너리는
-  macOS Gatekeeper 격리(`com.apple.quarantine`)를 반드시 풀어야 실행된다.
-- **외부 노출 없음.** 단말이 곷 서버라 localhost 면 끝이다.
-  터널·Cloudflare Access 는 폰에서 쓰고 싶다는 요구가 실제로 생기면 그때 붙인다.
-  그 전에 미리 만들지 않는다.
-- **영상은 크리에이터 Mac 을 떠나지 않는다.** 수강생·회원이 찍힌 촬영본이 섞일 수 있어
-  제3자 개인정보가 들어올 수 있다. 로컬 처리가 기본값이고, 이걸 깨는 설계는 넣지 않는다.
-- AI 호출은 **로컬 CLI 스폰**(크리에이터 본인 Claude/Codex 구독). 판매 시 API 키 방식은 `AgentProvider` 구현 하나 추가로 대응한다. 두 갈래를 처음부터 인정하고 설계한다.
-- 구독 CLI를 유료 제품에 붙이기 전에 Anthropic·OpenAI 약관을 그 시점에 재확인한다.
-- Python 없음. 미디어·추론 전부 바이너리/onnxruntime-node 스폰. TypeScript 단일 언어.
+  받은 바이너리는 macOS Gatekeeper 격리(`com.apple.quarantine`)를 반드시 풀어야 실행된다.
+- AI 호출은 **로컬 CLI 스폰** — 운영자 Mac 에 로그인된 Claude/Codex 구독을 쓴다.
+  크리에이터가 구독을 따로 살 필요가 없다. Claude 와 Codex 를 **둘 다** 지원한다.
+- Python 없음. 미디어·추론 전부 바이너리 / onnxruntime-node 스폰. TypeScript 단일 언어.
 - Redis 없음. 큐는 SQLite 테이블.
 
-### 설치
+### 이 선택이 만드는 부담 (숨기지 않는다)
 
-터미널 한 줄이다. 그 다음부터는 브라우저 북마크만 쓴다.
-
-```
-curl -fsSL https://madi.<도메인>/install.sh | sh
-```
-
-이 스크립트가 하는 일: Node 확인 → 레포 받기 → 의존성 설치 → 사이드카 다운로드 →
-격리 해제 → launchd 등록 → 브라우저 열기. 실패 지점을 한국어로 알려준다.
-
-AI CLI 로그인(`claude login` 또는 `codex login`)은 설치 스크립트가 안내만 하고
-사람이 직접 한다. 이걸 자동화하려 하지 않는다.
+1. **운영자 Mac 이 켜져 있어야 한다.** 잠들면 크리에이터 화면이 죽는다.
+   절전 해제 · 재시작 후 자동 복구 · 터널 자동 재연결이 필수다. `§12-7` 의 통과 조건이다.
+2. **촬영본이 운영자 Mac 에 저장된다.** 크리에이터 콘텐츠에 수강생·회원이 찍힌 영상이
+   섞일 수 있어 제3자 개인정보가 들어올 수 있다. 전달 전에 저장 위치·보관 기간·
+   회원 영상 처리 방침을 **말로 합의한다.** 기술로 덮을 문제가 아니다.
+   보관 기간이 정해지면 자동 삭제 잡으로 강제한다.
+3. **렌더 중 운영자 Mac 이 점유된다.** 큐 동시성은 렌더 1 · 분석 1 로 묶는다.
+4. **구독 CLI 를 제3자에게 서비스로 제공하는 것**은 Anthropic · OpenAI 약관상 회색지대다.
+   지인 1명 선물 단계에서는 감수하되, **유료 판매로 넘어가는 시점에 반드시 재확인**하고
+   그때는 API 키 방식(`AgentProvider` 구현 추가)으로 갈아탄다.
 
 ### 어디에 무엇이 있는가
 
 ```
-Cloudflare Pages   madi.<도메인>      설치 안내 + install.sh        공개 · 정적
-크리에이터 Mac      localhost:41520    엔진 · UI · 영상 · AI 전부   비공개 · 로컬
+Cloudflare Pages   (선택) 랜딩 · 소개              공개 · 정적
+Cloudflare Access  madi.<도메인> 인증 관문          허용 이메일만
+Cloudflare Tunnel  → 운영자 Mac:41520              통로. 데이터를 저장하지 않는다
+운영자 Mac         엔진 · UI · 영상 · AI 전부       실제 처리
 ```
 
-설치 페이지는 정적 HTML 과 `install.sh` 한 장뿐이다. 프레임워크를 얹지 않는다.
+**엔진을 서버리스(Vercel · Cloudflare Workers 등)에 올리지 않는다.** 세 가지가 막는다.
 
-**엔진을 서버(Cloudflare · Vercel 등)에 올리지 않는다.** 네 가지가 각각 막는다.
-
-1. ffmpeg · whisper — 서버리스 함수는 실행 시간 제한이 있고 파일시스템이 임시다.
-   3분 영상 전사 + 렌더가 함수 하나 수명 안에 안 끝난다
+1. ffmpeg · whisper — 실행 시간 제한 + 임시 파일시스템. 3분 영상 전사 + 렌더가
+   함수 하나 수명 안에 안 끝난다
 2. Remotion 렌더 — Chrome Headless Shell(약 160MB)을 띄워야 한다
-3. AI 에이전트 — 서버는 크리에이터의 Claude/Codex 구독으로 로그인할 수 없다.
-   API 키를 쓰면 토큰 비용이 발생한다
-4. 영상 — 편당 수백 MB 업로드·저장. 비용보다 큰 문제는 **회원이 찍힌 촬영본이 서버로 가는 것**이다
+3. AI 에이전트 — 구독 CLI 는 로그인된 실제 머신이 필요하다. 서버리스에서는 API 키뿐이다
 
-**UI 만 서버에 올리는 것도 안 된다.** HTTPS 페이지에서 `http://localhost:41520` 을 호출하면
-mixed content 로 차단된다. 로컬 인증서를 깔면 우회되지만 설치가 더 복잡해진다.
-엔진이 UI 까지 서빙하면 같은 origin 이라 이 문제가 아예 없다.
+필요한 건 "서버리스"가 아니라 **상시 켜진 머신 한 대**다. 지금은 운영자 Mac 이 그 역할을 한다.
+나중에 사용자가 늘면 같은 엔진을 그대로 VPS 나 Mac mini 로 옮긴다. 코드는 바뀌지 않는다.
 
 ---
 
@@ -118,10 +117,11 @@ mixed content 로 차단된다. 로컬 인증서를 깔면 우회되지만 설�
 
 | 영역 | 선택 | 비고 |
 |---|---|---|
-| 엔진 셸 | **Node 22 프로세스 + launchd** | 프로세스명 `madi-engine`. Electron 없음 |
-| 설치·업데이트 | `install.sh` + git pull 재시작 | 코드 사이닝·공증 불필요 |
+| 엔진 셸 | **Node 22 프로세스 + launchd** | 운영자 Mac 에서 상시 구동. Electron 없음 |
+| 배포·업데이트 | git pull + 재시작 | 운영자만 만진다. 크리에이터는 관여하지 않는다 |
+| 외부 접속 | cloudflared + Cloudflare Access | 이메일 OTP 허용 목록. 앱 로그인 UI 없음 |
 | 외부 의존성 | 런타임 다운로드 → `~/.madi/bin` | 번들 안 함. 받은 뒤 quarantine 해제 필수 |
-| 웹 서버 | Hono + `ws` | 포트 `41520` 고정, localhost 전용 |
+| 웹 서버 | Hono + `ws` | 포트 `41520` 고정. 터널로 외부 노출 |
 | DB | SQLite + Drizzle ORM | `better-sqlite3` |
 | 큐 | 자체 구현 (SQLite `jobs`) | 렌더 동시 1, 분석 동시 1 |
 | 트림·인코딩 | ffmpeg (VideoToolbox) | `packages/media`. 타깃은 Apple Silicon |
@@ -130,7 +130,7 @@ mixed content 로 차단된다. 로컬 인증서를 깔면 우회되지만 설�
 | 사람 감지 | onnxruntime-node + YOLOv8n-pose (또는 `@vladmandic/human`) | bbox + 17 keypoint, 0.5s 간격 |
 | 에이전트 | `claude -p --output-format stream-json`, `codex exec` | **둘 다 필수**. `AgentProvider` 뒤에 숨기고 설정에서 고른다 |
 | UI | Vite + React + TS, Tailwind, shadcn/ui(재테마) | TanStack Query + Zustand |
-| 업로드 | tus (재개 가능) | `@tus/server` |
+| 업로드 | tus (재개 가능) | `@tus/server`. 아이폰에서 직접 올린다 — 모바일 회선 끊김 대비 필수 |
 | 공유 | zod 스키마 | `packages/shared` |
 | 패키지 관리 | pnpm workspace | Node 22 |
 
@@ -141,7 +141,8 @@ mixed content 로 차단된다. 로컬 인증서를 깔면 우회되지만 설�
 ```
 apps/engine/            Node 서비스 — Hono + 큐 + 워커 + 러너 + MCP
   src/main/             진입점, 종료 처리, 헬스체크
-  src/install/          사이드카 다운로드 · quarantine 해제 · launchd 등록 · 자체 업데이트
+  src/setup/            사이드카 다운로드 · quarantine 해제 · launchd 등록 (운영자용, 1회)
+  src/tunnel/           cloudflared 기동 · 자동 재연결 · 상태 보고
   src/server/           Hono 라우트, WebSocket, 업로드, 미디어 서빙
   src/db/               Drizzle 스키마, 마이그레이션
   src/queue/            작업 큐
@@ -152,7 +153,7 @@ apps/engine/            Node 서비스 — Hono + 큐 + 워커 + 러너 + MCP
   src/mcp/              MCP 서버 (도구 2개)
   src/watch/            폴더 감시 (chokidar)
 apps/web/               Vite React — 갤러리 · 편집안 · 장면 카드 · 채팅
-apps/site/              설치 안내 + install.sh 호스팅 (Cloudflare Pages · 정적)
+apps/site/              (선택) 랜딩 · 소개 (Cloudflare Pages · 정적). 설치 안내는 없다
 packages/shared/        zod 스키마 (Composition · Digest · Job · API 계약)
 packages/media/         ffmpeg 명령 빌더, probe, 인코더 선택, 프레임 시트
 packages/templates/     ★ 스타일 자산. Remotion 컴포지션 + 토큰 + spec
@@ -444,10 +445,15 @@ BGM         -22dB, 말하는 구간 -6dB 추가 덕킹
 **6. 채팅 수정 + 장면 카드 UI**
 - 통과: 크리에이터가 혼자 3편을 만들고, **각 편 10분 이내**
 
-**7. 설치 스크립트**
-`install.sh` — 사이드카 다운로드, quarantine 해제, launchd 등록, 자체 업데이트.
-- 통과: **깨끗한 Mac 에서 한 줄 붙여넣기로 설치되고, 재부팅 후에도 떠 있다**
-- electron-builder · 코드 사이닝 · 공증은 하지 않는다. 설치형 앱이 아니다
+**7. 상시 운영**
+운영자 Mac 세팅 + 터널 + 인증. 크리에이터에게 전달 가능한 상태로 만드는 단계.
+- launchd 등록, 절전 해제, 재부팅 후 자동 복구
+- cloudflared 상시 연결 + 끊김 시 자동 재연결
+- Cloudflare Access 이메일 허용 목록
+- 촬영본 보관 기간 자동 삭제 잡
+- 통과: **아이폰 사파리에서 URL 만으로 로그인 → 업로드 → 결과 다운로드가 되고,
+  운영자 Mac 을 재부팅해도 5분 안에 스스로 복구된다**
+- 설치 파일을 만들지 않는다. electron-builder · 코드 사이닝 · 공증 · Apple Developer 계정 전부 불필요
 
 **8. 롱폼**
 챕터 분리, 숏폼 자동 추출, 롱폼 구성 채팅.
@@ -489,7 +495,7 @@ BGM         -22dB, 말하는 구간 -6dB 추가 덕킹
 
 ```
 pnpm i
-pnpm sidecars        # ffmpeg, whisper.cpp, onnx 모델 → ~/.madi/bin (quarantine 해제 포함)
+pnpm setup           # 운영자 Mac 1회 세팅: 사이드카 → ~/.madi/bin, quarantine 해제, launchd
 pnpm dev             # engine(개발) + web(HMR)
 pnpm spike           # 0단계: fixtures의 수동 Composition 렌더 후 비교 시트 출력
 pnpm build
@@ -515,8 +521,9 @@ pnpm package
   구독 대신 API 키를 써야 하고, 그러면 이 제품의 제일 큰 이점이 사라진다.
   덤으로 Safari 는 `showDirectoryPicker` 를 지원하지 않아 폴더 감시도 안 되고,
   탭을 닫으면 렌더가 끊긴다. 로컬에 작은 엔진은 반드시 있어야 한다.
-- Electron · 설치형 앱 패키징 · 코드 사이닝 · 공증
-- 원격 접속(cloudflared · Cloudflare Access)
+- Electron · 설치형 앱 패키징 · `.pkg` · `.dmg` · 코드 사이닝 · 공증 · Apple Developer 계정
+- 크리에이터 쪽 설치 스크립트 (`install.sh` 을 크리에이터에게 주는 것)
+- 서버리스 배포 (엔진은 상시 켜진 머신이 필요하다)
 - 다크 모드
 - 롱폼 (6단계 통과 전까지)
 
@@ -524,10 +531,9 @@ pnpm package
 
 ## 17. 타깃 환경
 
-- 1차 타깃은 **크리에이터 Mac 한 대**. 크리에이터가 자기 컴퓨터에서 직접 돌린다.
-  영상도 AI 구독도 그 Mac 안에서 끝난다.
-- **Apple Silicon 을 전제한다.** whisper.cpp CoreML 가속과 ffmpeg VideoToolbox 가 여기 붙는다.
-  Intel Mac 이면 전사만 몇 분씩 걸려 "편집 10분" 목표가 깨진다. 확인 전에는 단정하지 않는다.
-  실제 사양은 `docs/target-machine.md` 에 기록한다.
-- 지원 브라우저: Safari / Chrome 최신. 모바일 화면은 나중. 1차는 데스크톱 브라우저만.
-- 원격 접속(터널)은 만들지 않는다. 필요해지면 그때.
+- 엔진이 도는 곳은 **운영자 Mac 한 대** (Mac Studio, Apple Silicon).
+  whisper.cpp CoreML 가속과 ffmpeg VideoToolbox 가 여기 붙는다.
+  사양은 `docs/target-machine.md` 에 기록한다.
+- 크리에이터 단말 사양은 **상관없다.** 브라우저만 있으면 된다. 아이폰이 주 단말이다.
+- 지원 브라우저: iOS Safari 최신 + 데스크톱 Safari / Chrome.
+  **모바일 화면을 나중으로 미루지 않는다.** 아이폰이 촬영·업로드의 주 경로다.

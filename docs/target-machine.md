@@ -1,32 +1,43 @@
 # 타깃 머신
 
-크리에이터 Mac 한 대에서 전부 돌아간다 (`AGENTS.md §2`, `§17`).
+엔진은 **운영자 Mac 한 대**에서 상시로 돈다. 크리에이터는 브라우저로만 접근한다
+(`AGENTS.md §2`, `§17`).
 
-## 확인 필요 — 1단계 전에 채운다
+## 운영자 Mac (엔진이 도는 곳)
 
-| 항목 | 값 | 왜 중요한가 |
+| 항목 | 값 | 비고 |
 |---|---|---|
-| 모델 | ? | |
-| 칩 | ? | **Apple Silicon 이어야 한다.** whisper.cpp CoreML 가속과 ffmpeg VideoToolbox 가 여기 붙는다. Intel 이면 전사만 몇 분씩 걸려 "편집 10분" 목표가 깨진다 |
-| 메모리 | ? | Remotion 렌더 + whisper 동시 실행. 16GB 이하면 큐 동시성을 1로 묶어야 한다 |
-| macOS 버전 | ? | Chrome Headless Shell · CoreML 요구사항 |
-| 저장 공간 여유 | ? | 촬영 원본 + 프록시 + 중간 산출물이 편당 수백 MB 쌓인다. 정리 주기를 정해야 한다 |
+| 모델 | Mac Studio | |
+| 칩 | ? | Apple Silicon. whisper.cpp CoreML · ffmpeg VideoToolbox 가 여기 붙는다 |
+| 메모리 | ? | Remotion 렌더 + whisper 동시 실행. 큐 동시성은 렌더 1 · 분석 1 로 묶는다 |
+| macOS | ? | Chrome Headless Shell · CoreML 요구사항 |
+| 저장 여유 | ? | 촬영 원본 + 프록시 + 중간 산출물이 편당 수백 MB. 보관 기간 정책 필요 |
+| 업로드 회선 | ? | 결과물 다운로드가 이 회선을 탄다 |
+| AI 구독 | 보유 | Claude · Codex 둘 다 지원. 어느 쪽이든 동작한다 |
 
-확인 전에는 사양을 단정하지 않는다.
-
-## 확인된 것
-
-| 항목 | 값 |
-|---|---|
-| AI 구독 | 보유 |
-
-**Claude 와 Codex 를 둘 다 지원한다** (`AgentProvider`). 어느 구독이든 동작하므로
-구독 종류는 개발을 막지 않는다. `install.sh` 의 안내 문구를 고를 때만 알면 된다.
-
-## 확인 방법
-
-크리에이터에게 물어볼 필요 없이 이 한 줄이면 나온다.
+확인 명령:
 
 ```bash
 system_profiler SPHardwareDataType | grep -E "Model Name|Chip|Memory"; sw_vers; df -h /
 ```
+
+## 크리에이터 단말
+
+**사양 요구 없음.** 브라우저와 이메일만 있으면 된다.
+
+| 항목 | 값 |
+|---|---|
+| 주 단말 | 아이폰 (촬영 · 업로드 · 확인) |
+| 보조 | Mac (보유) |
+| 필요한 것 | Safari, 이메일 (Cloudflare Access OTP) |
+
+아이폰이 주 경로이므로 **모바일 화면을 나중으로 미루지 않는다.**
+
+## 상시 가동 체크리스트 (§12-7)
+
+- [ ] 절전 해제 (`pmset`) — 잠들면 크리에이터 화면이 죽는다
+- [ ] launchd 등록, 재부팅 후 5분 안에 자동 복구
+- [ ] cloudflared 상시 연결 + 끊김 시 자동 재연결
+- [ ] Cloudflare Access 이메일 허용 목록에 크리에이터 이메일
+- [ ] 촬영본 보관 기간 자동 삭제 잡
+- [ ] 저장 공간 경고 (여유 20GB 이하)
