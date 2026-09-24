@@ -70,7 +70,29 @@
 
 0단계 스파이크에서 이 프레임을 재현해 보고 확정한다. **재현 안 되면 0단계 통과가 아니다.**
 
-## 6. 다음
+## 6. 보정 결과 (같은 날 저녁)
+
+`measure.mjs` 로 3회 왕복하며 맞췄다. 최종:
+
+| 항목 | 원본 | 프로브 | 오차 |
+|---|---|---|---|
+| 본문 글자 높이 | 3.59% | 3.65% | 약 1px |
+| 본문 아래끝 | 0.2352 | 0.2349 | 0.2px |
+| 보조 아래끝 | 0.204 | 0.2036 | 0.8px |
+
+확정된 토큰: `fontSize 78` · `bottomRatio 0.235` · `strokeWidth 7` ·
+`baselineNudgeRatio 0.153` · `secondary.scale 0.48` · `secondary.gapRatio 0.062`
+
+도중에 나온 두 가지:
+
+**글자 높이 = fontSize x 0.889.** Pretendard ExtraBold + 외곽선 조합에서 그렇다.
+fontSize 를 목표 글자 높이로 착각하면 항상 11% 작게 나온다.
+
+**CSS 는 글자가 아니라 줄상자를 배치한다.** `bottom` 을 주면 줄상자 아래끝이 거기 붙고,
+글자는 leading·디센더 공간만큼 위로 뜬다 (fontSize 72 에서 11px). `baselineNudgeRatio` 로 보정한다.
+폰트나 lineHeight 를 바꾸면 이 값을 다시 재야 한다.
+
+## 7. 다음
 
 1. `pnpm spike:probe` 재실행 → 새 tokens 값으로 자막 한 장 확인
 2. `PROBE_BACKDROP=reference/yt_11s.png` 로 원본 프레임 위에 겹쳐 대조

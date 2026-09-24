@@ -150,7 +150,7 @@ export const AUDIO = {
 export function warnIfUnmeasured(): void {
   if (!MEASURED) {
     console.warn(
-      '\n[tokens] 아직 실측 전 값입니다. spike/public/frames/ 를 보고 채운 뒤 MEASURED=true 로 바꾸세요.\n' +
+      '\n[tokens] 공개본 1편으로만 맞춘 잠정값입니다. reference/final.mp4 로 5편 재측정 후 MEASURED=true 로 바꾸세요.\n' +
         '  AGENTS.md §9 / docs/stage-0.spec.md 작업순서 3~4\n',
     );
   }

@@ -133,10 +133,20 @@ function analyze(file) {
 
 // --- 출력 --------------------------------------------------------------
 
+/**
+ * 실제로 그려지는 글자 높이는 fontSize 그대로가 아니다.
+ * Pretendard ExtraBold + 외곽선 조합에서 측정: 글자높이 = fontSize x 0.889
+ * (fontSize 72 -> 64px, fontSize 78 -> 70px)
+ */
+const GLYPH_RATIO = 0.889;
+
+/** 원본(크리에이터 실제 업로드본) 실측값. docs/findings/2026-09-23-reference-measurement.md */
+const REFERENCE = { hRatio: 0.0359, bottomRatio: 0.2352, secondaryBottomRatio: 0.204 };
+
 const targets = {
   bottomRatio: CAPTION.bottomRatio,
-  hRatio: CAPTION.fontSize / 1920, // 한글은 외곽선 포함 시 글자 높이 ≈ fontSize
-  secondaryHRatio: (CAPTION.fontSize * CAPTION_SECONDARY.scale) / 1920,
+  hRatio: (CAPTION.fontSize * GLYPH_RATIO) / 1920,
+  secondaryHRatio: (CAPTION.fontSize * CAPTION_SECONDARY.scale * GLYPH_RATIO) / 1920,
 };
 
 const files = process.argv.slice(2);
@@ -161,7 +171,9 @@ for (const f of files) {
   }
 }
 console.log('-'.repeat(92));
-console.log(pad('tokens.ts 목표', 34), pad(`${(targets.hRatio * 100).toFixed(2)}%`, 18), pad(targets.bottomRatio.toFixed(4), 14), '');
+console.log(pad('tokens.ts 예상', 34), pad(`${(targets.hRatio * 100).toFixed(2)}%`, 18), pad(targets.bottomRatio.toFixed(4), 14), '');
+console.log(pad('원본 실측 (맞춰야 할 값)', 30), pad(`${(REFERENCE.hRatio * 100).toFixed(2)}%`, 18), pad(REFERENCE.bottomRatio.toFixed(4), 14), REFERENCE.secondaryBottomRatio.toFixed(4));
 console.log('');
-console.log('본문높이는 G4(>= 3.2%) 기준. 하단여백은 본문 아래끝에서 화면 아래까지의 비율.');
+console.log('본문높이 하한은 G4 >= 3.2%. 하단여백은 본문 아래끝에서 화면 아래까지의 비율.');
+console.log('원본 실측 행과 +-0.003 안에 들어오면 통과다.');
 console.log('');
