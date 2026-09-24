@@ -86,6 +86,28 @@ function bands(rows, minPx, minHeight = 6) {
   return out;
 }
 
+/**
+ * 보조 문구의 **베이스라인** 행을 찾는다.
+ *
+ * ★ "가장 아래 노란 픽셀" 로 재면 안 된다. 그건 `y` · `g` 의 디센더 끝이고,
+ *   디센더가 있는 문구와 없는 문구가 다른 값을 낸다. 글자를 한 픽셀도 안 움직이고
+ *   `is likely misaligned.` 를 `COMPARE BOTH SIDES` 로만 바꿔도 판정이 뒤집힌다.
+ *   게다가 원본은 유튜브 재인코딩본이라 얇은 디센더가 임계값 아래로 사라져서
+ *   crisp 한 렌더와 애초에 같은 자리를 재지 않는다.
+ *   (docs/findings/2026-09-25-coretext-caption-measurement.md §6)
+ *
+ * 베이스라인은 **행별 픽셀 수가 뚝 떨어지는 행**이다. 소문자 몸통이 거기서 끝나고
+ * 디센더 몇 획만 아래로 내려가므로 픽셀 수가 1/5 이하로 준다. 디센더 유무와 무관하다.
+ */
+function baselineRow(rows, band) {
+  let peak = 0;
+  for (let y = band.top; y <= band.bottom; y++) peak = Math.max(peak, rows[y]);
+  const floor = peak * 0.35;
+  let baseline = band.top;
+  for (let y = band.top; y <= band.bottom; y++) if (rows[y] >= floor) baseline = y;
+  return baseline;
+}
+
 function analyze(file) {
   const { width: W, height: H, channels, data } = decodePng(readFileSync(file));
   const at = (x, y) => {
@@ -101,7 +123,9 @@ function analyze(file) {
     for (let x = 0; x < W; x++) {
       const [r, g, b] = at(x, y);
       if (r > 230 && g > 230 && b > 230) { whiteRows[y]++; whiteCols[x]++; }
-      else if (r > 200 && g > 165 && b < 125) yellowRows[y]++;
+      // 노랑 판정을 느슨하게 잡는다. 엄격하게 잡으면 원본의 흐릿한 획이 통째로 빠져서
+      // 베이스라인을 못 찾는다. 대신 아래에서 본문보다 아래쪽만 본다.
+      else if (r > 150 && g > 120 && b < r - 60 && b < g - 40) yellowRows[y]++;
     }
   }
   // 글자는 한 행에 최소 이만큼은 찍힌다. 벽·옷 같은 큰 흰 면은 훨씬 많이 찍히므로 상한도 둔다.
@@ -109,10 +133,22 @@ function analyze(file) {
   const maxPx = Math.round(W * 0.6);
   const textRows = whiteRows.map((n) => (n >= minPx && n <= maxPx ? n : 0));
   const white = bands(textRows, minPx);
-  const yellow = bands(yellowRows, Math.max(6, Math.round(W * 0.008)));
 
   const cols = whiteCols.map((n, x) => (n >= 2 ? x : -1)).filter((x) => x >= 0);
   const main = white.length ? white[white.length - 1] : null; // 가장 아래 흰 글자 줄 = 본문
+
+  // 보조 문구는 **본문보다 아래**에 있다. 위쪽을 잘라내야 살색·벽이 노랑으로 오인되지 않는다.
+  const minYellow = Math.max(4, Math.round(W * 0.005));
+  let yellowSearch = yellowRows.map((n, y) => (main && y > main.bottom ? n : 0));
+  let yellow = bands(yellowSearch, minYellow, 4);
+  if (!yellow.length) {
+    // 훅 카드처럼 본문 밴드가 화면 아래까지 닿는 프레임에서는 자를 게 없다.
+    // 그때는 아래쪽 전체에서 가장 아래 노란 묶음을 쓴다 (오인 가능성을 감수한다).
+    yellowSearch = yellowRows;
+    const all = bands(yellowSearch, minYellow, 4);
+    yellow = all.length ? [all[all.length - 1]] : [];
+  }
+  const secondaryBand = yellow.length ? yellow[0] : null;
 
   return {
     file, W, H,
@@ -121,11 +157,12 @@ function analyze(file) {
       hRatio: +(main.h / H).toFixed(4),
       bottomRatio: +((H - main.bottom - 1) / H).toFixed(4),
     },
-    secondary: yellow.length ? {
-      h: yellow[yellow.length - 1].h,
-      hRatio: +(yellow[yellow.length - 1].h / H).toFixed(4),
-      bottomRatio: +((H - yellow[yellow.length - 1].bottom - 1) / H).toFixed(4),
-    } : null,
+    secondary: secondaryBand && {
+      h: secondaryBand.h,
+      // 참고용. 디센더 유무로 흔들리므로 판정에 쓰지 않는다.
+      inkBottomRatio: +((H - secondaryBand.bottom - 1) / H).toFixed(4),
+      baselineRatio: +((H - baselineRow(yellowSearch, secondaryBand) - 1) / H).toFixed(4),
+    },
     widthRatio: cols.length ? +((cols[cols.length - 1] - cols[0] + 1) / W).toFixed(4) : 0,
     lines: white.length,
   };
@@ -141,11 +178,20 @@ function analyze(file) {
 const REFERENCE = {
   hRatio: 0.0359,             // 본문 글자 높이 / 프레임 높이
   bottomRatio: 0.2352,        // 본문 아래끝에서 화면 아래까지
-  secondaryBottomRatio: 0.204, // 보조 문구 아래끝
+  /**
+   * 보조 문구 **베이스라인**에서 화면 아래까지.
+   *
+   * 예전 값은 "보조 문구 아래끝 0.204" 였다. 그건 노란 픽셀이 찍힌 가장 아래 행인데,
+   * 디센더가 있는 문구/없는 문구가 다르게 나오고 원본의 재인코딩 번짐까지 섞여 있었다.
+   * 베이스라인은 두 원본(yt_15s · yt_7s)에서 모두 y=1020 @1280 으로 일치한다.
+   *   (1280 - 1020 - 1) / 1280 = 0.2023
+   * docs/findings/2026-09-25-coretext-caption-measurement.md §6
+   */
+  secondaryBaselineRatio: 0.2023,
 };
 
 /** 허용 오차. AGENTS.md §12-0 통과 조건 A */
-const TOL = { hRatio: 0.001, bottomRatio: 0.003, secondaryBottomRatio: 0.003 };
+const TOL = { hRatio: 0.001, bottomRatio: 0.003, secondaryBaselineRatio: 0.003 };
 
 const files = process.argv.slice(2);
 if (!files.length) {
@@ -155,22 +201,23 @@ if (!files.length) {
 
 const pad = (s, n) => String(s).padEnd(n);
 console.log('');
-console.log(pad('파일', 34), pad('본문높이', 18), pad('하단여백', 14), pad('보조하단', 12), '폭');
-console.log('-'.repeat(92));
+console.log(pad('파일', 34), pad('본문높이', 18), pad('하단여백', 14), pad('보조베이스', 12), pad('보조아래끝', 12), '폭');
+console.log('-'.repeat(104));
 for (const f of files) {
   try {
     const m = analyze(f);
     const hr = m.main ? `${m.main.h}px (${(m.main.hRatio * 100).toFixed(2)}%)` : '-';
     const br = m.main ? m.main.bottomRatio.toFixed(4) : '-';
-    const sb = m.secondary ? m.secondary.bottomRatio.toFixed(4) : '-';
-    console.log(pad(f.slice(-33), 34), pad(hr, 18), pad(br, 14), pad(sb, 12), m.widthRatio.toFixed(3));
+    const sb = m.secondary ? m.secondary.baselineRatio.toFixed(4) : '-';
+    const si = m.secondary ? m.secondary.inkBottomRatio.toFixed(4) : '-';
+    console.log(pad(f.slice(-33), 34), pad(hr, 18), pad(br, 14), pad(sb, 12), pad(si, 12), m.widthRatio.toFixed(3));
   } catch (e) {
     console.log(pad(f.slice(-33), 34), '오류:', e.message);
   }
 }
-console.log('-'.repeat(92));
-console.log(pad('원본 실측 (목표)', 31), pad(`${(REFERENCE.hRatio * 100).toFixed(2)}%`, 18), pad(REFERENCE.bottomRatio.toFixed(4), 14), REFERENCE.secondaryBottomRatio.toFixed(4));
-console.log(pad('허용 오차', 33), pad(`+-${(TOL.hRatio * 100).toFixed(2)}%`, 18), pad(`+-${TOL.bottomRatio}`, 14), `+-${TOL.secondaryBottomRatio}`);
+console.log('-'.repeat(104));
+console.log(pad('원본 실측 (목표)', 31), pad(`${(REFERENCE.hRatio * 100).toFixed(2)}%`, 18), pad(REFERENCE.bottomRatio.toFixed(4), 14), REFERENCE.secondaryBaselineRatio.toFixed(4));
+console.log(pad('허용 오차', 33), pad(`+-${(TOL.hRatio * 100).toFixed(2)}%`, 18), pad(`+-${TOL.bottomRatio}`, 14), `+-${TOL.secondaryBaselineRatio}`);
 console.log('');
 
 // 판정
@@ -181,7 +228,7 @@ for (const f of files) {
     const checks = [
       ['본문높이', Math.abs(m.main.hRatio - REFERENCE.hRatio) <= TOL.hRatio],
       ['하단여백', Math.abs(m.main.bottomRatio - REFERENCE.bottomRatio) <= TOL.bottomRatio],
-      ...(m.secondary ? [['보조하단', Math.abs(m.secondary.bottomRatio - REFERENCE.secondaryBottomRatio) <= TOL.secondaryBottomRatio]] : []),
+      ...(m.secondary ? [['보조베이스', Math.abs(m.secondary.baselineRatio - REFERENCE.secondaryBaselineRatio) <= TOL.secondaryBaselineRatio]] : []),
     ];
     const bad = checks.filter(([, ok]) => !ok).map(([n]) => n);
     console.log(`${bad.length ? 'FAIL' : 'PASS'}  ${f.slice(-40)}${bad.length ? '  — ' + bad.join(', ') : ''}`);
@@ -189,4 +236,5 @@ for (const f of files) {
 }
 console.log('');
 console.log('G4 하한은 본문높이 >= 3.2%. 하단여백은 본문 아래끝에서 화면 아래까지의 비율.');
+console.log('보조 문구는 **베이스라인**으로 판정한다. 아래끝은 디센더 유무로 흔들려서 참고만 한다.');
 console.log('');
