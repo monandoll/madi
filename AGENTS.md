@@ -140,6 +140,16 @@ Scene {
   id
   role: 'hook' | 'demo' | 'explain' | 'cta' | 'filler'   // 템플릿이 role별로 다르게 그린다
   source: { videoId, in: number, out: number }           // 원본 초
+  //
+  // ⚠ 미결. 공개 숏폼 5편 조사 결과 우선순위대로
+  //   (docs/findings/2026-09-23-layout-survey.md):
+  //   1) source 가 영상만 가정한다. 해부학 그림이 **장면 자체**인 경우가 5편 중 2편 —
+  //      source: { kind:'video', videoId, in, out } | { kind:'image', assetId, durationSec }
+  //   2) Overlay circle/arrow 의 payload 미정의 (5편 중 3편 · 2편). 템플릿 spec.json 에 확정
+  //   3) Caption.slot:'top' 렌더 검증 — Before/After 라벨 (5편 중 2편)
+  //   4) reframe 키프레임 보간 — 줌·클로즈업 (5편 중 3편, 1단계와 함께)
+  //   5) layout:'splitV' + sources[] + Overlay 'mark'(o/x) — 5편 중 1편. 가장 나중
+  //   구현 전에 10편까지 늘려 빈도를 다시 센다.
   speed: number                                          // 기본 1. 0.5=슬로우, 1.5=빠르게
   reframe: {
     mode: 'auto' | 'fixed' | 'keyframes'
@@ -275,7 +285,9 @@ Composition
 
 **스타일은 학습하지 않는다. 사람이 쓴다.** 절차는 `docs/style-authoring.md`.
 
-1. 크리에이터 실제 릴스 5편을 프레임 캡처해 `reference/`에 넣는다
+1. 크리에이터 실제 릴스 5편을 프레임 캡처해 `reference/`에 넣는다.
+   **1편만 보고 토큰이나 스키마를 정하지 않는다.** 5편을 보면 우선순위가 뒤집힌다
+   (실제로 뒤집혔다 — `docs/findings/2026-09-23-layout-survey.md`)
 2. 자막 폰트·크기·외곽선·위치·분절 길이·등장 모션을 눈으로 재서 `tokens.ts`에 적는다
 3. 훅 레이아웃, role별 화면 구성, 리프레임 목표 점유율을 `layout.ts`에 적는다
 4. `spec.json`에 AI가 쓸 수 있는 role·slot·overlay kind와 각 payload 스키마를 적는다
