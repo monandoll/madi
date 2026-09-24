@@ -74,6 +74,7 @@ spike/webpack-override.mjs
 spike/ensure-browser.mjs
 spike/remotion.config.ts
 spike/public/fonts/PretendardVariable.woff2
+spike/public/reference/*.png
 ```
 
 이 목록 밖의 파일을 만들어야 한다면 먼저 이 spec을 고친다.
@@ -116,7 +117,8 @@ spike/public/fonts/PretendardVariable.woff2
 
 4번을 건너뛰지 않는다. 자막 한 장이 원본과 다르면 영상 전체가 다르다.
 4번은 `pnpm --filter @madi/spike probe` 로 영상 없이 돌릴 수 있다.
-`PROBE_TEXT` · `PROBE_SECONDARY` · `PROBE_BACKDROP`(reference/frames 의 파일명) 환경변수로 바꾼다.
+`PROBE_TEXT` · `PROBE_SECONDARY` · `PROBE_BACKDROP` 환경변수로 바꾼다.
+`PROBE_BACKDROP` 은 `spike/public/` 안의 경로다 — `reference/yt_11s.png` 처럼 쓴다 (`public/` 접두사 금지).
 
 ## 알려진 환경 요구
 

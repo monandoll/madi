@@ -14,14 +14,15 @@ export const Probe: React.FC<{
   text: string;
   secondary?: string;
   emphasis?: { from: number; to: number }[];
-  /** reference/frames/ 의 파일명. 주면 배경으로 깔아 겹쳐 본다. */
+  /** public/ 안의 경로. 예: 'reference/yt_11s.png' 또는 'frames/0001.png'. 배경으로 깔아 겹쳐 본다. */
   backdrop?: string;
 }> = ({ text, secondary, emphasis = [], backdrop }) => {
   loadPretendard();
   return (
     <AbsoluteFill style={{ backgroundColor: '#3A3F45' }}>
       {backdrop ? (
-        <Img src={staticFile(backdrop)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        // staticFile 은 'public/' 접두사를 허용하지 않는다. 실수로 붙여도 벗겨서 받는다.
+        <Img src={staticFile(backdrop.replace(/^\.?\/?public\//, ''))} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : null}
       <Caption
         caption={{

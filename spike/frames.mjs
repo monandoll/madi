@@ -5,7 +5,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 
 const FFMPEG = process.env.FFMPEG_PATH || 'ffmpeg';
 const SRC = 'reference/final.mp4';
-const OUT = 'reference/frames';
+const OUT = 'public/frames';
 
 if (!existsSync(SRC)) {
   console.error(`\n[frames] ${SRC} 가 없습니다.`);
@@ -17,6 +17,7 @@ mkdirSync(OUT, { recursive: true });
 const args = ['-hide_banner', '-loglevel', 'error', '-y', '-i', SRC, '-vf', 'fps=2', `${OUT}/%04d.png`];
 const p = spawn(FFMPEG, args, { stdio: 'inherit' });
 p.on('exit', (code) => {
-  if (code === 0) console.log(`\n[frames] ${OUT}/ 에 저장했습니다. 자막 크기·위치·색·분절을 여기서 재세요.`);
+  if (code === 0) console.log(`\n[frames] ${OUT}/ 에 저장했습니다.`);
+  else console.log(`  PROBE_BACKDROP=frames/0001.png pnpm probe  로 자막을 겹쳐 볼 수 있습니다.`);
   process.exit(code ?? 1);
 });

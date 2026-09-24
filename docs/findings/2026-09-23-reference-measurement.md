@@ -4,7 +4,7 @@
 
 - 출처: `youtube.com/shorts/EDpBGkaNJmU` (auto-dubbed 버전)
 - 방법: 브라우저 canvas 로 10프레임 캡처, 720x1280
-- 프레임: `spike/reference/public/`
+- 프레임: `spike/public/reference/` (Remotion 이 서빙하는 위치. 배경 대조에 바로 쓴다)
 
 **한계**: 1편만 쟀고 유튜브 720p 재인코딩본이다. §9 절차는 5편을 요구한다.
 `reference/final.mp4`(인스타 원본)가 들어오면 다시 잰다. `tokens.MEASURED` 는 아직 `false`.
@@ -73,6 +73,6 @@
 ## 6. 다음
 
 1. `pnpm spike:probe` 재실행 → 새 tokens 값으로 자막 한 장 확인
-2. `PROBE_BACKDROP=public/yt_11s.png` 로 원본 프레임 위에 겹쳐 대조
+2. `PROBE_BACKDROP=reference/yt_11s.png` 로 원본 프레임 위에 겹쳐 대조
 3. 인스타 릴스 원본 확보되면 5편으로 다시 측정
 4. 2분할 레이아웃을 스키마에 넣을지 0단계에서 결정

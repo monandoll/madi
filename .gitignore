@@ -8,7 +8,7 @@ build/
 
 # 스파이크 산출물
 spike/out/
-spike/reference/frames/
+spike/public/frames/
 spike/reference/*.mp4
 spike/reference/*.mov
 
@@ -21,5 +21,5 @@ spike/reference/*.mov
 # Claude Code 로컬 설정 (훅은 .claude/settings.json 에 공유)
 .claude/settings.local.json
 
-# 참고용으로 받은 공개 영상 프레임 (커밋함 — 스타일 근거)
-!spike/reference/public/*.png
+# 참고용 공개 영상 프레임 (커밋함 — 스타일 근거)
+!spike/public/reference/*.png
