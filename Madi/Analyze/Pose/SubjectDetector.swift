@@ -205,6 +205,8 @@ public enum SubjectDetector {
         public let box: NormRect
         /// 마스크 픽셀의 가로 무게중심 (0..1).
         public let massCenterX: Double
+        /// 마스크 픽셀의 **세로** 무게중심 (0..1, y 가 위로 가는 좌표).
+        public let massCenterY: Double
         /// 열별 마스크 픽셀 수 (가로 512칸으로 압축). 크롭 안에 남는 양을 셀 때 쓴다.
         public let columnMass: [Double]
         /// 전체 마스크 픽셀 수 ÷ 프레임 픽셀 수.
@@ -230,11 +232,12 @@ public enum SubjectDetector {
         let bins = 512
         var columns = [Double](repeating: 0, count: bins)
         var minX = w, maxX = -1, minRow = h, maxRow = -1
-        var total = 0.0, weightedX = 0.0
+        var total = 0.0, weightedX = 0.0, weightedRow = 0.0
         for row in 0..<h {
             for x in 0..<w where px[row * stride + x] > 127 {
                 total += 1
                 weightedX += Double(x)
+                weightedRow += Double(row)
                 columns[min(bins - 1, x * bins / w)] += 1
                 if x < minX { minX = x }; if x > maxX { maxX = x }
                 if row < minRow { minRow = row }; if row > maxRow { maxRow = row }
@@ -249,6 +252,8 @@ public enum SubjectDetector {
                 h: Double(maxRow - minRow + 1) / Double(h)
             ),
             massCenterX: weightedX / total / Double(w),
+            // 마스크는 위가 0행. NormRect 와 같은 y-up 으로 뒤집는다.
+            massCenterY: 1 - (weightedRow / total / Double(h)),
             columnMass: columns.map { $0 / total },
             coverage: total / Double(w * h)
         )

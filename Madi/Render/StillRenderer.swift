@@ -99,6 +99,60 @@ public enum StillRenderer {
     }
 }
 
+// MARK: - 선명도
+
+extension StillRenderer {
+    /// 평균 |라플라시안|. 확대하면 떨어진다 — 확대 상한을 정하는 근거로 쓴다.
+    ///
+    /// 절대값에는 의미가 없다(내용에 따라 다르다). **같은 프레임 · 같은 화각**을
+    /// 소스 해상도만 바꿔 비교할 때만 뜻이 있다.
+    public static func sharpness(_ image: CGImage) -> Double {
+        let w = image.width, h = image.height
+        guard w > 2, h > 2, let ctx = CGContext(
+            data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return 0 }
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        guard let raw = ctx.data else { return 0 }
+        let px = raw.bindMemory(to: UInt8.self, capacity: w * h * 4)
+        func luma(_ x: Int, _ y: Int) -> Double {
+            let i = (y * w + x) * 4
+            return 0.299 * Double(px[i]) + 0.587 * Double(px[i + 1]) + 0.114 * Double(px[i + 2])
+        }
+        var sum = 0.0
+        var n = 0
+        for y in stride(from: 1, to: h - 1, by: 2) {
+            for x in stride(from: 1, to: w - 1, by: 2) {
+                let value = 4 * luma(x, y) - luma(x - 1, y) - luma(x + 1, y)
+                    - luma(x, y - 1) - luma(x, y + 1)
+                sum += abs(value)
+                n += 1
+            }
+        }
+        return n > 0 ? sum / Double(n) : 0
+    }
+
+    /// 원본의 한 영역을 출력 크기로 뽑는다. 확대 화질을 재는 데 쓴다.
+    public static func crop(
+        _ image: CGImage, rect: NormRect, to size: CGSize
+    ) throws -> CGImage {
+        let px = CGRect(
+            x: rect.x * Double(image.width),
+            // CGImage.cropping 은 위가 0 인 좌표를 쓴다. NormRect 는 y 가 위로 간다.
+            y: (1 - rect.y - rect.h) * Double(image.height),
+            width: rect.w * Double(image.width),
+            height: rect.h * Double(image.height)
+        )
+        guard let piece = image.cropping(to: px) else { throw Failure.contextCreationFailed }
+        let ctx = try makeContext(size: size)
+        ctx.interpolationQuality = .high
+        ctx.draw(piece, in: CGRect(origin: .zero, size: size))
+        guard let out = ctx.makeImage() else { throw Failure.contextCreationFailed }
+        return out
+    }
+}
+
 // MARK: - 픽셀 측정
 
 extension StillRenderer {

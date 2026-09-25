@@ -182,6 +182,99 @@ case "frames":
         for url in written { print(url.path) }
     } catch { fail("\(error)") }
 
+case "zoomtest":
+    // 확대 상한 근거. 소스 크롭 폭이 출력 폭보다 작아지면 그때부터 업스케일이다.
+    guard args.count > 1 else { fail("사용법: madi-spike zoomtest <영상> [--at 5]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let at = Double(option("at") ?? "") ?? 5
+        let info = try await FrameSheet.info(of: video)
+        let frames = try await FrameSheet.extract(
+            from: video, at: [at], into: URL(fileURLWithPath: "out/zoomtest"), prefix: "src_"
+        )
+        let source = try StillRenderer.loadImage(frames[0])
+        let out = CGSize(width: 1080, height: 1920)
+        // 출력과 같은 9:16 을 원본에서 잘라낼 때의 배율 1 크롭 폭(소스 픽셀).
+        let baseWidthPx = min(info.size.width, info.size.height * 9 / 16)
+        print(String(format: "  원본 %.0fx%.0f · 배율 1 크롭 폭 %.0fpx · 출력 폭 %.0fpx",
+                     info.size.width, info.size.height, baseWidthPx, out.width))
+        // 대조군: 소스를 반으로 줄인 것. 같은 화각을 두 해상도로 뽑아 비교하면
+        // "배율을 올려서 흐려진 것" 과 "해상도가 모자라서 흐려진 것" 이 분리된다.
+        let halfSource = try StillRenderer.crop(
+            source, rect: NormRect(x: 0, y: 0, w: 1, h: 1),
+            to: CGSize(width: info.size.width / 2, height: info.size.height / 2)
+        )
+        print("  배율   크롭폭(px)  업스케일   선명도   반해상도   손실   비고")
+        for zoom in [1.0, 1.5, 2.0, 2.25, 2.5, 3.0] {
+            let cropPx = baseWidthPx / zoom
+            let wNorm = cropPx / info.size.width
+            let hNorm = (cropPx * 16 / 9) / info.size.height
+            guard wNorm <= 1, hNorm <= 1 else { continue }
+            let rect = NormRect(x: (1 - wNorm) / 2, y: (1 - hNorm) / 2, w: wNorm, h: hNorm)
+            let image = try StillRenderer.crop(source, rect: rect, to: out)
+            try StillRenderer.writePNG(image, to: URL(fileURLWithPath:
+                String(format: "out/zoomtest/zoom_%.2f.png", zoom)))
+            let upscale = out.width / cropPx
+            let full = StillRenderer.sharpness(image)
+            let half = StillRenderer.sharpness(
+                try StillRenderer.crop(halfSource, rect: rect, to: out)
+            )
+            print(String(format: "  %.2f   %8.0f   %7.2f   %6.2f   %7.2f   %5.0f%%   %@",
+                         zoom, cropPx, upscale, full, half,
+                         full > 0 ? (1 - half / full) * 100 : 0,
+                         upscale > 1 ? "업스케일" : "원본 픽셀로 충분"))
+        }
+    } catch { fail("\(error)") }
+
+case "track":
+    // 0.5초 간격 피사체 추적 (AGENTS.md §6). 1단계 설계를 위한 실측.
+    guard args.count > 1 else { fail("사용법: madi-spike track <영상> [--step 0.5] [--target 0.72]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let step = Double(option("step") ?? "") ?? 0.5
+        let target = Double(option("target") ?? "") ?? 0.72
+        let info = try await FrameSheet.info(of: video)
+        // 대용 원본은 150초라 전구간을 0.5초로 훑으면 너무 오래 걸린다. 앞쪽 구간만 본다.
+        let until = min(Double(option("until") ?? "") ?? info.duration, info.duration - 0.05)
+        let times = stride(from: 0.0, to: until, by: step).map { $0 }
+        let frames = try await FrameSheet.extract(
+            from: video, at: times, into: URL(fileURLWithPath: "out/track")
+                .appending(path: video.deletingPathExtension().lastPathComponent), prefix: ""
+        )
+        print(String(format: "  %.0fx%.0f  %.2f초  %d샘플 (%.1f초 간격)",
+                     info.size.width, info.size.height, info.duration, frames.count, step))
+        print("   시각   사람높이  필요배율  가로중심  세로중심   점유   덩어리")
+        var heights: [Double] = [], cxs: [Double] = [], cys: [Double] = []
+        var missing = 0
+        for (i, url) in frames.enumerated() {
+            let image = try StillRenderer.loadImage(url)
+            guard let st = try SubjectDetector.maskStats(image) else {
+                missing += 1
+                print(String(format: "  %5.1f   — 마스크 없음", times[i]))
+                continue
+            }
+            let parts = try SubjectDetector.maskComponents(image)
+            heights.append(st.box.h); cxs.append(st.massCenterX); cys.append(st.massCenterY)
+            print(String(format: "  %5.1f    %6.3f    %6.2f    %6.3f    %6.3f  %6.3f   %2d",
+                         times[i], st.box.h, target / max(st.box.h, 0.001),
+                         st.massCenterX, st.massCenterY, st.coverage, parts.count))
+        }
+        func stats(_ v: [Double], _ name: String) {
+            guard !v.isEmpty else { return }
+            let sorted = v.sorted()
+            let med = sorted[sorted.count / 2]
+            var maxStep = 0.0
+            for i in 1..<v.count { maxStep = max(maxStep, abs(v[i] - v[i - 1])) }
+            print(String(format: "  %@  최소 %.3f  중앙 %.3f  최대 %.3f  샘플간 최대이동 %.3f",
+                         name as NSString, sorted[0], med, sorted[sorted.count - 1], maxStep))
+        }
+        print("")
+        print("  마스크 없음 \(missing)/\(frames.count)")
+        stats(heights, "사람높이")
+        stats(cxs, "가로중심")
+        stats(cys, "세로중심")
+    } catch { fail("\(error)") }
+
 case "croptest":
     // 가로로 넓은 자세에서 "크롭 중심을 무엇으로 잡나" 를 후보별로 잰다.
     // 점수 = 크롭 안에 남는 마스크 비율. 높을수록 몸이 덜 잘린다.
@@ -430,12 +523,12 @@ case "render":
         var sources: [String: URL] = [:]
         for scene in comp.scenes where sources[scene.source.videoID] == nil {
             let id = scene.source.videoID
-            let candidates = [
-                base.appending(path: "source/\(id).mp4"),
-                base.appending(path: "source/raw/\(id).mp4"),
-                base.appending(path: "\(id).mp4"),
-                URL(fileURLWithPath: id),
-            ]
+            // 아이폰 촬영본은 .mov 다. 확장자를 하나만 보면 못 찾는다.
+            let candidates = ["mp4", "mov", "MOV", "m4v"].flatMap { ext in
+                [base.appending(path: "source/\(id).\(ext)"),
+                 base.appending(path: "source/raw/\(id).\(ext)"),
+                 base.appending(path: "\(id).\(ext)")]
+            } + [URL(fileURLWithPath: id)]
             guard let found = candidates.first(where: {
                 FileManager.default.fileExists(atPath: $0.path)
             }) else {
@@ -472,6 +565,8 @@ default:
       captionband <영상> [--at 1,2]      자막 후보 위치별 피사체 밀도
       subjects <영상> [--at 1,2]         마스크 덩어리 · 9:16 폭 초과 (1단계 준비)
       croptest <영상> [--at 1,2]         크롭 중심 후보별 "몸이 얼마나 남나"
+      track <영상> [--step 0.5] [--until 30]  0.5초 간격 피사체 추적 (1단계 설계용)
+      zoomtest <영상> [--at 5]           배율별 업스케일·선명도 (확대 상한 근거)
 
     공통 옵션: --text --secondary --width --height --style --slot
     """)
