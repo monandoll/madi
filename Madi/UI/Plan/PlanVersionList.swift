@@ -47,13 +47,10 @@ struct PlanVersionList: View {
                         Spacer(minLength: Tokens.Space.between)
 
                         if version.resultCount > 0 {
-                            Label(
-                                "\(version.resultCount)",
-                                systemImage: "square.and.arrow.up.on.square"
-                            )
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .labelStyle(.titleAndIcon)
+                            // 글자만 쓴다. 공유 아이콘을 붙였더니 누르면 내보내는 버튼으로 읽혔다.
+                            Text(Copy.Plan.Versions.results(version.resultCount))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                     .padding(.horizontal, Tokens.Space.between)

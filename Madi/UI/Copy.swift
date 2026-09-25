@@ -165,6 +165,8 @@ public enum Copy {
             public static func meta(duration: String, scenes: String, when: String) -> String {
                 "\(duration) · \(scenes) · \(when)"
             }
+            /// **개수이지 버튼이 아니다.** 공유 아이콘을 붙이면 누르면 내보내는 줄 안다.
+            public static func results(_ n: Int) -> String { "결과물 \(n)개" }
         }
 
         public enum Info {
