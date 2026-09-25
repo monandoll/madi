@@ -125,6 +125,7 @@ struct SceneRow: View {
 
     /// 고치는 중에만 쓰는 임시 글자. 저장은 개발이 붙인다.
     @State private var draft: String = ""
+    @State private var secondaryDraft: String = ""
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -163,16 +164,32 @@ struct SceneRow: View {
     private var caption: some View {
         if isEditingCaption {
             // 고치기는 줄 **안에서** 한다. 따로 창을 띄우면 앞뒤 장면을 못 보면서 고치게 된다.
-            TextField(Copy.Plan.Scenes.captionPlaceholder, text: $draft, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
-                .font(.callout)
-                .lineLimit(1...3)
-                .focused($isFocused)
-                .onSubmit(onEndEditing)
-                .onAppear {
-                    draft = scene.caption
-                    isFocused = true
+            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                TextField(Copy.Plan.Scenes.captionPlaceholder, text: $draft, axis: .vertical)
+                    .font(.callout)
+                    .lineLimit(1...3)
+                    .focused($isFocused)
+                    .onSubmit(onEndEditing)
+
+                // 영문 보조도 직접 고칠 수 있다. 손대지 않으면 AI 가 본문에 맞춰 다시 만든다.
+                TextField(Copy.Plan.Scenes.secondaryPlaceholder, text: $secondaryDraft)
+                    .font(.caption)
+
+                HStack(spacing: Tokens.Space.inner) {
+                    Text(Copy.Plan.Scenes.secondaryHint)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    Button(Copy.Plan.Scenes.doneEditing, action: onEndEditing)
+                        .controlSize(.small)
                 }
+            }
+            .textFieldStyle(.roundedBorder)
+            .onAppear {
+                draft = scene.caption
+                secondaryDraft = scene.secondary ?? ""
+                isFocused = true
+            }
         } else {
             VStack(alignment: .leading, spacing: 1) {
                 Text(scene.caption.isEmpty ? Copy.Plan.Scenes.noCaption : scene.caption)

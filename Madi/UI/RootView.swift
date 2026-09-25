@@ -20,6 +20,7 @@ struct RootView: View {
     var results: ResultsState = .empty
     var resultDetail: ResultDetail?
     var exportTargets: [ExportTarget] = []
+    var resultsNotice: ScreenNotice?
     var making: MakingState = .empty
 
     /// 프리뷰 · 스크린샷용 초기 상태.
@@ -77,6 +78,7 @@ struct RootView: View {
                 state: results,
                 detail: resultDetail,
                 exportTargets: exportTargets,
+                notice: resultsNotice,
                 initialSelection: selectedResultID,
                 showsExportSheet: showsExportSheet,
                 showsTrashConfirm: showsTrashConfirm

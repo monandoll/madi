@@ -17,6 +17,7 @@ struct ChatPanel: View {
     var onPlayFromStart: () -> Void = {}
     var onUndo: () -> Void = {}
     var onOpenResult: (ResultRef) -> Void = { _ in }
+    var onRetrySend: (String) -> Void = { _ in }
 
     @State private var draft: String = ""
 
@@ -50,6 +51,21 @@ struct ChatPanel: View {
             case .user(let text):
                 Bubble(text: text, isUser: true)
                     .frame(maxWidth: .infinity, alignment: .trailing)
+            case .userNotSent(let text):
+                // 못 보낸 말도 그대로 남긴다. 사람이 쓴 게 사라지면 다시 쓰게 된다.
+                VStack(alignment: .trailing, spacing: Tokens.Space.tight) {
+                    Bubble(text: text, isUser: true)
+                        .opacity(0.5)
+                    HStack(spacing: Tokens.Space.inner) {
+                        Text(Copy.Chat.NotSent.mark)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Button(Copy.Chat.NotSent.retry) { onRetrySend(text) }
+                            .buttonStyle(.link)
+                            .font(.caption2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
             case .assistant(let text):
                 Bubble(text: text, isUser: false)
                     .frame(maxWidth: .infinity, alignment: .leading)

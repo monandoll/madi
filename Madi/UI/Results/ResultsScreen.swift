@@ -10,11 +10,16 @@ struct ResultsScreen: View {
     /// 고른 결과물의 펼친 내용. 개발이 붙을 때 목록 선택에서 만들어 넣는다.
     var detail: ResultDetail?
     var exportTargets: [ExportTarget] = []
+    /// 화면 위에 서는 한 줄. 내보내다 막힌 경우가 여기로 온다.
+    /// 이 화면에는 채팅이 없어서 말할 자리가 필요하다.
+    var notice: ScreenNotice?
 
     var onOpenPlan: () -> Void = {}
     var onExport: (ExportTarget) -> Void = { _ in }
     var onShowShots: () -> Void = {}
     var onTrash: (ResultRef) -> Void = { _ in }
+    var onNoticeAction: (ChatChoice) -> Void = { _ in }
+    var onDismissNotice: () -> Void = {}
 
     /// 프리뷰 · 스크린샷용.
     var initialSelection: ResultRef.ID?
@@ -27,7 +32,13 @@ struct ResultsScreen: View {
     @State private var trashing: ResultRef?
 
     var body: some View {
-        content
+        VStack(spacing: 0) {
+            if let notice {
+                NoticeBar(notice: notice, onAction: onNoticeAction, onDismiss: onDismissNotice)
+                Divider()
+            }
+            content
+        }
             .navigationTitle(Copy.Results.title)
             .navigationSubtitle(subtitle)
             .toolbar { toolbar }

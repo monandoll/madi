@@ -341,6 +341,20 @@ public struct MakingProgress: Hashable, Sendable {
     }
 }
 
+/// 화면 위쪽에 한 줄로 서는 알림. **실패도 여기로 들어온다.**
+///
+/// 붉은색을 쓰지 않는다. 사람이 손대면 되는 일이면 실패가 아니라 "다음 행동이 있는 상태" 다
+/// (`AGENTS.md §1-6`). 채팅이 있는 화면은 채팅으로 말하고, 없는 화면(결과물)이 이걸 쓴다.
+public struct ScreenNotice: Hashable, Sendable {
+    public var message: String
+    public var symbol: String
+    public var actions: [ChatChoice]
+
+    public init(message: String, symbol: String = "exclamationmark.triangle", actions: [ChatChoice] = []) {
+        self.message = message; self.symbol = symbol; self.actions = actions
+    }
+}
+
 /// 편집안 화면이 지금 무엇을 보여줄 상태인지.
 public enum PlanState: Hashable, Sendable {
     /// AI 가 살펴보고 장면을 나누는 중.
@@ -365,6 +379,8 @@ public enum PlanState: Hashable, Sendable {
 public struct ChatMessage: Identifiable, Hashable, Sendable {
     public enum Kind: Hashable, Sendable {
         case user(String)
+        /// 보내지 못한 말. **지우지 않는다** — 사람이 쓴 것이 사라지면 다시 쓰게 된다.
+        case userNotSent(String)
         case assistant(String)
         /// 무엇이 바뀌었는지 표로. 숫자를 말로 풀어 쓰는 것보다 짧다.
         case summary(EditSummary)

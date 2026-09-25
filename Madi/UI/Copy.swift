@@ -177,7 +177,8 @@ public enum Copy {
                 "장면 \(count)개 · \(total)"
             }
             public static let remove = "빼기"
-            public static let extend = "늘리기"
+            /// 줄 버튼과 우클릭 메뉴가 **같은 말**을 쓴다. 다르면 다른 기능인 줄 안다.
+            public static let extend = "1초 늘리기"
             public static let editCaption = "자막"
             public static let editCaptionFull = "자막 고치기"
             public static let extendOne = "1초 늘리기"
@@ -194,6 +195,10 @@ public enum Copy {
             }
             public static let bringBack = "되돌리기"
             public static let captionPlaceholder = "여기 자막을 적어주세요"
+            /// 영문 보조도 직접 고칠 수 있다. 비워 두면 AI 가 본문에 맞춰 다시 만든다.
+            public static let secondaryPlaceholder = "영문 보조"
+            public static let secondaryHint = "비워 두면 AI가 다시 맞춰요"
+            public static let doneEditing = "완료"
         }
 
         /// 편집안을 짜는 중.
@@ -249,6 +254,18 @@ public enum Copy {
             public static let hookFirst = "앞에 훅 넣어줘"
         }
 
+        /// 말을 못 보낸 경우. AI 가 끊겼거나 답이 없을 때.
+        public enum NotSent {
+            public static let mark = "보내지 못했어요"
+            public static let retry = "다시 보내기"
+            public static let reconnect = "AI 다시 연결"
+            public static let reason =
+                "AI 연결이 끊겨서 방금 요청을 못 보냈어요. 쓰신 말은 그대로 뒀어요."
+            public static let reconnectDetail = "설정을 열지 않아도 여기서 바로 돼요"
+            public static let laterDetail = "연결되면 그때 다시 보내주세요"
+            public static let later = "나중에"
+        }
+
         public enum Summary {
             public static let playFromStart = "처음부터 보기"
             public static let undo = "되돌리기"
@@ -301,6 +318,13 @@ public enum Copy {
             public static let airdrop = "AirDrop"
             public static let airdropDetail = "가까이 있는 기기로 바로 보내요"
             public static func done(_ target: String) -> String { "\(target)(으)로 보냈어요" }
+            /// 내보내다 막힌 경우. 결과물 화면에는 채팅이 없어서 화면 위 한 줄로 말한다.
+            public static func failed(_ target: String) -> String {
+                "\(target)에 넣지 못했어요"
+            }
+            public static let failedReason = "잠시 뒤 다시 해보거나 Mac에 저장해 주세요."
+            public static let retry = "다시 내보내기"
+            public static let saveToMac = "Mac에 저장"
             /// 목록 줄에 남는 이력. `사진 앱에 저장함 · 오후 2:40`
             public static func historyLine(target: String, when: String) -> String {
                 "\(target)에 저장함 · \(when)"

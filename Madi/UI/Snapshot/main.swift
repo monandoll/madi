@@ -140,6 +140,18 @@ let shots: [Shot] = [
             selectedSceneID: "s4"
         )
     },
+    // 막힌 것 — 붉은색 없이, 다음 행동과 함께.
+    Shot("plan-not-sent") {
+        RootView(
+            studio: SampleData.studioNoAI,
+            gallery: .loaded(SampleData.groups),
+            plan: .ready(SampleData.plan),
+            planMessages: SampleData.chatNotSent,
+            planChips: SampleData.chatChips,
+            opensPlan: true,
+            selectedSceneID: "s4"
+        )
+    },
     Shot("plan-no-ai") {
         RootView(
             studio: SampleData.studioNoAI,
@@ -186,6 +198,18 @@ let shots: [Shot] = [
             exportTargets: SampleData.exportTargets,
             selectedResultID: SampleData.results[0].id,
             showsTrashConfirm: true,
+            section: .results
+        )
+    },
+    Shot("results-export-failed") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            results: .loaded(SampleData.resultGroups),
+            resultDetail: SampleData.resultDetail,
+            exportTargets: SampleData.exportTargets,
+            resultsNotice: SampleData.exportFailedNotice,
+            selectedResultID: SampleData.results[0].id,
             section: .results
         )
     },

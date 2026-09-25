@@ -559,3 +559,32 @@ extension SampleData {
         photos: .denied
     )
 }
+
+// MARK: - 막힌 것
+
+extension SampleData {
+
+    /// 말을 못 보낸 경우. **쓴 말은 지우지 않는다.**
+    /// 붉은색 없이, 왜 안 갔는지와 다음 행동을 준다.
+    public static let chatNotSent: [ChatMessage] = chat + [
+        ChatMessage(id: "ns1", kind: .userNotSent("30초로 줄여줘"), stamp: "오늘 오후 2:47"),
+        ChatMessage(id: "ns2", kind: .assistant(Copy.Chat.NotSent.reason)),
+        ChatMessage(id: "ns3", kind: .choices([
+            ChatChoice(title: Copy.Chat.NotSent.reconnect,
+                       detail: Copy.Chat.NotSent.reconnectDetail, isPrimary: true),
+            ChatChoice(title: Copy.Chat.NotSent.later,
+                       detail: Copy.Chat.NotSent.laterDetail),
+        ])),
+    ]
+
+    /// 내보내다 막힌 경우. 결과물 화면에는 채팅이 없어서 화면 위 한 줄로 말한다.
+    public static let exportFailedNotice = ScreenNotice(
+        message: Copy.Results.Export.failed(Copy.Results.Export.photos)
+            + " — " + Copy.Results.Export.failedReason,
+        symbol: "exclamationmark.triangle",
+        actions: [
+            ChatChoice(title: Copy.Results.Export.retry, isPrimary: true),
+            ChatChoice(title: Copy.Results.Export.saveToMac),
+        ]
+    )
+}
