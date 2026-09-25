@@ -380,6 +380,146 @@ case "crop916":
                      made.size.width, made.size.height, made.duration))
     } catch { fail("\(error)") }
 
+case "transcribe":
+    guard args.count > 1 else { fail("사용법: madi-spike transcribe <영상> [--model base]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let provider = WhisperKitProvider(model: option("model") ?? "base")
+        let started = Date()
+        let transcript = try await provider.transcribe(video, languageCode: option("lang") ?? "ko")
+        print(String(format: "  낱말 %d개 · %.1f초 걸림",
+                     transcript.words.count, Date().timeIntervalSince(started)))
+        for w in transcript.words.prefix(24) {
+            print(String(format: "  %6.2f-%6.2f  %@", w.start, w.end, w.text as NSString))
+        }
+    } catch { fail("\(error)") }
+
+case "capsync":
+    // **`pauseSec` · `maxDurationSec` 실측.**
+    //
+    // 번인 자막(OCR)이 어디서 끊겼는지와, 그 지점의 낱말 사이 쉼이 얼마였는지를 맞춘다.
+    // 끊긴 자리의 쉼 = "끊어야 하는 쉼", 덩어리 **안**의 최대 쉼 = "끊지 않아도 되는 쉼".
+    // 둘이 갈리는 곳이 pauseSec 이다. 추측할 필요가 없어진다.
+    guard args.count > 1 else { fail("사용법: madi-spike capsync <영상> [--until 60]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let id = video.deletingPathExtension().lastPathComponent
+        let info = try await FrameSheet.info(of: video)
+        let until = min(Double(option("until") ?? "") ?? info.duration, info.duration - 0.05)
+
+        // 1) 낱말 타이밍
+        let transcript = try await WhisperKitProvider(model: option("model") ?? "base")
+            .transcribe(video, languageCode: "ko")
+
+        // 2) 번인 자막 덩어리 (OCR)
+        let sampleFPS = 4.0
+        let times = stride(from: 0.0, to: until, by: 1 / sampleFPS).map { $0 }
+        let frames = try await FrameSheet.extract(
+            from: video, at: times,
+            into: URL(fileURLWithPath: "out/captions").appending(path: id), prefix: ""
+        )
+        struct Chunk { var text: String; var start: Double; var end: Double }
+        var chunks: [Chunk] = []
+        for (i, frame) in frames.enumerated() {
+            let read = try CaptionReader.read(try StillRenderer.loadImage(frame))
+            guard !read.text.isEmpty else { continue }
+            if var last = chunks.last, last.text == read.text,
+               times[i] - last.end <= 1.5 / sampleFPS {
+                last.end = times[i]; chunks[chunks.count - 1] = last
+            } else {
+                chunks.append(Chunk(text: read.text, start: times[i], end: times[i]))
+            }
+        }
+        let solid = chunks.filter { $0.end > $0.start }
+        guard solid.count >= 2 else { fail("자막 덩어리가 부족합니다") }
+
+        // 3) 맞추기. 덩어리 시간 구간에 드는 낱말을 모은다.
+        var breakGaps: [Double] = []     // 덩어리가 끊긴 자리의 쉼
+        var insideGaps: [Double] = []    // 덩어리 안에서 끊지 않은 쉼
+        var durations: [Double] = []
+        var charCounts: [Int] = []
+        for (i, c) in solid.enumerated() {
+            // OCR 경계는 ±0.25초 흔들리므로 여유를 준다.
+            let inside = transcript.words.filter {
+                $0.start >= c.start - 0.25 && $0.start <= c.end + 0.25
+            }
+            guard inside.count >= 1 else { continue }
+            durations.append(c.end - c.start + 1 / sampleFPS)
+            charCounts.append(c.text.count)
+            for j in 1..<max(inside.count, 1) {
+                insideGaps.append(inside[j].start - inside[j - 1].end)
+            }
+            if i + 1 < solid.count, let lastWord = inside.last {
+                let next = transcript.words.first { $0.start > lastWord.end }
+                if let next { breakGaps.append(next.start - lastWord.end) }
+            }
+        }
+        func stat(_ v: [Double], _ name: String) {
+            guard !v.isEmpty else { print("  \(name): 없음"); return }
+            let s = v.sorted()
+            print(String(format: "  %@ n=%d  중앙 %.3f  p90 %.3f  최대 %.3f",
+                         name as NSString, s.count, s[s.count / 2],
+                         s[min(s.count - 1, Int(Double(s.count) * 0.9))], s[s.count - 1]))
+        }
+        print("  \(id) · 덩어리 \(solid.count)개 · 낱말 \(transcript.words.count)개")
+        stat(breakGaps, "끊은 자리 쉼 ")
+        stat(insideGaps, "안 끊은 쉼   ")
+        stat(durations, "덩어리 길이  ")
+    } catch { fail("\(error)") }
+
+case "g7slots":
+    // G7 **B안** 검증: "고른 슬롯이 다른 슬롯보다 얼굴을 덜 덮는가".
+    //
+    // 같은 자막 상자를 세 슬롯 높이에 각각 놓고 어깨선 위 관절을 덮는 비율을 센다.
+    // 상자 크기·가로 위치는 OCR 로 잰 실제 값을 쓴다 — **높이 선택만** 비교하려는 것이다.
+    // 쌤이 고른 슬롯이 가장 덜 덮으면 B 는 실행 가능한 지시가 된다.
+    guard args.count > 2 else {
+        fail("사용법: madi-spike g7slots <영상> <쌤이_고른_슬롯> [--n 24]")
+    }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let id = video.deletingPathExtension().lastPathComponent
+        let chosen = CaptionSlot(rawValue: args[2]) ?? .upperBody
+        let n = Int(option("n") ?? "") ?? 24
+        let info = try await FrameSheet.info(of: video)
+        let span = max(info.duration - 1, 1)
+        let times = (0..<n).map { 0.5 + span * Double($0) / Double(max(n - 1, 1)) }
+        let frames = try await FrameSheet.extract(
+            from: video, at: times,
+            into: URL(fileURLWithPath: "out/g7").appending(path: id), prefix: ""
+        )
+        let pose = VisionPoseProvider()
+        var checked = 0
+        var covered: [CaptionSlot: Int] = [:]
+        for frame in frames {
+            let image = try StillRenderer.loadImage(frame)
+            let read = try CaptionReader.read(image)
+            guard !read.text.isEmpty, read.box.h > 0 else { continue }
+            guard let obs = try pose.detect(in: image).first else { continue }
+            checked += 1
+            for slot in CaptionSlot.allCases {
+                // 상자 크기·가로 위치는 그대로, **아래끝만** 슬롯 높이로 옮긴다.
+                let box = NormRect(
+                    x: read.box.x, y: values.caption.inkBottomRatio[slot],
+                    w: read.box.w, h: read.box.h
+                )
+                if Gate.g7(captionBox: box, joints: obs.joints).covered {
+                    covered[slot, default: 0] += 1
+                }
+            }
+        }
+        func pct(_ slot: CaptionSlot) -> Double {
+            checked > 0 ? Double(covered[slot] ?? 0) / Double(checked) * 100 : 0
+        }
+        let others = CaptionSlot.allCases.filter { $0 != chosen }
+        let best = others.map(pct).min() ?? 0
+        let verdict = pct(chosen) <= best + 0.001 ? "쌤 슬롯이 최선" : "다른 슬롯이 더 낫다"
+        print(String(format:
+            "  %-14@ 표본 %2d · 고른슬롯 %-9@ %3.0f%% | upper %3.0f%% full %3.0f%% lower %3.0f%% · %@",
+            id as NSString, checked, chosen.rawValue as NSString, pct(chosen),
+            pct(.upperBody), pct(.fullBody), pct(.lowerBody), verdict as NSString))
+    } catch { fail("\(error)") }
+
 case "g7test":
     // G7 실측. **공개본이 이 게이트를 통과하는가?**
     //

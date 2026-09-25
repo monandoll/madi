@@ -133,7 +133,11 @@ public enum Gate {
     ///   (`docs/findings/2026-09-26-g7-measurement.md`).
     ///   "덮지 않음" 을 문자 그대로 걸면 **크리에이터 본인 영상이 탈락한다.**
     ///   G4(4.5%) · G5(13자) · G2(86% 탈락) 와 같은 길이다.
-    ///   근거 없는 숫자를 게이트로 걸지 않는다 (`AGENTS.md §8`) — 사람이 정할 때까지 측정만 한다.
+    ///
+    ///   "고른 슬롯이 다른 슬롯보다 덜 덮는가" 로 바꾸는 안(B)도 **공개본 9편 중 2편에서
+    ///   걸렸다.** 슬롯은 영상이 보여주는 **몸의 범위**로 고르는 것이라, 바닥 자세에서는
+    ///   자막도 아래고 숙인 머리도 아래다 — 두 목표가 충돌한다.
+    ///   **측정만 하는 것으로 확정했다** (`docs/findings/2026-09-26-g7-measurement.md §4-1`).
     public static func g7(
         captionBox: NormRect, joints: [PoseObservation.Joint: (point: CGPoint, confidence: Float)],
         minConfidence: Float = 0.3

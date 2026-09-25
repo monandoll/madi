@@ -17,12 +17,30 @@ settings:
     # AGENTS.md §17 — Universal 2. 개발 머신과 크리에이터 머신이 다르다.
     ARCHS: arm64 x86_64
     ONLY_ACTIVE_ARCH: NO
+    # ⚠ Debug 는 현재 아키텍처만 빌드한다.
+    #   WhisperKit 패키지가 Universal 빌드에서 arm64 모듈만 내놓아 x86_64 슬라이스가 깨진다.
+    #   §17 은 Tier 2(Intel)에서 WhisperKit 대신 whisper.cpp 를 쓰기로 이미 정해 뒀으므로,
+    #   제대로 된 해법은 3단계에서 `TranscriptionProvider` 를 아키텍처별로 가르는 것이다.
+    #   Release·Universal 은 그때까지 미해결이다 (`docs/findings/2026-09-26-whisperkit.md §2`).
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGNING_REQUIRED: NO
     ENABLE_USER_SCRIPT_SANDBOXING: NO
+  configs:
+    Debug:
+      ONLY_ACTIVE_ARCH: YES
+
+packages:
+  # 전사. word 단위 타임스탬프가 필수라 이걸 고른다 (AGENTS.md §3).
+  # Intel 폴백(whisper.cpp)은 3단계에서 붙인다 — 지금은 Apple Silicon 경로만.
+  # ⚠ 0.9 대에 고정한다. 0.18 은 Vapor(웹 서버) · swift-openapi 까지 끌고 오는데
+  #   §16 이 "웹 UI · HTTP 서버" 를 하지 않기로 했고, Universal 빌드도 깨진다
+  #   (`docs/findings/2026-09-26-whisperkit.md §2`).
+  WhisperKit:
+    url: https://github.com/argmaxinc/WhisperKit
+    minorVersion: 0.9.0
 
 targets:
   # 코어. 모델 · 템플릿 · 렌더가 전부 여기 있다.
@@ -44,6 +62,9 @@ targets:
       - path: Madi/Resources/styles
         buildPhase: resources
         type: folder
+    dependencies:
+      - package: WhisperKit
+        product: WhisperKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.madi.kit
