@@ -304,7 +304,8 @@ extension SampleData {
         sourceDuration: planSourceDuration, targetDuration: planDuration,
         // 앉아서 말하는 상반신 영상이다 (측정에서 A 무리, 아래끝 0.235).
         captionSlot: .upperBody,
-        scenes: planScenes, resultCount: 3
+        scenes: planScenes, resultCount: 3,
+        versions: planVersions
     )
 
     /// 자막을 위로 올린 편집안. 바닥에서 동작하는 영상은 자막이 동작을 가린다.
@@ -643,4 +644,58 @@ extension SampleData {
             "12분 24초짜리 영상이네요. 아직은 이렇게 긴 영상을 다루지 못해요."),
             stamp: "오늘 오후 4:22"),
     ]
+}
+
+// MARK: - 편집안 고르기 · 결과물이 많을 때 · 찾는 게 없을 때
+
+extension SampleData {
+
+    public static let planVersions: [PlanVersion] = [
+        PlanVersion(
+            id: "c_02", label: Copy.Plan.version(2),
+            duration: planDuration, sceneCount: planSceneCount,
+            when: "오늘 오후 2:20", resultCount: 2, isCurrent: true
+        ),
+        PlanVersion(
+            id: "c_01", label: Copy.Plan.version(1),
+            duration: previousPlanDuration, sceneCount: previousPlanSceneCount,
+            when: "어제 오후 5:58", resultCount: 1
+        ),
+    ]
+
+    public static var studioManyResults: StudioStatus {
+        StudioStatus(
+            studioName: studio.studioName, ai: studio.ai,
+            shotCount: studio.shotCount,
+            resultCount: resultGroupsMany.reduce(0) { $0 + $1.items.count },
+            makingCount: studio.makingCount
+        )
+    }
+
+    /// 결과물이 쌓였을 때. 목록이 길어져도 묶음 제목으로 찾을 수 있는지 보려고 둔다.
+    public static let resultGroupsMany: [ResultGroup] = {
+        let titles = groups.flatMap(\.shots).map(\.title)
+        let frames = [
+            "yt_11s.png", "yt_13s.png", "yt_9s.png", "yt_5s.png",
+            "lzDW-9ITfWU_4_6s.jpg", "nCshtY04NiY_3_8s.jpg",
+            "RnP7b0JFWj4_13_3s.jpg", "59HP4jxLFeA_11_4s.jpg",
+        ]
+        let whens = ["오늘 오후 2:40", "어제 오후 6:02", "이틀 전", "사흘 전", "나흘 전", "지난주"]
+        return titles.enumerated().map { index, title in
+            let count = [3, 2, 4, 2, 3][index % 5]
+            let items = (0..<count).map { n -> ResultRef in
+                ResultRef(
+                    id: "many_\(index)_\(n)",
+                    platform: n % 2 == 0 ? .reels : .shorts,
+                    planLabel: Copy.Plan.version(count - n),
+                    when: whens[(index + n) % whens.count],
+                    duration: Double(24 + (index * 3 + n * 5) % 40),
+                    sceneCount: 5 + (index + n) % 7,
+                    isNew: index == 0 && n < 2,
+                    thumbnail: resultFrame(frames[(index + n) % frames.count])
+                )
+            }
+            return ResultGroup(shotTitle: title, items: items)
+        }
+    }()
 }

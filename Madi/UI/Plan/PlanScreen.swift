@@ -25,6 +25,7 @@ struct PlanScreen: View {
     @State private var selectedID: SceneCardItem.ID?
     @State private var editingID: SceneCardItem.ID?
     @State private var showsChat = true
+    @State private var showsVersions = false
 
     var body: some View {
         content
@@ -191,12 +192,17 @@ struct PlanScreen: View {
         if let plan = state.plan {
             ToolbarItem {
                 // 편집안은 고칠 때마다 새로 생긴다. 이전 것을 지우지 않으므로 고를 수 있어야 한다.
-                Menu(plan.versionLabel) {
-                    ForEach(1...max(plan.versionCount, 1), id: \.self) { n in
-                        Button(Copy.Plan.version(n)) {}
-                    }
+                // 메뉴가 아니라 팝오버인 이유: 이름만으로는 뭐가 뭔지 몰라서
+                // 길이 · 장면 수 · 결과물 수를 같이 보여줘야 한다.
+                Button {
+                    showsVersions.toggle()
+                } label: {
+                    Label(plan.versionLabel, systemImage: "chevron.down")
+                        .labelStyle(.titleAndIcon)
                 }
-                .fixedSize()
+                .popover(isPresented: $showsVersions, arrowEdge: .bottom) {
+                    PlanVersionList(versions: plan.versions)
+                }
             }
             if plan.resultCount > 0 {
                 ToolbarItem {

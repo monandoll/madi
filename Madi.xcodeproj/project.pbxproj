@@ -19,6 +19,7 @@
 		2BA892758BC7F49E8495F281 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006AFA79D5ADACA512DB698F /* main.swift */; };
 		2EE5D8289209DFCF1DC52EE2 /* PoseProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDC46588584CE5887303191 /* PoseProvider.swift */; };
 		2F438C7740AE320FCA33D469 /* StyleSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = F080369FE263622AB0237836 /* StyleSchema.swift */; };
+		301098484B660F51FDF2024F /* NoticeBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14B2355EFFC3613EC4CA904B /* NoticeBar.swift */; };
 		3312AA868189344A37C6747B /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8A2015B58FA275085359C25 /* SidebarView.swift */; };
 		41D529605EC5629F9025E152 /* MadiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */; };
 		498A29E3EF2E75257EADC4AD /* Font.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9198795506821EE4D71C606A /* Font.swift */; };
@@ -42,7 +43,9 @@
 		8F45ECCD0ED784CC8689B47C /* ResultCompare.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F0225FF2EC69AD184E4175 /* ResultCompare.swift */; };
 		8F8D3E23A77E148BCC89AFA8 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = F441B6E8EB91AD06BD449DE9 /* OFL.txt */; };
 		8FD1677DF404DBD865A55D84 /* ShotInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FA9B25C6634222F16324AB /* ShotInspector.swift */; };
+		91DE767121295A80EF11BA08 /* NoticeBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14B2355EFFC3613EC4CA904B /* NoticeBar.swift */; };
 		927E3BBA58DC739C64FC1904 /* MadiKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; };
+		99242DF2EA8DCD65F4EA7C7C /* PlanVersionList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5170EB1C03FE043B10815DE1 /* PlanVersionList.swift */; };
 		9E9EE4E9653FAD55F33393EA /* ViewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B501D4D78085E4494C9267E0 /* ViewData.swift */; };
 		A0312AE4491C1E3124A66BBC /* OnboardingWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A81EF9CEC412D0497F06714 /* OnboardingWindow.swift */; };
 		A6F36ADDD48689551312F81C /* SubjectDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75236889EB2CBFE994D392D2 /* SubjectDetector.swift */; };
@@ -58,6 +61,7 @@
 		C19C038351F0A44E688981C7 /* MadiKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C21F74C5550424129AA94DD1 /* MakingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4858B61215897A37099D0CF /* MakingScreen.swift */; };
 		C4AB6DD33BC50E0D286F134F /* PlanScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAABD8A5FF82020B90D7687A /* PlanScreen.swift */; };
+		C86D655D7BBAA6D494891BCB /* PlanVersionList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5170EB1C03FE043B10815DE1 /* PlanVersionList.swift */; };
 		C8B61DEDF14AD95B4CDD3FD9 /* MakingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4858B61215897A37099D0CF /* MakingScreen.swift */; };
 		CC86AF959B9705EC491D0637 /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F09B5CE975F12C72180877E /* JSONValue.swift */; };
 		D0EEACB252B6F1F127A60173 /* PlanScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAABD8A5FF82020B90D7687A /* PlanScreen.swift */; };
@@ -122,6 +126,7 @@
 		02DE86554CE56C56FE4CD25A /* ResultsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultsScreen.swift; sourceTree = "<group>"; };
 		034A7ED45B0CF4B22BAC1E53 /* ExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportSheet.swift; sourceTree = "<group>"; };
 		0CF255FFFF4817C0CC024338 /* StillRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StillRenderer.swift; sourceTree = "<group>"; };
+		14B2355EFFC3613EC4CA904B /* NoticeBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoticeBar.swift; sourceTree = "<group>"; };
 		17ABE83D90BA6977FB20DD73 /* StyleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleStore.swift; sourceTree = "<group>"; };
 		181BC5EB1AF428D241C43C78 /* MadiSpike */ = {isa = PBXFileReference; includeInIndex = 0; path = MadiSpike; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MadiApp.swift; sourceTree = "<group>"; };
@@ -136,6 +141,7 @@
 		497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		4A81EF9CEC412D0497F06714 /* OnboardingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindow.swift; sourceTree = "<group>"; };
 		4BA365F1784B598EF1AA5E65 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
+		5170EB1C03FE043B10815DE1 /* PlanVersionList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanVersionList.swift; sourceTree = "<group>"; };
 		51E6B50BFE4E0F63A6994F30 /* styles */ = {isa = PBXFileReference; lastKnownFileType = folder; name = styles; path = Madi/Resources/styles; sourceTree = SOURCE_ROOT; };
 		58B6C32DC1255DE343A5F4B1 /* ChatPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatPanel.swift; sourceTree = "<group>"; };
 		69FA9B25C6634222F16324AB /* ShotInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotInspector.swift; sourceTree = "<group>"; };
@@ -321,6 +327,7 @@
 				F0014A94310F6EDA5CA03169 /* PlanInfoCards.swift */,
 				B81877A18E03E394FB21E0B6 /* PlanPlayer.swift */,
 				BAABD8A5FF82020B90D7687A /* PlanScreen.swift */,
+				5170EB1C03FE043B10815DE1 /* PlanVersionList.swift */,
 				C211B53F5E2651BFF8637F28 /* SceneList.swift */,
 			);
 			path = Plan;
@@ -347,6 +354,7 @@
 			isa = PBXGroup;
 			children = (
 				497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */,
+				14B2355EFFC3613EC4CA904B /* NoticeBar.swift */,
 				CA06076D2C37AFB52A054685 /* ThumbnailView.swift */,
 			);
 			path = Common;
@@ -592,10 +600,12 @@
 				F949B92E3B8AC97F765F9967 /* GalleryScreen.swift in Sources */,
 				41D529605EC5629F9025E152 /* MadiApp.swift in Sources */,
 				C21F74C5550424129AA94DD1 /* MakingScreen.swift in Sources */,
+				91DE767121295A80EF11BA08 /* NoticeBar.swift in Sources */,
 				4E19E4AAB0BB06DB67347743 /* OnboardingWindow.swift in Sources */,
 				A7E7D322F78F8299E96C1152 /* PlanInfoCards.swift in Sources */,
 				BFCB90F85043B09B992004C0 /* PlanPlayer.swift in Sources */,
 				C4AB6DD33BC50E0D286F134F /* PlanScreen.swift in Sources */,
+				99242DF2EA8DCD65F4EA7C7C /* PlanVersionList.swift in Sources */,
 				8F45ECCD0ED784CC8689B47C /* ResultCompare.swift in Sources */,
 				1AF9BF4107E90EF1C7C9571D /* ResultsScreen.swift in Sources */,
 				24BDF6178A3683305B2E0DCC /* RootView.swift in Sources */,
@@ -630,10 +640,12 @@
 				199876224754E62B0491DBC4 /* FlowLayout.swift in Sources */,
 				56BA0DAE7878958DC6021E5E /* GalleryScreen.swift in Sources */,
 				C8B61DEDF14AD95B4CDD3FD9 /* MakingScreen.swift in Sources */,
+				301098484B660F51FDF2024F /* NoticeBar.swift in Sources */,
 				A0312AE4491C1E3124A66BBC /* OnboardingWindow.swift in Sources */,
 				5B8607DBBD22F351DF047ECB /* PlanInfoCards.swift in Sources */,
 				FD39110C27EFFA4607677D95 /* PlanPlayer.swift in Sources */,
 				D0EEACB252B6F1F127A60173 /* PlanScreen.swift in Sources */,
+				C86D655D7BBAA6D494891BCB /* PlanVersionList.swift in Sources */,
 				B05340E356C21B5CD68C3A42 /* ResultCompare.swift in Sources */,
 				6D4B129FC7A94FA17CCD51C8 /* ResultsScreen.swift in Sources */,
 				2093C320099FF2C35A38877A /* RootView.swift in Sources */,

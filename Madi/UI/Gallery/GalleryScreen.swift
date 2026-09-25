@@ -22,6 +22,9 @@ struct GalleryScreen: View {
     var initialSelection: ShotItem.ID?
     /// 방금 한 일을 상태줄에 한 줄로 알린다 (숨김 등). 알림창을 띄우지 않는다.
     var notice: String?
+    /// 프리뷰 · 스크린샷용. 찾는 말과 거르개를 미리 걸어 둔다.
+    var initialQuery: String?
+    var initialFilter: GalleryFilter?
 
     @State private var selectedID: ShotItem.ID?
     @State private var filter: GalleryFilter = .all
@@ -46,6 +49,8 @@ struct GalleryScreen: View {
             }
             .onAppear {
                 if selectedID == nil { selectedID = initialSelection }
+                if let initialQuery { query = initialQuery }
+                if let initialFilter { filter = initialFilter }
             }
     }
 
@@ -103,7 +108,31 @@ struct GalleryScreen: View {
         return max(4, fit)
     }
 
+    @ViewBuilder
     private func gridBody(_ groups: [ShotGroup], columns count: Int) -> some View {
+        let shown = filtered(groups)
+        if shown.isEmpty {
+            // 왜 없는지 말한다. 거르개 때문이면 그것부터 말하고 푸는 버튼을 준다.
+            ContentUnavailableView {
+                Label(Copy.Gallery.NoResults.title(query), systemImage: "magnifyingglass")
+            } description: {
+                VStack(spacing: Tokens.Space.tight) {
+                    Text(Copy.Gallery.NoResults.message)
+                    if filter != .all {
+                        Text(Copy.Gallery.NoResults.filterNote(filter.label))
+                    }
+                }
+            } actions: {
+                if filter != .all {
+                    Button(Copy.Gallery.NoResults.showAll) { filter = .all }
+                }
+            }
+        } else {
+            grid(shown, columns: count)
+        }
+    }
+
+    private func grid(_ shown: [ShotGroup], columns count: Int) -> some View {
         ScrollView {
             LazyVGrid(
                 columns: Array(
@@ -113,7 +142,7 @@ struct GalleryScreen: View {
                 alignment: .leading,
                 spacing: Tokens.Space.section
             ) {
-                ForEach(filtered(groups)) { group in
+                ForEach(shown) { group in
                     Section {
                         ForEach(group.shots) { shot in
                             cell(shot)

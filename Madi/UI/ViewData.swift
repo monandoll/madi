@@ -278,6 +278,30 @@ public struct SceneCardItem: Identifiable, Hashable, Sendable {
     public var captionCount: Int { caption.isEmpty ? 0 : 1 + moreCaptions.count }
 }
 
+/// 편집안 한 판. 툴바에서 고를 때 쓴다.
+///
+/// 편집안은 고칠 때마다 **새로 생기고 이전 것을 지우지 않는다** (`AGENTS.md §1-8` —
+/// 결과물이 있는 편집안은 제자리에서 고치지 않는다). 그래서 고르는 자리가 필요하고,
+/// 이름만으로는 뭐가 뭔지 모르니 길이 · 장면 수 · 언제 · 결과물 수를 같이 보여준다.
+public struct PlanVersion: Identifiable, Hashable, Sendable {
+    public var id: String
+    public var label: String
+    public var duration: Double
+    public var sceneCount: Int
+    public var when: String
+    public var resultCount: Int
+    public var isCurrent: Bool
+
+    public init(
+        id: String, label: String, duration: Double, sceneCount: Int,
+        when: String, resultCount: Int, isCurrent: Bool = false
+    ) {
+        self.id = id; self.label = label; self.duration = duration
+        self.sceneCount = sceneCount; self.when = when
+        self.resultCount = resultCount; self.isCurrent = isCurrent
+    }
+}
+
 /// 편집안 하나. 화면에 보이는 것만 들고 있다.
 public struct PlanView: Identifiable, Hashable, Sendable {
     public var id: String
@@ -292,13 +316,16 @@ public struct PlanView: Identifiable, Hashable, Sendable {
     public var captionSlot: CaptionSlot
     public var scenes: [SceneCardItem]
     public var resultCount: Int
+    /// 이 촬영본의 편집안 전부. 툴바에서 고른다.
+    public var versions: [PlanVersion]
 
     public init(
         id: String, shotID: String, shotTitle: String, platform: PlatformKind,
         versionLabel: String, versionCount: Int,
         sourceDuration: Double, targetDuration: Double,
         captionSlot: CaptionSlot,
-        scenes: [SceneCardItem], resultCount: Int
+        scenes: [SceneCardItem], resultCount: Int,
+        versions: [PlanVersion] = []
     ) {
         self.id = id; self.shotID = shotID; self.shotTitle = shotTitle
         self.platform = platform; self.versionLabel = versionLabel
@@ -306,6 +333,7 @@ public struct PlanView: Identifiable, Hashable, Sendable {
         self.sourceDuration = sourceDuration; self.targetDuration = targetDuration
         self.captionSlot = captionSlot
         self.scenes = scenes; self.resultCount = resultCount
+        self.versions = versions
     }
 
     public var removedGapCount: Int { scenes.filter { $0.removedGapAfter != nil }.count }

@@ -56,6 +56,14 @@ let shots: [Shot] = [
     Shot("gallery-no-access") {
         RootView(studio: SampleData.studioEmpty, gallery: .noPhotoAccess)
     },
+    Shot("gallery-no-results") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            gallerySearch: "거북목 폼롤러",
+            galleryFilter: .notEdited
+        )
+    },
     Shot("gallery-hidden") {
         RootView(
             studio: SampleData.studio,
@@ -204,6 +212,24 @@ let shots: [Shot] = [
             section: .results
         )
     },
+    // 팝오버도 시트처럼 **다른 창**이라 부모 창을 떠도 안 따라온다. 내용만 따로 뜬다.
+    Shot("plan-versions", sizes: [CGSize(width: 300, height: 200)]) {
+        PlanVersionList(versions: SampleData.planVersions)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .tint(Tokens.Palette.accent)
+    },
+    Shot("results-many") {
+        RootView(
+            studio: SampleData.studioManyResults,
+            gallery: .loaded(SampleData.groups),
+            results: .loaded(SampleData.resultGroupsMany),
+            resultDetail: SampleData.resultDetail,
+            exportTargets: SampleData.exportTargets,
+            selectedResultID: "many_0_0",
+            section: .results
+        )
+    },
+
     // 시트는 **다른 창**이라 부모 창을 떠도 안 따라온다. 따로 한 장 뜬다.
     Shot("results-export-sheet", sizes: [CGSize(width: 460, height: 360)]) {
         ExportSheet(targets: SampleData.exportTargets, onExport: { _ in }, onCancel: {})

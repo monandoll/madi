@@ -26,6 +26,8 @@ struct RootView: View {
     /// 프리뷰 · 스크린샷용 초기 상태.
     var selectedShotID: ShotItem.ID?
     var galleryNotice: String?
+    var gallerySearch: String?
+    var galleryFilter: GalleryFilter?
     var opensPlan = false
     var selectedSceneID: SceneCardItem.ID?
     var editingSceneID: SceneCardItem.ID?
@@ -71,7 +73,9 @@ struct RootView: View {
                 // 촬영본에서 나가는 길은 하나다. 누르면 편집안이 열리고 AI 가 초안을 짠다.
                 onMakeShort: { _ in showsPlan = true },
                 initialSelection: selectedShotID,
-                notice: galleryNotice
+                notice: galleryNotice,
+                initialQuery: gallerySearch,
+                initialFilter: galleryFilter
             )
         case .results:
             ResultsScreen(

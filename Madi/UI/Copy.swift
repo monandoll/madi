@@ -114,6 +114,18 @@ public enum Copy {
             public static let notice = "목록에서 숨겼어요 · 사진 앱의 원본은 그대로 있어요"
         }
 
+        /// 찾는 게 없을 때. **왜 없는지**를 말한다 — 거르개 때문인지, 말이 안 맞는 건지.
+        public enum NoResults {
+            public static func title(_ query: String) -> String {
+                query.isEmpty ? "여기 보여줄 촬영본이 없어요" : "‘\(query)’에 맞는 촬영본이 없어요"
+            }
+            public static let message = "다른 말로 찾아보세요. 제목에서만 찾아요."
+            public static func filterNote(_ filter: String) -> String {
+                "지금 ‘\(filter)’만 보는 중이에요"
+            }
+            public static let showAll = "전체 보기"
+        }
+
         public enum Status {
             public static let syncedWithICloud = "iCloud 사진과 맞춰져 있음"
             public static func lastChecked(_ minutes: Int) -> String {
@@ -145,6 +157,15 @@ public enum Copy {
         /// 편집안을 고르는 메뉴. `편집안 2` 처럼 번호가 붙는다.
         public static func version(_ n: Int) -> String { "편집안 \(n)" }
         public static let backToGallery = "촬영본"
+
+        /// 편집안 고르기. 고칠 때마다 새로 생기고 이전 것은 남는다 (`§1-8`).
+        public enum Versions {
+            public static let header = "편집안"
+            public static let note = "고칠 때마다 새로 생겨요. 이전 편집안은 그대로 있어요."
+            public static func meta(duration: String, scenes: String, when: String) -> String {
+                "\(duration) · \(scenes) · \(when)"
+            }
+        }
 
         public enum Info {
             public static let header = "이 편집안"
