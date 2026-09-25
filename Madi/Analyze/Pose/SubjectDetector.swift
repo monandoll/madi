@@ -259,6 +259,33 @@ public enum SubjectDetector {
         )
     }
 
+    /// 직전 프레임에서 따라가던 덩어리를 **이어서** 고른다.
+    ///
+    /// ★ 매 프레임 "가장 큰 덩어리" 를 고르면 안 된다. 거울 반사나 두 번째 사람이
+    ///   한 프레임만 더 커지는 순간 추적 대상이 바뀌고, 그러면 배율과 위치가 0.5초마다 튄다.
+    ///   G3(인접 키프레임 중심 이동 <= 폭의 3%/frame)가 바로 걸린다.
+    ///
+    /// - Parameter previous: 직전에 따라가던 덩어리. `nil` 이면(시작) 가장 큰 것을 고른다.
+    /// - Returns: 이어서 따라갈 덩어리. 겹치는 게 하나도 없으면 가장 큰 것으로 새로 잡는다.
+    public static func follow(
+        _ parts: [(box: NormRect, coverage: Double)], previous: NormRect?
+    ) -> (box: NormRect, coverage: Double)? {
+        guard !parts.isEmpty else { return nil }
+        guard let previous else { return parts.max { $0.coverage < $1.coverage } }
+        let scored = parts.map { (part: $0, iou: intersectionOverUnion($0.box, previous)) }
+        // 조금이라도 겹치면 그쪽을 잇는다. 전혀 안 겹치면 추적이 끊긴 것이므로 새로 잡는다.
+        if let best = scored.max(by: { $0.iou < $1.iou }), best.iou > 0 { return best.part }
+        return parts.max { $0.coverage < $1.coverage }
+    }
+
+    public static func intersectionOverUnion(_ a: NormRect, _ b: NormRect) -> Double {
+        let left = max(a.x, b.x), right = min(a.x + a.w, b.x + b.w)
+        let bottom = max(a.y, b.y), top = min(a.y + a.h, b.y + b.h)
+        let overlap = max(0, right - left) * max(0, top - bottom)
+        let union = a.w * a.h + b.w * b.h - overlap
+        return union > 0 ? overlap / union : 0
+    }
+
     private static func largest(_ observations: [VNDetectedObjectObservation]) -> NormRect? {
         guard let best = observations.max(by: {
             $0.boundingBox.height * $0.boundingBox.width

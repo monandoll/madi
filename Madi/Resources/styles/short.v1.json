@@ -47,6 +47,7 @@
     },
     "reframe": {
       "targetSubjectHeightRatio": 0.72,
+      "maxUpscale": 1.25,
       "smoothingSec": 0.4,
       "padding": 0.08
     }

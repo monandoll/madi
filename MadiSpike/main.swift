@@ -182,6 +182,48 @@ case "frames":
         for url in written { print(url.path) }
     } catch { fail("\(error)") }
 
+case "followtest":
+    // "매 프레임 가장 큰 덩어리" vs "직전 것과 가장 많이 겹치는 덩어리(IoU)".
+    // 배율이 0.5초마다 얼마나 튀는지 비교한다.
+    guard args.count > 1 else { fail("사용법: madi-spike followtest <영상> [--step 0.5] [--until 30]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let step = Double(option("step") ?? "") ?? 0.5
+        let target = Double(option("target") ?? "") ?? 0.72
+        let info = try await FrameSheet.info(of: video)
+        let until = min(Double(option("until") ?? "") ?? info.duration, info.duration - 0.05)
+        let times = stride(from: 0.0, to: until, by: step).map { $0 }
+        let frames = try await FrameSheet.extract(
+            from: video, at: times, into: URL(fileURLWithPath: "out/follow")
+                .appending(path: video.deletingPathExtension().lastPathComponent), prefix: ""
+        )
+        var biggest: [Double] = [], followed: [Double] = []
+        var previous: NormRect?
+        for url in frames {
+            let image = try StillRenderer.loadImage(url)
+            let parts = try SubjectDetector.maskComponents(image)
+            guard !parts.isEmpty else { continue }
+            let big = parts.max { $0.coverage < $1.coverage }!
+            let kept = SubjectDetector.follow(parts, previous: previous)!
+            previous = kept.box
+            biggest.append(target / max(big.box.h, 0.001))
+            followed.append(target / max(kept.box.h, 0.001))
+        }
+        func report(_ name: String, _ v: [Double]) {
+            guard v.count > 1 else { print("  \(name) 샘플 부족"); return }
+            var steps: [Double] = []
+            for i in 1..<v.count { steps.append(abs(v[i] - v[i - 1])) }
+            let sorted = steps.sorted()
+            let big = steps.filter { $0 > 0.25 }.count
+            print(String(format: "  %@  샘플간 배율변동  중앙 %.3f  최대 %.3f  0.25 초과 %d/%d",
+                         name as NSString, sorted[sorted.count / 2], sorted[sorted.count - 1],
+                         big, steps.count))
+        }
+        print("  \(frames.count)샘플 중 덩어리 있음 \(biggest.count)")
+        report("가장 큰 것   ", biggest)
+        report("IoU 로 이어서", followed)
+    } catch { fail("\(error)") }
+
 case "zoomtest":
     // 확대 상한 근거. 소스 크롭 폭이 출력 폭보다 작아지면 그때부터 업스케일이다.
     guard args.count > 1 else { fail("사용법: madi-spike zoomtest <영상> [--at 5]") }
@@ -567,6 +609,7 @@ default:
       croptest <영상> [--at 1,2]         크롭 중심 후보별 "몸이 얼마나 남나"
       track <영상> [--step 0.5] [--until 30]  0.5초 간격 피사체 추적 (1단계 설계용)
       zoomtest <영상> [--at 5]           배율별 업스케일·선명도 (확대 상한 근거)
+      followtest <영상>                  덩어리 추적: 가장 큰 것 vs IoU 이어가기
 
     공통 옵션: --text --secondary --width --height --style --slot
     """)

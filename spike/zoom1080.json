@@ -1,0 +1,48 @@
+{
+  "id": "spike-zoom-IMG6022-1080",
+  "videoId": "IMG_6022_1080",
+  "templateId": "short",
+  "templateVersion": 1,
+  "size": {
+    "w": 1080,
+    "h": 1920
+  },
+  "fps": 30,
+  "meta": {
+    "title": "확대 경로 검증",
+    "platform": "shorts",
+    "targetDurationSec": 12
+  },
+  "captionSlot": "fullBody",
+  "scenes": [
+    {
+      "id": "s1",
+      "role": "demo",
+      "source": {
+        "videoId": "IMG_6022_1080",
+        "in": 2.0,
+        "out": 14.0
+      },
+      "reframe": {
+        "mode": "fixed",
+        "keyframes": [
+          {
+            "t": 0,
+            "rect": {
+              "x": 0.4578,
+              "y": 0.1848,
+              "w": 0.4444,
+              "h": 0.4444
+            }
+          }
+        ]
+      },
+      "captions": []
+    }
+  ],
+  "audio": {
+    "sfx": []
+  },
+  "revisionOf": null,
+  "createdAt": "2026-09-25T00:00:00Z"
+}

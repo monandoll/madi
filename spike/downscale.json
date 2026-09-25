@@ -1,0 +1,48 @@
+{
+  "id": "downscale-IMG6022-1080",
+  "videoId": "IMG_6022",
+  "templateId": "short",
+  "templateVersion": 1,
+  "size": {
+    "w": 1080,
+    "h": 1920
+  },
+  "fps": 30,
+  "meta": {
+    "title": "1080p 다운스케일본 (회귀 세트용)",
+    "platform": "shorts",
+    "targetDurationSec": 28
+  },
+  "captionSlot": "fullBody",
+  "scenes": [
+    {
+      "id": "s1",
+      "role": "demo",
+      "source": {
+        "videoId": "IMG_6022",
+        "in": 0.0,
+        "out": 28.4
+      },
+      "reframe": {
+        "mode": "fixed",
+        "keyframes": [
+          {
+            "t": 0,
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "w": 1,
+              "h": 1
+            }
+          }
+        ]
+      },
+      "captions": []
+    }
+  ],
+  "audio": {
+    "sfx": []
+  },
+  "revisionOf": null,
+  "createdAt": "2026-09-25T00:00:00Z"
+}

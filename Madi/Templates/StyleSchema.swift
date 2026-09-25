@@ -206,10 +206,29 @@ public struct StyleValues: Codable, Hashable, Sendable {
         public var fill: HexColor
     }
 
-    /// 1단계(리프레이밍)에서 쓴다. 0단계에서는 읽지 않는다.
     public struct ReframeValues: Codable, Hashable, Sendable {
-        /// 인물 bbox 높이가 프레임 높이의 이만큼을 채우도록. 품질 게이트 G1 하한은 0.55.
+        /// 인물 높이가 프레임 높이의 이만큼을 채우도록. **미학 목표**이지 게이트가 아니다
+        /// (하드 게이트 G1 하한은 0.55).
         public var targetSubjectHeightRatio: Double
+
+        /// 확대 상한 — **업스케일 배수**의 최대값.
+        ///
+        /// ```
+        /// 배율 1 크롭 폭(px) = min(소스 폭, 소스 높이 × 9/16)
+        /// 업스케일 배수 U    = 출력 폭 ÷ (배율 1 크롭 폭 ÷ 배율)
+        /// 최대 배율          = 배율 1 크롭 폭 ÷ 출력 폭 × maxUpscale
+        /// ```
+        ///
+        /// 즉 **원본 해상도마다 최대 배율이 달라진다.** 세로 4K 는 2.5배까지,
+        /// 1080p 는 확대 자체가 불가능하다 (9:16 크롭 폭이 608px 뿐이라 이미 1.78배 업스케일).
+        ///
+        /// ⚠ **추측한 값이다.** 1.0 / 1.25 / 1.5 를 3배 확대해 눈으로 비교해 골랐다 —
+        ///   1.00 또렷 · 1.25 미세하게 무름 · 1.50 눈에 띄게 뭉갬.
+        ///   평균 |라플라시안| 선명도 지표는 업스케일 에일리어싱을 디테일로 착각해서 버렸다
+        ///   (`docs/findings/2026-09-25-zoom-design.md §2`).
+        ///   비교 프레임: `docs/findings/frames/2026-09-25-upscale-1.0-1.25-1.5.jpg`
+        public var maxUpscale: Double
+
         /// 이보다 짧게 스무딩하면 프레임이 떨린다 (G3).
         public var smoothingSec: Double
         public var padding: Double
@@ -280,6 +299,8 @@ public func validate(_ values: StyleValues) throws {
 
     let r = values.reframe
     check("reframe.targetSubjectHeightRatio", r.targetSubjectHeightRatio, 0.3...1.0)
+    // 1.0 = 무손실만. 2.0 을 넘으면 눈에 띄게 뭉갠다.
+    check("reframe.maxUpscale", r.maxUpscale, 1.0...2.0)
     check("reframe.smoothingSec", r.smoothingSec, 0...2)
     check("reframe.padding", r.padding, 0...0.5)
 
