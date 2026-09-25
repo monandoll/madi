@@ -182,6 +182,91 @@ case "frames":
         for url in written { print(url.path) }
     } catch { fail("\(error)") }
 
+case "croptest":
+    // 가로로 넓은 자세에서 "크롭 중심을 무엇으로 잡나" 를 후보별로 잰다.
+    // 점수 = 크롭 안에 남는 마스크 비율. 높을수록 몸이 덜 잘린다.
+    guard args.count > 1 else { fail("사용법: madi-spike croptest <영상> [--at 1,2]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let times = (option("at") ?? "").split(separator: ",").compactMap { Double($0) }
+        let info = try await FrameSheet.info(of: video)
+        let cropW = min(1.0, (info.size.height * 9 / 16) / info.size.width)
+        let frames = try await FrameSheet.extract(
+            from: video, at: times, into: URL(fileURLWithPath: "out/croptest")
+                .appending(path: video.deletingPathExtension().lastPathComponent), prefix: ""
+        )
+        func retained(_ stats: SubjectDetector.MaskStats, centerX: Double) -> Double {
+            let half = cropW / 2
+            let lo = min(max(centerX - half, 0), 1 - cropW)
+            let hi = lo + cropW
+            let bins = stats.columnMass.count
+            var kept = 0.0
+            for i in 0..<bins {
+                let x = (Double(i) + 0.5) / Double(bins)
+                if x >= lo && x < hi { kept += stats.columnMass[i] }
+            }
+            return kept
+        }
+        var sums = [0.0, 0.0, 0.0]
+        var n = 0
+        print(String(format: "  9:16 가용 폭 %.4f", cropW))
+        print("  프레임        상자중심  무게중심  화면중앙")
+        for url in frames {
+            let image = try StillRenderer.loadImage(url)
+            guard let stats = try SubjectDetector.maskStats(image) else { continue }
+            let scores = [
+                retained(stats, centerX: stats.box.x + stats.box.w / 2),
+                retained(stats, centerX: stats.massCenterX),
+                retained(stats, centerX: 0.5),
+            ]
+            for (i, v) in scores.enumerated() { sums[i] += v }
+            n += 1
+            print(String(format: "  %-12@  %6.3f    %6.3f    %6.3f",
+                         url.deletingPathExtension().lastPathComponent as NSString,
+                         scores[0], scores[1], scores[2]))
+        }
+        guard n > 0 else { fail("마스크를 못 찾았습니다") }
+        print(String(format: "  %-12@  %6.3f    %6.3f    %6.3f", "평균" as NSString,
+                     sums[0] / Double(n), sums[1] / Double(n), sums[2] / Double(n)))
+    } catch { fail("\(error)") }
+
+case "subjects":
+    // 1단계 준비. 마스크를 덩어리로 쪼개 "누가 피사체인가" 와 "가로로 다 들어가나" 를 잰다.
+    guard args.count > 1 else { fail("사용법: madi-spike subjects <영상> [--at 1,2]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let times = (option("at") ?? "").split(separator: ",").compactMap { Double($0) }
+        let info = try await FrameSheet.info(of: video)
+        // 9:16 로 뽑을 때 쓸 수 있는 가로 폭 (전체 높이를 쓰는 경우).
+        let cropWidth = min(1.0, (info.size.height * 9 / 16) / info.size.width)
+        let frames = try await FrameSheet.extract(
+            from: video, at: times, into: URL(fileURLWithPath: "out/subjects")
+                .appending(path: video.deletingPathExtension().lastPathComponent), prefix: ""
+        )
+        print(String(format: "  9:16 크롭 가용 폭 %.4f", cropWidth))
+        print("  프레임        덩어리  1등 폭   1등 높이  1등 점유  2등 점유  폭 초과")
+        var over = 0, multi = 0, n = 0
+        for url in frames {
+            let image = try StillRenderer.loadImage(url)
+            let parts = try SubjectDetector.maskComponents(image)
+            n += 1
+            guard let first = parts.first else {
+                print("  \(url.deletingPathExtension().lastPathComponent)      없음")
+                continue
+            }
+            if parts.count > 1 { multi += 1 }
+            let tooWide = first.box.w > cropWidth
+            if tooWide { over += 1 }
+            print(String(format: "  %-12@ %5d  %6.3f   %6.3f   %6.3f   %6.3f   %@",
+                         url.deletingPathExtension().lastPathComponent as NSString,
+                         parts.count, first.box.w, first.box.h, first.coverage,
+                         parts.count > 1 ? parts[1].coverage : 0,
+                         tooWide ? "  ✗ 안 들어감" : ""))
+        }
+        print("")
+        print("  덩어리 2개 이상 \(multi)/\(n) · 1등이 9:16 폭을 넘는 프레임 \(over)/\(n)")
+    } catch { fail("\(error)") }
+
 case "captionband":
     // 자막 위치 가설 검증 (1단계 첫 작업).
     // 후보 위치마다 "그 높이에서 사람이 가로로 얼마나 차지하나" 를 잰다.
@@ -385,6 +470,8 @@ default:
       pose <영상> <디렉토리> [--conf 0.3]  사람 감지 정확도 (1단계 준비)
       detect <영상> [--at 1,2]           감지 방법 여러 개를 나란히 (G1·G2 정의 준비)
       captionband <영상> [--at 1,2]      자막 후보 위치별 피사체 밀도
+      subjects <영상> [--at 1,2]         마스크 덩어리 · 9:16 폭 초과 (1단계 준비)
+      croptest <영상> [--at 1,2]         크롭 중심 후보별 "몸이 얼마나 남나"
 
     공통 옵션: --text --secondary --width --height --style --slot
     """)
