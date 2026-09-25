@@ -34,6 +34,7 @@ targets:
       - path: Madi/Model
       - path: Madi/Analyze
       - path: Madi/Render
+      - path: Madi/Review
       - path: Madi/Templates
       - path: Madi/Templates/Spec.json
         buildPhase: resources

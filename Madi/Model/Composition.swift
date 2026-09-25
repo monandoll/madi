@@ -16,8 +16,14 @@ import CoreGraphics
 // MARK: - 정규화 좌표
 
 /// 0..1 정규화 사각형. 원본 해상도와 무관하게 쓴다.
+/// 0..1 로 정규화한 사각형.
+///
+/// ★ **`y` 는 아래에서 잰다.** 분할 마스크 · 무게중심 · 자막 레이아웃(CoreText · CALayer)이
+///   전부 아래 기준이다. 위 기준을 쓰는 곳은 AVFoundation 합성 좌표계 하나뿐이고,
+///   `Renderer.reframeTransform` 이 거기서만 뒤집는다. 다른 데서 뒤집지 않는다.
 public struct NormRect: Codable, Hashable, Sendable {
     public var x: Double
+    /// **아래에서** 잰 아래끝.
     public var y: Double
     public var w: Double
     public var h: Double

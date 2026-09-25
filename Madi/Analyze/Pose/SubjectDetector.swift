@@ -137,10 +137,22 @@ public enum SubjectDetector {
     /// 2인 영상(도수치료: 시술자 + 회원)에서 "누구를 피사체로 볼지" 를 정하려면
     /// 마스크가 한 덩어리인지 두 덩어리인지 알아야 한다. 상자 하나로는 둘을 합쳐 버린다.
     ///
-    /// - Returns: 넓이 큰 순서. 각 덩어리의 상자와 픽셀 수(프레임 대비 비율).
+    /// 덩어리 하나.
+    public struct Component: Sendable, Hashable {
+        public let box: NormRect
+        /// 프레임 대비 픽셀 수 비율.
+        public let coverage: Double
+        /// **이 덩어리만의** 무게중심 (0..1, y 가 위로).
+        /// 크롭 중심은 상자 중심이 아니라 이걸 쓴다 —
+        /// 팔을 벌리면 상자가 팔 끝에 끌려간다
+        /// (`docs/findings/2026-09-25-reframe-center-rule.md §2`).
+        public let massCenter: CGPoint
+    }
+
+    /// - Returns: 넓이 큰 순서.
     public static func maskComponents(
         _ image: CGImage, minCoverage: Double = 0.005
-    ) throws -> [(box: NormRect, coverage: Double)] {
+    ) throws -> [Component] {
         let handler = VNImageRequestHandler(cgImage: image, options: [:])
         let segment = VNGeneratePersonSegmentationRequest()
         segment.qualityLevel = .accurate
@@ -158,7 +170,7 @@ public enum SubjectDetector {
 
         // 너비 우선 탐색으로 이어진 픽셀을 묶는다. 마스크는 원본보다 작아서 이 정도면 충분하다.
         var seen = [Bool](repeating: false, count: w * h)
-        var out: [(NormRect, Double)] = []
+        var out: [Component] = []
         var queue: [Int] = []
         queue.reserveCapacity(w * h / 4)
 
@@ -171,11 +183,13 @@ public enum SubjectDetector {
             queue.append(start)
             seen[start] = true
             var minX = sx, maxX = sx, minRow = sy, maxRow = sy, count = 0
+            var sumX = 0.0, sumRow = 0.0
             var head = 0
             while head < queue.count {
                 let index = queue[head]; head += 1
                 let x = index % w, y = index / w
                 count += 1
+                sumX += Double(x); sumRow += Double(y)
                 if x < minX { minX = x }; if x > maxX { maxX = x }
                 if y < minRow { minRow = y }; if y > maxRow { maxRow = y }
                 for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
@@ -189,14 +203,22 @@ public enum SubjectDetector {
             }
             let coverage = Double(count) / Double(w * h)
             guard coverage >= minCoverage else { continue }
-            out.append((NormRect(
-                x: Double(minX) / Double(w),
-                y: 1 - Double(maxRow + 1) / Double(h),
-                w: Double(maxX - minX + 1) / Double(w),
-                h: Double(maxRow - minRow + 1) / Double(h)
-            ), coverage))
+            out.append(Component(
+                box: NormRect(
+                    x: Double(minX) / Double(w),
+                    y: 1 - Double(maxRow + 1) / Double(h),
+                    w: Double(maxX - minX + 1) / Double(w),
+                    h: Double(maxRow - minRow + 1) / Double(h)
+                ),
+                coverage: coverage,
+                massCenter: CGPoint(
+                    x: sumX / Double(count) / Double(w),
+                    // 마스크는 위가 0행. y 가 위로 가는 좌표로 뒤집는다.
+                    y: 1 - (sumRow / Double(count) / Double(h))
+                )
+            ))
         }
-        return out.sorted { $0.1 > $1.1 }
+        return out.sorted { $0.coverage > $1.coverage }
     }
 
     /// 크롭 중심 후보를 비교하기 위한 마스크 통계.
@@ -267,9 +289,7 @@ public enum SubjectDetector {
     ///
     /// - Parameter previous: 직전에 따라가던 덩어리. `nil` 이면(시작) 가장 큰 것을 고른다.
     /// - Returns: 이어서 따라갈 덩어리. 겹치는 게 하나도 없으면 가장 큰 것으로 새로 잡는다.
-    public static func follow(
-        _ parts: [(box: NormRect, coverage: Double)], previous: NormRect?
-    ) -> (box: NormRect, coverage: Double)? {
+    public static func follow(_ parts: [Component], previous: NormRect?) -> Component? {
         guard !parts.isEmpty else { return nil }
         guard let previous else { return parts.max { $0.coverage < $1.coverage } }
         let scored = parts.map { (part: $0, iou: intersectionOverUnion($0.box, previous)) }

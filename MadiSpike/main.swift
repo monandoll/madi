@@ -317,6 +317,128 @@ case "track":
         stats(cys, "세로중심")
     } catch { fail("\(error)") }
 
+case "reframe":
+    // SubjectTrack → 스무딩 → 키프레임 → G1 · G3 측정.
+    // 세로 중심 규칙(boxCenter / massCenter)을 같은 원본에서 나란히 잰다.
+    guard args.count > 1 else {
+        fail("사용법: madi-spike reframe <영상> [--step 0.5] [--until 20] [--target 0.72] [--keys]")
+    }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let id = video.deletingPathExtension().lastPathComponent
+        let step = Double(option("step") ?? "") ?? 0.5
+        let track = try await SubjectTrackBuilder.build(
+            videoID: id, url: video, stepSec: step,
+            until: Double(option("until") ?? ""),
+            minCoverage: Double(option("minCoverage") ?? "")
+                ?? SubjectTrackBuilder.defaultMinCoverage,
+            workDir: URL(fileURLWithPath: "out/reframe").appending(path: id)
+        )
+        let out = CGSize(width: 1080, height: 1920)
+        // 목표 점유율·확대 상한을 덮어쓸 수 있게 둔다. **세로 중심 규칙을 재려면
+        // 배율이 실제로 1 을 넘어야 한다** — 기본값으로는 모든 원본이 배율 1 에 머문다.
+        var reframeValues = values.reframe
+        if let t = Double(option("target") ?? "") { reframeValues.targetSubjectHeightRatio = t }
+        if let u = Double(option("maxUpscale") ?? "") { reframeValues.maxUpscale = u }
+        print(String(format: "  %@  %dx%d  %.1f초  표본 %d개  입력없음 %.0f%%  %@",
+                     id as NSString, track.source.width, track.source.height,
+                     track.source.durationSec, track.samples.count,
+                     track.missingRatio * 100,
+                     (track.isJudgeable ? "판정 가능" : "판정 불가(20% 초과)") as NSString))
+        let last = track.samples.last?.t ?? 0
+        print("")
+        print("  세로중심규칙    G1     통과율  높이중앙  G3     최대이동  잘림   위잘림  아래잘림")
+        var plans: [ReframePlanner.VerticalAnchor: ReframePlanner.Plan] = [:]
+        for anchor in ReframePlanner.VerticalAnchor.allCases {
+            let plan = ReframePlanner.plan(
+                track: track, range: 0...last, output: out, fps: 30,
+                style: reframeValues, verticalAnchor: anchor
+            )
+            plans[anchor] = plan
+            let m = plan.measurement
+            let sorted = m.subjectHeights.sorted()
+            let median = sorted.isEmpty ? 0 : sorted[sorted.count / 2]
+            func mark(_ r: GateResult) -> String {
+                switch r {
+                case .pass: "통과"
+                case .fail: "실패"
+                case .cannotJudge: "판정불가"
+                case .sourceLimited: "원본한계"
+                }
+            }
+            print(String(format: "  %-12@  %-8@ %5.0f%%  %7.3f  %-8@ %7.4f  %5.3f  %6.3f  %7.3f",
+                         anchor.rawValue as NSString, mark(plan.g1) as NSString,
+                         m.heightPassRatio * 100, median, mark(plan.g3) as NSString,
+                         m.maxCenterShiftPerFrame, m.clippedRatio,
+                         m.topClipRatio, m.bottomClipRatio))
+        }
+        print(String(format: "  목표 점유 %.2f · 확대 상한 %.2f · 최대 배율 %.2f",
+                     reframeValues.targetSubjectHeightRatio, reframeValues.maxUpscale,
+                     max(1, ReframeLimits.maxZoom(source: track.source.size, output: out,
+                                                  maxUpscale: reframeValues.maxUpscale))))
+        print(String(format: "  (G1 기준 높이 %.2f · 통과율 %.0f%% 이상 · G3 기준 이동 %.2f/frame)",
+                     ReframePlanner.minSubjectHeight,
+                     ReframePlanner.minHeightPassRatio * 100,
+                     ReframePlanner.maxCenterShiftPerFrame))
+
+        if args.contains("--render") {
+            // 보간이 실제로 움직이는지 본다. 렌더 변경은 프레임 시트 없이 머지하지 않는다
+            // (AGENTS.md §14).
+            let scene = Scene(
+                id: "s1", role: .demo,
+                source: Scene.Source(videoID: id, start: 0, end: last),
+                reframe: ReframeTrack(mode: .auto)
+            )
+            let comp = Composition(
+                id: "reframe_" + id, videoID: id, templateID: "short",
+                size: Composition.Size(w: 1080, h: 1920), fps: 30,
+                meta: Composition.Meta(title: id, targetDurationSec: last),
+                captionSlot: .fullBody, scenes: [scene]
+            )
+            let applied = ReframePlanner.apply(
+                to: comp, tracks: [id: track], style: values
+            )
+            // 되쓰기가 JSON 왕복을 견디는지. 못 견디면 재현 가능성이 깨진다 (AGENTS.md §1-8).
+            let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let json = try encoder.encode(applied.composition)
+            let restored = try JSONDecoder().decode(Composition.self, from: json)
+            let written = restored.scenes[0].reframe
+            print("")
+            print("  되쓰기: mode \(written.mode.rawValue) · 키프레임 \(written.keyframes.count)개 "
+                  + "· JSON 왕복 \(written == applied.composition.scenes[0].reframe ? "같음" : "달라짐")")
+            try json.write(to: URL(fileURLWithPath: "out/reframe/\(id).json"))
+
+            let outURL = URL(fileURLWithPath: "out/reframe/\(id).mp4")
+            try await Renderer().render(
+                restored, sources: [id: video], style: values, to: outURL
+            )
+            let sheetURL = URL(fileURLWithPath: "out/reframe/\(id)_sheet.png")
+            let shown = try await FrameSheet.grid(
+                from: outURL,
+                at: stride(from: 0.0, to: last, by: max(last / 8, 0.5)).map { $0 },
+                columns: 4, to: sheetURL
+            )
+            print("  " + outURL.path)
+            print(String(format: "  %@  (%d칸: %@)", sheetURL.path as NSString, shown.count,
+                         shown.map { String(format: "%.1f", $0) }
+                            .joined(separator: " ") as NSString))
+        }
+
+        if args.contains("--keys"), let plan = plans[.boxCenter] {
+            print("")
+            print("   시각    x      y      w      h     배율   인물높이")
+            for (i, k) in plan.keyframes.enumerated() where i % 2 == 0 {
+                let zoom = k.rect.w > 0
+                    ? (ReframeLimits.baseCropWidth(source: track.source.size, output: out)
+                       / (k.rect.w * track.source.size.width)) : 0
+                let h = i < plan.measurement.subjectHeights.count
+                    ? plan.measurement.subjectHeights[i] : 0
+                print(String(format: "  %5.1f  %.3f  %.3f  %.3f  %.3f  %5.2f  %7.3f",
+                             k.t, k.rect.x, k.rect.y, k.rect.w, k.rect.h, zoom, h))
+            }
+        }
+    } catch { fail("\(error)") }
+
 case "croptest":
     // 가로로 넓은 자세에서 "크롭 중심을 무엇으로 잡나" 를 후보별로 잰다.
     // 점수 = 크롭 안에 남는 마스크 비율. 높을수록 몸이 덜 잘린다.

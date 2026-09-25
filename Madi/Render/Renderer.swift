@@ -201,14 +201,9 @@ public struct Renderer {
                 assetTrack: videoTrack
             )
             let preferred = try await sourceVideo.load(.preferredTransform)
-            layerInstruction.setTransform(
-                reframeTransform(
-                    scene: p.scene,
-                    sourceSize: p.naturalSize,
-                    preferred: preferred,
-                    renderSize: renderSize
-                ),
-                at: insertAt
+            applyReframe(
+                to: layerInstruction, plan: p,
+                preferred: preferred, renderSize: renderSize, fps: comp.fps
             )
             instruction.layerInstructions = [layerInstruction]
             instructions.append(instruction)
@@ -217,27 +212,67 @@ public struct Renderer {
         return (composition, instructions)
     }
 
-    /// 원본의 어느 영역을 9:16 화면에 채울지. `ReframeTrack` 이 시키는 대로 한다.
+    /// 리프레임을 **시간축으로** 붙인다.
     ///
-    /// 0단계에서는 **정적 변환만** 쓴다. 시간축 키프레임 보간은 1단계다 (AGENTS.md §12-1).
-    /// 키프레임이 여러 개여도 첫 값만 쓰고, 그 사실을 로그에 남긴다.
-    private func reframeTransform(
-        scene: Scene, sourceSize: CGSize, preferred: CGAffineTransform, renderSize: CGSize
-    ) -> CGAffineTransform {
-        if scene.reframe.mode == .keyframes && scene.reframe.keyframes.count > 1 {
-            Self.log.notice("""
-            장면 \(scene.id, privacy: .public): 리프레임 키프레임이 여러 개지만 \
-            0단계는 첫 값만 씁니다 (보간은 1단계).
-            """)
+    /// 키프레임이 하나면 고정 변환이고, 여러 개면 출력 프레임마다 변환을 바꾼다.
+    ///
+    /// ★ 키프레임 간격(0.5초)으로만 `setTransformRamp` 를 깔면 안 된다.
+    ///   화면 배율은 `1 / 크롭폭` 이라 크롭에 대해 **선형이 아니다** —
+    ///   램프는 변환 행렬을 선형 보간하므로 확대 구간에서 어긋난다.
+    ///   `ReframeTrack.rect(at:)` 를 출력 프레임 간격으로 다시 샘플링해서 그 시각의 변환을 준다.
+    private func applyReframe(
+        to layerInstruction: AVMutableVideoCompositionLayerInstruction,
+        plan p: ScenePlan,
+        preferred: CGAffineTransform,
+        renderSize: CGSize,
+        fps: Int
+    ) {
+        let track = p.scene.reframe
+        func transform(at local: Double) -> CGAffineTransform {
+            reframeTransform(
+                crop: track.rect(at: local),
+                sourceSize: p.naturalSize, preferred: preferred, renderSize: renderSize
+            )
         }
 
+        guard track.mode != .fixed, track.keyframes.count > 1 else {
+            layerInstruction.setTransform(transform(at: 0), at: p.outputStart)
+            return
+        }
+
+        let duration = p.outputDuration.seconds
+        // 변환 단계 수 상한. 5분 장면에 9000개를 깔지 않는다.
+        let step = max(1.0 / Double(max(fps, 1)), duration / 1200)
+        let timescale: CMTimeScale = 600
+        var t = 0.0
+        while t < duration - 1e-9 {
+            layerInstruction.setTransform(
+                transform(at: t),
+                at: p.outputStart + CMTime(seconds: t, preferredTimescale: timescale)
+            )
+            t += step
+        }
+        Self.log.debug(
+            "장면 \(p.scene.id, privacy: .public): 리프레임 변환 \(Int(duration / step))단계"
+        )
+    }
+
+    /// 원본의 어느 영역을 9:16 화면에 채울지.
+    private func reframeTransform(
+        crop cropOrNil: NormRect?, sourceSize: CGSize,
+        preferred: CGAffineTransform, renderSize: CGSize
+    ) -> CGAffineTransform {
         // 잡을 원본 영역. 없으면 화면을 꽉 채우는 중앙 크롭.
-        let crop = scene.reframe.rect(at: 0) ?? centerCrop(
+        let crop = cropOrNil ?? centerCrop(
             sourceSize: sourceSize, aspect: renderSize.width / renderSize.height
         )
+        // ★ `NormRect.y` 는 **아래 기준**인데 AVFoundation 합성 좌표계는 **위 기준**이다.
+        //   여기가 유일한 변환 지점이다. 0단계에는 크롭이 항상 전체 높이(h = 1)라
+        //   이 차이가 드러나지 않았고, 확대가 들어오자마자 화면이 천장을 잡았다
+        //   (`docs/findings/2026-09-25-subject-track.md §4`).
         let cropRect = CGRect(
             x: crop.x * sourceSize.width,
-            y: crop.y * sourceSize.height,
+            y: (1 - crop.y - crop.h) * sourceSize.height,
             width: max(crop.w * sourceSize.width, 1),
             height: max(crop.h * sourceSize.height, 1)
         )

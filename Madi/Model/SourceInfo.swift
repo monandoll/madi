@@ -42,6 +42,39 @@ public enum ReframeLimits {
         return min(source.width, source.height * outputAspect)
     }
 
+    /// 배율 1 에서 잘라낼 크롭 **크기**(원본 픽셀). 출력과 같은 비율이다.
+    public static func baseCropSize(source: CGSize, output: CGSize) -> CGSize {
+        let w = baseCropWidth(source: source, output: output)
+        return CGSize(width: w, height: w * output.height / output.width)
+    }
+
+    /// 원본 상자 높이(원본 높이로 정규화)를 **배율 1 크롭 안에서 보이는 높이**로 바꾼다.
+    ///
+    /// 가로 원본은 크롭 높이가 원본 높이와 같아 값이 그대로지만,
+    /// 9:16 보다 세로로 긴 원본(예: 4:5)은 크롭이 더 짧아 상자가 더 크게 보인다.
+    /// 목표 점유율(`targetSubjectHeightRatio`)은 **출력 화면 기준**이므로 이 변환이 필요하다.
+    public static func normalizedSubjectHeight(
+        boxHeight: Double, source: CGSize, output: CGSize
+    ) -> Double {
+        let cropHeight = baseCropSize(source: source, output: output).height
+        guard cropHeight > 0 else { return boxHeight }
+        return boxHeight * source.height / cropHeight
+    }
+
+    /// 배율과 중심에서 크롭 사각형(원본 정규화, y 는 위로)을 만든다.
+    /// 중심이 가장자리에 붙으면 **크롭을 원본 안으로 밀어 넣는다** — 레터박스를 만들지 않는다.
+    public static func cropRect(
+        zoom: Double, center: CGPoint, source: CGSize, output: CGSize
+    ) -> NormRect {
+        let base = baseCropSize(source: source, output: output)
+        let z = max(zoom, 0.0001)
+        let w = min(base.width / z / source.width, 1)
+        let h = min(base.height / z / source.height, 1)
+        let x = min(max(center.x - w / 2, 0), 1 - w)
+        let y = min(max(center.y - h / 2, 0), 1 - h)
+        return NormRect(x: x, y: y, w: w, h: h)
+    }
+
     /// 이 배율로 확대했을 때 출력이 원본 픽셀을 얼마나 늘려 쓰는가.
     /// 1 이하면 원본 픽셀로 충분하고, 넘으면 보간이다.
     public static func upscale(zoom: Double, source: CGSize, output: CGSize) -> Double {
