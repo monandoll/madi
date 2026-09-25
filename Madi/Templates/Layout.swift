@@ -80,8 +80,11 @@ public enum CaptionLayout {
             strokeWidthPercent: strokeWidthPercent,
             baselineFromBottom: baselineFromBottom,
             secondaryFontSize: fontSize * CGFloat(style.secondary.scale),
-            // 보조는 베이스라인으로 잡는다. 디센더 유무로 ink 아래끝이 흔들리기 때문이다.
-            secondaryBaselineFromBottom: CGFloat(style.secondary.baselineBottomRatio) * H,
+            // 보조는 **본문 아래끝에서 상대로** 잡는다. 본문이 움직이면 같이 움직여야 한다
+            // (`docs/findings/2026-09-25-caption-position-10.md §3`).
+            // 베이스라인으로 잡는 이유는 디센더 유무로 ink 아래끝이 흔들리기 때문이다.
+            secondaryBaselineFromBottom: inkBottom
+                - CGFloat(style.secondary.baselineOffsetRatio) * H,
             lineStep: targetInk * CGFloat(caption.lineGapRatio)
         )
     }

@@ -86,6 +86,52 @@ public enum SubjectDetector {
         return scan
     }
 
+    /// 가로 띠별 사람 마스크 밀도.
+    ///
+    /// 자막이 피사체를 덮는지 보려면 **상자가 아니라 마스크**가 필요하다.
+    /// 인물 상자는 화면의 87% 를 차지해서 어느 자막 위치든 "겹친다" 고 나온다
+    /// (`docs/findings/2026-09-25-caption-position-10.md` 가설 검증).
+    ///
+    /// - Parameter bands: `(아래에서의 비율, 높이 비율)` 쌍. y 가 위로 가는 좌표.
+    /// - Returns: 띠마다 `그 띠에서 마스크가 덮은 가로 비율의 중앙값`.
+    ///   자막은 가로로 길게 놓이므로 "이 높이에서 사람이 가로로 얼마나 차지하나" 가 맞는 질문이다.
+    public static func maskBandCoverage(
+        _ image: CGImage, bands: [(bottom: Double, height: Double)]
+    ) throws -> [Double] {
+        let handler = VNImageRequestHandler(cgImage: image, options: [:])
+        let segment = VNGeneratePersonSegmentationRequest()
+        segment.qualityLevel = .accurate
+        segment.outputPixelFormat = kCVPixelFormatType_OneComponent8
+        try handler.perform([segment])
+        guard let buffer = (segment.results ?? []).first?.pixelBuffer else {
+            return bands.map { _ in 0 }
+        }
+
+        CVPixelBufferLockBaseAddress(buffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
+        guard let base = CVPixelBufferGetBaseAddress(buffer) else { return bands.map { _ in 0 } }
+        let w = CVPixelBufferGetWidth(buffer)
+        let h = CVPixelBufferGetHeight(buffer)
+        let stride = CVPixelBufferGetBytesPerRow(buffer)
+        let px = base.bindMemory(to: UInt8.self, capacity: stride * h)
+
+        return bands.map { band in
+            // 마스크는 이미지 좌표(위가 0행). 아래에서의 비율을 행 번호로 바꾼다.
+            let rowLo = Int((1 - band.bottom - band.height) * Double(h))
+            let rowHi = Int((1 - band.bottom) * Double(h))
+            let lo = max(0, min(rowLo, h - 1)), hi = max(0, min(rowHi, h - 1))
+            guard hi > lo else { return 0 }
+            var perRow: [Double] = []
+            for row in lo...hi {
+                var n = 0
+                for x in 0..<w where px[row * stride + x] > 127 { n += 1 }
+                perRow.append(Double(n) / Double(w))
+            }
+            perRow.sort()
+            return perRow[perRow.count / 2]
+        }
+    }
+
     private static func largest(_ observations: [VNDetectedObjectObservation]) -> NormRect? {
         guard let best = observations.max(by: {
             $0.boundingBox.height * $0.boundingBox.width

@@ -137,12 +137,19 @@ public struct StyleValues: Codable, Hashable, Sendable {
         public var scale: Double
         public var weight: Double
 
-        /// 보조 문구 **베이스라인**에서 화면 아래까지 ÷ 프레임 높이.
+        /// 본문 글자 아래끝에서 보조 문구 **베이스라인**까지의 거리 ÷ 프레임 높이.
+        /// 값이 클수록 보조가 본문에서 멀어진다(아래로 내려간다).
+        ///
+        /// ★ **절대 위치가 아니라 본문 기준 상대 위치다.** 공개 숏폼 10편을 재 보니
+        ///   본문 위치는 0.235 ~ 0.483 으로 프레임 높이의 25% 나 벌어지는데
+        ///   이 간격은 **0.031 ~ 0.041 로 붙어 있다**
+        ///   (`docs/findings/2026-09-25-caption-position-10.md §3`).
+        ///   절대값으로 두면 본문이 움직일 때 보조가 따로 논다.
         ///
         /// ★ 본문과 달리 ink 아래끝이 아니라 베이스라인으로 잡는다. 라틴 문자는 `y` · `g` 의
         ///   디센더 유무가 문구마다 달라서 ink 아래끝이 흔들린다. 베이스라인은 안 흔들린다.
-        /// 재는 법: 행별 픽셀 수가 뚝 떨어지는 행이 베이스라인이다.
-        public var baselineBottomRatio: Double
+        /// 재는 법: (본문 흰 픽셀 마지막 행) − (보조 행별 픽셀 수가 뚝 떨어지는 행) ÷ 프레임 높이.
+        public var baselineOffsetRatio: Double
 
         public var fill: HexColor
         public var italic: Bool
@@ -216,7 +223,8 @@ public func validate(_ values: StyleValues) throws {
     let s = values.secondary
     check("secondary.scale", s.scale, 0.2...1.0)
     check("secondary.weight", s.weight, 100...900)
-    check("secondary.baselineBottomRatio", s.baselineBottomRatio, 0.02...0.6)
+    // 0 이면 본문과 겹치고, 음수면 본문 위로 올라간다. 실측은 0.031~0.041 이다.
+    check("secondary.baselineOffsetRatio", s.baselineOffsetRatio, 0.005...0.15)
 
     let sh = values.shadow
     check("shadow.offsetXRatio", sh.offsetXRatio, -0.02...0.02)
@@ -228,11 +236,11 @@ public func validate(_ values: StyleValues) throws {
     check("reframe.smoothingSec", r.smoothingSec, 0...2)
     check("reframe.padding", r.padding, 0...0.5)
 
-    // 보조 문구가 본문보다 아래에 있어야 한다. 뒤집히면 겹친다.
-    if s.baselineBottomRatio >= c.inkBottomRatio {
+    // 보조가 화면 밖으로 나가면 안 된다.
+    if c.inkBottomRatio - s.baselineOffsetRatio <= 0 {
         problems.append(
-            "secondary.baselineBottomRatio(\(s.baselineBottomRatio)) 가 "
-            + "caption.inkBottomRatio(\(c.inkBottomRatio)) 보다 위다 — 본문과 겹친다"
+            "caption.inkBottomRatio(\(c.inkBottomRatio)) 에서 "
+            + "secondary.baselineOffsetRatio(\(s.baselineOffsetRatio)) 를 빼면 화면 밖이다"
         )
     }
 

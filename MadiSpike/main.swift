@@ -179,6 +179,35 @@ case "frames":
         for url in written { print(url.path) }
     } catch { fail("\(error)") }
 
+case "captionband":
+    // 자막 위치 가설 검증 (1단계 첫 작업).
+    // 후보 위치마다 "그 높이에서 사람이 가로로 얼마나 차지하나" 를 잰다.
+    guard args.count > 1 else { fail("사용법: madi-spike captionband <영상> [--at 1,2]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let times = (option("at") ?? "").split(separator: ",").compactMap { Double($0) }
+        let frames = try await FrameSheet.extract(
+            from: video, at: times, into: URL(fileURLWithPath: "out/band")
+                .appending(path: video.deletingPathExtension().lastPathComponent), prefix: ""
+        )
+        // 실측된 세 무리. 자막 글자 높이(0.0359)만큼의 띠로 본다.
+        let candidates: [(name: String, bottom: Double)] =
+            [("A 0.235", 0.235), ("B 0.300", 0.300), ("C 0.475", 0.475)]
+        let bands = candidates.map { (bottom: $0.bottom, height: 0.0359) }
+        var sums = [Double](repeating: 0, count: candidates.count)
+        var n = 0
+        for url in frames {
+            let image = try StillRenderer.loadImage(url)
+            let cov = try SubjectDetector.maskBandCoverage(image, bands: bands)
+            for (i, c) in cov.enumerated() { sums[i] += c }
+            n += 1
+        }
+        guard n > 0 else { fail("프레임이 없습니다") }
+        let avg = sums.map { $0 / Double(n) }
+        print("  " + zip(candidates, avg).map {
+            String(format: "%@ %.3f", $0.0.name, $0.1) }.joined(separator: "   "))
+    } catch { fail("\(error)") }
+
 case "detect":
     // 사람 감지 후보를 나란히 재 본다. 고르는 게 아니라 재기만 한다 (G1·G2 정의 준비).
     guard args.count > 1 else { fail("사용법: madi-spike detect <영상> [--at 1,2] [--out 디렉토리]") }
@@ -352,6 +381,7 @@ default:
       sheet <영상> <out.png> [--cols 5]   한 편을 격자로 훑어본다
       pose <영상> <디렉토리> [--conf 0.3]  사람 감지 정확도 (1단계 준비)
       detect <영상> [--at 1,2]           감지 방법 여러 개를 나란히 (G1·G2 정의 준비)
+      captionband <영상> [--at 1,2]      자막 후보 위치별 피사체 밀도
 
     공통 옵션: --text --secondary --width --height --style
     """)
