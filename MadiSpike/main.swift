@@ -317,6 +317,60 @@ case "track":
         stats(cys, "세로중심")
     } catch { fail("\(error)") }
 
+case "maskshape":
+    // G1 구멍 조사. "제대로 잡힌 화면" 의 마스크가 어떻게 생겼는지 재서
+    // '잴 수 없는 마스크' 를 가를 기준을 찾는다. 숫자를 지어내지 않는다 (AGENTS.md §8).
+    guard args.count > 1 else { fail("사용법: madi-spike maskshape <영상> [--n 8]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let id = video.deletingPathExtension().lastPathComponent
+        let n = Int(option("n") ?? "") ?? 8
+        let info = try await FrameSheet.info(of: video)
+        let span = max(info.duration - 1, 1)
+        let times = (0..<n).map { 0.5 + span * Double($0) / Double(max(n - 1, 1)) }
+        let frames = try await FrameSheet.extract(
+            from: video, at: times,
+            into: URL(fileURLWithPath: "out/maskshape").appending(path: id), prefix: ""
+        )
+        var coverages: [Double] = [], fills: [Double] = []
+        var heights: [Double] = [], widths: [Double] = [], areas: [Double] = []
+        var bothEdges = 0, found = 0
+        for frame in frames {
+            let image = try StillRenderer.loadImage(frame)
+            let parts = try SubjectDetector.maskComponents(
+                image, minCoverage: SubjectTrackBuilder.defaultMinCoverage
+            )
+            guard let first = parts.first else { continue }
+            found += 1
+            coverages.append(first.coverage)
+            heights.append(first.box.h)
+            widths.append(first.box.w)
+            let area = first.box.w * first.box.h
+            areas.append(area)
+            fills.append(area > 0 ? first.coverage / area : 0)
+            if first.touchesTop && first.touchesBottom { bothEdges += 1 }
+        }
+        func med(_ v: [Double]) -> Double {
+            v.isEmpty ? 0 : v.sorted()[v.count / 2]
+        }
+        // 상자채움 = 마스크 픽셀 / 상자 넓이. 사람은 가늘어서 낮고, 덩어리는 높다.
+        // 한 프레임이 아니라 **분포**를 본다 — 공개본도 가끔 0.86 까지 튄다.
+        // 표본 단위로 "덩어리다" 판정 비율. 기존 '측정 불가 20%' 기계에 그대로 태우려면
+        // 영상 단위 중앙값이 아니라 표본 비율이어야 한다.
+        func blobRatio(_ cov: Double, _ fill: Double) -> Double {
+            guard !fills.isEmpty else { return 0 }
+            let hit = zip(coverages, fills).filter { $0.0 >= cov && $0.1 >= fill }.count
+            return Double(hit) / Double(fills.count)
+        }
+        print(String(format:
+            "  %-14@ %4dx%-4d 점유 %.3f/%.3f 채움 %.3f/%.3f "
+            + "· 덩어리비율 (.55,.65) %3.0f%%  (.60,.70) %3.0f%%  (.65,.70) %3.0f%%",
+            id as NSString, Int(info.size.width), Int(info.size.height),
+            med(coverages), coverages.max() ?? 0, med(fills), fills.max() ?? 0,
+            blobRatio(0.55, 0.65) * 100, blobRatio(0.60, 0.70) * 100,
+            blobRatio(0.65, 0.70) * 100))
+    } catch { fail("\(error)") }
+
 case "reframe":
     // SubjectTrack → 스무딩 → 키프레임 → G1 · G3 측정.
     // 세로 중심 규칙(boxCenter / massCenter)을 같은 원본에서 나란히 잰다.
@@ -374,7 +428,9 @@ case "reframe":
                 c.topRatio * 100, c.topEligible,
                 c.bottomRatio * 100, c.bottomEligible,
                 c.strictRatio * 100, c.strictEligible,
-                mark(plan.g3) as NSString, m.maxCenterShiftPerFrame))
+                mark(plan.g3) as NSString, m.maxCenterShiftPerFrame)
+                + (m.heightSaturatedCount > 0
+                   ? "  포화 \(m.heightSaturatedCount)/\(m.subjectHeights.count)" : ""))
         }
         print(String(format: "  목표 점유 %.2f · 확대 상한 %.2f · 최대 배율 %.2f",
                      reframeValues.targetSubjectHeightRatio, reframeValues.maxUpscale,

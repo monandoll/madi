@@ -57,6 +57,16 @@ public enum ReframePlanner {
         public var clippedRatio: Double
         /// G2 — **우리가 새로 자른** 비율. `AGENTS.md §8`.
         public var g2: G2Measurement
+        /// 인물 높이가 **포화된** 표본 수 — 마스크가 크롭 위·아래에 동시에 닿아
+        /// 점유 높이가 1.0 으로 잘린 경우.
+        ///
+        /// ★ **판정을 바꾸지 않는다. 리포트에만 남긴다.**
+        ///   G1 이 묻는 건 "사람 키" 가 아니라 **화면 점유 높이**이고,
+        ///   위아래에 동시에 닿으면 점유는 1.0 이 맞다 — 잰 값이 틀린 게 아니다.
+        ///   크리에이터 공개본도 이걸 정상적으로 한다 (`xaUpqHAQjo4` 24프레임 중 14).
+        ///   그래서 이 수를 근거로 통과를 막으면 **크리에이터 본인 영상이 막힌다**
+        ///   (`docs/findings/2026-09-25-g1-saturation.md`).
+        public var heightSaturatedCount: Int
     }
 
     public struct Plan: Sendable {
@@ -145,7 +155,8 @@ public enum ReframePlanner {
                         topEligible: 0, topNewlyClipped: 0,
                         bottomEligible: 0, bottomNewlyClipped: 0, worstRatio: 0,
                         strictEligible: 0, strictNewlyClipped: 0
-                    )
+                    ),
+                    heightSaturatedCount: 0
                 ),
                 g1: .cannotJudge(.subjectNotFound),
                 g2: .cannotJudge(.subjectNotFound),
@@ -164,6 +175,7 @@ public enum ReframePlanner {
         var heights: [Double] = []
         var cappedFails = 0, hardFails = 0
         var clipped: [Double] = []
+        var saturated = 0
         var g2 = G2Measurement(
             topEligible: 0, topNewlyClipped: 0, bottomEligible: 0, bottomNewlyClipped: 0,
             worstRatio: 0, strictEligible: 0, strictNewlyClipped: 0
@@ -200,6 +212,7 @@ public enum ReframePlanner {
                 g2.strictEligible += 1
                 if cutTop || cutBottom { g2.strictNewlyClipped += 1 }
             }
+            if cutTop && cutBottom { saturated += 1 }
         }
         g2.worstRatio = max(g2.topRatio, g2.bottomRatio)
 
@@ -235,7 +248,7 @@ public enum ReframePlanner {
                 sourceLimitedRatio: sourceLimitedRatio,
                 cappedFailCount: cappedFails, hardFailCount: hardFails,
                 maxCenterShiftPerFrame: shift,
-                clippedRatio: mean(clipped), g2: g2
+                clippedRatio: mean(clipped), g2: g2, heightSaturatedCount: saturated
             ),
             g1: g1, g2: g2Result(g2, missingRatio: missingRatio), g3: g3
         )
@@ -267,6 +280,8 @@ public enum ReframePlanner {
         public var g3: GateResult
         public var missingRatio: Double
         public var g2Measurement: G2Measurement
+        /// 점유 높이가 1.0 으로 포화된 표본 수. **판정을 바꾸지 않는다** — 리포트용.
+        public var heightSaturatedCount: Int
         public var heightPassRatio: Double
         public var maxCenterShiftPerFrame: Double
         public var clippedRatio: Double
@@ -288,6 +303,7 @@ public enum ReframePlanner {
         var capped = 0, hard = 0
         var shift = 0.0
         var clipped: [Double] = []
+        var saturated = 0
         var g2 = G2Measurement(
             topEligible: 0, topNewlyClipped: 0, bottomEligible: 0, bottomNewlyClipped: 0,
             worstRatio: 0, strictEligible: 0, strictNewlyClipped: 0
@@ -324,6 +340,7 @@ public enum ReframePlanner {
             g2.bottomNewlyClipped += m.g2.bottomNewlyClipped
             g2.strictEligible += m.g2.strictEligible
             g2.strictNewlyClipped += m.g2.strictNewlyClipped
+            saturated += m.heightSaturatedCount
         }
 
         let missingRatio = totalSamples > 0 ? Double(totalMissing) / Double(totalSamples) : 1
@@ -348,7 +365,8 @@ public enum ReframePlanner {
         return CompositionPlan(
             composition: out, scenes: perScene,
             g1: g1, g2: g2Result(g2, missingRatio: missingRatio), g3: g3,
-            missingRatio: missingRatio, g2Measurement: g2, heightPassRatio: passRatio,
+            missingRatio: missingRatio, g2Measurement: g2,
+            heightSaturatedCount: saturated, heightPassRatio: passRatio,
             maxCenterShiftPerFrame: shift, clippedRatio: mean(clipped)
         )
     }
