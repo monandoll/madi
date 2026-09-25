@@ -54,6 +54,12 @@ targets:
     platform: macOS
     sources:
       - path: Madi/App
+      # 디자인 AI 가 만드는 화면 (docs/prompts/design-ai.md). 아직 앱 창에 붙지 않았고
+      # `#Preview` 로만 본다. 붙이는 것은 6단계다.
+      # `UI/Snapshot` 은 스크린샷 CLI 의 `main.swift` 라 앱 타깃에 들어가면 안 된다.
+      - path: Madi/UI
+        excludes:
+          - "Snapshot/**"
     dependencies:
       - target: MadiKit
         embed: true
@@ -78,6 +84,20 @@ targets:
       base:
         PRODUCT_NAME: madi-spike
         LD_RUNPATH_SEARCH_PATHS: "@executable_path"
+
+  # 화면 스크린샷용. `#Preview` 를 눈으로 보는 것과 별개로, 확정된 화면은 PNG 로 남겨야
+  # 사람이 확인하고 커밋에 붙일 수 있다 (docs/prompts/design-ai.md).
+  # 창을 1440×900 과 1100×700 로 띄워 그대로 떠서 `docs/design/screens/` 에 쓴다.
+  MadiUIShots:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Madi/UI
+    settings:
+      base:
+        PRODUCT_NAME: madi-ui-shots
+        # 앱이 아니라 CLI 라서 @main 대신 main.swift 를 쓴다.
+        SWIFT_VERSION: "6.0"
 
   MadiTests:
     type: bundle.unit-test
@@ -109,5 +129,11 @@ schemes:
     build:
       targets:
         MadiSpike: all
+    run:
+      config: Debug
+  MadiUIShots:
+    build:
+      targets:
+        MadiUIShots: all
     run:
       config: Debug

@@ -7,29 +7,50 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		007DF1B78B85420A704F8F34 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03759FB9105D4D3E02D4DE3 /* main.swift */; };
 		07776DF9B2BE228B2EFA4566 /* Composition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445E24C845CB9F13A235589E /* Composition.swift */; };
+		0CBD7641BDFB4FDCC3F5D2C5 /* ShotCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C353F07622E1853C9A758B5F /* ShotCell.swift */; };
+		2093C320099FF2C35A38877A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23EFEE0990BF78AF95B29CE /* RootView.swift */; };
+		24BDF6178A3683305B2E0DCC /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23EFEE0990BF78AF95B29CE /* RootView.swift */; };
 		2BA892758BC7F49E8495F281 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006AFA79D5ADACA512DB698F /* main.swift */; };
 		2EE5D8289209DFCF1DC52EE2 /* PoseProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDC46588584CE5887303191 /* PoseProvider.swift */; };
 		2F438C7740AE320FCA33D469 /* StyleSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = F080369FE263622AB0237836 /* StyleSchema.swift */; };
+		3312AA868189344A37C6747B /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8A2015B58FA275085359C25 /* SidebarView.swift */; };
 		41D529605EC5629F9025E152 /* MadiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */; };
 		498A29E3EF2E75257EADC4AD /* Font.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9198795506821EE4D71C606A /* Font.swift */; };
+		4FB64F36C58E61FA1C86AF1A /* ShotCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C353F07622E1853C9A758B5F /* ShotCell.swift */; };
 		55BFC2D227DCDDFD63F04E38 /* StyleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407CF4C64A45F212D6AA28FA /* StyleTests.swift */; };
+		56BA0DAE7878958DC6021E5E /* GalleryScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66478482D65AA2F3A550DE6 /* GalleryScreen.swift */; };
+		5EC4898A1FFFEA0919EFE78F /* ThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA06076D2C37AFB52A054685 /* ThumbnailView.swift */; };
 		631C3B5825F86943E42C6697 /* MadiKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; };
 		64E6401962C8137B5156C041 /* styles in Resources */ = {isa = PBXBuildFile; fileRef = 51E6B50BFE4E0F63A6994F30 /* styles */; };
 		6B3E982EF607902E95F17BE7 /* PoseOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D94087F95A27AD4220EBA1 /* PoseOverlay.swift */; };
+		74E3D5333D6E6085E0C38514 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4128CE6E4AFED6AD5491C264 /* SampleData.swift */; };
+		78B15137301B5B86F724D221 /* ThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA06076D2C37AFB52A054685 /* ThumbnailView.swift */; };
 		7C9E11D054D39BC490258492 /* PretendardVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8148334F0D1C4607F6103479 /* PretendardVariable.ttf */; };
+		7E40D672E298A150152E6A77 /* Copy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2704493EA14FFB218BD85234 /* Copy.swift */; };
 		7EC27D66EB8FA2EB23EF7B40 /* StyleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17ABE83D90BA6977FB20DD73 /* StyleStore.swift */; };
 		8F8D3E23A77E148BCC89AFA8 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = F441B6E8EB91AD06BD449DE9 /* OFL.txt */; };
+		8FD1677DF404DBD865A55D84 /* ShotInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FA9B25C6634222F16324AB /* ShotInspector.swift */; };
 		927E3BBA58DC739C64FC1904 /* MadiKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; };
+		9E9EE4E9653FAD55F33393EA /* ViewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B501D4D78085E4494C9267E0 /* ViewData.swift */; };
 		A71CD837B55F05CD74CD62A5 /* CaptionLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71CD7162AEC4CB13D3A85753 /* CaptionLayer.swift */; };
+		B7657EE3966D5B2948F05A31 /* ShotInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FA9B25C6634222F16324AB /* ShotInspector.swift */; };
 		B84729514D4454755BF89583 /* Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBC6F4DD77E4B83E33D191D5 /* Layout.swift */; };
+		B95FD6137063423CD9DB2989 /* Tokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C43B0035E8655B359C0E3B47 /* Tokens.swift */; };
 		C19C038351F0A44E688981C7 /* MadiKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		CC86AF959B9705EC491D0637 /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F09B5CE975F12C72180877E /* JSONValue.swift */; };
+		D88DF0769A48CFDF2CE19AA9 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8A2015B58FA275085359C25 /* SidebarView.swift */; };
 		DD6B5D3982C692F53D075B8E /* StillRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CF255FFFF4817C0CC024338 /* StillRenderer.swift */; };
 		DF49714AE26CCB238A41B42F /* FrameSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA6ADD859B1A49D3B7AED392 /* FrameSheet.swift */; };
+		E18ACF13437C7F2E6178E2D4 /* Tokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C43B0035E8655B359C0E3B47 /* Tokens.swift */; };
 		E7B5F43FB54DA90B9F02FFDF /* MadiKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; };
+		EDFC7A9DCC434C1E09B1BF3D /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4128CE6E4AFED6AD5491C264 /* SampleData.swift */; };
+		EF0F26CB078C7C8B601BDC4D /* ViewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B501D4D78085E4494C9267E0 /* ViewData.swift */; };
 		F76C7F574A45D391BC82F937 /* CompositionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E21F644B2F761A97C070BE8 /* CompositionTests.swift */; };
+		F949B92E3B8AC97F765F9967 /* GalleryScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66478482D65AA2F3A550DE6 /* GalleryScreen.swift */; };
 		FC3555D591D888294B8CF13A /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B2B8D01B0628FACEC7DDB1 /* Renderer.swift */; };
+		FDAD3F002F69F8295199DB0C /* Copy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2704493EA14FFB218BD85234 /* Copy.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -76,12 +97,15 @@
 		17ABE83D90BA6977FB20DD73 /* StyleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleStore.swift; sourceTree = "<group>"; };
 		181BC5EB1AF428D241C43C78 /* MadiSpike */ = {isa = PBXFileReference; includeInIndex = 0; path = MadiSpike; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MadiApp.swift; sourceTree = "<group>"; };
+		2704493EA14FFB218BD85234 /* Copy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copy.swift; sourceTree = "<group>"; };
 		3CDC46588584CE5887303191 /* PoseProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseProvider.swift; sourceTree = "<group>"; };
 		3E21F644B2F761A97C070BE8 /* CompositionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionTests.swift; sourceTree = "<group>"; };
 		407CF4C64A45F212D6AA28FA /* StyleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleTests.swift; sourceTree = "<group>"; };
 		409E7371C9108F4322587DF0 /* MadiKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MadiKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		4128CE6E4AFED6AD5491C264 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		445E24C845CB9F13A235589E /* Composition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composition.swift; sourceTree = "<group>"; };
 		51E6B50BFE4E0F63A6994F30 /* styles */ = {isa = PBXFileReference; lastKnownFileType = folder; name = styles; path = Madi/Resources/styles; sourceTree = SOURCE_ROOT; };
+		69FA9B25C6634222F16324AB /* ShotInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotInspector.swift; sourceTree = "<group>"; };
 		71CD7162AEC4CB13D3A85753 /* CaptionLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionLayer.swift; sourceTree = "<group>"; };
 		72D94087F95A27AD4220EBA1 /* PoseOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseOverlay.swift; sourceTree = "<group>"; };
 		8148334F0D1C4607F6103479 /* PretendardVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = PretendardVariable.ttf; sourceTree = "<group>"; };
@@ -89,11 +113,20 @@
 		99FF29B03B61C75F0F2A1992 /* MadiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MadiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9F09B5CE975F12C72180877E /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
 		A6846090E3F100A140F296D0 /* Madi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Madi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B03759FB9105D4D3E02D4DE3 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		B501D4D78085E4494C9267E0 /* ViewData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewData.swift; sourceTree = "<group>"; };
+		C353F07622E1853C9A758B5F /* ShotCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotCell.swift; sourceTree = "<group>"; };
 		C3B2B8D01B0628FACEC7DDB1 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
+		C43B0035E8655B359C0E3B47 /* Tokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tokens.swift; sourceTree = "<group>"; };
+		C82B9B1ABC2CD65FF56DC695 /* MadiUIShots */ = {isa = PBXFileReference; includeInIndex = 0; path = MadiUIShots; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA06076D2C37AFB52A054685 /* ThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailView.swift; sourceTree = "<group>"; };
+		D23EFEE0990BF78AF95B29CE /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		DA6ADD859B1A49D3B7AED392 /* FrameSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameSheet.swift; sourceTree = "<group>"; };
+		E8A2015B58FA275085359C25 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		EBC6F4DD77E4B83E33D191D5 /* Layout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Layout.swift; sourceTree = "<group>"; };
 		F080369FE263622AB0237836 /* StyleSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleSchema.swift; sourceTree = "<group>"; };
 		F441B6E8EB91AD06BD449DE9 /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
+		F66478482D65AA2F3A550DE6 /* GalleryScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -130,6 +163,22 @@
 				1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		2A583A874B78E0D5F4662FE3 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				C3776461BBD34CCBE8C9AA84 /* Common */,
+				D4B37CD868309DEE9234E1D6 /* Gallery */,
+				8F8C1058300012D19DA77263 /* Preview */,
+				D7532AC14A9012644E3BCC51 /* Snapshot */,
+				2704493EA14FFB218BD85234 /* Copy.swift */,
+				D23EFEE0990BF78AF95B29CE /* RootView.swift */,
+				E8A2015B58FA275085359C25 /* SidebarView.swift */,
+				C43B0035E8655B359C0E3B47 /* Tokens.swift */,
+				B501D4D78085E4494C9267E0 /* ViewData.swift */,
+			);
+			path = UI;
 			sourceTree = "<group>";
 		};
 		3EAAB46E6972FB7A262FC8AD /* Render */ = {
@@ -177,6 +226,7 @@
 				3EAAB46E6972FB7A262FC8AD /* Render */,
 				CEC1DE80438539AEC19813FE /* Resources */,
 				E43B38BE34ACF3DE05041893 /* Templates */,
+				2A583A874B78E0D5F4662FE3 /* UI */,
 			);
 			path = Madi;
 			sourceTree = "<group>";
@@ -188,8 +238,17 @@
 				409E7371C9108F4322587DF0 /* MadiKit.framework */,
 				181BC5EB1AF428D241C43C78 /* MadiSpike */,
 				99FF29B03B61C75F0F2A1992 /* MadiTests.xctest */,
+				C82B9B1ABC2CD65FF56DC695 /* MadiUIShots */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		8F8C1058300012D19DA77263 /* Preview */ = {
+			isa = PBXGroup;
+			children = (
+				4128CE6E4AFED6AD5491C264 /* SampleData.swift */,
+			);
+			path = Preview;
 			sourceTree = "<group>";
 		};
 		B3373C326AF407F41143AEFF /* Model */ = {
@@ -199,6 +258,14 @@
 				9F09B5CE975F12C72180877E /* JSONValue.swift */,
 			);
 			path = Model;
+			sourceTree = "<group>";
+		};
+		C3776461BBD34CCBE8C9AA84 /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				CA06076D2C37AFB52A054685 /* ThumbnailView.swift */,
+			);
+			path = Common;
 			sourceTree = "<group>";
 		};
 		C6F37E4EB5C24272DA26F904 /* Pose */ = {
@@ -217,6 +284,24 @@
 				51E6B50BFE4E0F63A6994F30 /* styles */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		D4B37CD868309DEE9234E1D6 /* Gallery */ = {
+			isa = PBXGroup;
+			children = (
+				F66478482D65AA2F3A550DE6 /* GalleryScreen.swift */,
+				C353F07622E1853C9A758B5F /* ShotCell.swift */,
+				69FA9B25C6634222F16324AB /* ShotInspector.swift */,
+			);
+			path = Gallery;
+			sourceTree = "<group>";
+		};
+		D7532AC14A9012644E3BCC51 /* Snapshot */ = {
+			isa = PBXGroup;
+			children = (
+				B03759FB9105D4D3E02D4DE3 /* main.swift */,
+			);
+			path = Snapshot;
 			sourceTree = "<group>";
 		};
 		E43B38BE34ACF3DE05041893 /* Templates */ = {
@@ -290,6 +375,23 @@
 			productReference = A6846090E3F100A140F296D0 /* Madi.app */;
 			productType = "com.apple.product-type.application";
 		};
+		38B85232B8F36128F9BF780E /* MadiUIShots */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ED1DFB19D91E9EE86668FD53 /* Build configuration list for PBXNativeTarget "MadiUIShots" */;
+			buildPhases = (
+				F598932F7E0671B7D09D40BC /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MadiUIShots;
+			packageProductDependencies = (
+			);
+			productName = MadiUIShots;
+			productReference = C82B9B1ABC2CD65FF56DC695 /* MadiUIShots */;
+			productType = "com.apple.product-type.tool";
+		};
 		A015F0C7D597DD08B1F56D8C /* MadiTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8D2FD64F1A4382EF20D4BB61 /* Build configuration list for PBXNativeTarget "MadiTests" */;
@@ -357,6 +459,7 @@
 				15DF6E938EF009BBF466D811 /* MadiKit */,
 				BD1CEB1E1103DC9641508FBD /* MadiSpike */,
 				A015F0C7D597DD08B1F56D8C /* MadiTests */,
+				38B85232B8F36128F9BF780E /* MadiUIShots */,
 			);
 		};
 /* End PBXProject section */
@@ -387,7 +490,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FDAD3F002F69F8295199DB0C /* Copy.swift in Sources */,
+				F949B92E3B8AC97F765F9967 /* GalleryScreen.swift in Sources */,
 				41D529605EC5629F9025E152 /* MadiApp.swift in Sources */,
+				24BDF6178A3683305B2E0DCC /* RootView.swift in Sources */,
+				74E3D5333D6E6085E0C38514 /* SampleData.swift in Sources */,
+				0CBD7641BDFB4FDCC3F5D2C5 /* ShotCell.swift in Sources */,
+				B7657EE3966D5B2948F05A31 /* ShotInspector.swift in Sources */,
+				D88DF0769A48CFDF2CE19AA9 /* SidebarView.swift in Sources */,
+				5EC4898A1FFFEA0919EFE78F /* ThumbnailView.swift in Sources */,
+				E18ACF13437C7F2E6178E2D4 /* Tokens.swift in Sources */,
+				9E9EE4E9653FAD55F33393EA /* ViewData.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -397,6 +510,24 @@
 			files = (
 				F76C7F574A45D391BC82F937 /* CompositionTests.swift in Sources */,
 				55BFC2D227DCDDFD63F04E38 /* StyleTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F598932F7E0671B7D09D40BC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7E40D672E298A150152E6A77 /* Copy.swift in Sources */,
+				56BA0DAE7878958DC6021E5E /* GalleryScreen.swift in Sources */,
+				2093C320099FF2C35A38877A /* RootView.swift in Sources */,
+				EDFC7A9DCC434C1E09B1BF3D /* SampleData.swift in Sources */,
+				4FB64F36C58E61FA1C86AF1A /* ShotCell.swift in Sources */,
+				8FD1677DF404DBD865A55D84 /* ShotInspector.swift in Sources */,
+				3312AA868189344A37C6747B /* SidebarView.swift in Sources */,
+				78B15137301B5B86F724D221 /* ThumbnailView.swift in Sources */,
+				B95FD6137063423CD9DB2989 /* Tokens.swift in Sources */,
+				EF0F26CB078C7C8B601BDC4D /* ViewData.swift in Sources */,
+				007DF1B78B85420A704F8F34 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -521,6 +652,21 @@
 				SDKROOT = macosx;
 			};
 			name = Debug;
+		};
+		6F02DB13695AD55C72F1839E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.madi.MadiUIShots;
+				PRODUCT_NAME = "madi-ui-shots";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
 		};
 		7331C4327571420B95AB8435 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -688,6 +834,21 @@
 			};
 			name = Debug;
 		};
+		D0CFB85AB7AAC034972C5AC7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.madi.MadiUIShots;
+				PRODUCT_NAME = "madi-ui-shots";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -732,6 +893,15 @@
 			buildConfigurations = (
 				615141E13D7B4C98BDB6EC64 /* Debug */,
 				021AAE91C0F53001834DA9BB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		ED1DFB19D91E9EE86668FD53 /* Build configuration list for PBXNativeTarget "MadiUIShots" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D0CFB85AB7AAC034972C5AC7 /* Debug */,
+				6F02DB13695AD55C72F1839E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
