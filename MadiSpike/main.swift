@@ -179,6 +179,48 @@ case "frames":
         for url in written { print(url.path) }
     } catch { fail("\(error)") }
 
+case "detect":
+    // 사람 감지 후보를 나란히 재 본다. 고르는 게 아니라 재기만 한다 (G1·G2 정의 준비).
+    guard args.count > 1 else { fail("사용법: madi-spike detect <영상> [--at 1,2] [--out 디렉토리]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let times = (option("at") ?? "").split(separator: ",").compactMap { Double($0) }
+        let work = URL(fileURLWithPath: option("out") ?? "out/detect")
+            .appending(path: video.deletingPathExtension().lastPathComponent)
+        let frames = try await FrameSheet.extract(
+            from: video, at: times, into: work.appending(path: "raw"), prefix: ""
+        )
+        print("  프레임        관절상자  분할상자  분할비율  사람상자  상반신  손  주목도"
+              + (option("box") != nil ? "   |  분할 상자 x y w h" : ""))
+        var tally = [0, 0, 0, 0, 0, 0]
+        for url in frames {
+            let image = try StillRenderer.loadImage(url)
+            let s = try SubjectDetector.scan(image)
+            func f(_ r: NormRect?) -> String { r.map { String(format: "%7.3f", $0.h) } ?? "      ·" }
+            if s.jointBox != nil { tally[0] += 1 }
+            if s.segmentBox != nil { tally[1] += 1 }
+            if s.personBox != nil { tally[2] += 1 }
+            if s.upperBodyBox != nil { tally[3] += 1 }
+            if s.handCount > 0 { tally[4] += 1 }
+            if s.salientBox != nil { tally[5] += 1 }
+            var line = String(format: "  %-12@ %@ %@ %8.3f %@ %@ %3d %@",
+                              url.deletingPathExtension().lastPathComponent as NSString,
+                              f(s.jointBox), f(s.segmentBox), s.segmentCoverage,
+                              f(s.personBox), f(s.upperBodyBox), s.handCount, f(s.salientBox))
+            // 리프레임 좌표를 **손으로** 적기 위한 숫자. 크롭을 자동으로 계산해 주지 않는다 —
+            // 자동 리프레이밍은 1단계다 (docs/stage-0.spec.md 범위 밖).
+            if option("box") != nil, let b = s.segmentBox {
+                line += String(format: "   |  %.4f %.4f %.4f %.4f  (가로중심 %.4f)",
+                               b.x, b.y, b.w, b.h, b.x + b.w / 2)
+            }
+            print(line)
+        }
+        let names = ["관절", "분할", "사람상자", "상반신", "손", "주목도"]
+        print("")
+        print("  " + zip(names, tally).map { "\($0.0) \($0.1)/\(frames.count)" }
+                .joined(separator: " · "))
+    } catch { fail("\(error)") }
+
 case "pose":
     // 1단계 준비. **감지 정확도만** 본다 — 리프레이밍은 아직 만들지 않는다.
     guard args.count > 2 else { fail("사용법: madi-spike pose <영상> <출력디렉토리> [--at 1,2] [--conf 0.3]") }
@@ -273,6 +315,7 @@ case "render":
             let id = scene.source.videoID
             let candidates = [
                 base.appending(path: "source/\(id).mp4"),
+                base.appending(path: "source/raw/\(id).mp4"),
                 base.appending(path: "\(id).mp4"),
                 URL(fileURLWithPath: id),
             ]
@@ -308,6 +351,7 @@ default:
       compare <원본> <렌더> <out.png>     같은 시각을 나란히 (B 판정용)
       sheet <영상> <out.png> [--cols 5]   한 편을 격자로 훑어본다
       pose <영상> <디렉토리> [--conf 0.3]  사람 감지 정확도 (1단계 준비)
+      detect <영상> [--at 1,2]           감지 방법 여러 개를 나란히 (G1·G2 정의 준비)
 
     공통 옵션: --text --secondary --width --height --style
     """)

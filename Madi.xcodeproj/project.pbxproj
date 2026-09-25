@@ -21,6 +21,7 @@
 		7EC27D66EB8FA2EB23EF7B40 /* StyleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17ABE83D90BA6977FB20DD73 /* StyleStore.swift */; };
 		8F8D3E23A77E148BCC89AFA8 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = F441B6E8EB91AD06BD449DE9 /* OFL.txt */; };
 		927E3BBA58DC739C64FC1904 /* MadiKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; };
+		A6F36ADDD48689551312F81C /* SubjectDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75236889EB2CBFE994D392D2 /* SubjectDetector.swift */; };
 		A71CD837B55F05CD74CD62A5 /* CaptionLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71CD7162AEC4CB13D3A85753 /* CaptionLayer.swift */; };
 		B84729514D4454755BF89583 /* Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBC6F4DD77E4B83E33D191D5 /* Layout.swift */; };
 		C19C038351F0A44E688981C7 /* MadiKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -84,6 +85,7 @@
 		51E6B50BFE4E0F63A6994F30 /* styles */ = {isa = PBXFileReference; lastKnownFileType = folder; name = styles; path = Madi/Resources/styles; sourceTree = SOURCE_ROOT; };
 		71CD7162AEC4CB13D3A85753 /* CaptionLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionLayer.swift; sourceTree = "<group>"; };
 		72D94087F95A27AD4220EBA1 /* PoseOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseOverlay.swift; sourceTree = "<group>"; };
+		75236889EB2CBFE994D392D2 /* SubjectDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubjectDetector.swift; sourceTree = "<group>"; };
 		8148334F0D1C4607F6103479 /* PretendardVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = PretendardVariable.ttf; sourceTree = "<group>"; };
 		9198795506821EE4D71C606A /* Font.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Font.swift; sourceTree = "<group>"; };
 		99FF29B03B61C75F0F2A1992 /* MadiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MadiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -206,6 +208,7 @@
 			children = (
 				72D94087F95A27AD4220EBA1 /* PoseOverlay.swift */,
 				3CDC46588584CE5887303191 /* PoseProvider.swift */,
+				75236889EB2CBFE994D392D2 /* SubjectDetector.swift */,
 			);
 			path = Pose;
 			sourceTree = "<group>";
@@ -416,6 +419,7 @@
 				DD6B5D3982C692F53D075B8E /* StillRenderer.swift in Sources */,
 				2F438C7740AE320FCA33D469 /* StyleSchema.swift in Sources */,
 				7EC27D66EB8FA2EB23EF7B40 /* StyleStore.swift in Sources */,
+				A6F36ADDD48689551312F81C /* SubjectDetector.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
