@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		07776DF9B2BE228B2EFA4566 /* Composition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445E24C845CB9F13A235589E /* Composition.swift */; };
-		0BEF33A662496816E2B94C5F /* Copy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2704493EA14FFB218BD85234 /* Copy.swift */; };
 		0DAEDA57821856B2058C07DF /* Spec.json in Resources */ = {isa = PBXBuildFile; fileRef = 448203E1948EA675814B0793 /* Spec.json */; };
 		2BA892758BC7F49E8495F281 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006AFA79D5ADACA512DB698F /* main.swift */; };
 		2EE5D8289209DFCF1DC52EE2 /* PoseProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDC46588584CE5887303191 /* PoseProvider.swift */; };
@@ -82,7 +81,6 @@
 		181BC5EB1AF428D241C43C78 /* MadiSpike */ = {isa = PBXFileReference; includeInIndex = 0; path = MadiSpike; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MadiApp.swift; sourceTree = "<group>"; };
 		2223B52C773741B4A0C9EA8F /* ReframeLimitsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReframeLimitsTests.swift; sourceTree = "<group>"; };
-		2704493EA14FFB218BD85234 /* Copy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copy.swift; sourceTree = "<group>"; };
 		3CDC46588584CE5887303191 /* PoseProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseProvider.swift; sourceTree = "<group>"; };
 		3E21F644B2F761A97C070BE8 /* CompositionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionTests.swift; sourceTree = "<group>"; };
 		407CF4C64A45F212D6AA28FA /* StyleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleTests.swift; sourceTree = "<group>"; };
@@ -142,14 +140,6 @@
 			path = App;
 			sourceTree = "<group>";
 		};
-		2A583A874B78E0D5F4662FE3 /* UI */ = {
-			isa = PBXGroup;
-			children = (
-				2704493EA14FFB218BD85234 /* Copy.swift */,
-			);
-			path = UI;
-			sourceTree = "<group>";
-		};
 		3EAAB46E6972FB7A262FC8AD /* Render */ = {
 			isa = PBXGroup;
 			children = (
@@ -196,7 +186,6 @@
 				3EAAB46E6972FB7A262FC8AD /* Render */,
 				CEC1DE80438539AEC19813FE /* Resources */,
 				E43B38BE34ACF3DE05041893 /* Templates */,
-				2A583A874B78E0D5F4662FE3 /* UI */,
 			);
 			path = Madi;
 			sourceTree = "<group>";
@@ -431,7 +420,6 @@
 			files = (
 				A71CD837B55F05CD74CD62A5 /* CaptionLayer.swift in Sources */,
 				07776DF9B2BE228B2EFA4566 /* Composition.swift in Sources */,
-				0BEF33A662496816E2B94C5F /* Copy.swift in Sources */,
 				498A29E3EF2E75257EADC4AD /* Font.swift in Sources */,
 				DF49714AE26CCB238A41B42F /* FrameSheet.swift in Sources */,
 				CC86AF959B9705EC491D0637 /* JSONValue.swift in Sources */,
