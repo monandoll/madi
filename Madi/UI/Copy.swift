@@ -28,6 +28,8 @@ public enum Copy {
         public static let makeShort = "숏폼 만들기"
         /// 편집안에서 실제 영상을 만들 때. 장면 카드를 보고 난 뒤다.
         public static let make = "만들기"
+        /// 결과물에서 그 편집안으로 돌아간다. 고치는 일은 편집안에서만 한다.
+        public static let openPlanFromResult = "편집안 열기"
         public static let play = "재생"
         public static let playFromStart = "처음부터 보기"
         public static let export = "내보내기"
@@ -258,6 +260,70 @@ public enum Copy {
             public static let open = "결과물 보기"
             public static let export = "내보내기"
         }
+    }
+
+
+    // MARK: - 결과물
+
+    public enum Results {
+        public static let title = "결과물"
+        public static let isNew = "새로"
+
+        public enum Compare {
+            public static let sideBySide = "나란히"
+            public static let single = "하나만"
+            public static let before = "이전"
+            public static let now = "지금"
+            public static let playBoth = "둘 다 처음부터 재생"
+            public static let play = "처음부터 재생"
+            public static func changesFrom(_ label: String) -> String { "\(label)과 달라진 점" }
+            public static let firstResult = "이 촬영본의 첫 결과물이에요"
+        }
+
+        public enum Empty {
+            public static let title = "아직 만든 영상이 없어요"
+            public static let message = "촬영본에서 편집안을 열고 ‘만들기’를 누르면\n다 만든 영상이 여기에 모여요."
+            public static let action = "촬영본 보기"
+        }
+
+        public enum Loading {
+            public static let title = "결과물을 불러오고 있어요"
+        }
+
+        public enum Export {
+            public static let action = "내보내기"
+            public static let title = "어디로 보낼까요?"
+            public static let confirm = "내보내기"
+            public static let photos = "사진 앱"
+            public static let photosDetail = "아이폰에서 바로 확인하고 올릴 수 있어요"
+            public static let files = "Mac에 저장"
+            public static let filesDetail = "폴더를 고르면 파일로 저장해요"
+            public static let airdrop = "AirDrop"
+            public static let airdropDetail = "가까이 있는 기기로 바로 보내요"
+            public static func done(_ target: String) -> String { "\(target)(으)로 보냈어요" }
+        }
+
+        public static let noSelection = "결과물을 고르면 여기에 보여드려요"
+    }
+
+    // MARK: - 만드는 중 (화면)
+
+    public enum MakingScreen {
+        public static let title = "만드는 중"
+        public static let waitingHeader = "기다리는 중"
+        public static let stoppedHeader = "멈춘 것"
+        public static let doneTodayHeader = "오늘 다 만든 것"
+        public static let openResult = "결과물 보기"
+        public static let cancel = "취소"
+        public static let stop = "멈추기"
+
+        public enum Empty {
+            public static let title = "지금 만드는 영상이 없어요"
+            public static let message = "편집안에서 ‘만들기’를 누르면\n여기서 얼마나 남았는지 볼 수 있어요."
+        }
+
+        public static func queuedNote(_ what: String) -> String { "\(what)이 끝나면 바로 시작해요" }
+        public static func stoppedAt(_ percent: Int) -> String { "\(percent)%에서 멈췄어요" }
     }
 
     // MARK: - 상태 문구

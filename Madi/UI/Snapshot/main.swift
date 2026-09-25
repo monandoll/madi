@@ -148,6 +148,68 @@ let shots: [Shot] = [
             opensPlan: true
         )
     },
+
+    Shot("results-compare") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            results: .loaded(SampleData.resultGroups),
+            resultDetail: SampleData.resultDetail,
+            exportTargets: SampleData.exportTargets,
+            selectedResultID: SampleData.results[0].id,
+            section: .results
+        )
+    },
+    Shot("results-single") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            results: .loaded(SampleData.resultGroups),
+            resultDetail: SampleData.resultDetailFirst,
+            exportTargets: SampleData.exportTargets,
+            selectedResultID: "o_14",
+            section: .results
+        )
+    },
+    // 시트는 **다른 창**이라 부모 창을 떠도 안 따라온다. 따로 한 장 뜬다.
+    Shot("results-export-sheet", sizes: [CGSize(width: 460, height: 360)]) {
+        ExportSheet(targets: SampleData.exportTargets, onExport: { _ in }, onCancel: {})
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .tint(Tokens.Palette.accent)
+    },
+    Shot("results-empty") {
+        RootView(
+            studio: SampleData.studioEmpty,
+            gallery: .empty,
+            results: .empty,
+            section: .results
+        )
+    },
+    Shot("results-loading") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            results: .loading,
+            section: .results
+        )
+    },
+
+    Shot("making-busy") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            making: .loaded(jobs: SampleData.makingJobs, doneToday: SampleData.doneToday),
+            section: .making
+        )
+    },
+    Shot("making-empty") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            making: .empty,
+            section: .making
+        )
+    },
 ]
 
 // MARK: - 들어가기
@@ -225,7 +287,7 @@ func overlayLayerOnly(_ view: NSView, root: NSView, context: CGContext) {
 /// 쉬는 이유: 사이드바 · 인스펙터가 첫 레이아웃 뒤에 한 번 더 자리를 잡고,
 /// 썸네일 그림도 그때 올라온다. 바로 찍으면 회색 자리표시만 찍힌다.
 @MainActor
-func capture(_ shot: Shot, size: CGSize) -> NSBitmapImageRep? {
+func capture(_ shot: Shot, size: CGSize) -> (rep: NSBitmapImageRep, drawn: Bool)? {
     let window = NSWindow(
         contentRect: NSRect(origin: .zero, size: size),
         styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -248,7 +310,39 @@ func capture(_ shot: Shot, size: CGSize) -> NSBitmapImageRep? {
     RunLoop.main.run(until: Date().addingTimeInterval(0.4))
     defer { window.orderOut(nil) }
 
-    return canRecordScreen ? captureRealWindow(window) : drawViewTree(of: window, size: size)
+    // 권한이 있어도 화면이 잠들었거나 잠겨 있으면 **빈 그림**이 돌아온다.
+    // 그걸 그대로 저장하면 하얀 PNG 가 커밋에 들어간다. 확인하고 뷰 그리기로 넘어간다.
+    if canRecordScreen, let shot = captureRealWindow(window), !isBlank(shot) {
+        return (shot, false)
+    }
+    return drawViewTree(of: window, size: size).map { ($0, true) }
+}
+
+/// 거의 한 가지 색이면 빈 그림이다. 화면이 잠들면 이런 게 돌아온다.
+func isBlank(_ rep: NSBitmapImageRep) -> Bool {
+    guard let data = rep.bitmapData else { return false }
+    let bytesPerRow = rep.bytesPerRow
+    let bytesPerPixel = max(rep.bitsPerPixel / 8, 1)
+    var first: (UInt8, UInt8, UInt8)?
+    var same = 0
+    var total = 0
+    for y in stride(from: 0, to: rep.pixelsHigh, by: 17) {
+        for x in stride(from: 0, to: rep.pixelsWide, by: 17) {
+            let pixel = data + y * bytesPerRow + x * bytesPerPixel
+            let color = (pixel[0], pixel[1], pixel[2])
+            if let first {
+                if abs(Int(color.0) - Int(first.0)) < 3,
+                   abs(Int(color.1) - Int(first.1)) < 3,
+                   abs(Int(color.2) - Int(first.2)) < 3 { same += 1 }
+            } else {
+                first = color
+                same += 1
+            }
+            total += 1
+        }
+    }
+    guard total > 0 else { return false }
+    return Double(same) / Double(total) > 0.99
 }
 
 /// 권한이 있을 때 — 창을 화면에서 그대로 뜬다. 실물이다.
@@ -339,13 +433,12 @@ MainActor.assumeIsolated {
     for shot in shots {
         for size in shot.sizes ?? defaultSizes {
             let name = "\(shot.name)-\(Int(size.width))x\(Int(size.height)).png"
-            guard let rep = capture(shot, size: size) else {
+            guard let (rep, drawn) = capture(shot, size: size) else {
                 FileHandle.standardError.write(Data("못 찍음: \(name)\n".utf8))
                 continue
             }
-            let data = canRecordScreen
-                ? rep.representation(using: .png, properties: [:])
-                : withCaveat(rep)
+            // 뷰를 그려서 뜬 것만 아래에 한 줄을 박는다.
+            let data = drawn ? withCaveat(rep) : rep.representation(using: .png, properties: [:])
             guard let data else {
                 FileHandle.standardError.write(Data("못 만듦: \(name)\n".utf8))
                 continue

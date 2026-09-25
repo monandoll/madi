@@ -410,3 +410,104 @@ public struct ChatChoice: Identifiable, Hashable, Sendable {
         self.title = title; self.detail = detail; self.isPrimary = isPrimary
     }
 }
+
+// MARK: - 결과물
+
+/// 촬영본 한 편에서 나온 결과물 묶음. 같은 영상에서 여러 편집안 · 여러 규격이 나온다.
+public struct ResultGroup: Identifiable, Hashable, Sendable {
+    public var id: String { shotTitle }
+    public var shotTitle: String
+    public var items: [ResultRef]
+
+    public init(shotTitle: String, items: [ResultRef]) {
+        self.shotTitle = shotTitle; self.items = items
+    }
+}
+
+/// 결과물 하나를 펼쳐 본 것. **이전 버전과 나란히 보는 게 기본이다** —
+/// "뭐가 좋아졌는지" 를 글로 설명하는 것보다 두 개를 같이 보여주는 게 빠르다.
+public struct ResultDetail: Hashable, Sendable {
+    public var shotTitle: String
+    public var current: ResultRef
+    public var previous: ResultRef?
+    /// 이전 버전과 달라진 점. 없으면 첫 결과물이다.
+    public var changes: [EditSummary.Line]
+
+    public init(
+        shotTitle: String, current: ResultRef,
+        previous: ResultRef? = nil, changes: [EditSummary.Line] = []
+    ) {
+        self.shotTitle = shotTitle; self.current = current
+        self.previous = previous; self.changes = changes
+    }
+}
+
+public enum ResultsState: Hashable, Sendable {
+    case loading
+    case empty
+    case loaded([ResultGroup])
+}
+
+/// 내보낼 곳. 아이폰으로 결과를 확인하려면 사진 앱으로 보내야 한다 (`AGENTS.md §2`).
+public struct ExportTarget: Identifiable, Hashable, Sendable {
+    public var id: String { title }
+    public var title: String
+    public var detail: String
+    public var symbol: String
+
+    public init(title: String, detail: String, symbol: String) {
+        self.title = title; self.detail = detail; self.symbol = symbol
+    }
+}
+
+// MARK: - 만드는 중
+
+/// 만들고 있는 것 하나. 큐가 렌더 1개씩 돌린다 (`AGENTS.md §2`).
+public struct MakingJob: Identifiable, Hashable, Sendable {
+    public enum State: Hashable, Sendable {
+        case running(MakingProgress)
+        /// 앞 영상이 끝나면 시작한다. 기다리는 것도 보여줘야 "멈춘 건가" 를 묻지 않는다.
+        case queued(note: String)
+        /// 멈췄다. **사람이 손대야 진행된다** — 이유와 다음 행동을 같이 준다.
+        case stopped(reason: String, actions: [ChatChoice])
+    }
+
+    public var id: String
+    public var shotTitle: String
+    public var platform: PlatformKind
+    public var planLabel: String
+    public var duration: Double
+    public var thumbnail: Thumbnail
+    public var state: State
+
+    public init(
+        id: String, shotTitle: String, platform: PlatformKind, planLabel: String,
+        duration: Double, thumbnail: Thumbnail = .none, state: State
+    ) {
+        self.id = id; self.shotTitle = shotTitle; self.platform = platform
+        self.planLabel = planLabel; self.duration = duration
+        self.thumbnail = thumbnail; self.state = state
+    }
+}
+
+/// 오늘 다 만든 것. 만드는 중 화면 아래에 쌓인다.
+public struct DoneItem: Identifiable, Hashable, Sendable {
+    public var id: String
+    public var shotTitle: String
+    public var platform: PlatformKind
+    public var when: String
+    public var thumbnail: Thumbnail
+
+    public init(
+        id: String, shotTitle: String, platform: PlatformKind,
+        when: String, thumbnail: Thumbnail = .none
+    ) {
+        self.id = id; self.shotTitle = shotTitle; self.platform = platform
+        self.when = when; self.thumbnail = thumbnail
+    }
+}
+
+public enum MakingState: Hashable, Sendable {
+    case empty
+    case loaded(jobs: [MakingJob], doneToday: [DoneItem])
+}

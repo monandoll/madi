@@ -17,14 +17,23 @@ struct RootView: View {
     var planMessages: [ChatMessage] = []
     var planChips: [String] = []
 
+    var results: ResultsState = .empty
+    var resultDetail: ResultDetail?
+    var exportTargets: [ExportTarget] = []
+    var making: MakingState = .empty
+
     /// 프리뷰 · 스크린샷용 초기 상태.
     var selectedShotID: ShotItem.ID?
     var galleryNotice: String?
     var opensPlan = false
     var selectedSceneID: SceneCardItem.ID?
     var editingSceneID: SceneCardItem.ID?
+    var selectedResultID: ResultRef.ID?
+    var showsExportSheet = false
+    /// 열자마자 고를 사이드바 칸.
+    var section: LibrarySection = .shots
 
-    @State private var selection: LibrarySection? = .shots
+    @State private var selection: LibrarySection?
     /// 편집안을 열었는지. `NavigationStack` 을 쓰지 않는 이유는 그러면 뒤로 가기 버튼이
     /// **둘**이 되기 때문이다 — 시스템이 하나(화살표만) 놓고, 우리가 "촬영본" 이라고
     /// 적힌 것을 하나 더 놓게 된다. 창이 하나이고 갈 곳도 하나라 상태 하나로 충분하다.
@@ -46,6 +55,7 @@ struct RootView: View {
         )
         .tint(Tokens.Palette.accent)
         .onAppear {
+            if selection == nil { selection = section }
             if opensPlan, plan != nil { showsPlan = true }
         }
     }
@@ -62,9 +72,15 @@ struct RootView: View {
                 notice: galleryNotice
             )
         case .results:
-            ComingSoon(label: Copy.Sidebar.results)
+            ResultsScreen(
+                state: results,
+                detail: resultDetail,
+                exportTargets: exportTargets,
+                initialSelection: selectedResultID,
+                showsExportSheet: showsExportSheet
+            )
         case .making:
-            ComingSoon(label: Copy.Sidebar.making)
+            MakingScreen(state: making)
         }
     }
 
@@ -80,16 +96,6 @@ struct RootView: View {
                 initialEditingID: editingSceneID
             )
         }
-    }
-}
-
-/// 아직 안 그린 화면 자리. 4단계에서 결과물 · 만드는 중으로 바뀐다.
-private struct ComingSoon: View {
-    var label: String
-
-    var body: some View {
-        ContentUnavailableView(label, systemImage: "hammer")
-            .navigationTitle(label)
     }
 }
 

@@ -407,3 +407,100 @@ extension SampleData {
         Copy.Chat.Chips.shorts,
     ]
 }
+
+// MARK: - 결과물 · 만드는 중
+
+extension SampleData {
+
+    public static let resultGroups: [ResultGroup] = [
+        ResultGroup(shotTitle: shotsToday[0].title, items: results),
+        ResultGroup(shotTitle: shotsThisWeek[3].title, items: [
+            ResultRef(id: "o_14", platform: .reels, planLabel: Copy.Plan.version(3),
+                      when: "사흘 전", duration: 31, sceneCount: 6,
+                      thumbnail: resultFrame("nCshtY04NiY_12_4s.jpg")),
+        ]),
+        ResultGroup(shotTitle: shotsThisWeek[0].title, items: [
+            ResultRef(id: "o_11", platform: .shorts, planLabel: Copy.Plan.version(2),
+                      when: "이틀 전", duration: 48, sceneCount: 8,
+                      thumbnail: resultFrame("nCshtY04NiY_3_8s.jpg")),
+            ResultRef(id: "o_12", platform: .shorts, planLabel: Copy.Plan.version(1),
+                      when: "이틀 전", duration: 58, sceneCount: 9,
+                      thumbnail: resultFrame("nCshtY04NiY_9_5s.jpg")),
+        ]),
+        ResultGroup(shotTitle: shotsThisWeek[1].title, items: [
+            ResultRef(id: "o_13", platform: .reels, planLabel: Copy.Plan.version(1),
+                      when: "이틀 전", duration: 44, sceneCount: 7,
+                      thumbnail: resultFrame("59HP4jxLFeA_11_4s.jpg")),
+        ]),
+        ResultGroup(shotTitle: shotsThisWeek[4].title, items: [
+            ResultRef(id: "o_15", platform: .shorts, planLabel: Copy.Plan.version(1),
+                      when: "나흘 전", duration: 29, sceneCount: 5,
+                      thumbnail: resultFrame("RnP7b0JFWj4_13_3s.jpg")),
+        ]),
+    ]
+
+    /// 지금 고른 결과물. 이전 버전과 나란히 본다.
+    public static let resultDetail = ResultDetail(
+        shotTitle: shotsToday[0].title,
+        current: results[0],
+        previous: results[2],
+        changes: [
+            .init(label: "쉬는 구간 2곳을 뺐어요", value: "−5초"),
+            .init(label: "앉아서 말하는 영상이라 자막을 상반신 자리로 옮겼어요", value: ""),
+            .init(label: "인스타 규격으로 화면을 잡았어요", value: "세로"),
+        ]
+    )
+
+    /// 첫 결과물이라 견줄 이전 버전이 없는 경우.
+    public static let resultDetailFirst = ResultDetail(
+        shotTitle: shotsThisWeek[3].title,
+        current: resultGroups[1].items[0]
+    )
+
+    public static let exportTargets: [ExportTarget] = [
+        ExportTarget(title: Copy.Results.Export.photos,
+                     detail: Copy.Results.Export.photosDetail, symbol: "photo.on.rectangle"),
+        ExportTarget(title: Copy.Results.Export.files,
+                     detail: Copy.Results.Export.filesDetail, symbol: "folder"),
+        ExportTarget(title: Copy.Results.Export.airdrop,
+                     detail: Copy.Results.Export.airdropDetail, symbol: "wifi"),
+    ]
+
+    // MARK: 만드는 중
+
+    public static let makingJobs: [MakingJob] = [
+        MakingJob(
+            id: "j1", shotTitle: shotsToday[0].title, platform: .reels,
+            planLabel: Copy.Plan.version(2), duration: 27,
+            thumbnail: resultFrame("yt_11s.png"),
+            state: .running(makingProgress)
+        ),
+        MakingJob(
+            id: "j2", shotTitle: shotsToday[0].title, platform: .shorts,
+            planLabel: Copy.Plan.version(2), duration: 27,
+            thumbnail: resultFrame("yt_13s.png"),
+            state: .queued(note: Copy.MakingScreen.queuedNote("앞 영상"))
+        ),
+        MakingJob(
+            id: "j3", shotTitle: shotsThisWeek[0].title, platform: .reels,
+            planLabel: Copy.Plan.version(1), duration: 48,
+            thumbnail: shotFrame("v_04"),
+            // 사람이 손대야 진행된다. 이유와 다음 행동을 같이 준다 (AGENTS.md §1-6).
+            state: .stopped(
+                reason: "Mac 저장 공간이 모자라서 만들다 멈췄어요. "
+                    + "2GB 정도만 비워주시면 멈춘 곳부터 이어서 만들게요.",
+                actions: [
+                    ChatChoice(title: "이어서 만들기", isPrimary: true),
+                    ChatChoice(title: "저장 공간 확인하기"),
+                ]
+            )
+        ),
+    ]
+
+    public static let doneToday: [DoneItem] = [
+        DoneItem(id: "d1", shotTitle: shotsThisWeek[3].title, platform: .reels,
+                 when: "오후 1:12", thumbnail: resultFrame("nCshtY04NiY_12_4s.jpg")),
+        DoneItem(id: "d2", shotTitle: shotsToday[1].title, platform: .shorts,
+                 when: "오전 11:40", thumbnail: resultFrame("lzDW-9ITfWU_4_6s.jpg")),
+    ]
+}
