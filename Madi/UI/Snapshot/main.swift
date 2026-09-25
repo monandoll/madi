@@ -118,6 +118,28 @@ let shots: [Shot] = [
             selectedSceneID: "s6"
         )
     },
+    Shot("plan-making") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: .making(SampleData.plan, SampleData.makingProgress),
+            planMessages: SampleData.chatMaking,
+            planChips: SampleData.chatChips,
+            opensPlan: true,
+            selectedSceneID: "s4"
+        )
+    },
+    Shot("plan-made") {
+        RootView(
+            studio: SampleData.studioAfterMake,
+            gallery: .loaded(SampleData.groups),
+            plan: .ready(SampleData.plan),
+            planMessages: SampleData.chatMade,
+            planChips: SampleData.chatChips,
+            opensPlan: true,
+            selectedSceneID: "s4"
+        )
+    },
     Shot("plan-no-ai") {
         RootView(
             studio: SampleData.studioNoAI,

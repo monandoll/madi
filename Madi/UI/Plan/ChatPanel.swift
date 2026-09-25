@@ -16,6 +16,7 @@ struct ChatPanel: View {
     var onChoice: (ChatChoice) -> Void = { _ in }
     var onPlayFromStart: () -> Void = {}
     var onUndo: () -> Void = {}
+    var onOpenResult: (ResultRef) -> Void = { _ in }
 
     @State private var draft: String = ""
 
@@ -60,6 +61,8 @@ struct ChatPanel: View {
                         ChoiceButton(choice: choice) { onChoice(choice) }
                     }
                 }
+            case .result(let result):
+                ResultCard(result: result) { onOpenResult(result) }
             case .typing:
                 TypingDots()
             }
@@ -69,19 +72,18 @@ struct ChatPanel: View {
     private var composer: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.inner) {
             // 추천 칩. 말로 하라고만 하면 무엇을 말해야 할지 모른다.
-            ScrollView(.horizontal) {
-                HStack(spacing: Tokens.Space.inner - 2) {
-                    ForEach(chips, id: \.self) { chip in
-                        Button(chip) { onChip(chip) }
-                            .buttonStyle(.bordered)
-                            .buttonBorderShape(.capsule)
-                            .controlSize(.small)
-                            .disabled(isBusy)
-                    }
+            // **줄바꿈한다.** 가로로 흘리면 오른쪽 끝에서 "유튜…" 처럼 잘려서,
+            // 거기 뭐가 더 있는지 모르는 채로 지나간다.
+            FlowLayout(spacing: Tokens.Space.inner - 2, lineSpacing: Tokens.Space.inner - 2) {
+                ForEach(chips, id: \.self) { chip in
+                    Button(chip) { onChip(chip) }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        .controlSize(.small)
+                        .disabled(isBusy)
                 }
-                .padding(.horizontal, Tokens.Space.between)
             }
-            .scrollIndicators(.never)
+            .padding(.horizontal, Tokens.Space.between)
 
             HStack(spacing: Tokens.Space.inner) {
                 TextField(
@@ -210,6 +212,34 @@ private struct ChoiceButton: View {
     }
 }
 
+/// 다 만든 영상. 만들기가 끝나면 대화에 **카드로** 붙는다 — 화면을 옮기지 않아도
+/// 방금 만든 게 뭔지 보이고, 결과물 칸으로 갈 수 있다.
+private struct ResultCard: View {
+    var result: ResultRef
+    var onOpen: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: Tokens.Space.between) {
+            ThumbnailView(thumbnail: result.thumbnail, cornerRadius: Tokens.Radius.thumbnail)
+                .frame(width: 44, height: 78)
+
+            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                Text(Copy.Chat.Result.done)
+                    .font(.callout.weight(.medium))
+                Text("\(result.platform.label) · \(Copy.duration(result.duration))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button(Copy.Chat.Result.open, action: onOpen)
+                    .controlSize(.small)
+                    .padding(.top, Tokens.Space.hairline)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(Tokens.Space.between)
+        .background(.quaternary.opacity(0.4), in: .rect(cornerRadius: Tokens.Radius.card))
+    }
+}
+
 /// AI 가 쓰는 중. 퍼센트를 지어내지 않는다.
 private struct TypingDots: View {
     var body: some View {
@@ -234,6 +264,11 @@ private struct TypingDots: View {
 #Preview("대화 · 만드는 중") {
     ChatPanel(messages: SampleData.chatPreparing, chips: SampleData.chatChips, isBusy: true)
         .frame(width: 300, height: 620)
+}
+
+#Preview("대화 · 다 만듦") {
+    ChatPanel(messages: SampleData.chatMade, chips: SampleData.chatChips)
+        .frame(width: 320, height: 620)
 }
 
 #Preview("대화 · 막힘") {

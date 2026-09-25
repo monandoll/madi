@@ -11,6 +11,7 @@
 		07776DF9B2BE228B2EFA4566 /* Composition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445E24C845CB9F13A235589E /* Composition.swift */; };
 		0CBD7641BDFB4FDCC3F5D2C5 /* ShotCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C353F07622E1853C9A758B5F /* ShotCell.swift */; };
 		0DAEDA57821856B2058C07DF /* Spec.json in Resources */ = {isa = PBXBuildFile; fileRef = 448203E1948EA675814B0793 /* Spec.json */; };
+		199876224754E62B0491DBC4 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */; };
 		2093C320099FF2C35A38877A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23EFEE0990BF78AF95B29CE /* RootView.swift */; };
 		24BDF6178A3683305B2E0DCC /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23EFEE0990BF78AF95B29CE /* RootView.swift */; };
 		2BA892758BC7F49E8495F281 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006AFA79D5ADACA512DB698F /* main.swift */; };
@@ -48,6 +49,7 @@
 		C4AB6DD33BC50E0D286F134F /* PlanScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAABD8A5FF82020B90D7687A /* PlanScreen.swift */; };
 		CC86AF959B9705EC491D0637 /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F09B5CE975F12C72180877E /* JSONValue.swift */; };
 		D0EEACB252B6F1F127A60173 /* PlanScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAABD8A5FF82020B90D7687A /* PlanScreen.swift */; };
+		D4BB35D08277068BB7D7BAA3 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */; };
 		D88DF0769A48CFDF2CE19AA9 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8A2015B58FA275085359C25 /* SidebarView.swift */; };
 		DD6B5D3982C692F53D075B8E /* StillRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CF255FFFF4817C0CC024338 /* StillRenderer.swift */; };
 		DEC2AF7261A0B3A387374A6F /* ChatPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B6C32DC1255DE343A5F4B1 /* ChatPanel.swift */; };
@@ -117,6 +119,7 @@
 		4128CE6E4AFED6AD5491C264 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		445E24C845CB9F13A235589E /* Composition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composition.swift; sourceTree = "<group>"; };
 		448203E1948EA675814B0793 /* Spec.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Spec.json; sourceTree = "<group>"; };
+		497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		51E6B50BFE4E0F63A6994F30 /* styles */ = {isa = PBXFileReference; lastKnownFileType = folder; name = styles; path = Madi/Resources/styles; sourceTree = SOURCE_ROOT; };
 		58B6C32DC1255DE343A5F4B1 /* ChatPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatPanel.swift; sourceTree = "<group>"; };
 		69FA9B25C6634222F16324AB /* ShotInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotInspector.swift; sourceTree = "<group>"; };
@@ -295,6 +298,7 @@
 		C3776461BBD34CCBE8C9AA84 /* Common */ = {
 			isa = PBXGroup;
 			children = (
+				497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */,
 				CA06076D2C37AFB52A054685 /* ThumbnailView.swift */,
 			);
 			path = Common;
@@ -527,6 +531,7 @@
 			files = (
 				DEC2AF7261A0B3A387374A6F /* ChatPanel.swift in Sources */,
 				FDAD3F002F69F8295199DB0C /* Copy.swift in Sources */,
+				D4BB35D08277068BB7D7BAA3 /* FlowLayout.swift in Sources */,
 				F949B92E3B8AC97F765F9967 /* GalleryScreen.swift in Sources */,
 				41D529605EC5629F9025E152 /* MadiApp.swift in Sources */,
 				A7E7D322F78F8299E96C1152 /* PlanInfoCards.swift in Sources */,
@@ -559,6 +564,7 @@
 			files = (
 				B49FF146A330D15B603648D7 /* ChatPanel.swift in Sources */,
 				7E40D672E298A150152E6A77 /* Copy.swift in Sources */,
+				199876224754E62B0491DBC4 /* FlowLayout.swift in Sources */,
 				56BA0DAE7878958DC6021E5E /* GalleryScreen.swift in Sources */,
 				5B8607DBBD22F351DF047ECB /* PlanInfoCards.swift in Sources */,
 				FD39110C27EFFA4607677D95 /* PlanPlayer.swift in Sources */,

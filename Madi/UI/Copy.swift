@@ -149,7 +149,7 @@ public enum Copy {
             public static let length = "길이"
             public static let scenes = "장면"
             public static let format = "규격"
-            public static let caption = "자막"
+            public static let caption = "자막 자리"
             /// `0:42 → 0:37`
             public static func lengthChange(from: String, to: String) -> String { "\(from) → \(to)" }
             public static func removedGaps(count: Int, seconds: Double) -> String {
@@ -159,11 +159,15 @@ public enum Copy {
         }
 
         /// 자막 자리. **영상마다 하나**다 (`CaptionSlot`).
+        ///
+        /// 위치어(`위쪽` · `아래쪽`)를 쓰지 않는다. 자막 자리는 빈 곳으로 정해지지 않고
+        /// **그 영상이 주로 보여주는 몸의 범위**로 정해진다. "피사체를 피해 둔다" 는
+        /// 10편으로 검증해서 기각된 가설이다
+        /// (`docs/findings/2026-09-25-caption-position-rule-test.md`).
         public enum Caption {
-            public static let lower = "아래쪽"
-            public static let upper = "위쪽"
-            public static let reasonLower = "인물 아래가 비어 있어요"
-            public static let reasonUpper = "아래 동작을 가리지 않게"
+            public static let upperBody = "상반신 영상"
+            public static let fullBody = "전신 영상"
+            public static let lowerBody = "하체 클로즈업 영상"
         }
 
         public enum Scenes {
@@ -179,7 +183,9 @@ public enum Copy {
             public static let playFromHere = "여기서부터 재생"
             public static let removeScene = "장면 빼기"
             public static let noCaption = "자막 없음"
-            public static func moreCaptions(_ n: Int) -> String { "자막 \(n)줄" }
+            /// 접었을 때 나머지 덩어리 수. 줄을 고르면 전부 펼친다.
+            public static func moreCaptions(_ n: Int) -> String { "외 \(n)개" }
+            public static let reorderHint = "끌어서 순서를 바꿀 수 있어요"
             /// 뺀 쉬는 구간 자리. 되돌릴 수 있다는 걸 보이게 남긴다.
             public static func removedGap(_ seconds: Double) -> String {
                 "쉬는 구간 " + shortSeconds(seconds)
@@ -200,6 +206,19 @@ public enum Copy {
             public static func remaining(_ text: String) -> String { "\(text) 남음" }
             public static let stop = "멈추기"
             public static let scenesComing = "나누는 중…"
+        }
+
+        /// 영상을 만드는 중. 화면을 떠나지 않는다.
+        public enum Making {
+            public static let title = "영상 만드는 중…"
+            public static let captions = "자막 만들기"
+            public static let reframe = "화면 잡기"
+            public static let encode = "영상 만들기"
+            public static let keepsGoing = "창을 닫아도 계속 만들어요. 다 되면 알림으로 알려드려요."
+            public static let readOnly = "만드는 동안에는 고칠 수 없어요"
+            public static func percent(_ fraction: Double) -> String {
+                "\(Int((fraction * 100).rounded()))%"
+            }
         }
 
         /// AI 가 연결돼 있지 않을 때. **오류가 아니다** (AGENTS.md §10).
@@ -231,6 +250,13 @@ public enum Copy {
         public enum Summary {
             public static let playFromStart = "처음부터 보기"
             public static let undo = "되돌리기"
+        }
+
+        /// 다 만든 영상 카드.
+        public enum Result {
+            public static let done = "다 만들었어요"
+            public static let open = "결과물 보기"
+            public static let export = "내보내기"
         }
     }
 

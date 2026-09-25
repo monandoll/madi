@@ -198,21 +198,22 @@ public struct StudioStatus: Hashable, Sendable {
 
 // MARK: - 편집안
 
-/// 자막을 화면 어디에 놓을지. **영상마다 하나다** — 장면마다 따로 고르지 않는다.
+/// 자막 블록을 어디에 놓을지. **영상마다 하나다** — 장면마다 따로 고르지 않는다
+/// (`AGENTS.md §5` `Composition.captionSlot`).
 ///
-/// 공개본 10편을 재 보니 한 편 안에서는 자막 위치가 거의 완벽하게 고정이고
-/// (12프레임 전부 같은 값), 편 사이에서는 프레임 높이의 25% 까지 벌어졌다
-/// (`docs/findings/2026-09-25-caption-position-10.md`). 아래에서 동작하는 영상은
-/// 자막을 위로 올려 가리지 않게 한 것으로 보인다.
-///
-/// 그래서 화면에서도 **편집안 정보에 한 줄로** 보여주고, 장면 카드에는 두지 않는다.
-public enum CaptionSlot: Hashable, Sendable {
-    case lower, upper
+/// 이름이 위치어가 아니라 **내용어**인 이유: 자막 자리는 "빈 곳" 으로 정해지지 않는다.
+/// 피사체를 피해 올라간다는 가설을 10편으로 검증했고 **기각됐다**
+/// (`docs/findings/2026-09-25-caption-position-rule-test.md` — 실제로는 자막이
+/// 피사체 위에 얹혀 있었다). 정해지는 기준은 **그 영상이 주로 보여주는 몸의 범위**다.
+/// 좌표는 스타일이 갖는다 (`§9`).
+public enum CaptionSlot: Hashable, Sendable, CaseIterable {
+    case upperBody, fullBody, lowerBody
 
     public var label: String {
         switch self {
-        case .lower: Copy.Plan.Caption.lower
-        case .upper: Copy.Plan.Caption.upper
+        case .upperBody: Copy.Plan.Caption.upperBody
+        case .fullBody: Copy.Plan.Caption.fullBody
+        case .lowerBody: Copy.Plan.Caption.lowerBody
         }
     }
 }
@@ -249,10 +250,11 @@ public struct SceneCardItem: Identifiable, Hashable, Sendable {
     public var id: String
     public var number: Int
     public var role: SceneRoleKind
-    /// 이 장면의 자막. 여러 덩어리면 첫 덩어리를 보여주고 나머지는 `captionCount` 로 센다.
+    /// 이 장면의 첫 자막 덩어리. 접힌 줄에는 이것만 보인다.
     public var caption: String
     public var secondary: String?
-    public var captionCount: Int
+    /// 나머지 덩어리. 줄을 고르면 펼쳐진다.
+    public var moreCaptions: [String]
     public var duration: Double
     public var thumbnail: Thumbnail
     /// 이 장면 **뒤에** 뺀 쉬는 구간. 되돌릴 수 있어야 하므로 화면에 남긴다.
@@ -260,14 +262,16 @@ public struct SceneCardItem: Identifiable, Hashable, Sendable {
 
     public init(
         id: String, number: Int, role: SceneRoleKind, caption: String,
-        secondary: String? = nil, captionCount: Int = 1, duration: Double,
+        secondary: String? = nil, moreCaptions: [String] = [], duration: Double,
         thumbnail: Thumbnail = .none, removedGapAfter: Double? = nil
     ) {
         self.id = id; self.number = number; self.role = role; self.caption = caption
-        self.secondary = secondary; self.captionCount = captionCount
+        self.secondary = secondary; self.moreCaptions = moreCaptions
         self.duration = duration; self.thumbnail = thumbnail
         self.removedGapAfter = removedGapAfter
     }
+
+    public var captionCount: Int { caption.isEmpty ? 0 : 1 + moreCaptions.count }
 }
 
 /// 편집안 하나. 화면에 보이는 것만 들고 있다.
@@ -282,8 +286,6 @@ public struct PlanView: Identifiable, Hashable, Sendable {
     public var sourceDuration: Double
     public var targetDuration: Double
     public var captionSlot: CaptionSlot
-    /// 왜 그 자리인지 한 줄. "아래 동작을 가리지 않게".
-    public var captionReason: String
     public var scenes: [SceneCardItem]
     public var resultCount: Int
 
@@ -291,14 +293,14 @@ public struct PlanView: Identifiable, Hashable, Sendable {
         id: String, shotID: String, shotTitle: String, platform: PlatformKind,
         versionLabel: String, versionCount: Int,
         sourceDuration: Double, targetDuration: Double,
-        captionSlot: CaptionSlot, captionReason: String,
+        captionSlot: CaptionSlot,
         scenes: [SceneCardItem], resultCount: Int
     ) {
         self.id = id; self.shotID = shotID; self.shotTitle = shotTitle
         self.platform = platform; self.versionLabel = versionLabel
         self.versionCount = versionCount
         self.sourceDuration = sourceDuration; self.targetDuration = targetDuration
-        self.captionSlot = captionSlot; self.captionReason = captionReason
+        self.captionSlot = captionSlot
         self.scenes = scenes; self.resultCount = resultCount
     }
 
@@ -323,13 +325,34 @@ public struct PrepareStep: Identifiable, Hashable, Sendable {
     }
 }
 
+/// 영상을 만드는 중. `만들기` 를 눌러도 **화면을 떠나지 않는다** — 같은 자리에서 진행을 본다.
+public struct MakingProgress: Hashable, Sendable {
+    public var fraction: Double
+    public var steps: [PrepareStep]
+    /// `약 1분 남았어요`. 모르면 비운다.
+    public var remaining: String?
+
+    public init(fraction: Double, steps: [PrepareStep], remaining: String? = nil) {
+        self.fraction = fraction; self.steps = steps; self.remaining = remaining
+    }
+}
+
 /// 편집안 화면이 지금 무엇을 보여줄 상태인지.
 public enum PlanState: Hashable, Sendable {
     /// AI 가 살펴보고 장면을 나누는 중.
     case preparing([PrepareStep])
     case ready(PlanView)
+    /// 영상을 만드는 중. 장면 목록은 그대로 보이되 읽기 전용이다.
+    case making(PlanView, MakingProgress)
     /// AI 가 연결돼 있지 않다. **오류가 아니다** — 한 줄만 말한다 (AGENTS.md §10).
     case noAI
+
+    public var plan: PlanView? {
+        switch self {
+        case .ready(let plan), .making(let plan, _): plan
+        default: nil
+        }
+    }
 }
 
 // MARK: - 대화
@@ -343,6 +366,8 @@ public struct ChatMessage: Identifiable, Hashable, Sendable {
         case summary(EditSummary)
         /// 다음 행동 버튼. 막혔을 때 **항상** 같이 준다.
         case choices([ChatChoice])
+        /// 다 만든 영상. 만들기가 끝나면 대화에 카드로 붙는다.
+        case result(ResultRef)
         /// AI 가 지금 쓰고 있는 중.
         case typing
     }

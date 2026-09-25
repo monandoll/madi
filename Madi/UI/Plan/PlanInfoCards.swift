@@ -16,7 +16,9 @@ struct PlanInfoCard: View {
             ))
             row(Copy.Plan.Info.scenes, sceneLine)
             row(Copy.Plan.Info.format, "\(plan.platform.label) (\(Copy.Platform.verticalNote))")
-            row(Copy.Plan.Info.caption, "\(plan.captionSlot.label) · \(plan.captionReason)")
+            // 자막 자리는 **영상이 주로 보여주는 몸의 범위**로 정해진다.
+            // "위쪽 · 아래쪽" 같은 위치어를 쓰지 않는다 (기각된 가설 — ViewData 의 CaptionSlot 주석).
+            row(Copy.Plan.Info.caption, plan.captionSlot.label)
         }
     }
 

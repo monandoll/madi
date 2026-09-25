@@ -201,6 +201,14 @@ public enum SampleData {
         shotCount: 0, resultCount: 0, makingCount: 0
     )
 
+    /// 다 만든 직후. **사이드바 결과물 숫자가 하나 늘어난다.**
+    public static let studioAfterMake = StudioStatus(
+        studioName: studio.studioName, ai: studio.ai,
+        shotCount: studio.shotCount,
+        resultCount: studio.resultCount + 1,
+        makingCount: 0
+    )
+
     public static let studioNoAI = StudioStatus(
         studioName: "바른몸 스튜디오", ai: .none,
         shotCount: studio.shotCount, resultCount: studio.resultCount, makingCount: 0
@@ -233,7 +241,8 @@ extension SampleData {
         SceneCardItem(
             id: "s3", number: 3, role: .demo,
             caption: "양쪽 다리를", secondary: "Position both legs",
-            captionCount: 2, duration: 3.2, thumbnail: resultFrame("yt_3s.png")
+            moreCaptions: ["무릎 꿇고 앉아주세요"],
+            duration: 3.2, thumbnail: resultFrame("yt_3s.png")
         ),
         SceneCardItem(
             id: "s4", number: 4, role: .demo,
@@ -274,9 +283,8 @@ extension SampleData {
         platform: .reels,
         versionLabel: Copy.Plan.version(2), versionCount: 2,
         sourceDuration: 42, targetDuration: 27,
-        // 이 편은 앉아서 상반신을 보여주는 편이라 자막이 아래쪽이다
-        // (docs/findings/2026-09-25-caption-position-10.md 의 A 무리, 아래끝 0.235).
-        captionSlot: .lower, captionReason: Copy.Plan.Caption.reasonLower,
+        // 앉아서 말하는 상반신 영상이다 (측정에서 A 무리, 아래끝 0.235).
+        captionSlot: .upperBody,
         scenes: planScenes, resultCount: 3
     )
 
@@ -287,7 +295,7 @@ extension SampleData {
         platform: .shorts,
         versionLabel: Copy.Plan.version(1), versionCount: 1,
         sourceDuration: 64, targetDuration: 48,
-        captionSlot: .upper, captionReason: Copy.Plan.Caption.reasonUpper,
+        captionSlot: .lowerBody,
         scenes: Array(planScenes.prefix(6)), resultCount: 0
     )
 
@@ -299,12 +307,12 @@ extension SampleData {
         platform: .reels,
         versionLabel: Copy.Plan.version(1), versionCount: 1,
         sourceDuration: 51, targetDuration: 44,
-        captionSlot: .upper, captionReason: Copy.Plan.Caption.reasonUpper,
+        captionSlot: .fullBody,
         scenes: (1...5).map { i in
             SceneCardItem(
                 id: "n\(i)", number: i,
                 role: [SceneRoleKind.hook, .demo, .demo, .explain, .cta][i - 1],
-                caption: "", captionCount: 0,
+                caption: "",
                 duration: [6.2, 11.4, 9.8, 8.6, 7.6][i - 1],
                 thumbnail: shotFrame("v_0\(i + 2)")
             )
@@ -327,8 +335,7 @@ extension SampleData {
         ChatMessage(id: "m2", kind: .assistant(
             "42초를 장면 9개로 나눴어요. 훅 2개 · 시범 3개 · 설명 3개 · 마무리 1개예요.")),
         ChatMessage(id: "m3", kind: .assistant(
-            "쉬는 구간 2곳, 5초를 뺐습니다. 자막은 아래쪽에 뒀어요 — 앉아서 말하는 영상이라 "
-            + "아래가 비어 있어요.")),
+            "쉬는 구간 2곳, 5초를 뺐습니다. 앉아서 말하는 영상이라 자막은 상반신 자리에 뒀어요.")),
         ChatMessage(id: "m4", kind: .summary(EditSummary(lines: [
             .init(label: "쉬는 구간 2곳", value: "−5초"),
             .init(label: "인스타 규격", value: "세로"),
@@ -368,6 +375,29 @@ extension SampleData {
         ChatMessage(id: "m5", kind: .assistant(
             "한 가지만 알려드릴게요. 12~19초 구간은 화면에 사람이 거의 안 잡혀서 "
             + "화면 잡기가 잘 됐는지 확인하지 못했어요. 만들고 나서 그 부분만 한번 봐주세요.")),
+    ]
+
+    /// 만드는 중. 진행은 화면 위쪽에서 보여주고, 대화는 한 줄만 남긴다.
+    public static let makingProgress = MakingProgress(
+        fraction: 0.66,
+        steps: [
+            PrepareStep(title: Copy.Plan.Making.captions, state: .done),
+            PrepareStep(title: Copy.Plan.Making.reframe, state: .running),
+            PrepareStep(title: Copy.Plan.Making.encode, state: .waiting),
+        ],
+        remaining: "약 1분"
+    )
+
+    public static let chatMaking: [ChatMessage] = chat + [
+        ChatMessage(id: "mk1", kind: .user("좋아, 만들어줘"), stamp: "오늘 오후 2:41"),
+        ChatMessage(id: "mk2", kind: .assistant("만들기 시작했어요. 다 되면 여기에 올려드릴게요.")),
+    ]
+
+    /// 다 만든 뒤. 결과물이 **대화에 카드로** 붙는다.
+    public static let chatMade: [ChatMessage] = chat + [
+        ChatMessage(id: "mk1", kind: .user("좋아, 만들어줘"), stamp: "오늘 오후 2:41"),
+        ChatMessage(id: "mk2", kind: .assistant("만들기 시작했어요. 다 되면 여기에 올려드릴게요.")),
+        ChatMessage(id: "mk3", kind: .result(results[0])),
     ]
 
     public static let chatChips: [String] = [

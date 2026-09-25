@@ -6,45 +6,77 @@ import SwiftUI
 /// 한 줄이 "몇 번째 · 무슨 역할 · 뭐라고 말하는지 · 몇 초" 를 통째로 말한다.
 ///
 /// **가로 띠가 아니라 세로 목록인 이유**: 1100pt 창에서 가로로 놓으면 9개 중 2~3개만 보인다.
-/// 편집안을 훑는 게 이 화면의 일인데 훑을 수가 없다. 세로로 놓으면 같은 창에서 6~7개가 보이고,
-/// 위에서 아래로 읽는 순서가 영상 순서와 같아 "몇 번째 장면" 을 세기도 쉽다.
+/// 편집안을 훑는 게 이 화면의 일인데 훑을 수가 없다.
 ///
-/// 뺀 쉬는 구간은 **지우지 않고 줄 사이에 자국으로 남긴다** — 되돌릴 수 있어야 한다.
+/// 평소에는 줄을 접어 두고(자막 첫 덩어리만), **고른 줄만 펼친다** — 자막 전부 · 영문 보조 ·
+/// 버튼이 그때 나온다. 아홉 줄이 전부 펼쳐져 있으면 훑을 수가 없다.
+///
+/// 순서는 **끌어서** 바꾼다. `List` 의 기본 이동이라 손잡이를 따로 그리지 않는다.
+/// 말로도 된다 ("3번이랑 4번 바꿔줘") — 둘 다 같은 결과다.
 struct SceneList: View {
     var plan: PlanView
     @Binding var selectedID: SceneCardItem.ID?
     /// 자막을 고치는 중인 줄. 한 번에 하나만.
     @Binding var editingID: SceneCardItem.ID?
+    /// 만드는 중에는 읽기만 한다. 흐리게 두고 손대지 못하게 막는다.
+    var isReadOnly = false
 
     var onRemove: (SceneCardItem) -> Void = { _ in }
     var onExtend: (SceneCardItem) -> Void = { _ in }
     var onShorten: (SceneCardItem) -> Void = { _ in }
     var onPlayFrom: (SceneCardItem) -> Void = { _ in }
     var onRestoreGap: (SceneCardItem) -> Void = { _ in }
+    var onMove: (IndexSet, Int) -> Void = { _, _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            header
+
+            List(selection: $selectedID) {
+                ForEach(plan.scenes) { scene in
+                    VStack(alignment: .leading, spacing: 0) {
+                        row(scene)
+                        // 뺀 쉬는 구간은 **지우지 않고 자국으로 남긴다.**
+                        // 사용자가 AI 의 판단을 되돌릴 유일한 길이다.
+                        if let gap = scene.removedGapAfter {
+                            RemovedGapRow(seconds: gap, isReadOnly: isReadOnly) {
+                                onRestoreGap(scene)
+                            }
+                        }
+                    }
+                    .tag(scene.id)
+                    // 줄 높이를 1pt 단위로 아꼈다. 1100×700 에서 장면 6개가 보이는지가 기준이고,
+                    // 안 보이면 이 화면은 훑는 일을 못 한다.
+                    .listRowInsets(EdgeInsets(top: 1, leading: 6, bottom: 1, trailing: 6))
+                    .listRowSeparator(.hidden)
+                    .contextMenu { menu(scene) }
+                }
+                .onMove { from, to in onMove(from, to) }
+            }
+            .listStyle(.inset)
+            .scrollContentBackground(.hidden)
+            .disabled(isReadOnly)
+            .opacity(isReadOnly ? 0.5 : 1)
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.inner) {
             Text(Copy.Plan.Scenes.header(
                 count: plan.scenes.count,
                 total: Copy.duration(plan.targetDuration)
             ))
             .font(.headline)
-            .padding(.horizontal, Tokens.Space.section)
-            .padding(.vertical, Tokens.Space.inner)
 
-            ScrollView {
-                LazyVStack(spacing: Tokens.Space.tight) {
-                    ForEach(plan.scenes) { scene in
-                        row(scene)
-                        if let gap = scene.removedGapAfter {
-                            RemovedGapRow(seconds: gap) { onRestoreGap(scene) }
-                        }
-                    }
-                }
-                .padding(.horizontal, Tokens.Space.between)
-                .padding(.bottom, Tokens.Space.between)
-            }
+            Text(isReadOnly ? Copy.Plan.Making.readOnly : Copy.Plan.Scenes.reorderHint)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer()
         }
+        .padding(.horizontal, Tokens.Space.section)
+        .padding(.top, Tokens.Space.inner)
+        .padding(.bottom, Tokens.Space.tight)
     }
 
     private func row(_ scene: SceneCardItem) -> some View {
@@ -52,13 +84,17 @@ struct SceneList: View {
             scene: scene,
             isSelected: scene.id == selectedID,
             isEditingCaption: scene.id == editingID,
+            isReadOnly: isReadOnly,
             onRemove: { onRemove(scene) },
             onExtend: { onExtend(scene) },
             onEditCaption: { editingID = scene.id },
             onEndEditing: { editingID = nil }
         )
-        .onTapGesture { selectedID = scene.id }
-        .contextMenu {
+    }
+
+    @ViewBuilder
+    private func menu(_ scene: SceneCardItem) -> some View {
+        if !isReadOnly {
             Button(Copy.Plan.Scenes.editCaptionFull) { editingID = scene.id }
                 .keyboardShortcut(.return, modifiers: [])
             Divider()
@@ -75,11 +111,12 @@ struct SceneList: View {
     }
 }
 
-/// 장면 한 줄.
+/// 장면 한 줄. 접힌 모습이 기본이고, 고른 줄만 펼친다.
 struct SceneRow: View {
     var scene: SceneCardItem
     var isSelected: Bool
     var isEditingCaption: Bool
+    var isReadOnly: Bool
 
     var onRemove: () -> Void = {}
     var onExtend: () -> Void = {}
@@ -91,17 +128,17 @@ struct SceneRow: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        HStack(alignment: .top, spacing: Tokens.Space.between) {
+        HStack(alignment: .top, spacing: Tokens.Space.inner + 2) {
             Text("\(scene.number)")
-                .font(.callout.monospacedDigit())
+                .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 16, alignment: .trailing)
-                .padding(.top, 2)
+                .frame(width: 14, alignment: .trailing)
+                .padding(.top, 1)
 
-            ThumbnailView(thumbnail: scene.thumbnail, cornerRadius: Tokens.Radius.thumbnail - 2)
-                .frame(width: 44, height: 78)
+            ThumbnailView(thumbnail: scene.thumbnail, cornerRadius: 3)
+                .frame(width: 26, height: 46)
 
-            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+            VStack(alignment: .leading, spacing: Tokens.Space.hairline) {
                 HStack(spacing: Tokens.Space.inner) {
                     RoleTag(role: scene.role)
                     Text(Copy.shortSeconds(scene.duration))
@@ -110,20 +147,15 @@ struct SceneRow: View {
                         .foregroundStyle(.secondary)
                 }
                 caption
-                actions
+                if isSelected && !isReadOnly && !isEditingCaption {
+                    actions
+                }
             }
 
             Spacer(minLength: 0)
         }
-        .padding(Tokens.Space.inner)
-        .background {
-            RoundedRectangle(cornerRadius: Tokens.Radius.card)
-                .fill(isSelected ? Tokens.Palette.accent.opacity(0.10) : Color.clear)
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: Tokens.Radius.card)
-                .strokeBorder(isSelected ? Tokens.Palette.accent : .clear, lineWidth: 2)
-        }
+        .padding(.vertical, Tokens.Space.tight)
+        .padding(.horizontal, Tokens.Space.inner - 2)
         .contentShape(.rect)
     }
 
@@ -146,15 +178,22 @@ struct SceneRow: View {
                 Text(scene.caption.isEmpty ? Copy.Plan.Scenes.noCaption : scene.caption)
                     .font(.callout)
                     .foregroundStyle(scene.caption.isEmpty ? .secondary : .primary)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let secondary = scene.secondary {
-                    Text(secondary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                if scene.captionCount > 1 {
-                    Text(Copy.Plan.Scenes.moreCaptions(scene.captionCount))
+                    .lineLimit(isSelected ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: isSelected)
+
+                if isSelected {
+                    // 고른 줄만 펼친다 — 영문 보조와 나머지 자막 덩어리가 여기서 나온다.
+                    if let secondary = scene.secondary {
+                        Text(secondary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(scene.moreCaptions, id: \.self) { chunk in
+                        Text(chunk)
+                            .font(.callout)
+                    }
+                } else if scene.captionCount > 1 {
+                    Text(Copy.Plan.Scenes.moreCaptions(scene.captionCount - 1))
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -177,6 +216,7 @@ struct SceneRow: View {
 /// 뺀 쉬는 구간 자국. 줄 사이에 얇게 선다.
 struct RemovedGapRow: View {
     var seconds: Double
+    var isReadOnly: Bool
     var onRestore: () -> Void
 
     var body: some View {
@@ -184,17 +224,19 @@ struct RemovedGapRow: View {
             Image(systemName: "scissors")
                 .imageScale(.small)
                 .foregroundStyle(.secondary)
-                .frame(width: 16)
+                .frame(width: 14)
             Text(Copy.Plan.Scenes.removedGap(seconds))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Button(Copy.Plan.Scenes.bringBack, action: onRestore)
-                .buttonStyle(.link)
-                .font(.caption)
+            if !isReadOnly {
+                Button(Copy.Plan.Scenes.bringBack, action: onRestore)
+                    .buttonStyle(.link)
+                    .font(.caption)
+            }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, Tokens.Space.inner)
-        .padding(.vertical, Tokens.Space.tight)
+        .padding(.leading, Tokens.Space.inner - 2)
+        .padding(.bottom, Tokens.Space.hairline)
     }
 }
 
@@ -202,12 +244,19 @@ struct RemovedGapRow: View {
     @Previewable @State var selected: SceneCardItem.ID? = "s4"
     @Previewable @State var editing: SceneCardItem.ID?
     SceneList(plan: SampleData.plan, selectedID: $selected, editingID: $editing)
-        .frame(width: 420, height: 620)
+        .frame(width: 420, height: 400)
 }
 
 #Preview("자막 고치는 중") {
     @Previewable @State var selected: SceneCardItem.ID? = "s4"
     @Previewable @State var editing: SceneCardItem.ID? = "s4"
     SceneList(plan: SampleData.plan, selectedID: $selected, editingID: $editing)
-        .frame(width: 420, height: 620)
+        .frame(width: 420, height: 400)
+}
+
+#Preview("만드는 중 · 읽기 전용") {
+    @Previewable @State var selected: SceneCardItem.ID? = "s4"
+    @Previewable @State var editing: SceneCardItem.ID?
+    SceneList(plan: SampleData.plan, selectedID: $selected, editingID: $editing, isReadOnly: true)
+        .frame(width: 420, height: 400)
 }
