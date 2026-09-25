@@ -13,6 +13,7 @@
     "platform": "shorts",
     "targetDurationSec": 150
   },
+  "captionSlot": "upperBody",
   "scenes": [
     {
       "id": "s1",

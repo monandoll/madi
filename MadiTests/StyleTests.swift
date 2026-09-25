@@ -26,7 +26,7 @@ struct StyleTests {
     @Test("보조 문구가 화면 밖으로 나가면 거절한다")
     func rejectsSecondaryOffScreen() throws {
         var values = try StyleStore.load().values
-        values.secondary.baselineOffsetRatio = values.caption.inkBottomRatio + 0.05
+        values.secondary.baselineOffsetRatio = values.caption.inkBottomRatio[.upperBody] + 0.05
         #expect(throws: StyleError.self) { try validate(values) }
     }
 
@@ -36,11 +36,11 @@ struct StyleTests {
         // 0.031~0.041 로 붙어 있다. 절대 위치로 두면 본문이 움직일 때 보조가 따로 논다.
         var values = try StyleStore.load().values
         let frame = CGSize(width: 1080, height: 1920)
-        let before = CaptionLayout.metrics(frameSize: frame, style: values)
+        let before = CaptionLayout.metrics(frameSize: frame, style: values, slot: .upperBody)
         let gap = before.baselineFromBottom - before.secondaryBaselineFromBottom
 
-        values.caption.inkBottomRatio += 0.15   // 본문을 위로 올린다
-        let after = CaptionLayout.metrics(frameSize: frame, style: values)
+        values.caption.inkBottomRatio[.upperBody] += 0.15   // 본문을 위로 올린다
+        let after = CaptionLayout.metrics(frameSize: frame, style: values, slot: .upperBody)
 
         #expect(after.secondaryBaselineFromBottom > before.secondaryBaselineFromBottom)
         #expect(abs((after.baselineFromBottom - after.secondaryBaselineFromBottom) - gap) < 0.01)
@@ -64,9 +64,11 @@ struct StyleTests {
 struct CaptionGeometryTests {
     private let frame = CGSize(width: 1080, height: 1920)
 
-    private func render(_ caption: Caption, style: StyleValues) throws -> StillRenderer.StrokeScan {
+    private func render(
+        _ caption: Caption, style: StyleValues, slot: CaptionSlot = .upperBody
+    ) throws -> StillRenderer.StrokeScan {
         let image = try StillRenderer.renderCaption(
-            caption, size: frame, style: style, backdrop: .solid(RGBA(0, 0, 0, 1))
+            caption, size: frame, style: style, slot: slot, backdrop: .solid(RGBA(0, 0, 0, 1))
         )
         let scan = StillRenderer.scanStrokes(image)
         #expect(scan != nil, "그려진 흰 글자를 찾지 못했다")
@@ -90,9 +92,37 @@ struct CaptionGeometryTests {
         let scan = try render(
             Caption(id: "t", start: 0, end: 1, text: "가능성이 높다는 겁니다"), style: style
         )
-        // 통과 조건 A: 아래에서 0.2352 ±0.003
-        #expect(abs(scan.inkBottomRatio - style.caption.inkBottomRatio) <= 0.003,
-                "아래끝 \(scan.inkBottomRatio) 가 목표 \(style.caption.inkBottomRatio) 와 다르다")
+        // 통과 조건 A: 아래에서 0.2352 ±0.003 (upperBody 슬롯)
+        let target = style.caption.inkBottomRatio[.upperBody]
+        #expect(abs(scan.inkBottomRatio - target) <= 0.003,
+                "아래끝 \(scan.inkBottomRatio) 가 목표 \(target) 와 다르다")
+    }
+
+    @Test("슬롯마다 자막이 스타일이 정한 높이에 온다", arguments: CaptionSlot.allCases)
+    func slotMovesCaption(slot: CaptionSlot) throws {
+        // 좌표는 스타일에만 있다. 슬롯은 이름일 뿐이다 (AGENTS.md §1-2).
+        let style = try StyleStore.load().values
+        let scan = try render(
+            Caption(id: "t", start: 0, end: 1, text: "가능성이 높다는 겁니다"),
+            style: style, slot: slot
+        )
+        #expect(abs(scan.inkBottomRatio - style.caption.inkBottomRatio[slot]) <= 0.003)
+    }
+
+    @Test("슬롯이 바뀌면 보조 문구도 본문을 따라 같이 움직인다")
+    func slotMovesSecondaryToo() throws {
+        // 본문만 움직이고 보조가 남으면 둘이 떨어진다. 공개본 10편에서 본문 위치는
+        // 0.235~0.483 으로 벌어지는데 본문↔보조 간격은 0.031~0.041 로 붙어 있었다
+        // (docs/findings/2026-09-25-caption-position-10.md §3).
+        let style = try StyleStore.load().values
+        var gaps: [CGFloat] = []
+        for slot in CaptionSlot.allCases {
+            let m = CaptionLayout.metrics(frameSize: frame, style: style, slot: slot)
+            #expect(m.baselineFromBottom > m.secondaryBaselineFromBottom, "보조가 본문 위에 있다")
+            gaps.append(m.baselineFromBottom - m.secondaryBaselineFromBottom)
+        }
+        let spread = (gaps.max() ?? 0) - (gaps.min() ?? 0)
+        #expect(spread < 0.5, "슬롯마다 본문↔보조 간격이 \(gaps) 로 달라진다")
     }
 
     @Test("자막 길이가 달라도 글자 크기는 고정이다")
@@ -111,7 +141,7 @@ struct CaptionGeometryTests {
             let scan = try render(Caption(id: "t", start: 0, end: 1, text: text), style: style)
             heights.append(scan.inkHeight)
             let font = MadiFont.pretendard(
-                size: CaptionLayout.metrics(frameSize: frame, style: style).fontSize,
+                size: CaptionLayout.metrics(frameSize: frame, style: style, slot: .upperBody).fontSize,
                 weight: CGFloat(style.caption.weight)
             )
             widths.append(CaptionLayout.advanceWidth(text, font: font))
@@ -125,17 +155,17 @@ struct CaptionGeometryTests {
     @Test("폰트 크기는 스타일 값이 아니라 글자 높이에서 역산된다")
     func fontSizeIsDerivedNotStored() throws {
         var style = try StyleStore.load().values
-        let base = CaptionLayout.metrics(frameSize: frame, style: style)
+        let base = CaptionLayout.metrics(frameSize: frame, style: style, slot: .upperBody)
         // 목표 글자 높이를 2배로 하면 폰트 크기도 따라 2배가 되어야 한다.
         style.caption.inkHeightRatio *= 2
-        let doubled = CaptionLayout.metrics(frameSize: frame, style: style)
+        let doubled = CaptionLayout.metrics(frameSize: frame, style: style, slot: .upperBody)
         #expect(abs(doubled.fontSize / base.fontSize - 2) < 0.01)
     }
 
     @Test("어절 단위로만 줄을 바꾼다")
     func wrapsOnWordBoundaries() throws {
         let style = try StyleStore.load().values
-        let m = CaptionLayout.metrics(frameSize: frame, style: style)
+        let m = CaptionLayout.metrics(frameSize: frame, style: style, slot: .upperBody)
         let font = MadiFont.pretendard(size: m.fontSize, weight: CGFloat(style.caption.weight))
         let lines = CaptionLayout.wrap(
             "어깨가 앞으로 말려 있으면", font: font,

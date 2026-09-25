@@ -48,7 +48,10 @@ public enum CaptionLayout {
     /// 보조 문구 크기를 재는 기준 문자열. 라틴 어센더 위끝 ~ 베이스라인.
     public static let secondaryMetricProbe = "Ilk"
 
-    public static func metrics(frameSize: CGSize, style: StyleValues) -> CaptionMetrics {
+    /// - Parameter slot: 이 영상(또는 장면)의 자막 위치. `Composition.captionSlot(for:)` 이 준다.
+    public static func metrics(
+        frameSize: CGSize, style: StyleValues, slot: CaptionSlot
+    ) -> CaptionMetrics {
         let H = frameSize.height
         let caption = style.caption
         let targetInk = CGFloat(caption.inkHeightRatio) * H
@@ -68,7 +71,7 @@ public enum CaptionLayout {
         let strokeWidthPercent = fontSize > 0 ? (2 * strokeOuter) / fontSize * 100 : 0
 
         // 본문은 ink 아래끝을 목표에 맞춘다 (measure.mjs 가 재는 값과 같은 정의).
-        let inkBottom = CGFloat(caption.inkBottomRatio) * H
+        let inkBottom = CGFloat(caption.inkBottomRatio[slot]) * H
         let baselineFromBottom = inkBottom - inkMinYAtSize
 
         return CaptionMetrics(

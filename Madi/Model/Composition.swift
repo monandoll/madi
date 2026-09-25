@@ -38,14 +38,39 @@ public struct NormPoint: Codable, Hashable, Sendable {
     public init(x: Double, y: Double) { self.x = x; self.y = y }
 }
 
+// MARK: - 자막 위치 슬롯
+
+/// 자막 블록을 화면 어디에 놓을지. **영상 단위**로 고른다.
+///
+/// ★ 이름이 **내용어**다. 좌표를 암시하지 않는다.
+///   AI 는 이 이름만 고르고 실제 좌표는 스타일(`Resources/styles/short.v1.json`)이 갖는다
+///   (AGENTS.md §1-2). 이름에 `mid` · `high` 같은 위치어를 쓰면 AI 가 좌표를 정하는 것과 같아진다.
+///
+/// 공개 숏폼 10편을 재서 나온 세 무리다. **무리와 영상 내용이 정확히 갈렸다**
+/// (`docs/findings/2026-09-25-caption-position-10.md §2`).
+///
+/// ⚠ 자막이 피사체를 피해 움직인다는 가설은 **기각됐다.** 크리에이터는 자막을 피사체
+///   위에 얹는다 (`docs/findings/2026-09-25-caption-position-rule-test.md`).
+///   그래서 기하로 자동 결정하지 않고 **고르게** 한다.
+public enum CaptionSlot: String, Codable, Sendable, CaseIterable {
+    /// 앉아서 말하는 상반신. 공개본 3편.
+    case upperBody
+    /// 서 있는 전신. 공개본 3편.
+    case fullBody
+    /// 바닥 · 침대의 하체 클로즈업. 공개본 4편.
+    case lowerBody
+}
+
 // MARK: - 자막
 
 /// 자막 한 덩어리. **문장을 통째로 넣지 않는다.**
 /// whisper 문장 세그먼트를 그대로 그린 게 전작이 "자동 생성 자막"처럼 보인 이유다 (AGENTS.md §0-3).
 /// 품질 게이트 G5: 한 덩어리 15자 이내, 2줄 이내 (원본 실측: 15자까지 한 줄).
 public struct Caption: Codable, Hashable, Sendable {
+    /// ★ `CaptionSlot`(영상 단위 **위치**)과 다른 것이다. 이건 **어떤 종류의 자막인가**다.
+    ///   본문이냐 상단 라벨이냐. 위치는 영상이 정하고, 종류는 자막이 정한다.
     public enum Slot: String, Codable, Sendable {
-        /// 하단 본문. 대부분의 자막.
+        /// 하단 본문. 대부분의 자막. 위치는 `Composition.captionSlot` 이 정한다.
         case main
         /// 상단 라벨 (`Before` / `After`). 조사 5편 중 2편에서 관측됐다.
         case top
@@ -251,17 +276,24 @@ public struct Scene: Codable, Hashable, Sendable {
     public var captions: [Caption]
     public var overlays: [Overlay]
     public var transitionIn: Transition
+    /// 이 장면만 다른 자막 위치를 쓸 때. 비어 있으면 `Composition.captionSlot` 을 따른다.
+    ///
+    /// ★ **웬만하면 비워 둔다.** 크리에이터는 한 영상 안에서 자막을 옮기지 않는다 —
+    ///   편당 12프레임을 재 보니 전부 같은 위치였다 (`8DF9jrxQM4U` 는 12프레임 전부 0.2354).
+    ///   장면이 완전히 다른 화면일 때만 덮어쓴다.
+    public var captionSlot: CaptionSlot?
 
     public init(
         id: String, role: SceneRole, source: Source,
         speed: Double = 1,
         reframe: ReframeTrack = ReframeTrack(),
         captions: [Caption] = [], overlays: [Overlay] = [],
-        transitionIn: Transition = .cut
+        transitionIn: Transition = .cut,
+        captionSlot: CaptionSlot? = nil
     ) {
         self.id = id; self.role = role; self.source = source; self.speed = speed
         self.reframe = reframe; self.captions = captions; self.overlays = overlays
-        self.transitionIn = transitionIn
+        self.transitionIn = transitionIn; self.captionSlot = captionSlot
     }
 
     public init(from decoder: Decoder) throws {
@@ -274,6 +306,7 @@ public struct Scene: Codable, Hashable, Sendable {
         captions = try c.decodeIfPresent([Caption].self, forKey: .captions) ?? []
         overlays = try c.decodeIfPresent([Overlay].self, forKey: .overlays) ?? []
         transitionIn = try c.decodeIfPresent(Transition.self, forKey: .transitionIn) ?? .cut
+        captionSlot = try c.decodeIfPresent(CaptionSlot.self, forKey: .captionSlot)
     }
 
     /// 장면의 결과물 길이(초). `speed` 반영.
@@ -379,6 +412,13 @@ public struct Composition: Codable, Hashable, Sendable {
     public var size: Size
     public var fps: Int
     public var meta: Meta
+    /// 이 영상의 자막 위치. **영상 단위로 하나** 고른다.
+    ///
+    /// ★ 자막마다 고르지 않는다. 공개본 10편에서 **편 안에서는 12프레임 전부 같은 위치**였고
+    ///   편 사이에서만 0.235~0.483 으로 갈렸다
+    ///   (`docs/findings/2026-09-25-caption-position-10.md`).
+    ///   한 영상 안에서 자막이 오르내리면 그 순간 아마추어 편집처럼 보인다.
+    public var captionSlot: CaptionSlot
     /// 배열 순서 = 결과물 순서. 원본 순서와 달라도 된다.
     public var scenes: [Scene]
     public var audio: AudioTracks
@@ -390,18 +430,19 @@ public struct Composition: Codable, Hashable, Sendable {
         case id
         case videoID = "videoId"
         case templateID = "templateId"
-        case templateVersion, size, fps, meta, scenes, audio, revisionOf, createdAt
+        case templateVersion, size, fps, meta, captionSlot, scenes, audio, revisionOf, createdAt
     }
 
     public init(
         id: String, videoID: String, templateID: String, templateVersion: Int = 1,
-        size: Size = Size(), fps: Int = 30, meta: Meta, scenes: [Scene],
+        size: Size = Size(), fps: Int = 30, meta: Meta,
+        captionSlot: CaptionSlot, scenes: [Scene],
         audio: AudioTracks = AudioTracks(), revisionOf: String? = nil,
         createdAt: Date = Date()
     ) {
         self.id = id; self.videoID = videoID; self.templateID = templateID
         self.templateVersion = templateVersion; self.size = size; self.fps = fps
-        self.meta = meta; self.scenes = scenes; self.audio = audio
+        self.meta = meta; self.captionSlot = captionSlot; self.scenes = scenes; self.audio = audio
         self.revisionOf = revisionOf; self.createdAt = createdAt
     }
 
@@ -414,6 +455,9 @@ public struct Composition: Codable, Hashable, Sendable {
         size = try c.decodeIfPresent(Size.self, forKey: .size) ?? Size()
         fps = try c.decodeIfPresent(Int.self, forKey: .fps) ?? 30
         meta = try c.decode(Meta.self, forKey: .meta)
+        // 기본값을 두지 않는다. 안 적으면 조용히 아래에 붙는 게 아니라 에러가 나야 한다 —
+        // 위치는 영상마다 다르고, 틀리면 자막이 화면 25% 아래에 찍힌다.
+        captionSlot = try c.decode(CaptionSlot.self, forKey: .captionSlot)
         scenes = try c.decode([Scene].self, forKey: .scenes)
         audio = try c.decodeIfPresent(AudioTracks.self, forKey: .audio) ?? AudioTracks()
         revisionOf = try c.decodeIfPresent(String.self, forKey: .revisionOf)
@@ -422,6 +466,11 @@ public struct Composition: Codable, Hashable, Sendable {
 
     /// 결과물 전체 길이(초).
     public var duration: Double { scenes.reduce(0) { $0 + $1.duration } }
+
+    /// 이 장면에 실제로 적용되는 자막 위치. 장면이 덮어썼으면 그것, 아니면 영상 기본값.
+    public func captionSlot(for scene: Scene) -> CaptionSlot {
+        scene.captionSlot ?? captionSlot
+    }
 
     /// 각 장면이 결과물 타임라인에서 시작하는 초.
     public var sceneOffsets: [Double] {

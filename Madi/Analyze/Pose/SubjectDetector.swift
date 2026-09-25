@@ -132,6 +132,133 @@ public enum SubjectDetector {
         }
     }
 
+    /// 사람 마스크를 **떨어져 있는 덩어리**로 쪼갠다.
+    ///
+    /// 2인 영상(도수치료: 시술자 + 회원)에서 "누구를 피사체로 볼지" 를 정하려면
+    /// 마스크가 한 덩어리인지 두 덩어리인지 알아야 한다. 상자 하나로는 둘을 합쳐 버린다.
+    ///
+    /// - Returns: 넓이 큰 순서. 각 덩어리의 상자와 픽셀 수(프레임 대비 비율).
+    public static func maskComponents(
+        _ image: CGImage, minCoverage: Double = 0.005
+    ) throws -> [(box: NormRect, coverage: Double)] {
+        let handler = VNImageRequestHandler(cgImage: image, options: [:])
+        let segment = VNGeneratePersonSegmentationRequest()
+        segment.qualityLevel = .accurate
+        segment.outputPixelFormat = kCVPixelFormatType_OneComponent8
+        try handler.perform([segment])
+        guard let buffer = (segment.results ?? []).first?.pixelBuffer else { return [] }
+
+        CVPixelBufferLockBaseAddress(buffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
+        guard let base = CVPixelBufferGetBaseAddress(buffer) else { return [] }
+        let w = CVPixelBufferGetWidth(buffer)
+        let h = CVPixelBufferGetHeight(buffer)
+        let stride = CVPixelBufferGetBytesPerRow(buffer)
+        let px = base.bindMemory(to: UInt8.self, capacity: stride * h)
+
+        // 너비 우선 탐색으로 이어진 픽셀을 묶는다. 마스크는 원본보다 작아서 이 정도면 충분하다.
+        var seen = [Bool](repeating: false, count: w * h)
+        var out: [(NormRect, Double)] = []
+        var queue: [Int] = []
+        queue.reserveCapacity(w * h / 4)
+
+        for start in 0..<(w * h) {
+            guard !seen[start] else { continue }
+            let sx = start % w, sy = start / w
+            guard px[sy * stride + sx] > 127 else { seen[start] = true; continue }
+
+            queue.removeAll(keepingCapacity: true)
+            queue.append(start)
+            seen[start] = true
+            var minX = sx, maxX = sx, minRow = sy, maxRow = sy, count = 0
+            var head = 0
+            while head < queue.count {
+                let index = queue[head]; head += 1
+                let x = index % w, y = index / w
+                count += 1
+                if x < minX { minX = x }; if x > maxX { maxX = x }
+                if y < minRow { minRow = y }; if y > maxRow { maxRow = y }
+                for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                    let nx = x + dx, ny = y + dy
+                    guard nx >= 0, nx < w, ny >= 0, ny < h else { continue }
+                    let next = ny * w + nx
+                    guard !seen[next], px[ny * stride + nx] > 127 else { continue }
+                    seen[next] = true
+                    queue.append(next)
+                }
+            }
+            let coverage = Double(count) / Double(w * h)
+            guard coverage >= minCoverage else { continue }
+            out.append((NormRect(
+                x: Double(minX) / Double(w),
+                y: 1 - Double(maxRow + 1) / Double(h),
+                w: Double(maxX - minX + 1) / Double(w),
+                h: Double(maxRow - minRow + 1) / Double(h)
+            ), coverage))
+        }
+        return out.sorted { $0.1 > $1.1 }
+    }
+
+    /// 크롭 중심 후보를 비교하기 위한 마스크 통계.
+    public struct MaskStats: Sendable {
+        /// 마스크 상자.
+        public let box: NormRect
+        /// 마스크 픽셀의 가로 무게중심 (0..1).
+        public let massCenterX: Double
+        /// 마스크 픽셀의 **세로** 무게중심 (0..1, y 가 위로 가는 좌표).
+        public let massCenterY: Double
+        /// 열별 마스크 픽셀 수 (가로 512칸으로 압축). 크롭 안에 남는 양을 셀 때 쓴다.
+        public let columnMass: [Double]
+        /// 전체 마스크 픽셀 수 ÷ 프레임 픽셀 수.
+        public let coverage: Double
+    }
+
+    public static func maskStats(_ image: CGImage) throws -> MaskStats? {
+        let handler = VNImageRequestHandler(cgImage: image, options: [:])
+        let segment = VNGeneratePersonSegmentationRequest()
+        segment.qualityLevel = .accurate
+        segment.outputPixelFormat = kCVPixelFormatType_OneComponent8
+        try handler.perform([segment])
+        guard let buffer = (segment.results ?? []).first?.pixelBuffer else { return nil }
+
+        CVPixelBufferLockBaseAddress(buffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
+        guard let base = CVPixelBufferGetBaseAddress(buffer) else { return nil }
+        let w = CVPixelBufferGetWidth(buffer)
+        let h = CVPixelBufferGetHeight(buffer)
+        let stride = CVPixelBufferGetBytesPerRow(buffer)
+        let px = base.bindMemory(to: UInt8.self, capacity: stride * h)
+
+        let bins = 512
+        var columns = [Double](repeating: 0, count: bins)
+        var minX = w, maxX = -1, minRow = h, maxRow = -1
+        var total = 0.0, weightedX = 0.0, weightedRow = 0.0
+        for row in 0..<h {
+            for x in 0..<w where px[row * stride + x] > 127 {
+                total += 1
+                weightedX += Double(x)
+                weightedRow += Double(row)
+                columns[min(bins - 1, x * bins / w)] += 1
+                if x < minX { minX = x }; if x > maxX { maxX = x }
+                if row < minRow { minRow = row }; if row > maxRow { maxRow = row }
+            }
+        }
+        guard total > 0, maxX >= 0 else { return nil }
+        return MaskStats(
+            box: NormRect(
+                x: Double(minX) / Double(w),
+                y: 1 - Double(maxRow + 1) / Double(h),
+                w: Double(maxX - minX + 1) / Double(w),
+                h: Double(maxRow - minRow + 1) / Double(h)
+            ),
+            massCenterX: weightedX / total / Double(w),
+            // 마스크는 위가 0행. NormRect 와 같은 y-up 으로 뒤집는다.
+            massCenterY: 1 - (weightedRow / total / Double(h)),
+            columnMass: columns.map { $0 / total },
+            coverage: total / Double(w * h)
+        )
+    }
+
     private static func largest(_ observations: [VNDetectedObjectObservation]) -> NormRect? {
         guard let best = observations.max(by: {
             $0.boundingBox.height * $0.boundingBox.width
