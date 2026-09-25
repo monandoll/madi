@@ -15,15 +15,23 @@ public struct SubjectSample: Codable, Hashable, Sendable {
     public var massCenterY: Double?
     /// 프레임 대비 마스크 픽셀 비율.
     public var coverage: Double
+    /// 원본에서 이미 위/아래가 잘려 있었다. **G2 의 분모를 정하는 값이다** (`AGENTS.md §8`).
+    public var touchesTop: Bool
+    public var touchesBottom: Bool
+    /// 마스크 한 픽셀의 정규화 높이. 크롭 경계 판정 허용오차.
+    public var pixelHeight: Double
 
     public var isMissing: Bool { box == nil }
 
     public init(
-        t: Double, box: NormRect?, massCenterX: Double?, massCenterY: Double?, coverage: Double
+        t: Double, box: NormRect?, massCenterX: Double?, massCenterY: Double?, coverage: Double,
+        touchesTop: Bool = false, touchesBottom: Bool = false, pixelHeight: Double = 0.003
     ) {
         self.t = t; self.box = box
         self.massCenterX = massCenterX; self.massCenterY = massCenterY
         self.coverage = coverage
+        self.touchesTop = touchesTop; self.touchesBottom = touchesBottom
+        self.pixelHeight = pixelHeight
     }
 }
 
@@ -115,7 +123,9 @@ public enum SubjectTrackBuilder {
             samples.append(SubjectSample(
                 t: times[i], box: part.box,
                 massCenterX: part.massCenter.x, massCenterY: part.massCenter.y,
-                coverage: part.coverage
+                coverage: part.coverage,
+                touchesTop: part.touchesTop, touchesBottom: part.touchesBottom,
+                pixelHeight: part.pixelHeight
             ))
         }
 

@@ -55,18 +55,56 @@ public enum ReframePlanner {
         /// 상자가 크롭 밖으로 나간 면적 비율의 평균. 조용히 자르지 않기 위해 남긴다
         /// (`docs/findings/2026-09-25-reframe-center-rule.md §2`).
         public var clippedRatio: Double
-        /// 상자 **위쪽**이 크롭 밖으로 나간 길이 / 상자 높이. 평균. 머리가 잘리는 쪽이다 (G2).
-        public var topClipRatio: Double
-        /// 상자 **아래쪽**이 잘린 비율. 평균. 발목이 잘리는 쪽이다 (G2).
-        public var bottomClipRatio: Double
+        /// G2 — **우리가 새로 자른** 비율. `AGENTS.md §8`.
+        public var g2: G2Measurement
     }
 
     public struct Plan: Sendable {
         public var keyframes: [ReframeTrack.Keyframe]
         public var measurement: Measurement
         public var g1: GateResult
+        public var g2: GateResult
         public var g3: GateResult
     }
+
+    /// G2 — "**리프레이밍이 새로 자른** 구간 5% 이하" (`AGENTS.md §8`).
+    ///
+    /// 원본에서 마스크가 위/아래 경계에 **안 닿았는데** 크롭 뒤 닿게 된 비율이다.
+    /// 원본이 이미 닿은 프레임은 분모에서 뺀다 — 세로 숏폼에서 발이 프레임 밖으로
+    /// 나가는 건 정상이고, 그걸로 재면 공개본이 86% 탈락한다.
+    ///
+    /// **좌우는 보지 않는다.** 팔 끝이 잘리는 건 문제가 아니다.
+    ///
+    /// ⚠ 위/아래를 **따로** 잰다. `§8` 문장("원본이 이미 닿은 프레임은 분모에서 뺀다")은
+    ///   프레임 단위로도 읽히는데, 그러면 발이 잘린 프레임이 통째로 빠져서
+    ///   **머리 잘림을 잴 표본이 거의 안 남는다.** 비교용으로 그 해석도 같이 계산해
+    ///   `strict*` 에 담는다 (`docs/findings/2026-09-25-g2-measurement.md §2`).
+    public struct G2Measurement: Sendable {
+        /// 원본에서 위가 안 잘려 있던 표본 수. 이게 분모다.
+        public var topEligible: Int
+        /// 그중 크롭 뒤 위가 잘린 표본 수.
+        public var topNewlyClipped: Int
+        public var bottomEligible: Int
+        public var bottomNewlyClipped: Int
+        /// 위/아래 중 **나쁜 쪽**. 게이트는 이걸 본다.
+        public var worstRatio: Double
+        /// 프레임 단위 해석: 원본에서 위·아래 어느 쪽도 안 잘린 표본만 분모.
+        public var strictEligible: Int
+        public var strictNewlyClipped: Int
+
+        public var topRatio: Double {
+            topEligible > 0 ? Double(topNewlyClipped) / Double(topEligible) : 0
+        }
+        public var bottomRatio: Double {
+            bottomEligible > 0 ? Double(bottomNewlyClipped) / Double(bottomEligible) : 0
+        }
+        public var strictRatio: Double {
+            strictEligible > 0 ? Double(strictNewlyClipped) / Double(strictEligible) : 0
+        }
+    }
+
+    /// G2 임계값. `AGENTS.md §8`.
+    public static let maxNewlyClippedRatio = 0.05
 
     /// G1 하한. 근거는 `AGENTS.md §8` — 미학 목표(0.72)와 다르다.
     public static let minSubjectHeight = 0.55
@@ -103,9 +141,14 @@ public enum ReframePlanner {
                     heightPassRatio: 0, sourceLimitedRatio: 0,
                     cappedFailCount: 0, hardFailCount: 0,
                     maxCenterShiftPerFrame: 0, clippedRatio: 0,
-                    topClipRatio: 0, bottomClipRatio: 0
+                    g2: G2Measurement(
+                        topEligible: 0, topNewlyClipped: 0,
+                        bottomEligible: 0, bottomNewlyClipped: 0, worstRatio: 0,
+                        strictEligible: 0, strictNewlyClipped: 0
+                    )
                 ),
                 g1: .cannotJudge(.subjectNotFound),
+                g2: .cannotJudge(.subjectNotFound),
                 g3: .cannotJudge(.subjectNotFound)
             )
         }
@@ -120,7 +163,11 @@ public enum ReframePlanner {
         var keyframes: [ReframeTrack.Keyframe] = []
         var heights: [Double] = []
         var cappedFails = 0, hardFails = 0
-        var clipped: [Double] = [], topClip: [Double] = [], bottomClip: [Double] = []
+        var clipped: [Double] = []
+        var g2 = G2Measurement(
+            topEligible: 0, topNewlyClipped: 0, bottomEligible: 0, bottomNewlyClipped: 0,
+            worstRatio: 0, strictEligible: 0, strictNewlyClipped: 0
+        )
         for (i, s) in smoothed.enumerated() {
             let rect = ReframeLimits.cropRect(
                 zoom: s.zoom, center: s.center, source: source, output: output
@@ -135,10 +182,26 @@ public enum ReframePlanner {
                 if targets[i].zoomCapped { cappedFails += 1 } else { hardFails += 1 }
             }
             clipped.append(max(0, 1 - overlapRatio(box, rect)))
-            guard box.h > 0 else { continue }
-            topClip.append(max(0, (box.y + box.h) - (rect.y + rect.h)) / box.h)
-            bottomClip.append(max(0, rect.y - box.y) / box.h)
+
+            // G2. 크롭 경계 판정은 마스크 한 픽셀만큼 봐준다.
+            let sample = picked[i]
+            let eps = sample.pixelHeight
+            let cutTop = (box.y + box.h) >= (rect.y + rect.h) - eps
+            let cutBottom = box.y <= rect.y + eps
+            if !sample.touchesTop {
+                g2.topEligible += 1
+                if cutTop { g2.topNewlyClipped += 1 }
+            }
+            if !sample.touchesBottom {
+                g2.bottomEligible += 1
+                if cutBottom { g2.bottomNewlyClipped += 1 }
+            }
+            if !sample.touchesTop && !sample.touchesBottom {
+                g2.strictEligible += 1
+                if cutTop || cutBottom { g2.strictNewlyClipped += 1 }
+            }
         }
+        g2.worstRatio = max(g2.topRatio, g2.bottomRatio)
 
         let counted = max(heights.count, 1)
         let passRatio = Double(heights.filter { $0 >= minSubjectHeight }.count) / Double(counted)
@@ -172,12 +235,22 @@ public enum ReframePlanner {
                 sourceLimitedRatio: sourceLimitedRatio,
                 cappedFailCount: cappedFails, hardFailCount: hardFails,
                 maxCenterShiftPerFrame: shift,
-                clippedRatio: mean(clipped),
-                topClipRatio: mean(topClip),
-                bottomClipRatio: mean(bottomClip)
+                clippedRatio: mean(clipped), g2: g2
             ),
-            g1: g1, g3: g3
+            g1: g1, g2: g2Result(g2, missingRatio: missingRatio), g3: g3
         )
+    }
+
+    /// G2 판정. 분모가 비면 **통과로 적지 않는다** — 잴 수 없었던 것이다.
+    static func g2Result(_ m: G2Measurement, missingRatio: Double) -> GateResult {
+        if missingRatio > SubjectTrack.missingRatioLimit {
+            return .cannotJudge(.subjectNotFound)
+        }
+        // 원본이 위·아래 다 잘려 있으면 "우리가 새로 잘랐는가" 를 물을 수 없다.
+        guard m.topEligible > 0 || m.bottomEligible > 0 else {
+            return .cannotJudge(.subjectAlreadyCropped)
+        }
+        return m.worstRatio <= maxNewlyClippedRatio ? .pass : .fail
     }
 
     // MARK: - Composition 되쓰기
@@ -190,8 +263,10 @@ public enum ReframePlanner {
         /// 영상 단위 판정. 장면별 판정을 그대로 쓰지 않는다 —
         /// `판정 불가` 기준(20%)은 **영상 길이** 기준이다 (`AGENTS.md §8`).
         public var g1: GateResult
+        public var g2: GateResult
         public var g3: GateResult
         public var missingRatio: Double
+        public var g2Measurement: G2Measurement
         public var heightPassRatio: Double
         public var maxCenterShiftPerFrame: Double
         public var clippedRatio: Double
@@ -213,6 +288,10 @@ public enum ReframePlanner {
         var capped = 0, hard = 0
         var shift = 0.0
         var clipped: [Double] = []
+        var g2 = G2Measurement(
+            topEligible: 0, topNewlyClipped: 0, bottomEligible: 0, bottomNewlyClipped: 0,
+            worstRatio: 0, strictEligible: 0, strictNewlyClipped: 0
+        )
 
         for i in out.scenes.indices {
             let scene = out.scenes[i]
@@ -239,6 +318,12 @@ public enum ReframePlanner {
             hard += m.hardFailCount
             shift = max(shift, m.maxCenterShiftPerFrame)
             clipped.append(m.clippedRatio)
+            g2.topEligible += m.g2.topEligible
+            g2.topNewlyClipped += m.g2.topNewlyClipped
+            g2.bottomEligible += m.g2.bottomEligible
+            g2.bottomNewlyClipped += m.g2.bottomNewlyClipped
+            g2.strictEligible += m.g2.strictEligible
+            g2.strictNewlyClipped += m.g2.strictNewlyClipped
         }
 
         let missingRatio = totalSamples > 0 ? Double(totalMissing) / Double(totalSamples) : 1
@@ -258,10 +343,12 @@ public enum ReframePlanner {
         let g3: GateResult = (missingRatio > SubjectTrack.missingRatioLimit || heights.isEmpty)
             ? .cannotJudge(.subjectNotFound)
             : (shift <= maxCenterShiftPerFrame ? .pass : .fail)
+        g2.worstRatio = max(g2.topRatio, g2.bottomRatio)
 
         return CompositionPlan(
-            composition: out, scenes: perScene, g1: g1, g3: g3,
-            missingRatio: missingRatio, heightPassRatio: passRatio,
+            composition: out, scenes: perScene,
+            g1: g1, g2: g2Result(g2, missingRatio: missingRatio), g3: g3,
+            missingRatio: missingRatio, g2Measurement: g2, heightPassRatio: passRatio,
             maxCenterShiftPerFrame: shift, clippedRatio: mean(clipped)
         )
     }

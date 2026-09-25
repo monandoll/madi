@@ -22,10 +22,15 @@ struct ReframePlannerTests {
     }
 
     /// 화면 가운데에 `height` 높이로 서 있는 사람. `missingEvery` 번째 표본은 마스크가 없다.
+    ///
+    /// `touchesTop` · `touchesBottom` 은 **원본에서 이미 잘려 있었는가**다.
+    /// G2 의 분모를 정하므로 테스트마다 명시한다.
     private func track(
-        size: CGSize, count: Int = 20, height: Double = 0.6,
+        size: CGSize, count: Int = 20, height: Double = 0.6, width: Double = 0.2,
         centerX: @escaping (Int) -> Double = { _ in 0.5 },
-        missingEvery: Int? = nil
+        missingEvery: Int? = nil,
+        bottom: Double? = nil,
+        touchesTop: Bool = false, touchesBottom: Bool = false
     ) -> SubjectTrack {
         let samples = (0..<count).map { i -> SubjectSample in
             if let every = missingEvery, i % every == 0 {
@@ -34,10 +39,12 @@ struct ReframePlannerTests {
                 )
             }
             let x = centerX(i)
+            let y = bottom ?? (1 - height) / 2
             return SubjectSample(
                 t: Double(i) * 0.5,
-                box: NormRect(x: x - 0.1, y: (1 - height) / 2, w: 0.2, h: height),
-                massCenterX: x, massCenterY: 0.5, coverage: 0.2 * height
+                box: NormRect(x: x - width / 2, y: y, w: width, h: height),
+                massCenterX: x, massCenterY: y + height / 2, coverage: width * height,
+                touchesTop: touchesTop, touchesBottom: touchesBottom, pixelHeight: 0.003
             )
         }
         return SubjectTrack(
@@ -163,6 +170,76 @@ struct ReframePlannerTests {
         )
         #expect(plan.g1 == .pass)
         #expect(plan.g3 == .pass)
+    }
+
+    // MARK: - G2 — 우리가 새로 잘랐는가
+
+    /// 세로로 자를 일이 없으면 G2 는 0 이어야 한다.
+    @Test("크롭이 전체 높이를 쓰면 새로 자르지 않는다")
+    func fullHeightCropClipsNothing() {
+        let plan = ReframePlanner.plan(
+            track: track(size: CGSize(width: 1920, height: 1080), height: 0.7),
+            range: 0...10, output: output, fps: 30, style: style()
+        )
+        #expect(plan.measurement.g2.worstRatio == 0)
+        #expect(plan.g2 == .pass)
+    }
+
+    @Test("확대가 머리를 자르면 G2 가 실패한다")
+    func zoomingIntoTheHeadFailsG2() {
+        // 세로 4K + 목표 1.1 → 상자보다 크롭이 작아져 위아래가 잘린다.
+        let plan = ReframePlanner.plan(
+            track: track(size: CGSize(width: 2160, height: 3840), height: 0.5),
+            range: 0...10, output: output, fps: 30,
+            style: style(target: 1.1, maxUpscale: 3.0)
+        )
+        #expect(plan.measurement.g2.worstRatio > ReframePlanner.maxNewlyClippedRatio)
+        #expect(plan.g2 == .fail)
+        #expect(plan.g2.shouldRetry)
+    }
+
+    @Test("원본에서 이미 잘린 쪽은 분모에서 뺀다")
+    func edgesAlreadyCutInSourceAreExcluded() {
+        let source = CGSize(width: 2160, height: 3840)
+        // 상자가 아래 경계에 붙어 있고, 원본에서 이미 아래가 잘려 있었다.
+        let cut = ReframePlanner.plan(
+            track: track(size: source, height: 0.5, bottom: 0, touchesBottom: true),
+            range: 0...10, output: output, fps: 30, style: style(target: 1.1, maxUpscale: 3.0)
+        )
+        #expect(cut.measurement.g2.bottomEligible == 0)   // 아래는 묻지 않는다
+        #expect(cut.measurement.g2.topEligible > 0)       // 위는 그대로 묻는다
+
+        // 같은 장면인데 원본에서는 안 잘려 있었다면 아래도 분모에 들어간다.
+        let intact = ReframePlanner.plan(
+            track: track(size: source, height: 0.5, bottom: 0, touchesBottom: false),
+            range: 0...10, output: output, fps: 30, style: style(target: 1.1, maxUpscale: 3.0)
+        )
+        #expect(intact.measurement.g2.bottomEligible > 0)
+    }
+
+    @Test("원본이 위아래 다 잘려 있으면 통과가 아니라 판정 불가")
+    func fullyCroppedSourceCannotBeJudged() {
+        let plan = ReframePlanner.plan(
+            track: track(
+                size: CGSize(width: 1920, height: 1080), height: 1.0, bottom: 0,
+                touchesTop: true, touchesBottom: true
+            ),
+            range: 0...10, output: output, fps: 30, style: style()
+        )
+        #expect(plan.g2 == .cannotJudge(.subjectAlreadyCropped))
+        #expect(plan.g2.shouldRetry == false)
+    }
+
+    @Test("좌우로 넘치는 건 G2 가 보지 않는다")
+    func horizontalOverflowIsNotG2() {
+        // 매트 바닥 자세: 가로로 누우면 9:16 크롭 폭(0.316)을 훌쩍 넘는다.
+        // 좌우는 크게 잘리지만 위아래는 그대로이므로 G2 는 통과여야 한다.
+        let plan = ReframePlanner.plan(
+            track: track(size: CGSize(width: 1920, height: 1080), height: 0.6, width: 0.8),
+            range: 0...10, output: output, fps: 30, style: style()
+        )
+        #expect(plan.measurement.clippedRatio > 0)   // 면적은 확실히 잘렸는데
+        #expect(plan.g2 == .pass)                    // G2 는 통과다
     }
 
     // MARK: - 되쓰기

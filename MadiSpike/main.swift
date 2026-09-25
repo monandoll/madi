@@ -347,7 +347,7 @@ case "reframe":
                      (track.isJudgeable ? "판정 가능" : "판정 불가(20% 초과)") as NSString))
         let last = track.samples.last?.t ?? 0
         print("")
-        print("  세로중심규칙    G1     통과율  높이중앙  G3     최대이동  잘림   위잘림  아래잘림")
+        print("  세로중심규칙   G1      통과율  높이중앙 G2      위잘림   아래잘림 엄격    G3      최대이동")
         var plans: [ReframePlanner.VerticalAnchor: ReframePlanner.Plan] = [:]
         for anchor in ReframePlanner.VerticalAnchor.allCases {
             let plan = ReframePlanner.plan(
@@ -366,20 +366,27 @@ case "reframe":
                 case .sourceLimited: "원본한계"
                 }
             }
-            print(String(format: "  %-12@  %-8@ %5.0f%%  %7.3f  %-8@ %7.4f  %5.3f  %6.3f  %7.3f",
-                         anchor.rawValue as NSString, mark(plan.g1) as NSString,
-                         m.heightPassRatio * 100, median, mark(plan.g3) as NSString,
-                         m.maxCenterShiftPerFrame, m.clippedRatio,
-                         m.topClipRatio, m.bottomClipRatio))
+            let c = m.g2
+            print(String(format:
+                "  %-12@ %-8@ %5.0f%%  %7.3f %-8@ %3.0f%%(%2d) %3.0f%%(%2d) %3.0f%%(%2d) %-8@ %7.4f",
+                anchor.rawValue as NSString, mark(plan.g1) as NSString,
+                m.heightPassRatio * 100, median, mark(plan.g2) as NSString,
+                c.topRatio * 100, c.topEligible,
+                c.bottomRatio * 100, c.bottomEligible,
+                c.strictRatio * 100, c.strictEligible,
+                mark(plan.g3) as NSString, m.maxCenterShiftPerFrame))
         }
         print(String(format: "  목표 점유 %.2f · 확대 상한 %.2f · 최대 배율 %.2f",
                      reframeValues.targetSubjectHeightRatio, reframeValues.maxUpscale,
                      max(1, ReframeLimits.maxZoom(source: track.source.size, output: out,
                                                   maxUpscale: reframeValues.maxUpscale))))
-        print(String(format: "  (G1 기준 높이 %.2f · 통과율 %.0f%% 이상 · G3 기준 이동 %.2f/frame)",
-                     ReframePlanner.minSubjectHeight,
-                     ReframePlanner.minHeightPassRatio * 100,
-                     ReframePlanner.maxCenterShiftPerFrame))
+        print(String(format:
+            "  (G1 높이 %.2f · 통과율 %.0f%%↑ / G2 새로 자름 %.0f%%↓ / G3 이동 %.2f per frame)",
+            ReframePlanner.minSubjectHeight,
+            ReframePlanner.minHeightPassRatio * 100,
+            ReframePlanner.maxNewlyClippedRatio * 100,
+            ReframePlanner.maxCenterShiftPerFrame))
+        print("  (위잘림·아래잘림 괄호 안은 분모 — 원본에서 그쪽이 안 잘려 있던 표본 수)")
 
         if args.contains("--render") {
             // 보간이 실제로 움직이는지 본다. 렌더 변경은 프레임 시트 없이 머지하지 않는다
@@ -395,9 +402,18 @@ case "reframe":
                 meta: Composition.Meta(title: id, targetDurationSec: last),
                 captionSlot: .fullBody, scenes: [scene]
             )
+            // --target · --maxUpscale 덮어쓴 값으로 렌더한다.
+            // G2 가 무엇을 잡는지 눈으로 보려면 배율을 억지로 올려 봐야 한다.
+            var renderValues = values
+            renderValues.reframe = reframeValues
             let applied = ReframePlanner.apply(
-                to: comp, tracks: [id: track], style: values
+                to: comp, tracks: [id: track], style: renderValues
             )
+            print("")
+            print("  G2 \(applied.g2) · 위잘림 \(applied.g2Measurement.topNewlyClipped)"
+                  + "/\(applied.g2Measurement.topEligible)"
+                  + " · 아래잘림 \(applied.g2Measurement.bottomNewlyClipped)"
+                  + "/\(applied.g2Measurement.bottomEligible)")
             // 되쓰기가 JSON 왕복을 견디는지. 못 견디면 재현 가능성이 깨진다 (AGENTS.md §1-8).
             let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let json = try encoder.encode(applied.composition)

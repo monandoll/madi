@@ -147,6 +147,16 @@ public enum SubjectDetector {
         /// 팔을 벌리면 상자가 팔 끝에 끌려간다
         /// (`docs/findings/2026-09-25-reframe-center-rule.md §2`).
         public let massCenter: CGPoint
+
+        /// 마스크가 프레임 **위** 경계에 닿았다 = **원본에서 이미 잘려 있다.**
+        ///
+        /// ★ 정규화 상자를 되짚어 판정하지 않는다. 마스크는 원본보다 작은 격자라
+        ///   `y + h >= 1` 비교가 반올림에 걸린다. 격자에서 바로 본다 (`minRow == 0`).
+        ///   G2 가 "원본이 이미 잘린 프레임" 을 분모에서 빼는 데 이 값을 쓴다 (`AGENTS.md §8`).
+        public let touchesTop: Bool
+        public let touchesBottom: Bool
+        /// 마스크 한 픽셀의 정규화 높이. 크롭 경계 판정 허용오차로 쓴다.
+        public let pixelHeight: Double
     }
 
     /// - Returns: 넓이 큰 순서.
@@ -215,7 +225,11 @@ public enum SubjectDetector {
                     x: sumX / Double(count) / Double(w),
                     // 마스크는 위가 0행. y 가 위로 가는 좌표로 뒤집는다.
                     y: 1 - (sumRow / Double(count) / Double(h))
-                )
+                ),
+                // 0행 = 화면 위, 마지막 행 = 화면 아래.
+                touchesTop: minRow == 0,
+                touchesBottom: maxRow == h - 1,
+                pixelHeight: 1 / Double(h)
             ))
         }
         return out.sorted { $0.coverage > $1.coverage }
