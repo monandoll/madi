@@ -164,6 +164,46 @@ extension FrameSheet {
     ///
     /// `AGENTS.md §6` 의 다이제스트 `FRAMES` 가 쓰는 형태이고,
     /// 레이아웃 어휘 조사처럼 "한 편을 훑어본다" 는 작업에도 쓴다.
+    /// 이미 갖고 있는 이미지들을 격자로. `grid(from:)` 이 쓰는 것과 같은 그리기다.
+    /// 셀 높이는 **가장 높은 비율**에 맞춘다 — 세로·가로가 섞여도 안 찌그러진다.
+    @discardableResult
+    public static func gridOf(
+        _ images: [CGImage], columns: Int = 5, cellWidth: Int = 340, to outputURL: URL
+    ) throws -> URL {
+        guard !images.isEmpty else { throw StillRenderer.Failure.contextCreationFailed }
+        let tallest = images.map { Double($0.height) / Double($0.width) }.max() ?? 1
+        let cellHeight = Int(Double(cellWidth) * tallest)
+        let rows = (images.count + columns - 1) / columns
+        let gap = 6
+        let width = columns * cellWidth + (columns + 1) * gap
+        let height = rows * cellHeight + (rows + 1) * gap
+
+        guard let ctx = CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { throw StillRenderer.Failure.contextCreationFailed }
+        ctx.setFillColor(CGColor(red: 0.08, green: 0.08, blue: 0.09, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
+
+        for (i, image) in images.enumerated() {
+            let col = i % columns, row = i / columns
+            // 비율을 지키며 셀 안에 맞춘다.
+            let scale = min(Double(cellWidth) / Double(image.width),
+                            Double(cellHeight) / Double(image.height))
+            let w = Double(image.width) * scale, h = Double(image.height) * scale
+            let x = Double(gap + col * (cellWidth + gap)) + (Double(cellWidth) - w) / 2
+            let y = Double(height - gap - (row + 1) * cellHeight - row * gap)
+                + (Double(cellHeight) - h) / 2
+            ctx.draw(image, in: CGRect(x: x, y: y, width: w, height: h))
+        }
+        guard let out = ctx.makeImage() else {
+            throw StillRenderer.Failure.contextCreationFailed
+        }
+        try StillRenderer.writePNG(out, to: outputURL)
+        return outputURL
+    }
+
     @discardableResult
     public static func grid(
         from url: URL,

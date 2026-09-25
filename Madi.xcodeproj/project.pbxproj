@@ -20,6 +20,7 @@
 		64E6401962C8137B5156C041 /* styles in Resources */ = {isa = PBXBuildFile; fileRef = 51E6B50BFE4E0F63A6994F30 /* styles */; };
 		6B3E982EF607902E95F17BE7 /* PoseOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D94087F95A27AD4220EBA1 /* PoseOverlay.swift */; };
 		70E53AA18374F6A0DD3FBC2E /* SourceInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67E1C649B3812749092A8C66 /* SourceInfo.swift */; };
+		7470FB3834CB5740E879BDC9 /* SilentSourceRenderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0317C0EB1C8B1BB9CC15D14A /* SilentSourceRenderTests.swift */; };
 		7C21E63AC2A566BA5D401B0D /* ReframePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71179A0F34B7DEC6B15915CC /* ReframePlanner.swift */; };
 		7C9E11D054D39BC490258492 /* PretendardVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8148334F0D1C4607F6103479 /* PretendardVariable.ttf */; };
 		7EC27D66EB8FA2EB23EF7B40 /* StyleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17ABE83D90BA6977FB20DD73 /* StyleStore.swift */; };
@@ -80,6 +81,7 @@
 
 /* Begin PBXFileReference section */
 		006AFA79D5ADACA512DB698F /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		0317C0EB1C8B1BB9CC15D14A /* SilentSourceRenderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilentSourceRenderTests.swift; sourceTree = "<group>"; };
 		0CF255FFFF4817C0CC024338 /* StillRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StillRenderer.swift; sourceTree = "<group>"; };
 		17ABE83D90BA6977FB20DD73 /* StyleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleStore.swift; sourceTree = "<group>"; };
 		181BC5EB1AF428D241C43C78 /* MadiSpike */ = {isa = PBXFileReference; includeInIndex = 0; path = MadiSpike; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -181,6 +183,7 @@
 				3E21F644B2F761A97C070BE8 /* CompositionTests.swift */,
 				2223B52C773741B4A0C9EA8F /* ReframeLimitsTests.swift */,
 				97883FA1954A88DF0996BBD4 /* ReframePlannerTests.swift */,
+				0317C0EB1C8B1BB9CC15D14A /* SilentSourceRenderTests.swift */,
 				407CF4C64A45F212D6AA28FA /* StyleTests.swift */,
 			);
 			path = MadiTests;
@@ -431,6 +434,7 @@
 				F76C7F574A45D391BC82F937 /* CompositionTests.swift in Sources */,
 				926AF78D2A2B10AF2BCEC20B /* ReframeLimitsTests.swift in Sources */,
 				3E315E26A91D7C56D78B7F20 /* ReframePlannerTests.swift in Sources */,
+				7470FB3834CB5740E879BDC9 /* SilentSourceRenderTests.swift in Sources */,
 				55BFC2D227DCDDFD63F04E38 /* StyleTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

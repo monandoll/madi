@@ -317,6 +317,69 @@ case "track":
         stats(cys, "세로중심")
     } catch { fail("\(error)") }
 
+case "contact":
+    // 여러 영상에서 한 프레임씩 모아 한 장으로. 대용 원본을 눈으로 고를 때 쓴다.
+    guard args.count > 2 else { fail("사용법: madi-spike contact <출력.png> <영상...> [--at 0.3]") }
+    do {
+        let outURL = URL(fileURLWithPath: args[1])
+        let at = Double(option("at") ?? "") ?? 0.3
+        let videos = args.dropFirst(2).filter { !$0.hasPrefix("--") }
+            .map { URL(fileURLWithPath: $0) }
+        var images: [CGImage] = []
+        for v in videos {
+            let info = try await FrameSheet.info(of: v)
+            let frames = try await FrameSheet.extract(
+                from: v, at: [info.duration * at],
+                into: URL(fileURLWithPath: "out/contact"),
+                prefix: v.deletingPathExtension().lastPathComponent + "_"
+            )
+            images.append(try StillRenderer.loadImage(frames[0]))
+        }
+        try FrameSheet.gridOf(images, columns: 5, cellWidth: 260, to: outURL)
+        print("  " + outURL.path + "  " + videos.map {
+            $0.deletingPathExtension().lastPathComponent
+        }.joined(separator: " "))
+    } catch { fail("\(error)") }
+
+case "crop916":
+    // 가로 원본을 **9:16 전체 높이**로 잘라 세로 원본 대용을 만든다.
+    //
+    // 왜 필요한가: 16:9 원본은 9:16 크롭 폭이 608px 뿐이라 배율이 1 을 못 넘고,
+    // 그래서 세로로 자를 일이 없어 G2 와 세로 중심 규칙을 **검증할 수가 없다**
+    // (`docs/findings/2026-09-25-g2-measurement.md §3`).
+    // 4K 16:9 을 잘라내면 1215x2160 이 되어 확대 여유가 생긴다.
+    //
+    // ffmpeg 을 쓰지 않는다 (AGENTS.md §16). 전체 높이 9:16 중앙 크롭은
+    // 키프레임 없는 고정 리프레임과 같은 일이라 Renderer 가 그대로 한다.
+    guard args.count > 2 else { fail("사용법: madi-spike crop916 <입력> <출력.mp4> [--dur 20]") }
+    do {
+        let input = URL(fileURLWithPath: args[1])
+        let outURL = URL(fileURLWithPath: args[2])
+        let id = input.deletingPathExtension().lastPathComponent
+        let info = try await FrameSheet.info(of: input)
+        let dur = min(Double(option("dur") ?? "") ?? info.duration, info.duration - 0.05)
+        // 전체 높이를 쓰고 폭만 9:16 으로. 짝수로 맞춘다 (인코더가 싫어한다).
+        let h = Int(info.size.height.rounded()) / 2 * 2
+        let w = Int((Double(h) * 9 / 16).rounded()) / 2 * 2
+        let comp = Composition(
+            id: "crop916_" + id, videoID: id, templateID: "short",
+            size: Composition.Size(w: w, h: h), fps: 30,
+            meta: Composition.Meta(title: id, targetDurationSec: dur),
+            captionSlot: .fullBody,
+            scenes: [Scene(
+                id: "s1", role: .demo,
+                source: Scene.Source(videoID: id, start: 0, end: dur),
+                // 키프레임이 없으면 Renderer 가 화면을 꽉 채우는 중앙 크롭을 쓴다.
+                reframe: ReframeTrack(mode: .fixed, keyframes: [])
+            )]
+        )
+        try await Renderer().render(comp, sources: [id: input], style: values, to: outURL)
+        let made = try await FrameSheet.info(of: outURL)
+        print(String(format: "  %@  %.0fx%.0f → %.0fx%.0f  %.1f초",
+                     id as NSString, info.size.width, info.size.height,
+                     made.size.width, made.size.height, made.duration))
+    } catch { fail("\(error)") }
+
 case "maskshape":
     // G1 구멍 조사. "제대로 잡힌 화면" 의 마스크가 어떻게 생겼는지 재서
     // '잴 수 없는 마스크' 를 가를 기준을 찾는다. 숫자를 지어내지 않는다 (AGENTS.md §8).

@@ -169,9 +169,11 @@ public struct Renderer {
         guard let videoTrack = composition.addMutableTrack(
             withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid
         ) else { throw Failure.cannotCreateExporter }
-        let audioTrack = composition.addMutableTrack(
-            withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid
-        )
+        // ★ 오디오 트랙을 미리 만들지 않는다. **비어 있는 오디오 트랙이 있으면
+        //   `AVAssetExportSession` 이 "Operation Stopped" 로 실패한다.**
+        //   무음 원본(스톡 영상은 대부분 무음)이 통째로 렌더 불가가 된다.
+        //   실제로 넣을 오디오가 처음 나올 때 만든다.
+        var audioTrack: AVMutableCompositionTrack?
 
         var instructions: [AVMutableVideoCompositionInstruction] = []
         let renderSize = comp.size.cgSize
@@ -183,9 +185,13 @@ public struct Renderer {
             let insertAt = p.outputStart
             try videoTrack.insertTimeRange(p.sourceRange, of: sourceVideo, at: insertAt)
 
-            if let audioTrack,
-               let sourceAudio = try await p.asset.loadTracks(withMediaType: .audio).first {
-                try? audioTrack.insertTimeRange(p.sourceRange, of: sourceAudio, at: insertAt)
+            if let sourceAudio = try await p.asset.loadTracks(withMediaType: .audio).first {
+                if audioTrack == nil {
+                    audioTrack = composition.addMutableTrack(
+                        withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid
+                    )
+                }
+                try? audioTrack?.insertTimeRange(p.sourceRange, of: sourceAudio, at: insertAt)
             }
 
             // 배속. 넣은 구간을 결과 길이로 늘리거나 줄인다.

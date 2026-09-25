@@ -1,6 +1,6 @@
 # xcodebuild test 전체 로그
 
-실행: 2026-09-25 23:36
+실행: 2026-09-26 00:04
 머신: macOS 27.0 · arm64
 Xcode: Xcode 27.0 · Swift: swift-driver version: 1.168.6 Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)
 
@@ -32,17 +32,17 @@ CreateBuildDescription
 ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk /Users/kimeunjoong/orca/madi/build/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache
     cd /Users/kimeunjoong/orca/madi/Madi.xcodeproj
     /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -o /Users/kimeunjoong/orca/madi/build/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache
+PruneExplicitPrecompiledModules /Users/kimeunjoong/orca/madi/build/Build/Intermediates.noindex/ExplicitPrecompiledModules
 PruneExplicitPrecompiledModules /Users/kimeunjoong/orca/madi/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
 PruneExplicitPrecompiledModules /Users/kimeunjoong/orca/madi/build/SDKExplicitPrecompiledModules
-PruneExplicitPrecompiledModules /Users/kimeunjoong/orca/madi/build/Build/Intermediates.noindex/ExplicitPrecompiledModules
-2026-09-25 23:36:39.655 xcodebuild[7378:103200408]  DVTAssertions: Warning in IDEFrameworks/IDEFoundation/Execution/LaunchSystem/IDELaunchSession.m:395
+2026-09-26 00:04:36.034 xcodebuild[64991:103326539]  DVTAssertions: Warning in IDEFrameworks/IDEFoundation/Execution/LaunchSystem/IDELaunchSession.m:395
 Details:  setRunnablePIDWithDiagnostics:logSection:andCompletionHandler: called without a completion handler - blocking until diagnostics setup completes. Callers should migrate to using a completion handler for better performance.
-Object:   <IDELaunchSession: 0x7c05451b00>
+Object:   <IDELaunchSession: 0x763943fa80>
 Method:   -setRunnablePIDWithDiagnostics:logSection:andCompletionHandler:
-Thread:   <NSThread: 0x7c0731b040>{number = 2, name = (null)}
+Thread:   <NSThread: 0x763c0930c0>{number = 6, name = (null)}
 Please file a bug at https://feedbackassistant.apple.com with this warning message and any useful information you can provide.
-Test Suite 'All tests' started at 2026-09-25 23:36:39.825.
-Test Suite 'All tests' passed at 2026-09-25 23:36:39.826.
+Test Suite 'All tests' started at 2026-09-26 00:04:36.199.
+Test Suite 'All tests' passed at 2026-09-26 00:04:36.200.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
 􀟈 Test run started.
 􀄵 Testing Library Version: 2084
@@ -83,7 +83,7 @@ Test Suite 'All tests' passed at 2026-09-25 23:36:39.826.
 ​􀟈 Test case passing 1 argument entry → ""x": 0.5" to "payload 에 스타일 키가 있으면 거절한다" started.
 ​􀟈 Test case passing 1 argument entry → ""opacity": 0.8" to "payload 에 스타일 키가 있으면 거절한다" started.
 ​􀟈 Test case passing 1 argument entry → ""easing": "easeOut"" to "payload 에 스타일 키가 있으면 거절한다" started.
-​􁁛 Test "payload 에 스타일 키가 있으면 거절한다" with 6 test cases passed after 0.002 seconds.
+​􁁛 Test "payload 에 스타일 키가 있으면 거절한다" with 6 test cases passed after 0.003 seconds.
 􀟈 Test "중첩된 payload 안쪽의 스타일 키도 거절한다" started.
 􁁛 Test "중첩된 payload 안쪽의 스타일 키도 거절한다" passed after 0.001 seconds.
 􀟈 Test "배열 안에 숨긴 스타일 키도 거절한다" started.
@@ -96,7 +96,7 @@ Test Suite 'All tests' passed at 2026-09-25 23:36:39.826.
 􁁛 Test "키프레임 사이를 선형 보간한다" passed after 0.001 seconds.
 􀟈 Test "fixed 는 첫 키프레임을 전 구간 고정한다" started.
 􁁛 Test "fixed 는 첫 키프레임을 전 구간 고정한다" passed after 0.001 seconds.
-􁁛 Suite CompositionTests passed after 0.012 seconds.
+􁁛 Suite CompositionTests passed after 0.011 seconds.
 􀟈 Suite ReframeLimitsTests started.
 􀟈 Test "배율 1 크롭 폭은 원본 해상도와 방향으로 정해진다" started.
 􀟈 Test case passing 2 arguments source → (2160.0, 3840.0), expected → 2160.0 to "배율 1 크롭 폭은 원본 해상도와 방향으로 정해진다" started.
@@ -107,7 +107,7 @@ Test Suite 'All tests' passed at 2026-09-25 23:36:39.826.
 􀟈 Test "가로 1080p 는 확대하기 전에 이미 업스케일이다" started.
 􁁛 Test "가로 1080p 는 확대하기 전에 이미 업스케일이다" passed after 0.001 seconds.
 􀟈 Test "세로 1080p 의 무손실 상한은 배율 1.00 이다" started.
-􁁛 Test "세로 1080p 의 무손실 상한은 배율 1.00 이다" passed after 0.001 seconds.
+􁁛 Test "세로 1080p 의 무손실 상한은 배율 1.00 이다" passed after 0.002 seconds.
 􀟈 Test "세로 4K 는 maxUpscale 1.25 에서 배율 2.5 까지 쓴다" started.
 􁁛 Test "세로 4K 는 maxUpscale 1.25 에서 배율 2.5 까지 쓴다" passed after 0.001 seconds.
 􀟈 Test "목표에 닿으면 reachedTarget 이 참이다 — 세로 4K" started.
@@ -117,9 +117,9 @@ Test Suite 'All tests' passed at 2026-09-25 23:36:39.826.
 􀟈 Test "이미 목표보다 크면 확대하지 않는다" started.
 􁁛 Test "이미 목표보다 크면 확대하지 않는다" passed after 0.001 seconds.
 􀟈 Test "스타일이 상한을 정한다 — 코드에 박혀 있지 않다" started.
-2026-09-25 23:36:39.845024+0900 xctest[7410:103200596] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+2026-09-26 00:04:36.219385+0900 xctest[65038:103326706] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
 􁁛 Test "스타일이 상한을 정한다 — 코드에 박혀 있지 않다" passed after 0.001 seconds.
-􁁛 Suite ReframeLimitsTests passed after 0.004 seconds.
+􁁛 Suite ReframeLimitsTests passed after 0.005 seconds.
 􀟈 Suite ReframePlannerTests started.
 􀟈 Test "NormRect.y 는 아래에서 잰다 — 중심을 위로 올리면 y 가 커진다" started.
 􁁛 Test "NormRect.y 는 아래에서 잰다 — 중심을 위로 올리면 y 가 커진다" passed after 0.001 seconds.
@@ -128,7 +128,7 @@ Test Suite 'All tests' passed at 2026-09-25 23:36:39.826.
 􀟈 Test "배율 1 크롭은 가로 원본에서 전체 높이를 쓴다" started.
 􁁛 Test "배율 1 크롭은 가로 원본에서 전체 높이를 쓴다" passed after 0.001 seconds.
 􀟈 Test "스무딩이 좌우 떨림을 줄인다 (G3)" started.
-􁁛 Test "스무딩이 좌우 떨림을 줄인다 (G3)" passed after 0.002 seconds.
+􁁛 Test "스무딩이 좌우 떨림을 줄인다 (G3)" passed after 0.001 seconds.
 􀟈 Test "마스크가 빈 구간은 이웃에서 채운다 — 화면 중앙으로 튀지 않는다" started.
 􁁛 Test "마스크가 빈 구간은 이웃에서 채운다 — 화면 중앙으로 튀지 않는다" passed after 0.001 seconds.
 􀟈 Test "입력 없음이 20% 를 넘으면 판정 불가 — 되돌리지 않는다" started.
@@ -150,63 +150,72 @@ Test Suite 'All tests' passed at 2026-09-25 23:36:39.826.
 􀟈 Test "좌우로 넘치는 건 G2 가 보지 않는다" started.
 􁁛 Test "좌우로 넘치는 건 G2 가 보지 않는다" passed after 0.001 seconds.
 􀟈 Test "auto 장면은 keyframes 로 바뀌고 JSON 왕복을 견딘다" started.
-2026-09-25 23:36:39.851878+0900 xctest[7410:103200602] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+2026-09-26 00:04:36.225798+0900 xctest[65038:103326707] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
 􁁛 Test "auto 장면은 keyframes 로 바뀌고 JSON 왕복을 견딘다" passed after 0.001 seconds.
 􀟈 Test "키프레임 시각은 장면 로컬 출력 초다 — 배속을 반영한다" started.
 􁁛 Test "키프레임 시각은 장면 로컬 출력 초다 — 배속을 반영한다" passed after 0.001 seconds.
-􁁛 Suite ReframePlannerTests passed after 0.007 seconds.
+􁁛 Suite ReframePlannerTests passed after 0.006 seconds.
+􀟈 Suite SilentSourceRenderTests started.
+􀟈 Test "오디오 트랙이 없는 원본도 내보내진다" started.
+2026-09-26 00:04:36.421565+0900 xctest[65038:103326706] [ClientDonation] (+[PPSClientDonation isRegisteredSubsystem:category:]) Permission denied: CoreMedia / CM-EXPORT
+2026-09-26 00:04:36.423326+0900 xctest[65038:103326706] [ClientDonation] (+[PPSClientDonation isRegisteredSubsystem:category:]) Permission denied: CoreMedia / CM-ASSETCREATION
+2026-09-26 00:04:36.424678+0900 xctest[65038:103326709] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+2026-09-26 00:04:36.435707+0900 xctest[65038:103326706] [] <<< URLAsset >>> signalled err=-12170 at <>:2348
+2026-09-26 00:04:36.607637+0900 xctest[65038:103326709] [render] 렌더 완료 silent
+􁁛 Test "오디오 트랙이 없는 원본도 내보내진다" passed after 0.382 seconds.
+􁁛 Suite SilentSourceRenderTests passed after 0.382 seconds.
 􀟈 Suite StyleTests started.
 􀟈 Test "기본 스타일이 번들에서 읽히고 검증을 통과한다" started.
-2026-09-25 23:36:39.852757+0900 xctest[7410:103200602] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+2026-09-26 00:04:36.609486+0900 xctest[65038:103326769] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
 􁁛 Test "기본 스타일이 번들에서 읽히고 검증을 통과한다" passed after 0.001 seconds.
 􀟈 Test "범위를 벗어난 값은 거절한다" started.
-2026-09-25 23:36:39.854188+0900 xctest[7410:103200602] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+2026-09-26 00:04:36.609734+0900 xctest[65038:103326769] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
 􁁛 Test "범위를 벗어난 값은 거절한다" passed after 0.001 seconds.
 􀟈 Test "보조 문구가 화면 밖으로 나가면 거절한다" started.
-2026-09-25 23:36:39.854647+0900 xctest[7410:103200596] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+2026-09-26 00:04:36.610255+0900 xctest[65038:103326710] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
 􁁛 Test "보조 문구가 화면 밖으로 나가면 거절한다" passed after 0.001 seconds.
 􀟈 Test "보조 문구는 본문이 움직이면 같이 움직인다" started.
-2026-09-25 23:36:39.854992+0900 xctest[7410:103200602] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
-􁁛 Test "보조 문구는 본문이 움직이면 같이 움직인다" passed after 0.009 seconds.
+2026-09-26 00:04:36.610613+0900 xctest[65038:103326769] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+􁁛 Test "보조 문구는 본문이 움직이면 같이 움직인다" passed after 0.008 seconds.
 􀟈 Test "색은 #RRGGBB 와 #RRGGBBAA 를 읽는다" started.
 􁁛 Test "색은 #RRGGBB 와 #RRGGBBAA 를 읽는다" passed after 0.001 seconds.
-􁁛 Suite StyleTests passed after 0.011 seconds.
+􁁛 Suite StyleTests passed after 0.009 seconds.
 􀟈 Suite CaptionGeometryTests started.
 􀟈 Test "그려진 글자 높이가 스타일이 요구한 비율과 맞는다" started.
-2026-09-25 23:36:39.864659+0900 xctest[7410:103200596] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
-􁁛 Test "그려진 글자 높이가 스타일이 요구한 비율과 맞는다" passed after 0.190 seconds.
+2026-09-26 00:04:36.619450+0900 xctest[65038:103326769] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+􁁛 Test "그려진 글자 높이가 스타일이 요구한 비율과 맞는다" passed after 0.186 seconds.
 􀟈 Test "글자 아래끝이 스타일이 요구한 위치에 온다" started.
-2026-09-25 23:36:40.055165+0900 xctest[7410:103200598] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
-􁁛 Test "글자 아래끝이 스타일이 요구한 위치에 온다" passed after 0.179 seconds.
+2026-09-26 00:04:36.806586+0900 xctest[65038:103326709] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+􁁛 Test "글자 아래끝이 스타일이 요구한 위치에 온다" passed after 0.184 seconds.
 􀟈 Test "슬롯마다 자막이 스타일이 정한 높이에 온다" started.
 􀟈 Test case passing 1 argument slot → .upperBody to "슬롯마다 자막이 스타일이 정한 높이에 온다" started.
-2026-09-25 23:36:40.235185+0900 xctest[7410:103200603] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+2026-09-26 00:04:36.990874+0900 xctest[65038:103326769] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
 ​􀟈 Test case passing 1 argument slot → .fullBody to "슬롯마다 자막이 스타일이 정한 높이에 온다" started.
-2026-09-25 23:36:40.416409+0900 xctest[7410:103200603] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+2026-09-26 00:04:37.173583+0900 xctest[65038:103326707] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
 ​􀟈 Test case passing 1 argument slot → .lowerBody to "슬롯마다 자막이 스타일이 정한 높이에 온다" started.
-2026-09-25 23:36:40.596244+0900 xctest[7410:103200597] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
-​􁁛 Test "슬롯마다 자막이 스타일이 정한 높이에 온다" with 3 test cases passed after 0.543 seconds.
+2026-09-26 00:04:37.358481+0900 xctest[65038:103326710] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+​􁁛 Test "슬롯마다 자막이 스타일이 정한 높이에 온다" with 3 test cases passed after 0.550 seconds.
 􀟈 Test "슬롯이 바뀌면 보조 문구도 본문을 따라 같이 움직인다" started.
-2026-09-25 23:36:40.778624+0900 xctest[7410:103200597] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
-􁁛 Test "슬롯이 바뀌면 보조 문구도 본문을 따라 같이 움직인다" passed after 0.001 seconds.
+2026-09-26 00:04:37.541562+0900 xctest[65038:103326710] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+􁁛 Test "슬롯이 바뀌면 보조 문구도 본문을 따라 같이 움직인다" passed after 0.002 seconds.
 􀟈 Test "자막 길이가 달라도 글자 크기는 고정이다" started.
-2026-09-25 23:36:40.779214+0900 xctest[7410:103200597] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
-􁁛 Test "자막 길이가 달라도 글자 크기는 고정이다" passed after 0.521 seconds.
+2026-09-26 00:04:37.543582+0900 xctest[65038:103326775] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+􁁛 Test "자막 길이가 달라도 글자 크기는 고정이다" passed after 0.526 seconds.
 􀟈 Test "폰트 크기는 스타일 값이 아니라 글자 높이에서 역산된다" started.
-2026-09-25 23:36:41.301347+0900 xctest[7410:103200601] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+2026-09-26 00:04:38.070507+0900 xctest[65038:103326768] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
 􁁛 Test "폰트 크기는 스타일 값이 아니라 글자 높이에서 역산된다" passed after 0.001 seconds.
 􀟈 Test "어절 단위로만 줄을 바꾼다" started.
-2026-09-25 23:36:41.302002+0900 xctest[7410:103200597] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
-􁁛 Test "어절 단위로만 줄을 바꾼다" passed after 0.003 seconds.
+2026-09-26 00:04:38.071044+0900 xctest[65038:103326768] [style] 스타일 short.v1 은 아직 확정값이 아닙니다. 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).
+􁁛 Test "어절 단위로만 줄을 바꾼다" passed after 0.001 seconds.
 􀟈 Test "Pretendard 가 등록되고 wght 축이 실제로 먹는다" started.
 􁁛 Test "Pretendard 가 등록되고 wght 축이 실제로 먹는다" passed after 0.002 seconds.
-􁁛 Suite CaptionGeometryTests passed after 1.444 seconds.
-􁁛 Test run with 58 tests in 5 suites passed after 1.480 seconds.
-2026-09-25 23:36:41.585 xcodebuild[7378:103200404] [MT] IDETestOperationsObserverDebug: 1.962 elapsed -- Testing started completed.
-2026-09-25 23:36:41.585 xcodebuild[7378:103200404] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
-2026-09-25 23:36:41.585 xcodebuild[7378:103200404] [MT] IDETestOperationsObserverDebug: 1.962 sec, +1.962 sec -- end
+􁁛 Suite CaptionGeometryTests passed after 1.455 seconds.
+􁁛 Test run with 59 tests in 6 suites passed after 1.872 seconds.
+2026-09-26 00:04:38.361 xcodebuild[64991:103326515] [MT] IDETestOperationsObserverDebug: 2.357 elapsed -- Testing started completed.
+2026-09-26 00:04:38.361 xcodebuild[64991:103326515] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-09-26 00:04:38.361 xcodebuild[64991:103326515] [MT] IDETestOperationsObserverDebug: 2.357 sec, +2.357 sec -- end
 Test session results, code coverage, and logs:
-	/Users/kimeunjoong/orca/madi/build/Logs/Test/Test-Madi-2026.09.25_23-36-39-+0900.xcresult
+	/Users/kimeunjoong/orca/madi/build/Logs/Test/Test-Madi-2026.09.26_00-04-35-+0900.xcresult
 ** TEST SUCCEEDED **
 Testing started
 ```
