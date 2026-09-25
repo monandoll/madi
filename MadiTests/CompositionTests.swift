@@ -24,6 +24,7 @@ struct CompositionTests {
           "id": "c1", "videoId": "v1",
           "templateId": "SuhyunShortV1",
           "meta": { "targetDurationSec": 30 },
+          "captionSlot": "upperBody",
           "scenes": \(scenes)
         }
         """.utf8)
@@ -44,6 +45,36 @@ struct CompositionTests {
         #expect(comp.scenes[0].reframe.mode == .auto)
         #expect(comp.scenes[0].transitionIn == .cut)
         #expect(comp.revisionOf == nil)
+    }
+
+    @Test("captionSlot 이 없으면 거절한다")
+    func requiresCaptionSlot() {
+        // 기본값을 두지 않는다. 안 적으면 조용히 아래에 붙는 게 아니라 에러가 나야 한다 —
+        // 공개본 10편에서 자막 위치가 0.235~0.483 으로 갈렸고, 틀리면 화면 25% 아래에 찍힌다
+        // (docs/findings/2026-09-25-caption-position-10.md).
+        let json = Data("""
+        {
+          "id": "c1", "videoId": "v1", "templateId": "short",
+          "meta": { "targetDurationSec": 30 },
+          "scenes": [{ "id": "s1", "role": "hook",
+                       "source": { "videoId": "v1", "in": 0, "out": 3 } }]
+        }
+        """.utf8)
+        #expect(throws: (any Error).self) { try parseComposition(json) }
+    }
+
+    @Test("장면이 자막 위치를 덮어쓸 수 있다")
+    func sceneOverridesCaptionSlot() throws {
+        // 웬만하면 영상 단위로 하나다. 크리에이터는 한 영상 안에서 자막을 옮기지 않는다 —
+        // 편당 12프레임이 전부 같은 위치였다. 장면이 완전히 다를 때만 덮어쓴다.
+        let comp = try parseComposition(minimalJSON(scenes: """
+        [{ "id": "a", "role": "hook", "source": { "videoId": "v1", "in": 0, "out": 2 } },
+         { "id": "b", "role": "demo", "captionSlot": "lowerBody",
+           "source": { "videoId": "v1", "in": 2, "out": 4 } }]
+        """))
+        #expect(comp.captionSlot == .upperBody)
+        #expect(comp.captionSlot(for: comp.scenes[0]) == .upperBody)
+        #expect(comp.captionSlot(for: comp.scenes[1]) == .lowerBody)
     }
 
     @Test("JSON 키 이름이 in/out/videoId/templateId 그대로다")

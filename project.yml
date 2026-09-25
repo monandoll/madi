@@ -35,6 +35,8 @@ targets:
       - path: Madi/Analyze
       - path: Madi/Render
       - path: Madi/Templates
+      - path: Madi/Templates/Spec.json
+        buildPhase: resources
       - path: Madi/Resources/Fonts
         buildPhase: resources
       # 폴더 참조로 넣어야 번들 안에서 styles/short.v1.json 경로가 유지된다.

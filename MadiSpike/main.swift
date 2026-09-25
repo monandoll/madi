@@ -51,6 +51,9 @@ do {
 }
 let values = style.values
 
+/// 자막 위치 슬롯. 기본은 앉아서 말하는 상반신 (공개본 A 무리).
+let slot = CaptionSlot(rawValue: option("slot") ?? "upperBody") ?? .upperBody
+
 switch args.first {
 
 case "font":
@@ -74,7 +77,7 @@ case "style":
     print("근거 프레임: \(style.measuredFrom.joined(separator: ", "))")
 
 case "metrics":
-    let m = CaptionLayout.metrics(frameSize: frameSize, style: values)
+    let m = CaptionLayout.metrics(frameSize: frameSize, style: values, slot: slot)
     print("프레임 \(Int(frameSize.width))x\(Int(frameSize.height))")
     print(String(format: "본문 폰트 크기        %.2f pt   (토큰이 아니라 역산값)", m.fontSize))
     print(String(format: "  1pt 당 글자 높이    %.4f", m.inkHeightPerPoint))
@@ -124,7 +127,7 @@ case "stems":
             var probe = values
             probe.caption.weight = w
             guard let image = try? StillRenderer.renderCaption(
-                      goldenCaption, size: frameSize, style: probe,
+                      goldenCaption, size: frameSize, style: probe, slot: slot,
                       backdrop: .solid(RGBA(0, 0, 0, 1))
                   ),
                   let scan = StillRenderer.scanStrokes(image)
@@ -147,7 +150,7 @@ case "still":
     }
     do {
         let image = try StillRenderer.renderCaption(
-            goldenCaption, size: frameSize, style: values, backdrop: backdrop
+            goldenCaption, size: frameSize, style: values, slot: slot, backdrop: backdrop
         )
         try StillRenderer.writePNG(image, to: out)
         print("\(out.path)  \(image.width)x\(image.height)")
@@ -383,6 +386,6 @@ default:
       detect <영상> [--at 1,2]           감지 방법 여러 개를 나란히 (G1·G2 정의 준비)
       captionband <영상> [--at 1,2]      자막 후보 위치별 피사체 밀도
 
-    공통 옵션: --text --secondary --width --height --style
+    공통 옵션: --text --secondary --width --height --style --slot
     """)
 }

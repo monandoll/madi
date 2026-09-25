@@ -40,6 +40,7 @@ public enum StillRenderer {
         _ caption: Caption,
         size: CGSize,
         style: StyleValues,
+        slot: CaptionSlot,
         backdrop: Backdrop = .solid(RGBA(0.13, 0.13, 0.15, 1))
     ) throws -> CGImage {
         let ctx = try makeContext(size: size)
@@ -53,7 +54,7 @@ public enum StillRenderer {
             ctx.draw(image, in: CGRect(origin: .zero, size: size))
         }
 
-        let layer = CaptionLayer(caption: caption, frameSize: size, style: style)
+        let layer = CaptionLayer(caption: caption, frameSize: size, style: style, slot: slot)
         layer.setNeedsDisplay()
         layer.displayIfNeeded()
         layer.render(in: ctx)

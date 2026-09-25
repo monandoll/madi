@@ -3,18 +3,22 @@
   "name": "숏폼 기본",
   "version": 1,
   "measured": false,
-  "measuredNote": "자막 치수는 유튜브 숏츠 1편에서만 쟀다. docs/style-authoring.md §1 은 5편을 요구한다. 인스타 릴스 원본이 들어오면 5편으로 다시 재고 measured 를 true 로 바꾼다.",
+  "measuredNote": "자막 글자 높이는 공개본 10편으로 확정했다. 자막 위치는 세 슬롯 각각 3~4편 근거뿐이라 아직 얇다 (upperBody 3편 · fullBody 3편 · lowerBody 4편). 그래서 measured 는 false 다. docs/findings/2026-09-25-caption-position-10.md",
   "measuredFrom": [
     "reference/yt_15s.png",
     "reference/yt_11s.png",
     "reference/yt_7s.png",
-    "spike/source/EDpBGkaNJmU.mp4 (18.5초 전편, 자막 15개)"
+    "공개 숏폼 10편 (자막 높이 · 위치 무리) — docs/findings/2026-09-25-caption-position-10.md"
   ],
   "values": {
     "caption": {
       "weight": 480,
       "inkHeightRatio": 0.0359,
-      "inkBottomRatio": 0.2352,
+      "inkBottomRatio": {
+        "upperBody": 0.2352,
+        "fullBody": 0.3099,
+        "lowerBody": 0.4719
+      },
       "strokeOuterRatio": 0.003125,
       "maxWidthRatio": 0.9,
       "maxChars": 15,

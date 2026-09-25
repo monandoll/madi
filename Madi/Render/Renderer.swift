@@ -300,9 +300,10 @@ public struct Renderer {
         let offsets = comp.sceneOffsets
         for (i, scene) in comp.scenes.enumerated() {
             let offset = offsets[i]
+            let slot = comp.captionSlot(for: scene)
             for caption in scene.captions {
                 let layer = CaptionLayer(
-                    caption: caption, frameSize: comp.size.cgSize, style: style
+                    caption: caption, frameSize: comp.size.cgSize, style: style, slot: slot
                 )
                 // `beginTime` 0 은 CoreAnimation 이 "지금" 으로 해석해서 무시한다.
                 // `AVCoreAnimationBeginTimeAtZero` 가 타임라인의 0 이다.

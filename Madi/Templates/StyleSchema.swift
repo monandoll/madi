@@ -64,6 +64,39 @@ public struct HexColor: Codable, Hashable, Sendable {
 
 // MARK: - 파라미터
 
+/// `CaptionSlot` 별 값. **좌표는 여기(스타일)에만 있다.**
+/// AI 는 슬롯 **이름**만 고르고 숫자는 못 만진다 (AGENTS.md §1-2).
+public struct SlotPositions: Codable, Hashable, Sendable {
+    public var upperBody: Double
+    public var fullBody: Double
+    public var lowerBody: Double
+
+    public init(upperBody: Double, fullBody: Double, lowerBody: Double) {
+        self.upperBody = upperBody; self.fullBody = fullBody; self.lowerBody = lowerBody
+    }
+
+    public subscript(slot: CaptionSlot) -> Double {
+        get {
+            switch slot {
+            case .upperBody: upperBody
+            case .fullBody: fullBody
+            case .lowerBody: lowerBody
+            }
+        }
+        set {
+            switch slot {
+            case .upperBody: upperBody = newValue
+            case .fullBody: fullBody = newValue
+            case .lowerBody: lowerBody = newValue
+            }
+        }
+    }
+
+    public var all: [(CaptionSlot, Double)] {
+        [(.upperBody, upperBody), (.fullBody, fullBody), (.lowerBody, lowerBody)]
+    }
+}
+
 public struct StyleValues: Codable, Hashable, Sendable {
     public var caption: CaptionValues
     public var secondary: SecondaryValues
@@ -85,12 +118,15 @@ public struct StyleValues: Codable, Hashable, Sendable {
         /// ★ 폰트 크기가 아니다. 폰트 크기는 이 값에서 역산한다.
         public var inkHeightRatio: Double
 
-        /// 글자 **아래끝**에서 화면 아래까지 ÷ 프레임 높이.
+        /// 글자 **아래끝**에서 화면 아래까지 ÷ 프레임 높이. **슬롯마다 하나씩.**
         ///
         /// 재는 법: 흰 픽셀 마지막 행의 아래 여백 ÷ 프레임 높이.
         /// ★ 블록 전체가 아니라 **마지막 줄의 아래끝** 기준이다. 블록 기준으로 잡으면
         ///   보조 문구가 있을 때 본문이 밀려 올라간다 (archive/README.md 의 교훈).
-        public var inkBottomRatio: Double
+        /// ★ 값이 셋인 이유: 공개본 10편에서 **편 안에서는 고정, 편 사이에서는 0.235~0.483**
+        ///   으로 갈렸다. 하나로 뭉개면 어느 무리에서든 틀린다
+        ///   (`docs/findings/2026-09-25-caption-position-10.md`).
+        public var inkBottomRatio: SlotPositions
 
         /// 검은 외곽선이 글자 **바깥으로** 나간 두께 ÷ 프레임 높이. 안쪽은 세지 않는다.
         ///
@@ -207,7 +243,18 @@ public func validate(_ values: StyleValues) throws {
     check("caption.weight", c.weight, 100...900)
     // 품질 게이트 G4 하한이 0.032 다. 그보다 아래는 자동 자막처럼 보인다.
     check("caption.inkHeightRatio", c.inkHeightRatio, 0.02...0.12)
-    check("caption.inkBottomRatio", c.inkBottomRatio, 0.02...0.6)
+    for (slot, value) in c.inkBottomRatio.all {
+        check("caption.inkBottomRatio.\(slot.rawValue)", value, 0.02...0.6)
+    }
+    // 슬롯이 이름 순서대로 위로 올라가야 한다. 뒤집히면 이름이 거짓말을 한다.
+    if !(c.inkBottomRatio.upperBody < c.inkBottomRatio.fullBody
+         && c.inkBottomRatio.fullBody < c.inkBottomRatio.lowerBody) {
+        problems.append(
+            "caption.inkBottomRatio 는 upperBody < fullBody < lowerBody 여야 한다 "
+            + "(지금 \(c.inkBottomRatio.upperBody) / \(c.inkBottomRatio.fullBody) "
+            + "/ \(c.inkBottomRatio.lowerBody))"
+        )
+    }
     check("caption.strokeOuterRatio", c.strokeOuterRatio, 0...0.02)
     check("caption.maxWidthRatio", c.maxWidthRatio, 0.3...1.0)
     check("caption.lineGapRatio", c.lineGapRatio, 1.0...3.0)
@@ -236,10 +283,10 @@ public func validate(_ values: StyleValues) throws {
     check("reframe.smoothingSec", r.smoothingSec, 0...2)
     check("reframe.padding", r.padding, 0...0.5)
 
-    // 보조가 화면 밖으로 나가면 안 된다.
-    if c.inkBottomRatio - s.baselineOffsetRatio <= 0 {
+    // 어느 슬롯에서도 보조가 화면 밖으로 나가면 안 된다.
+    for (slot, bottom) in c.inkBottomRatio.all where bottom - s.baselineOffsetRatio <= 0 {
         problems.append(
-            "caption.inkBottomRatio(\(c.inkBottomRatio)) 에서 "
+            "caption.inkBottomRatio.\(slot.rawValue)(\(bottom)) 에서 "
             + "secondary.baselineOffsetRatio(\(s.baselineOffsetRatio)) 를 빼면 화면 밖이다"
         )
     }

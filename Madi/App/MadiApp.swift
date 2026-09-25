@@ -56,6 +56,7 @@ private struct CaptionPreview: View {
             caption,
             size: CGSize(width: 1080, height: 1920),
             style: style.values,
+            slot: .upperBody,
             backdrop: backdrop.map { .image($0) } ?? .solid(RGBA(0.13, 0.13, 0.15, 1))
         )
     }

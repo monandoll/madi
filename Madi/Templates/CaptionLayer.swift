@@ -30,9 +30,10 @@ public enum CaptionPainter {
         in ctx: CGContext,
         frameSize: CGSize,
         style: StyleValues,
+        slot: CaptionSlot,
         scale: CGFloat = 1
     ) {
-        let m = CaptionLayout.metrics(frameSize: frameSize, style: style)
+        let m = CaptionLayout.metrics(frameSize: frameSize, style: style, slot: slot)
         let font = MadiFont.pretendard(size: m.fontSize, weight: CGFloat(style.caption.weight))
         let maxWidth = CGFloat(style.caption.maxWidthRatio) * frameSize.width
         let lines = CaptionLayout.wrap(
@@ -225,12 +226,16 @@ public enum CaptionPainter {
 public final class CaptionLayer: CALayer {
     private var caption: Caption?
     private var styleValues: StyleValues?
+    private var slot: CaptionSlot = .upperBody
     private var frameSize: CGSize = .zero
 
-    public convenience init(caption: Caption, frameSize: CGSize, style: StyleValues) {
+    public convenience init(
+        caption: Caption, frameSize: CGSize, style: StyleValues, slot: CaptionSlot
+    ) {
         self.init()
         self.caption = caption
         self.styleValues = style
+        self.slot = slot
         self.frameSize = frameSize
         self.frame = CGRect(origin: .zero, size: frameSize)
         // 치수를 픽셀로 재기 때문에 스케일을 곱하지 않는다.
@@ -247,6 +252,7 @@ public final class CaptionLayer: CALayer {
         if let other = layer as? CaptionLayer {
             caption = other.caption
             styleValues = other.styleValues
+            slot = other.slot
             frameSize = other.frameSize
         }
     }
@@ -255,7 +261,7 @@ public final class CaptionLayer: CALayer {
 
     public override func draw(in ctx: CGContext) {
         guard let caption, let styleValues else { return }
-        CaptionPainter.draw(caption, in: ctx, frameSize: frameSize, style: styleValues)
+        CaptionPainter.draw(caption, in: ctx, frameSize: frameSize, style: styleValues, slot: slot)
     }
 
     /// 자막이 뜨고 사라지는 타이밍과 등장 애니메이션.
