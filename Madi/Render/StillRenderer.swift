@@ -142,18 +142,40 @@ extension StillRenderer {
             let i = (y * w + x) * 4
             return 0.299 * CGFloat(px[i]) + 0.587 * CGFloat(px[i + 1]) + 0.114 * CGFloat(px[i + 2])
         }
+        /// 자막 글자 픽셀 — **흰색이면서 검은 외곽선에 둘러싸인** 픽셀.
+        ///
+        /// ★ "흰색" 만으로는 안 된다. 흰 벽 · 흰 양말 · 밝은 피부를 자막으로 잡는다.
+        ///   자막에만 있는 성질은 검은 외곽선이고, 글자 획은 얇아서 획 안의 어느 픽셀에서든
+        ///   가까운 거리 안에 검정이 **양쪽으로** 있다 (세로획이면 좌우, 가로획이면 위아래).
+        ///   흰 벽은 어느 방향으로도 검정이 없고, 흰 양말은 가운데가 D 보다 두꺼워 통과 못 한다.
+        ///   `tools/measure.mjs` 의 `makeGlyphTest` 와 **같은 정의**다 — 둘이 다르면 의미가 없다.
+        let glyphRadius = max(6, Int((Double(h) * 0.012).rounded()))
         func isWhite(_ x: Int, _ y: Int) -> Bool {
             let i = (y * w + x) * 4
             return px[i] > 230 && px[i + 1] > 230 && px[i + 2] > 230
         }
+        func isDark(_ x: Int, _ y: Int) -> Bool { luma(x, y) < 70 }
+        func isGlyph(_ x: Int, _ y: Int) -> Bool {
+            guard isWhite(x, y) else { return false }
+            var left = false, right = false, up = false, down = false
+            for k in 1...glyphRadius {
+                if !left, x - k >= 0, isDark(x - k, y) { left = true }
+                if !right, x + k < w, isDark(x + k, y) { right = true }
+                if !up, y - k >= 0, isDark(x, y - k) { up = true }
+                if !down, y + k < h, isDark(x, y + k) { down = true }
+                if (left && right) || (up && down) { return true }
+            }
+            return false
+        }
 
-        // 자막은 화면 아래쪽 = 버퍼의 마지막 40% 행. 가장 아래 흰 글자 줄을 본문으로 본다.
+        // 자막은 화면 아래쪽이지만 **아래 끝에 붙어 있다고 가정하지 않는다**.
+        // 편마다 아래끝 비율이 0.235 ~ 0.37 로 갈린다 (`measure.mjs` 와 같은 창).
         let minPx = max(8, Int((Double(w) * 0.012).rounded()))
         let maxPx = w * 6 / 10
         var rows: [Int] = []
-        for y in (h * 6 / 10)..<h {
+        for y in (h * 35 / 100)..<h {
             var n = 0
-            for x in 0..<w where isWhite(x, y) { n += 1 }
+            for x in 0..<w where isGlyph(x, y) { n += 1 }
             if n >= minPx && n <= maxPx { rows.append(y) }
         }
         guard !rows.isEmpty else { return nil }

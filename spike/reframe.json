@@ -1,0 +1,167 @@
+{
+  "id": "spike-reframe-uw1aUHnMfo8",
+  "videoId": "uw1aUHnMfo8",
+  "templateId": "short",
+  "templateVersion": 1,
+  "size": {
+    "w": 1080,
+    "h": 1920
+  },
+  "fps": 30,
+  "meta": {
+    "title": "리프레임 판정용 (B-2)",
+    "platform": "shorts",
+    "targetDurationSec": 150
+  },
+  "scenes": [
+    {
+      "id": "s1",
+      "role": "demo",
+      "source": {
+        "videoId": "uw1aUHnMfo8",
+        "in": 0,
+        "out": 25
+      },
+      "reframe": {
+        "mode": "fixed",
+        "keyframes": [
+          {
+            "t": 0,
+            "rect": {
+              "x": 0.2724,
+              "y": 0.0,
+              "w": 0.3164,
+              "h": 1.0
+            }
+          }
+        ]
+      },
+      "captions": []
+    },
+    {
+      "id": "s2",
+      "role": "demo",
+      "source": {
+        "videoId": "uw1aUHnMfo8",
+        "in": 25,
+        "out": 50
+      },
+      "reframe": {
+        "mode": "fixed",
+        "keyframes": [
+          {
+            "t": 0,
+            "rect": {
+              "x": 0.3629,
+              "y": 0.0,
+              "w": 0.3164,
+              "h": 1.0
+            }
+          }
+        ]
+      },
+      "captions": []
+    },
+    {
+      "id": "s3",
+      "role": "demo",
+      "source": {
+        "videoId": "uw1aUHnMfo8",
+        "in": 50,
+        "out": 75
+      },
+      "reframe": {
+        "mode": "fixed",
+        "keyframes": [
+          {
+            "t": 0,
+            "rect": {
+              "x": 0.3882,
+              "y": 0.0,
+              "w": 0.3164,
+              "h": 1.0
+            }
+          }
+        ]
+      },
+      "captions": []
+    },
+    {
+      "id": "s4",
+      "role": "demo",
+      "source": {
+        "videoId": "uw1aUHnMfo8",
+        "in": 75,
+        "out": 100
+      },
+      "reframe": {
+        "mode": "fixed",
+        "keyframes": [
+          {
+            "t": 0,
+            "rect": {
+              "x": 0.3673,
+              "y": 0.0,
+              "w": 0.3164,
+              "h": 1.0
+            }
+          }
+        ]
+      },
+      "captions": []
+    },
+    {
+      "id": "s5",
+      "role": "demo",
+      "source": {
+        "videoId": "uw1aUHnMfo8",
+        "in": 100,
+        "out": 125
+      },
+      "reframe": {
+        "mode": "fixed",
+        "keyframes": [
+          {
+            "t": 0,
+            "rect": {
+              "x": 0.3572,
+              "y": 0.0,
+              "w": 0.3164,
+              "h": 1.0
+            }
+          }
+        ]
+      },
+      "captions": []
+    },
+    {
+      "id": "s6",
+      "role": "demo",
+      "source": {
+        "videoId": "uw1aUHnMfo8",
+        "in": 125,
+        "out": 150
+      },
+      "reframe": {
+        "mode": "fixed",
+        "keyframes": [
+          {
+            "t": 0,
+            "rect": {
+              "x": 0.5325,
+              "y": 0.0,
+              "w": 0.3164,
+              "h": 1.0
+            }
+          }
+        ]
+      },
+      "captions": []
+    }
+  ],
+  "audio": {
+    "sfx": []
+  },
+  "revisionOf": null,
+  "createdAt": "2026-09-25T00:00:00Z"
+}

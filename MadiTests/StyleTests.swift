@@ -23,11 +23,27 @@ struct StyleTests {
         #expect(throws: StyleError.self) { try validate(values) }
     }
 
-    @Test("보조 문구가 본문보다 위로 올라가면 거절한다")
-    func rejectsSecondaryAboveMain() throws {
+    @Test("보조 문구가 화면 밖으로 나가면 거절한다")
+    func rejectsSecondaryOffScreen() throws {
         var values = try StyleStore.load().values
-        values.secondary.baselineBottomRatio = values.caption.inkBottomRatio + 0.05
+        values.secondary.baselineOffsetRatio = values.caption.inkBottomRatio + 0.05
         #expect(throws: StyleError.self) { try validate(values) }
+    }
+
+    @Test("보조 문구는 본문이 움직이면 같이 움직인다")
+    func secondaryFollowsMainCaption() throws {
+        // 공개 숏폼 10편에서 본문 위치는 0.235~0.483 으로 벌어지는데 본문↔보조 간격은
+        // 0.031~0.041 로 붙어 있다. 절대 위치로 두면 본문이 움직일 때 보조가 따로 논다.
+        var values = try StyleStore.load().values
+        let frame = CGSize(width: 1080, height: 1920)
+        let before = CaptionLayout.metrics(frameSize: frame, style: values)
+        let gap = before.baselineFromBottom - before.secondaryBaselineFromBottom
+
+        values.caption.inkBottomRatio += 0.15   // 본문을 위로 올린다
+        let after = CaptionLayout.metrics(frameSize: frame, style: values)
+
+        #expect(after.secondaryBaselineFromBottom > before.secondaryBaselineFromBottom)
+        #expect(abs((after.baselineFromBottom - after.secondaryBaselineFromBottom) - gap) < 0.01)
     }
 
     @Test("색은 #RRGGBB 와 #RRGGBBAA 를 읽는다")

@@ -29,7 +29,7 @@
     "secondary": {
       "scale": 0.4444,
       "weight": 400,
-      "baselineBottomRatio": 0.2023,
+      "baselineOffsetRatio": 0.0329,
       "fill": "#FEE374",
       "italic": false,
       "hasStroke": false

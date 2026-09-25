@@ -108,27 +108,72 @@ function baselineRow(rows, band) {
   return baseline;
 }
 
+/**
+ * 자막 글자 픽셀 판정 — **흰색이면서 검은 외곽선에 둘러싸인** 픽셀만 센다.
+ *
+ * ★ "흰색" 만으로는 안 된다. 이 채널 영상에는 흰 벽 · 흰 양말 · 밝은 피부가 널려 있고,
+ *   그걸 자막으로 잡아서 10편 중 절반의 측정이 엉뚱하게 나왔다
+ *   (`docs/findings/2026-09-25-layout-survey-10.md` 덤 2번).
+ *
+ * 자막에만 있는 성질은 **검은 외곽선**이다. 글자 획은 얇아서, 획 안의 어느 흰 픽셀에서든
+ * 가까운 거리 안에 검은 픽셀이 **양쪽으로** 있다.
+ *   - 세로획 → 왼쪽·오른쪽에 검정
+ *   - 가로획 → 위·아래에 검정
+ * 흰 벽은 어느 방향으로도 검정이 없고, 흰 양말은 가운데가 D 보다 두꺼워서 통과하지 못한다
+ * (가장자리 몇 픽셀만 통과하는데 그건 행 최소 픽셀 수에서 걸러진다).
+ *
+ * D = 외곽선 바깥 두께 + 획 두께 + 여유. 프레임 높이의 1.2% 로 잡았다
+ * (1920 에서 23px; 실측 외곽선 6px + 획 8px = 14px 에 여유).
+ */
+function makeGlyphTest(at, W, H) {
+  const D = Math.max(6, Math.round(H * 0.012));
+  const white = (x, y) => {
+    const [r, g, b] = at(x, y);
+    return r > 230 && g > 230 && b > 230;
+  };
+  const dark = (x, y) => {
+    const [r, g, b] = at(x, y);
+    return 0.299 * r + 0.587 * g + 0.114 * b < 70;
+  };
+  return (x, y) => {
+    if (!white(x, y)) return false;
+    let l = false, r = false, u = false, d = false;
+    for (let k = 1; k <= D; k++) {
+      if (!l && x - k >= 0 && dark(x - k, y)) l = true;
+      if (!r && x + k < W && dark(x + k, y)) r = true;
+      if (!u && y - k >= 0 && dark(x, y - k)) u = true;
+      if (!d && y + k < H && dark(x, y + k)) d = true;
+      if ((l && r) || (u && d)) return true;
+    }
+    return false;
+  };
+}
+
 function analyze(file) {
   const { width: W, height: H, channels, data } = decodePng(readFileSync(file));
   const at = (x, y) => {
     const i = (y * W + x) * channels;
     return [data[i], data[i + 1], data[i + 2]];
   };
-  // 자막은 화면 아래쪽에 있다. 위쪽 인물·배경을 빼고 본다.
-  const y0 = Math.floor(H * 0.6);
+  const isGlyph = makeGlyphTest(at, W, H);
+  // 자막은 화면 아래쪽에 있다. 다만 **아래 끝에 붙어 있다고 가정하면 안 된다** —
+  // 10편을 재 보니 아래끝 비율이 0.235 인 편과 0.29~0.37 인 편으로 갈린다.
+  // 창을 아래 40% 로 잡았더니 위쪽에 놓인 편 3개를 통째로 놓쳤다. 아래 65% 로 넓힌다.
+  // 넓혀도 오검출이 늘지 않는 이유는 글자 판정이 "검은 외곽선" 을 요구하기 때문이다.
+  const y0 = Math.floor(H * 0.35);
   const whiteRows = new Array(H).fill(0);
   const yellowRows = new Array(H).fill(0);
   const whiteCols = new Array(W).fill(0);
   for (let y = y0; y < H; y++) {
     for (let x = 0; x < W; x++) {
+      if (isGlyph(x, y)) { whiteRows[y]++; whiteCols[x]++; continue; }
       const [r, g, b] = at(x, y);
-      if (r > 230 && g > 230 && b > 230) { whiteRows[y]++; whiteCols[x]++; }
-      // 노랑 판정을 느슨하게 잡는다. 엄격하게 잡으면 원본의 흐릿한 획이 통째로 빠져서
-      // 베이스라인을 못 찾는다. 대신 아래에서 본문보다 아래쪽만 본다.
-      else if (r > 150 && g > 120 && b < r - 60 && b < g - 40) yellowRows[y]++;
+      // 노랑(보조 문구)은 외곽선이 없다 — 원본에 검은 테두리가 없고 흐린 그림자만 있다.
+      // 그래서 같은 판정을 쓸 수 없다. 대신 아래에서 본문보다 아래쪽만 본다.
+      if (r > 150 && g > 120 && b < r - 60 && b < g - 40) yellowRows[y]++;
     }
   }
-  // 글자는 한 행에 최소 이만큼은 찍힌다. 벽·옷 같은 큰 흰 면은 훨씬 많이 찍히므로 상한도 둔다.
+  // 글자는 한 행에 최소 이만큼은 찍힌다.
   const minPx = Math.max(8, Math.round(W * 0.012));
   const maxPx = Math.round(W * 0.6);
   const textRows = whiteRows.map((n) => (n >= minPx && n <= maxPx ? n : 0));
