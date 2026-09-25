@@ -23,14 +23,17 @@ public enum Copy {
         public static let skip = "건너뛰기"
         public static let stop = "멈추기"
         public static let undo = "되돌리기"
-        public static let openPlan = "편집안 열기"
-        public static let makeShort = "바로 숏폼 뽑기"
+        /// 촬영본에서 시작하는 **단 하나의** 길. 누르면 편집안이 열리고 AI 가 초안을 짠다.
+        /// "바로 뽑기" 처럼 장면 카드를 건너뛰는 길은 두지 않는다 (AGENTS.md §1-3, §10).
+        public static let makeShort = "숏폼 만들기"
+        /// 편집안에서 실제 영상을 만들 때. 장면 카드를 보고 난 뒤다.
         public static let make = "만들기"
         public static let play = "재생"
         public static let playFromStart = "처음부터 보기"
         public static let export = "내보내기"
         public static let openInPhotos = "사진 앱에서 보기"
-        public static let removeFromLibrary = "보관함에서 빼기"
+        /// **"삭제" 라고 쓰지 않는다.** 목록에서 안 보이게 할 뿐 원본은 사진 앱에 그대로 있다.
+        public static let hideFromList = "목록에서 숨기기"
         public static let search = "검색"
     }
 
@@ -48,7 +51,10 @@ public enum Copy {
         public static let aiDisconnected = "AI 연결 안 됨"
         /// AI 미연결은 **오류가 아니다**. 붉은색을 쓰지 않는다.
         public static let aiDisconnectedHint = "AI를 연결하면 편집안을 만들어요"
-        public static let openSettings = "설정 열기"
+        /// 설정은 앱 메뉴 `마디 > 설정…` (⌘,) 가 기본 경로다.
+        /// 사이드바에 칸으로 두지 않는다 — 같은 것이 두 군데가 된다.
+        /// 다만 ⌘, 를 모를 수 있으니 누를 자리를 남긴다 (톱니 아이콘).
+        public static let openSettings = "설정…"
     }
 
     // MARK: - 갤러리
@@ -99,6 +105,11 @@ public enum Copy {
         public enum Cell {
             public static let making = "만드는 중"
             public static func results(_ n: Int) -> String { "결과물 \(n)" }
+        }
+
+        /// 숨긴 뒤 상태줄에 한 줄로 알린다. 알림창을 띄우지 않는다.
+        public enum Hidden {
+            public static let notice = "목록에서 숨겼어요 · 사진 앱의 원본은 그대로 있어요"
         }
 
         public enum Status {

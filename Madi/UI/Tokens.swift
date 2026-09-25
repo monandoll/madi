@@ -78,10 +78,10 @@ public enum Tokens {
     }
 
     public enum Size {
-        /// 갤러리 그리드 한 칸의 최소 폭. 1100pt 창에서 3칸, 1440pt 에서 4칸이 되는 값.
-        /// **커스텀인 이유**: `LazyVGrid(.adaptive)` 는 최소 폭을 숫자로 받아야 한다.
-        public static let gridItemMin: CGFloat = 132
-        public static let gridItemMax: CGFloat = 190
+        /// 갤러리 그리드 한 칸의 **바라는** 폭. 이 값으로 칸 수를 세고, 칸은 남는 폭을 나눠 갖는다
+        /// (`GalleryScreen.columnCount`). 최소는 4칸이라 1100pt 창에서는 이보다 좁아진다.
+        /// **커스텀인 이유**: 세로 칸이라 한 줄에 적게 놓으면 한 화면에 몇 개 안 보인다.
+        public static let gridItemIdeal: CGFloat = 170
 
         /// 오른쪽 정보 패널 · 채팅 패널 폭. `Inspector` 기본값이 좁아 세로 미리보기가 눌린다.
         public static let inspectorIdeal: CGFloat = 280

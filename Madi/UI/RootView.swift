@@ -10,6 +10,8 @@ struct RootView: View {
     var onOpenSettings: () -> Void = {}
     /// 프리뷰 · 스크린샷용. 열자마자 고를 촬영본.
     var selectedShotID: ShotItem.ID?
+    /// 갤러리 상태줄에 한 줄 알림 (숨김 등).
+    var galleryNotice: String?
 
     @State private var selection: LibrarySection? = .shots
 
@@ -19,7 +21,10 @@ struct RootView: View {
         } detail: {
             switch selection {
             case .shots, nil:
-                GalleryScreen(state: gallery, studio: studio, initialSelection: selectedShotID)
+                GalleryScreen(
+                    state: gallery, studio: studio,
+                    initialSelection: selectedShotID, notice: galleryNotice
+                )
             case .results:
                 ComingSoon(label: Copy.Sidebar.results)
             case .making:

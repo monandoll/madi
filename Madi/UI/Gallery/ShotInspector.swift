@@ -7,7 +7,8 @@ import SwiftUI
 /// 코덱 · 해상도 · 비트레이트는 보여주지 않는다 (AGENTS.md §1-5).
 struct ShotInspector: View {
     var shot: ShotItem?
-    var onOpenPlan: (ShotItem) -> Void = { _ in }
+    /// 촬영본에서 나가는 길은 하나다 — 누르면 편집안이 열리고 AI 가 초안을 짜기 시작한다.
+    /// 실제로 영상을 만드는 것은 장면 카드를 본 뒤 편집안 안에서 한다.
     var onMakeShort: (ShotItem) -> Void = { _ in }
 
     var body: some View {
@@ -103,12 +104,16 @@ struct ShotInspector: View {
     }
 
     private func actions(_ shot: ShotItem) -> some View {
-        HStack(spacing: Tokens.Space.inner) {
-            Spacer()
-            Button(Copy.Action.makeShort) { onMakeShort(shot) }
-            Button(Copy.Action.openPlan) { onOpenPlan(shot) }
-                .buttonStyle(.borderedProminent)
+        Button {
+            onMakeShort(shot)
+        } label: {
+            // 라벨을 늘려야 버튼이 패널 폭을 다 쓴다. 버튼에 `.frame` 을 걸면 버튼만 늘고
+            // 안쪽 배경은 글자 폭에 붙어 있는다.
+            Text(Copy.Action.makeShort)
+                .frame(maxWidth: .infinity)
         }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
         .padding(Tokens.Space.between)
     }
 }

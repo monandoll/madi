@@ -11,15 +11,17 @@ struct GalleryScreen: View {
     var state: GalleryState
     var studio: StudioStatus
 
-    var onOpenPlan: (ShotItem) -> Void = { _ in }
+    /// 촬영본에서 나가는 길은 이것 하나다. 편집안이 열리고 AI 가 초안을 짠다.
     var onMakeShort: (ShotItem) -> Void = { _ in }
     var onPlay: (ShotItem) -> Void = { _ in }
     var onRevealInPhotos: (ShotItem) -> Void = { _ in }
-    var onRemove: (ShotItem) -> Void = { _ in }
+    var onHide: (ShotItem) -> Void = { _ in }
     var onAddFromMac: () -> Void = {}
     var onOpenSystemSettings: () -> Void = {}
     /// 화면을 열 때 이미 고를 촬영본. 프리뷰 · 스크린샷에서 정보 패널이 채워진 모습을 보려고 둔다.
     var initialSelection: ShotItem.ID?
+    /// 방금 한 일을 상태줄에 한 줄로 알린다 (숨김 등). 알림창을 띄우지 않는다.
+    var notice: String?
 
     @State private var selectedID: ShotItem.ID?
     @State private var filter: GalleryFilter = .all
@@ -35,11 +37,7 @@ struct GalleryScreen: View {
             .toolbar { toolbar }
             .searchable(text: $query, placement: .toolbar, prompt: Copy.Action.search)
             .inspector(isPresented: $showsInspector) {
-                ShotInspector(
-                    shot: selectedShot,
-                    onOpenPlan: onOpenPlan,
-                    onMakeShort: onMakeShort
-                )
+                ShotInspector(shot: selectedShot, onMakeShort: onMakeShort)
                 .inspectorColumnWidth(
                     min: Tokens.Size.inspectorMin,
                     ideal: Tokens.Size.inspectorIdeal,
@@ -88,8 +86,33 @@ struct GalleryScreen: View {
     }
 
     private func grid(_ groups: [ShotGroup]) -> some View {
+        GeometryReader { proxy in
+            gridBody(groups, columns: columnCount(for: proxy.size.width))
+        }
+    }
+
+    /// 칸 수를 직접 센다. `.adaptive` 는 남는 폭을 오른쪽에 빈 공간으로 흘려서
+    /// 1440 에서 그리드 오른쪽이 휑하게 빈다. `.flexible` 로 칸이 폭을 나눠 갖게 한다.
+    ///
+    /// 세로 칸이라 한 줄에 적게 놓으면 한 화면에 몇 개 안 보인다. 그래서 **최소 4칸**이다
+    /// (1100pt 창 기준). 넓어지면 칸을 키우지 않고 수를 늘린다.
+    private func columnCount(for width: CGFloat) -> Int {
+        let usable = width - Tokens.Space.section * 2
+        let fit = Int((usable + Tokens.Space.between)
+            / (Tokens.Size.gridItemIdeal + Tokens.Space.between))
+        return max(4, fit)
+    }
+
+    private func gridBody(_ groups: [ShotGroup], columns count: Int) -> some View {
         ScrollView {
-            LazyVGrid(columns: columns, alignment: .leading, spacing: Tokens.Space.section) {
+            LazyVGrid(
+                columns: Array(
+                    repeating: GridItem(.flexible(), spacing: Tokens.Space.between, alignment: .top),
+                    count: count
+                ),
+                alignment: .leading,
+                spacing: Tokens.Space.section
+            ) {
                 ForEach(filtered(groups)) { group in
                     Section {
                         ForEach(group.shots) { shot in
@@ -110,32 +133,23 @@ struct GalleryScreen: View {
     private func cell(_ shot: ShotItem) -> some View {
         ShotCell(shot: shot, isSelected: shot.id == selectedID)
             .onTapGesture { selectedID = shot.id }
-            .simultaneousGesture(TapGesture(count: 2).onEnded { onOpenPlan(shot) })
+            .simultaneousGesture(TapGesture(count: 2).onEnded { onMakeShort(shot) })
             .contextMenu {
-                Button(Copy.Action.openPlan) { onOpenPlan(shot) }
-                    .keyboardShortcut("o")
                 Button(Copy.Action.makeShort) { onMakeShort(shot) }
+                    .keyboardShortcut("o")
                 Divider()
                 Button(Copy.Action.play) { onPlay(shot) }
                     .keyboardShortcut(.space, modifiers: [])
                 Button(Copy.Action.openInPhotos) { onRevealInPhotos(shot) }
                 Divider()
-                Button(Copy.Action.removeFromLibrary) { onRemove(shot) }
-                    .keyboardShortcut(.delete)
+                // 지우는 게 아니다. 사진 앱 원본은 그대로 남는다 — 누른 뒤 상태줄이 그렇게 말한다.
+                Button(Copy.Action.hideFromList) { onHide(shot) }
             } preview: {
                 // 우클릭 미리보기. 세로 그림 한 장이면 충분하다.
                 ThumbnailView(thumbnail: shot.thumbnail, cornerRadius: 0)
                     .aspectRatio(Tokens.Ratio.vertical, contentMode: .fit)
                     .frame(height: 420)
             }
-    }
-
-    private var columns: [GridItem] {
-        [GridItem(
-            .adaptive(minimum: Tokens.Size.gridItemMin, maximum: Tokens.Size.gridItemMax),
-            spacing: Tokens.Space.between,
-            alignment: .top
-        )]
     }
 
     // MARK: - 툴바
@@ -182,6 +196,11 @@ struct GalleryScreen: View {
                 } else if case .loading = state {
                     ProgressView().controlSize(.small)
                     Text(Copy.Gallery.Loading.title)
+                } else if let notice {
+                    Text(notice)
+                    Button(Copy.Action.undo) {}
+                        .buttonStyle(.link)
+                        .font(.caption)
                 } else {
                     Text(Copy.Gallery.Status.selection(
                         total: totalCount,
@@ -268,10 +287,10 @@ private struct GallerySkeleton: View {
     var body: some View {
         ScrollView {
             LazyVGrid(
-                columns: [GridItem(
-                    .adaptive(minimum: Tokens.Size.gridItemMin, maximum: Tokens.Size.gridItemMax),
-                    spacing: Tokens.Space.between, alignment: .top
-                )],
+                columns: Array(
+                    repeating: GridItem(.flexible(), spacing: Tokens.Space.between, alignment: .top),
+                    count: 4
+                ),
                 alignment: .leading, spacing: Tokens.Space.section
             ) {
                 ForEach(0..<8, id: \.self) { _ in

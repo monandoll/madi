@@ -33,19 +33,26 @@ struct SidebarView: View {
         VStack(alignment: .leading, spacing: 0) {
             Divider()
             Button(action: onOpenSettings) {
-                VStack(alignment: .leading, spacing: Tokens.Space.hairline) {
-                    Text(studio.studioName)
-                        .font(.callout.weight(.medium))
-                        .lineLimit(1)
-                    HStack(spacing: Tokens.Space.tight + 1) {
-                        Circle()
-                            .fill(studio.ai.isConnected ? Tokens.Palette.ok : Color.secondary)
-                            .frame(width: 6, height: 6)
-                        Text(studio.ai.label)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                HStack(spacing: Tokens.Space.inner) {
+                    VStack(alignment: .leading, spacing: Tokens.Space.hairline) {
+                        Text(studio.studioName)
+                            .font(.callout.weight(.medium))
                             .lineLimit(1)
+                        HStack(spacing: Tokens.Space.tight + 1) {
+                            Circle()
+                                .fill(studio.ai.isConnected ? Tokens.Palette.ok : Color.secondary)
+                                .frame(width: 6, height: 6)
+                            Text(studio.ai.label)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
+                    Spacer(minLength: Tokens.Space.tight)
+                    // 설정으로 가는 길은 앱 메뉴(⌘,)지만, 크리에이터가 ⌘, 를 알 리 없다.
+                    // 누를 수 있다는 걸 보이게만 한다.
+                    Image(systemName: "gearshape")
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(.rect)
