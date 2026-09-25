@@ -268,11 +268,15 @@ private struct AIStep: View {
                 }
             }
 
-            if setup.picked == nil {
-                Text(Copy.Onboarding.AI.needed)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                if setup.picked == nil {
+                    Text(Copy.Onboarding.AI.needed)
+                }
+                // 막되 가두지 않는다. 창을 닫고 나중에 이어서 할 수 있다는 걸 여기서 말한다.
+                Text(Copy.Onboarding.AI.closeHint)
             }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 

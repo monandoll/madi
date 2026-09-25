@@ -386,6 +386,8 @@ public enum Copy {
             public static func connected(_ name: String) -> String { "\(name) 연결됨" }
             public static let otherAccount = "다른 계정으로"
             public static let needed = "AI를 연결해야 편집안을 부탁할 수 있어요"
+            /// 여기서 막되 **가두지는 않는다.** 창은 닫을 수 있고, 다음에 켜면 이 단계부터 다시 한다.
+            public static let closeHint = "창을 닫아도 돼요. 다음에 켜면 여기서 이어서 해요."
         }
 
         public enum Studio {
@@ -431,11 +433,15 @@ public enum Copy {
         public enum Shots {
             public static let header = "촬영본"
             public static let keep = "보관 기간"
-            public static let keepHint = "기간이 지난 촬영본은 지워요. 결과물은 지우지 않아요."
+            /// **앱이 가진 사본만** 지운다. 사진 앱 원본을 지우는 앱이 아니다.
+            /// 문구에서 그걸 분명히 말한다 — 안 그러면 보관 기간을 줄이기가 무섭다.
+            public static let keepHint =
+                "기간이 지난 촬영본은 앱에서만 지워요. 사진 앱의 원본과 결과물은 그대로 있어요."
             public static func days(_ n: Int) -> String { "\(n)일" }
             public static let forever = "계속 두기"
             public static let album = "사진 폴더"
-            public static let albumAll = "iCloud 사진 · 전체 보관함"
+            /// 짧게 쓴다. `iCloud 사진 · 전체 보관함` 은 설정 줄에서 잘린다.
+            public static let albumAll = "전체 보관함"
             public static let pickAlbum = "앨범 고르기"
             public static let photoAccess = "사진 접근"
             public static let photoAccessOn = "허용됨"
