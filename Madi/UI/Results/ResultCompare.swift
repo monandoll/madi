@@ -11,7 +11,27 @@ struct ResultCompare: View {
     var onPlay: () -> Void = {}
 
     var body: some View {
-        // 스크롤로 감싼다. 창이 낮을 때 늘어난 미리보기가 툴바 밑으로 비집고 들어가는 걸 막는다.
+        // 나란히 보는 게 목적이라 **그림이 남는 높이를 다 쓴다.**
+        // 다만 세로 그림이라 폭이 좁으면 금방 화면을 넘긴다 — 폭과 높이 둘 다로 묶는다.
+        GeometryReader { proxy in
+            content(paneHeight: paneHeight(in: proxy.size))
+        }
+    }
+
+    /// 제목 · 라벨 · 길이줄 · 재생 버튼 · 달라진 점 카드가 쓰는 높이.
+    private let chrome: CGFloat = 276
+
+    private func paneHeight(in size: CGSize) -> CGFloat {
+        let columns = CGFloat(showsPrevious ? 2 : 1)
+        let usableWidth = size.width - Tokens.Space.section * 2
+            - Tokens.Space.section * (columns - 1)
+        let byWidth = (usableWidth / columns) / Tokens.Ratio.vertical
+        let byHeight = size.height - chrome
+        return max(160, min(byWidth, byHeight))
+    }
+
+    private func content(paneHeight: CGFloat) -> some View {
+        // 창이 아주 낮으면(160 밑) 스크롤로 넘긴다. 툴바 밑으로 비집고 들어가지 않게.
         ScrollView {
             VStack(spacing: Tokens.Space.section) {
                 Text(detail.shotTitle)
@@ -20,9 +40,11 @@ struct ResultCompare: View {
 
                 HStack(alignment: .top, spacing: Tokens.Space.section) {
                     if showsPrevious, let previous = detail.previous {
-                        pane(previous, label: Copy.Results.Compare.before, isCurrent: false)
+                        pane(previous, label: Copy.Results.Compare.before,
+                             isCurrent: false, height: paneHeight)
                     }
-                    pane(detail.current, label: Copy.Results.Compare.now, isCurrent: true)
+                    pane(detail.current, label: Copy.Results.Compare.now,
+                         isCurrent: true, height: paneHeight)
                 }
 
                 Button(showsPrevious ? Copy.Results.Compare.playBoth : Copy.Results.Compare.play,
@@ -38,7 +60,9 @@ struct ResultCompare: View {
 
     private var showsPrevious: Bool { mode == .sideBySide && detail.previous != nil }
 
-    private func pane(_ result: ResultRef, label: String, isCurrent: Bool) -> some View {
+    private func pane(
+        _ result: ResultRef, label: String, isCurrent: Bool, height: CGFloat
+    ) -> some View {
         VStack(spacing: Tokens.Space.inner) {
             HStack(spacing: Tokens.Space.tight + 1) {
                 Text(label)
@@ -49,10 +73,9 @@ struct ResultCompare: View {
                     .foregroundStyle(.secondary)
             }
 
-            // 세로 그림이라 키우면 금방 화면을 다 먹는다. 견줄 수 있을 만큼만 키운다.
             ThumbnailView(thumbnail: result.thumbnail, cornerRadius: Tokens.Radius.card)
                 .aspectRatio(Tokens.Ratio.vertical, contentMode: .fit)
-                .frame(maxHeight: 300)
+                .frame(height: height)
 
             Text("\(Copy.duration(result.duration)) · \(Copy.scenes(result.sceneCount))")
                 .font(.caption)

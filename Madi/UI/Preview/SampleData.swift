@@ -58,20 +58,39 @@ public enum SampleData {
 
     // MARK: - 결과물
 
+    /// **샘플은 한 곳에서 나온다.** 같은 편집안이 화면마다 다른 길이·장면 수로 나오면
+    /// 화면을 보는 사람이 어느 쪽이 맞는지부터 묻게 된다.
+    /// 아래 값들은 전부 `planScenes` 에서 계산한다 — 장면을 고치면 같이 움직인다.
+    public static let planDuration: Double = planScenes.reduce(0) { $0 + $1.duration }
+    public static let planSceneCount: Int = planScenes.count
+    /// 촬영본 원본 길이. 갤러리의 `v_01` 과 같아야 한다.
+    public static let planSourceDuration: Double = 42
+
+    /// 이전 편집안(편집안 1). 쉬는 구간을 안 뺐고 장면을 안 합쳤다.
+    public static let previousPlanDuration: Double = 35
+    public static let previousPlanSceneCount: Int = 11
+
     public static let results: [ResultRef] = [
         ResultRef(
-            id: "o_01", platform: .reels, planLabel: "편집안 2", when: "오늘 오후 2:40",
-            duration: 37, sceneCount: 7, isNew: true,
+            id: "o_01", platform: .reels, planLabel: Copy.Plan.version(2),
+            when: "오늘 오후 2:40",
+            duration: planDuration, sceneCount: planSceneCount, isNew: true,
+            // 내보낸 것은 줄에 한 줄로 남긴다 — "이거 올렸었나" 를 묻지 않게.
+            exportedNote: Copy.Results.Export.historyLine(
+                target: Copy.Results.Export.photos, when: "오후 2:52"
+            ),
             thumbnail: resultFrame("yt_11s.png")
         ),
         ResultRef(
-            id: "o_02", platform: .shorts, planLabel: "편집안 2", when: "오늘 오후 2:44",
-            duration: 37, sceneCount: 7, isNew: true,
+            id: "o_02", platform: .shorts, planLabel: Copy.Plan.version(2),
+            when: "오늘 오후 2:44",
+            duration: planDuration, sceneCount: planSceneCount, isNew: true,
             thumbnail: resultFrame("yt_13s.png")
         ),
         ResultRef(
-            id: "o_03", platform: .reels, planLabel: "편집안 1", when: "어제 오후 6:02",
-            duration: 42, sceneCount: 9,
+            id: "o_03", platform: .reels, planLabel: Copy.Plan.version(1),
+            when: "어제 오후 6:02",
+            duration: previousPlanDuration, sceneCount: previousPlanSceneCount,
             thumbnail: resultFrame("yt_9s.png")
         ),
     ]
@@ -82,7 +101,7 @@ public enum SampleData {
         ShotItem(
             id: "v_01",
             title: "골반이 틀어져있다면, 이 동작 안되실걸요?",
-            shotAt: today(14, 14), duration: 42, speech: .clear,
+            shotAt: today(14, 14), duration: planSourceDuration, speech: .clear,
             thumbnail: shotFrame("v_01"), results: results
         ),
         ShotItem(
@@ -282,7 +301,7 @@ extension SampleData {
         shotTitle: "골반이 틀어져있다면, 이 동작 안되실걸요?",
         platform: .reels,
         versionLabel: Copy.Plan.version(2), versionCount: 2,
-        sourceDuration: 42, targetDuration: 27,
+        sourceDuration: planSourceDuration, targetDuration: planDuration,
         // 앉아서 말하는 상반신 영상이다 (측정에서 A 무리, 아래끝 0.235).
         captionSlot: .upperBody,
         scenes: planScenes, resultCount: 3
@@ -339,7 +358,9 @@ extension SampleData {
         ChatMessage(id: "m4", kind: .summary(EditSummary(lines: [
             .init(label: "쉬는 구간 2곳", value: "−5초"),
             .init(label: "인스타 규격", value: "세로"),
-            .init(label: "길이", value: "0:42 → 0:27"),
+            .init(label: "길이", value: Copy.Plan.Info.lengthChange(
+                from: Copy.duration(planSourceDuration), to: Copy.duration(planDuration)
+            )),
         ]))),
     ]
 
@@ -444,8 +465,10 @@ extension SampleData {
         shotTitle: shotsToday[0].title,
         current: results[0],
         previous: results[2],
+        // 합이 맞아야 한다: 0:35 → 0:27 이면 −8초다.
         changes: [
             .init(label: "쉬는 구간 2곳을 뺐어요", value: "−5초"),
+            .init(label: "짧은 장면 2개를 앞 장면에 붙였어요", value: "−3초"),
             .init(label: "앉아서 말하는 영상이라 자막을 상반신 자리로 옮겼어요", value: ""),
             .init(label: "인스타 규격으로 화면을 잡았어요", value: "세로"),
         ]
@@ -471,13 +494,13 @@ extension SampleData {
     public static let makingJobs: [MakingJob] = [
         MakingJob(
             id: "j1", shotTitle: shotsToday[0].title, platform: .reels,
-            planLabel: Copy.Plan.version(2), duration: 27,
+            planLabel: Copy.Plan.version(2), duration: planDuration,
             thumbnail: resultFrame("yt_11s.png"),
             state: .running(makingProgress)
         ),
         MakingJob(
             id: "j2", shotTitle: shotsToday[0].title, platform: .shorts,
-            planLabel: Copy.Plan.version(2), duration: 27,
+            planLabel: Copy.Plan.version(2), duration: planDuration,
             thumbnail: resultFrame("yt_13s.png"),
             state: .queued(note: Copy.MakingScreen.queuedNote("앞 영상"))
         ),
@@ -503,4 +526,36 @@ extension SampleData {
         DoneItem(id: "d2", shotTitle: shotsToday[1].title, platform: .shorts,
                  when: "오전 11:40", thumbnail: resultFrame("lzDW-9ITfWU_4_6s.jpg")),
     ]
+}
+
+// MARK: - 첫 실행 · 설정
+
+extension SampleData {
+
+    public static let onboardingStudio = OnboardingState(
+        step: .studio, photos: .granted,
+        ai: .connected(.claude, account: sampleAccount),
+        studioName: studio.studioName
+    )
+
+    /// 샘플 계정. **실제 주소를 쓰지 않는다** (`AGENTS.md §1-7`).
+    public static let sampleAccount = "creator@example.com"
+
+    public static let settings = SettingsValues(
+        ai: .connected(.claude, account: sampleAccount),
+        activeAI: .claude,
+        studioName: studio.studioName,
+        keepDays: 90,
+        albumName: nil,
+        photos: .granted
+    )
+
+    public static let settingsDisconnected = SettingsValues(
+        ai: .notPicked,
+        activeAI: .claude,
+        studioName: Copy.Onboarding.Studio.defaultName,
+        keepDays: 90,
+        albumName: nil,
+        photos: .denied
+    )
 }

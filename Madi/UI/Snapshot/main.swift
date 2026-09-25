@@ -177,6 +177,18 @@ let shots: [Shot] = [
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .tint(Tokens.Palette.accent)
     },
+    Shot("results-trash") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            results: .loaded(SampleData.resultGroups),
+            resultDetail: SampleData.resultDetail,
+            exportTargets: SampleData.exportTargets,
+            selectedResultID: SampleData.results[0].id,
+            showsTrashConfirm: true,
+            section: .results
+        )
+    },
     Shot("results-empty") {
         RootView(
             studio: SampleData.studioEmpty,
@@ -209,6 +221,47 @@ let shots: [Shot] = [
             making: .empty,
             section: .making
         )
+    },
+
+    // 첫 실행 창은 720×540 고정이다.
+    Shot("onboarding-photos", sizes: [Tokens.Size.onboarding]) {
+        OnboardingWindow(state: OnboardingState(step: .photos))
+    },
+    Shot("onboarding-photos-denied", sizes: [Tokens.Size.onboarding]) {
+        OnboardingWindow(state: OnboardingState(step: .photos, photos: .denied))
+    },
+    Shot("onboarding-ai", sizes: [Tokens.Size.onboarding]) {
+        OnboardingWindow(state: OnboardingState(
+            step: .ai, photos: .granted, ai: .picked(.claude)
+        ))
+    },
+    Shot("onboarding-ai-waiting", sizes: [Tokens.Size.onboarding]) {
+        OnboardingWindow(state: OnboardingState(
+            step: .ai, photos: .granted, ai: .waiting(.claude)
+        ))
+    },
+    Shot("onboarding-ai-connected", sizes: [Tokens.Size.onboarding]) {
+        OnboardingWindow(state: OnboardingState(
+            step: .ai, photos: .granted,
+            ai: .connected(.claude, account: SampleData.sampleAccount)
+        ))
+    },
+    Shot("onboarding-studio", sizes: [Tokens.Size.onboarding]) {
+        OnboardingWindow(state: SampleData.onboardingStudio)
+    },
+    Shot("onboarding-ready", sizes: [Tokens.Size.onboarding]) {
+        OnboardingWindow(state: OnboardingState(step: .ready))
+    },
+
+    // 설정은 `Settings` 씬이라 창이 작다.
+    Shot("settings-connected", sizes: [CGSize(width: 520, height: 520)]) {
+        SettingsScreen(values: SampleData.settings)
+    },
+    Shot("settings-disconnected", sizes: [CGSize(width: 520, height: 520)]) {
+        SettingsScreen(values: SampleData.settingsDisconnected)
+    },
+    Shot("settings-loading", sizes: [CGSize(width: 520, height: 520)]) {
+        SettingsScreen(values: SampleData.settings, isLoading: true)
     },
 ]
 
@@ -398,8 +451,8 @@ func drawViewTree(of window: NSWindow, size: CGSize) -> NSBitmapImageRep? {
 /// 실물과 다른 부분을 진짜라고 읽지 않게, 무엇이 다른지 그림 안에 적어 둔다.
 @MainActor
 func withCaveat(_ rep: NSBitmapImageRep) -> Data? {
-    let note = "⚠︎ 뷰를 그려서 뜬 그림 — 사이드바·툴바 재질이 단색이고, 고른 세그먼트의 글자가 빠진다."
-        + "  실물은 화면 기록 권한을 켜고 다시 뜬다 (madi-ui-shots --권한)."
+    let note = "⚠︎ 뷰를 그려서 뜬 그림 — 사이드바 항목·재질·고른 세그먼트 글자가 실물과 다르다."
+        + "  화면이 깨어 있을 때 다시 뜨면 실제 창이 찍힌다 (madi-ui-shots --권한)."
     let stripHeight: CGFloat = 24
     let width = rep.size.width
     let height = rep.size.height + stripHeight
@@ -444,7 +497,8 @@ MainActor.assumeIsolated {
                 continue
             }
             try? data.write(to: outputDirectory.appending(path: name))
-            print(name)
+            // 어느 길로 찍혔는지 같이 남긴다. 뷰 그리기로 찍힌 판은 사이드바가 온전하지 않다.
+            print("\(name)  \(drawn ? "← 뷰 그리기" : "← 실제 창")")
         }
     }
 }

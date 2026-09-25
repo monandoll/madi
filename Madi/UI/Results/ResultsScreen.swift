@@ -14,14 +14,17 @@ struct ResultsScreen: View {
     var onOpenPlan: () -> Void = {}
     var onExport: (ExportTarget) -> Void = { _ in }
     var onShowShots: () -> Void = {}
+    var onTrash: (ResultRef) -> Void = { _ in }
 
     /// 프리뷰 · 스크린샷용.
     var initialSelection: ResultRef.ID?
     var showsExportSheet = false
+    var showsTrashConfirm = false
 
     @State private var selectedID: ResultRef.ID?
     @State private var mode: CompareMode = .sideBySide
     @State private var isExporting = false
+    @State private var trashing: ResultRef?
 
     var body: some View {
         content
@@ -36,9 +39,25 @@ struct ResultsScreen: View {
                     isExporting = false
                 }
             }
+            .confirmationDialog(
+                Copy.Results.Trash.confirmTitle,
+                isPresented: Binding(get: { trashing != nil }, set: { if !$0 { trashing = nil } }),
+                presenting: trashing
+            ) { result in
+                Button(Copy.Results.Trash.action) {
+                    onTrash(result)
+                    trashing = nil
+                }
+                Button(Copy.Action.cancel, role: .cancel) { trashing = nil }
+            } message: { _ in
+                Text(Copy.Results.Trash.confirmMessage)
+            }
             .onAppear {
                 if selectedID == nil { selectedID = initialSelection }
                 if showsExportSheet { isExporting = true }
+                if showsTrashConfirm {
+                    trashing = state.allItems.first { $0.id == initialSelection }
+                }
             }
     }
 
@@ -72,6 +91,16 @@ struct ResultsScreen: View {
                     ForEach(group.items) { item in
                         ResultRow(result: item)
                             .tag(item.id)
+                            .contextMenu {
+                                Button(Copy.Results.Export.action) {
+                                    selectedID = item.id
+                                    isExporting = true
+                                }
+                                Divider()
+                                // 결과물은 우리가 만든 파일이라 지울 수 있다. 다만 되살릴 수
+                                // 있어야 해서 macOS 휴지통으로 보낸다 ("삭제" 라고 쓰지 않는다).
+                                Button(Copy.Results.Trash.action) { trashing = item }
+                            }
                     }
                 }
             }
@@ -160,6 +189,13 @@ private struct ResultRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                // 내보낸 것은 줄에 그대로 남긴다. "이거 올렸었나" 를 묻지 않게.
+                if let note = result.exportedNote {
+                    Label(note, systemImage: "checkmark.circle")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
             Spacer(minLength: 0)
         }

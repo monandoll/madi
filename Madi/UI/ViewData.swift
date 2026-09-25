@@ -58,16 +58,20 @@ public struct ResultRef: Identifiable, Hashable, Sendable {
     public var duration: Double
     public var sceneCount: Int
     public var isNew: Bool
+    /// 내보낸 이력 한 줄. `사진 앱에 저장함 · 오후 2:40`.
+    /// **올렸는지 헷갈리지 않게** 목록 줄에 그대로 남긴다.
+    public var exportedNote: String?
     public var thumbnail: Thumbnail
 
     public init(
         id: String, platform: PlatformKind, planLabel: String, when: String,
         duration: Double, sceneCount: Int, isNew: Bool = false,
+        exportedNote: String? = nil,
         thumbnail: Thumbnail = .none
     ) {
         self.id = id; self.platform = platform; self.planLabel = planLabel
         self.when = when; self.duration = duration; self.sceneCount = sceneCount
-        self.isNew = isNew; self.thumbnail = thumbnail
+        self.isNew = isNew; self.exportedNote = exportedNote; self.thumbnail = thumbnail
     }
 }
 
@@ -446,6 +450,10 @@ public enum ResultsState: Hashable, Sendable {
     case loading
     case empty
     case loaded([ResultGroup])
+
+    public var allItems: [ResultRef] {
+        if case .loaded(let groups) = self { groups.flatMap(\.items) } else { [] }
+    }
 }
 
 /// 내보낼 곳. 아이폰으로 결과를 확인하려면 사진 앱으로 보내야 한다 (`AGENTS.md §2`).
@@ -510,4 +518,81 @@ public struct DoneItem: Identifiable, Hashable, Sendable {
 public enum MakingState: Hashable, Sendable {
     case empty
     case loaded(jobs: [MakingJob], doneToday: [DoneItem])
+}
+
+
+// MARK: - 첫 실행
+
+/// 첫 실행에서 묻는 것은 셋뿐이다 — 사진 · AI · 이름.
+/// 터미널 · 계정 설정을 사람에게 시키지 않는다 (`AGENTS.md §1-9`).
+public enum OnboardingStep: Hashable, Sendable, CaseIterable {
+    case photos, ai, studio, ready
+
+    /// `1 / 3`. `ready` 는 끝난 화면이라 번호가 없다.
+    public var stepLabel: String? {
+        switch self {
+        case .photos: "1 / 3"
+        case .ai: "2 / 3"
+        case .studio: "3 / 3"
+        case .ready: nil
+        }
+    }
+}
+
+/// 사진 보관함을 볼 수 있는지. **못 봐도 앱은 돌아간다** (폴더에서 직접 넣는 길이 있다).
+public enum PhotoAccess: Hashable, Sendable {
+    case notAsked, granted, denied
+}
+
+/// AI 연결이 어디까지 갔는지.
+public enum AISetup: Hashable, Sendable {
+    case notPicked
+    case picked(AIConnection)
+    /// 브라우저에서 로그인하는 중. 앱이 기다린다.
+    case waiting(AIConnection)
+    case connected(AIConnection, account: String)
+
+    public var picked: AIConnection? {
+        switch self {
+        case .notPicked: nil
+        case .picked(let ai), .waiting(let ai), .connected(let ai, _): ai
+        }
+    }
+}
+
+public struct OnboardingState: Hashable, Sendable {
+    public var step: OnboardingStep
+    public var photos: PhotoAccess
+    public var ai: AISetup
+    public var studioName: String
+
+    public init(
+        step: OnboardingStep, photos: PhotoAccess = .notAsked,
+        ai: AISetup = .notPicked, studioName: String = ""
+    ) {
+        self.step = step; self.photos = photos; self.ai = ai; self.studioName = studioName
+    }
+}
+
+// MARK: - 설정
+
+/// 설정값. **사람 이름 · 스튜디오 이름을 코드에 박지 않는다** (`AGENTS.md §1-7`).
+public struct SettingsValues: Hashable, Sendable {
+    public var ai: AISetup
+    /// 쓰는 AI. 연결은 둘 다 해 두고 쓰는 것만 고를 수 있다.
+    public var activeAI: AIConnection
+    public var studioName: String
+    /// 촬영본 보관 기간(일). 지난 촬영본은 지워도 **결과물은 지우지 않는다**.
+    public var keepDays: Int
+    /// 어느 앨범에서 가져올지. 비면 전체 보관함.
+    public var albumName: String?
+    public var photos: PhotoAccess
+
+    public init(
+        ai: AISetup, activeAI: AIConnection, studioName: String,
+        keepDays: Int, albumName: String? = nil, photos: PhotoAccess
+    ) {
+        self.ai = ai; self.activeAI = activeAI; self.studioName = studioName
+        self.keepDays = keepDays; self.albumName = albumName; self.photos = photos
+    }
 }

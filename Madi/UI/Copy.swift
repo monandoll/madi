@@ -301,17 +301,32 @@ public enum Copy {
             public static let airdrop = "AirDrop"
             public static let airdropDetail = "가까이 있는 기기로 바로 보내요"
             public static func done(_ target: String) -> String { "\(target)(으)로 보냈어요" }
+            /// 목록 줄에 남는 이력. `사진 앱에 저장함 · 오후 2:40`
+            public static func historyLine(target: String, when: String) -> String {
+                "\(target)에 저장함 · \(when)"
+            }
         }
 
         public static let noSelection = "결과물을 고르면 여기에 보여드려요"
+
+        /// 결과물은 **우리가 만든 파일**이라 지울 수 있다. 다만 되살릴 수 있어야 하므로
+        /// macOS 휴지통으로 보낸다. "삭제" 라고 쓰지 않는다.
+        public enum Trash {
+            public static let action = "휴지통으로 옮기기"
+            public static let confirmTitle = "이 영상을 휴지통으로 옮길까요?"
+            public static let confirmMessage = "사진 앱으로 내보낸 건 그대로 있어요."
+            public static let notice = "휴지통으로 옮겼어요"
+        }
     }
 
     // MARK: - 만드는 중 (화면)
 
     public enum MakingScreen {
         public static let title = "만드는 중"
-        public static let waitingHeader = "기다리는 중"
-        public static let stoppedHeader = "멈춘 것"
+        /// 사이드바 숫자와 이 화면 제목은 **같은 것을 센다** — 지금 만들고 있는 것.
+        /// 기다리는 것 · 멈춘 것은 묶음 제목에서 따로 센다.
+        public static func waitingHeader(_ n: Int) -> String { "기다리는 중 \(n)개" }
+        public static func stoppedHeader(_ n: Int) -> String { "멈춘 것 \(n)개" }
         public static let doneTodayHeader = "오늘 다 만든 것"
         public static let openResult = "결과물 보기"
         public static let cancel = "취소"
@@ -324,6 +339,110 @@ public enum Copy {
 
         public static func queuedNote(_ what: String) -> String { "\(what)이 끝나면 바로 시작해요" }
         public static func stoppedAt(_ percent: Int) -> String { "\(percent)%에서 멈췄어요" }
+    }
+
+
+    // MARK: - 첫 실행
+
+    /// 묻는 것은 셋뿐이다 — 사진 · AI · 이름. 그 밖에는 앱이 알아서 한다 (`AGENTS.md §1-9`).
+    public enum Onboarding {
+        public static let appName = "마디"
+        public static let skip = "건너뛰기"
+        public static let next = "계속"
+        public static let back = "이전"
+
+        public enum Photos {
+            public static let title = "사진 보관함을 볼 수 있게 해주세요"
+            public static let message =
+                "아이폰으로 찍은 영상이 iCloud 사진으로 Mac에 들어오면, 마디가 알아서 가져와요."
+            public static let pointVideoOnly = "영상만 읽어요"
+            public static let pointVideoOnlyDetail = "사진이나 다른 앨범은 건드리지 않아요"
+            public static let pointOriginal = "원본은 그대로 둬요"
+            public static let pointOriginalDetail = "편집은 복사본으로 하고, 아이폰 사진은 바뀌지 않아요"
+            public static let pointAnytime = "언제든 끌 수 있어요"
+            public static let pointAnytimeDetail = "설정에서 다시 바꿀 수 있어요"
+            public static let allow = "사진 접근 허용"
+
+            /// 허용하지 않아도 **막히지 않는다.** 다른 길을 알려준다.
+            public static let deniedTitle = "괜찮아요, 이대로도 쓸 수 있어요"
+            public static let deniedMessage =
+                "사진 없이도 Mac에 있는 영상을 직접 넣어서 쓸 수 있어요. "
+                + "나중에 허용하려면 시스템 설정을 열어주세요."
+            public static let openSystemSettings = "시스템 설정 열기"
+        }
+
+        public enum AI {
+            public static let title = "어떤 AI와 함께 편집할까요?"
+            public static let message =
+                "말로 부탁한 걸 알아듣고 편집안을 만드는 역할이에요. 이미 쓰고 있는 계정으로 로그인하면 돼요."
+            public static let claude = "Claude"
+            public static let claudeDetail = "Anthropic 계정으로 로그인"
+            public static let codex = "Codex"
+            public static let codexDetail = "OpenAI 계정으로 로그인"
+            public static func login(_ name: String) -> String { "\(name)로 로그인" }
+            public static let loginHint = "브라우저가 열리고, 로그인하면 자동으로 돌아와요"
+            public static let waiting = "브라우저에서 로그인을 마쳐주세요"
+            public static let waitingCancel = "취소"
+            public static func connected(_ name: String) -> String { "\(name) 연결됨" }
+            public static let otherAccount = "다른 계정으로"
+            public static let needed = "AI를 연결해야 편집안을 부탁할 수 있어요"
+        }
+
+        public enum Studio {
+            public static let title = "스튜디오 이름을 정해주세요"
+            public static let message = "앱 왼쪽 아래와 결과물 이름에 쓰여요. 나중에 설정에서 바꿀 수 있어요."
+            public static let placeholder = "예: 바른몸 스튜디오"
+            public static let previewLabel = "결과물은 이런 이름으로 저장돼요"
+            public static let start = "시작하기"
+            /// 이 단계에는 건너뛰기 버튼이 없다. 비워 두면 기본 이름으로 시작한다.
+            public static let skipHint = "비워 두면 ‘내 스튜디오’로 시작해요"
+            public static let defaultName = "내 스튜디오"
+        }
+
+        public enum Ready {
+            public static let title = "준비됐어요"
+            public static let message =
+                "아이폰으로 찍은 촬영본이 자동으로 들어와요.\n처음 가져오는 데 1~2분쯤 걸려요."
+            public static let start = "마디 시작하기"
+        }
+    }
+
+    // MARK: - 설정
+
+    public enum Settings {
+        public static let title = "설정"
+
+        public enum AI {
+            public static let header = "AI 연결"
+            public static let connected = "연결됨"
+            public static let disconnect = "연결 끊기"
+            public static let connect = "연결하기"
+            public static let notConnected = "연결 안 됨"
+            public static let active = "쓰는 AI"
+            public static let activeHint = "바꾸면 새 계정으로 다시 로그인해요"
+        }
+
+        public enum Studio {
+            public static let header = "스튜디오"
+            public static let name = "스튜디오 이름"
+            public static let nameHint = "앱 왼쪽 아래와 결과물 이름에 쓰여요"
+        }
+
+        public enum Shots {
+            public static let header = "촬영본"
+            public static let keep = "보관 기간"
+            public static let keepHint = "기간이 지난 촬영본은 지워요. 결과물은 지우지 않아요."
+            public static func days(_ n: Int) -> String { "\(n)일" }
+            public static let forever = "계속 두기"
+            public static let album = "사진 폴더"
+            public static let albumAll = "iCloud 사진 · 전체 보관함"
+            public static let pickAlbum = "앨범 고르기"
+            public static let photoAccess = "사진 접근"
+            public static let photoAccessOn = "허용됨"
+            public static let photoAccessOff = "허용 안 됨"
+        }
+
+        public static let loading = "연결을 확인하고 있어요"
     }
 
     // MARK: - 상태 문구

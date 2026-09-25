@@ -30,6 +30,7 @@ struct RootView: View {
     var editingSceneID: SceneCardItem.ID?
     var selectedResultID: ResultRef.ID?
     var showsExportSheet = false
+    var showsTrashConfirm = false
     /// 열자마자 고를 사이드바 칸.
     var section: LibrarySection = .shots
 
@@ -77,7 +78,8 @@ struct RootView: View {
                 detail: resultDetail,
                 exportTargets: exportTargets,
                 initialSelection: selectedResultID,
-                showsExportSheet: showsExportSheet
+                showsExportSheet: showsExportSheet,
+                showsTrashConfirm: showsTrashConfirm
             )
         case .making:
             MakingScreen(state: making)

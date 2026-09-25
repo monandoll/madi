@@ -32,8 +32,8 @@ struct MakingScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Tokens.Space.page) {
                     section(running(jobs), header: nil)
-                    section(queued(jobs), header: Copy.MakingScreen.waitingHeader)
-                    section(stopped(jobs), header: Copy.MakingScreen.stoppedHeader)
+                    section(queued(jobs), header: Copy.MakingScreen.waitingHeader(queued(jobs).count))
+                    section(stopped(jobs), header: Copy.MakingScreen.stoppedHeader(stopped(jobs).count))
                     doneSection(doneToday)
                 }
                 .padding(Tokens.Space.section)
@@ -96,9 +96,11 @@ struct MakingScreen: View {
         }
     }
 
+    /// 사이드바 뱃지와 **같은 것을 센다** — 지금 돌고 있는 것.
+    /// 기다리는 것 · 멈춘 것까지 세면 사이드바 1 · 제목 3개가 되어 어느 쪽이 맞는지 묻게 된다.
     private var subtitle: String {
         guard case .loaded(let jobs, _) = state else { return "" }
-        return Copy.count(jobs.count)
+        return Copy.count(running(jobs).count)
     }
 
     private func running(_ jobs: [MakingJob]) -> [MakingJob] {
