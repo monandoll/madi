@@ -135,6 +135,105 @@ public enum Copy {
         }
     }
 
+
+    // MARK: - 편집안
+
+    public enum Plan {
+        public static let title = "편집안"
+        /// 편집안을 고르는 메뉴. `편집안 2` 처럼 번호가 붙는다.
+        public static func version(_ n: Int) -> String { "편집안 \(n)" }
+        public static let backToGallery = "촬영본"
+
+        public enum Info {
+            public static let header = "이 편집안"
+            public static let length = "길이"
+            public static let scenes = "장면"
+            public static let format = "규격"
+            public static let caption = "자막"
+            /// `0:42 → 0:37`
+            public static func lengthChange(from: String, to: String) -> String { "\(from) → \(to)" }
+            public static func removedGaps(count: Int, seconds: Double) -> String {
+                "쉬는 구간 \(count)곳 뺌 (−\(Int(seconds.rounded()))초)"
+            }
+            public static let nowPlaying = "지금 보는 장면"
+        }
+
+        /// 자막 자리. **영상마다 하나**다 (`CaptionSlot`).
+        public enum Caption {
+            public static let lower = "아래쪽"
+            public static let upper = "위쪽"
+            public static let reasonLower = "인물 아래가 비어 있어요"
+            public static let reasonUpper = "아래 동작을 가리지 않게"
+        }
+
+        public enum Scenes {
+            public static func header(count: Int, total: String) -> String {
+                "장면 \(count)개 · \(total)"
+            }
+            public static let remove = "빼기"
+            public static let extend = "늘리기"
+            public static let editCaption = "자막"
+            public static let editCaptionFull = "자막 고치기"
+            public static let extendOne = "1초 늘리기"
+            public static let shortenOne = "1초 줄이기"
+            public static let playFromHere = "여기서부터 재생"
+            public static let removeScene = "장면 빼기"
+            public static let noCaption = "자막 없음"
+            public static func moreCaptions(_ n: Int) -> String { "자막 \(n)줄" }
+            /// 뺀 쉬는 구간 자리. 되돌릴 수 있다는 걸 보이게 남긴다.
+            public static func removedGap(_ seconds: Double) -> String {
+                "쉬는 구간 " + shortSeconds(seconds)
+            }
+            public static let bringBack = "되돌리기"
+            public static let captionPlaceholder = "여기 자막을 적어주세요"
+        }
+
+        /// 편집안을 짜는 중.
+        public enum Preparing {
+            public static let title = "편집안 만드는 중…"
+            public static let header = "진행"
+            public static let transcribe = "말한 내용 받아적기"
+            public static let split = "장면 나누기"
+            public static let findGaps = "쉬는 구간 찾기"
+            public static let reframe = "화면 잡기"
+            public static let done = "끝"
+            public static func remaining(_ text: String) -> String { "\(text) 남음" }
+            public static let stop = "멈추기"
+            public static let scenesComing = "나누는 중…"
+        }
+
+        /// AI 가 연결돼 있지 않을 때. **오류가 아니다** (AGENTS.md §10).
+        public enum NoAI {
+            public static let title = "AI를 연결하면 편집안을 만들어요"
+            public static let action = "AI 연결하기"
+        }
+    }
+
+    // MARK: - 대화
+
+    public enum Chat {
+        public static let header = "대화"
+        public static let inputPrompt = "말로 요청하기"
+        public static let inputPromptBusy = "다 되면 이어서 요청할 수 있어요"
+        public static let send = "보내기"
+        public static let speak = "말로 하기"
+
+        /// 아래 추천 칩. 고치는 요청이 대부분이다.
+        public enum Chips {
+            public static let cutGaps = "쉬는 구간 잘라줘"
+            public static let captions = "자막 넣어줘"
+            public static let shorter = "30초로 줄여줘"
+            public static let reels = "인스타 규격으로"
+            public static let shorts = "유튜브 쇼츠로"
+            public static let hookFirst = "앞에 훅 넣어줘"
+        }
+
+        public enum Summary {
+            public static let playFromStart = "처음부터 보기"
+            public static let undo = "되돌리기"
+        }
+    }
+
     // MARK: - 상태 문구
 
     /// 촬영본에서 말소리가 얼마나 잡혔는지. "오디오 SNR" 같은 말을 쓰지 않는다.

@@ -63,6 +63,69 @@ let shots: [Shot] = [
             galleryNotice: Copy.Gallery.Hidden.notice
         )
     },
+    Shot("plan-ready") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: .ready(SampleData.plan),
+            planMessages: SampleData.chat,
+            planChips: SampleData.chatChips,
+            opensPlan: true,
+            selectedSceneID: "s4"
+        )
+    },
+    Shot("plan-editing-caption") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: .ready(SampleData.plan),
+            planMessages: SampleData.chat,
+            planChips: SampleData.chatChips,
+            opensPlan: true,
+            selectedSceneID: "s4",
+            editingSceneID: "s4"
+        )
+    },
+    Shot("plan-preparing") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: .preparing(SampleData.prepareSteps),
+            planMessages: SampleData.chatPreparing,
+            planChips: SampleData.chatChips,
+            opensPlan: true
+        )
+    },
+    Shot("plan-stuck") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: .ready(SampleData.planNoCaptions),
+            planMessages: SampleData.chatStuck,
+            planChips: SampleData.chatChips,
+            opensPlan: true,
+            selectedSceneID: "n2"
+        )
+    },
+    Shot("plan-unsure-reframe") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: .ready(SampleData.plan),
+            planMessages: SampleData.chatUnsureReframe,
+            planChips: SampleData.chatChips,
+            opensPlan: true,
+            selectedSceneID: "s6"
+        )
+    },
+    Shot("plan-no-ai") {
+        RootView(
+            studio: SampleData.studioNoAI,
+            gallery: .loaded(SampleData.groups),
+            plan: .noAI,
+            opensPlan: true
+        )
+    },
 ]
 
 // MARK: - 들어가기
@@ -153,11 +216,14 @@ func capture(_ shot: Shot, size: CGSize) -> NSBitmapImageRep? {
     window.appearance = NSAppearance(named: .aqua)
     window.center()
     window.makeKeyAndOrderFront(nil)
-    // 창이 활성이 아니면 주요 버튼과 사이드바 선택이 **회색**으로 그려진다 (macOS 기본 동작).
-    // 스크린샷에서 "만들기 버튼이 왜 회색이지" 가 되므로 앱을 앞으로 올린다.
+    // 앞으로 올리려고 해도 macOS 14 는 사용자가 띄우지 않은 앱의 활성화를 막는다.
+    // 그래서 창은 **비활성 상태로** 찍힌다 — 툴바 버튼과 제목이 회색이다.
+    // 본문(인스펙터 · 버튼)은 tint 를 그대로 쓰므로 색이 맞고, 툴바만 다르다.
     app.activate(ignoringOtherApps: true)
 
     RunLoop.main.run(until: Date().addingTimeInterval(1.2))
+    window.makeKeyAndOrderFront(nil)
+    RunLoop.main.run(until: Date().addingTimeInterval(0.4))
     defer { window.orderOut(nil) }
 
     return canRecordScreen ? captureRealWindow(window) : drawViewTree(of: window, size: size)

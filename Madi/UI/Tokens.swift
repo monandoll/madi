@@ -83,9 +83,14 @@ public enum Tokens {
         /// **커스텀인 이유**: 세로 칸이라 한 줄에 적게 놓으면 한 화면에 몇 개 안 보인다.
         public static let gridItemIdeal: CGFloat = 170
 
-        /// 오른쪽 정보 패널 · 채팅 패널 폭. `Inspector` 기본값이 좁아 세로 미리보기가 눌린다.
+        /// 오른쪽 정보 패널 폭. `Inspector` 기본값이 좁아 세로 미리보기가 눌린다.
         public static let inspectorIdeal: CGFloat = 280
         public static let inspectorMin: CGFloat = 240
+
+        /// 대화 패널은 정보 패널보다 넓다. 말풍선이 한 줄에 두세 어절만 들어가면
+        /// AI 가 한 말이 스무 줄이 된다.
+        public static let chatIdeal: CGFloat = 320
+        public static let chatMin: CGFloat = 280
 
         /// 창 최소 크기. 1100×700 에서 깨지지 않는지 항상 확인한다 (design-ai 지침).
         public static let windowMin = CGSize(width: 1100, height: 700)

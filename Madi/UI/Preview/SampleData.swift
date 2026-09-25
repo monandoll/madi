@@ -206,3 +206,174 @@ public enum SampleData {
         shotCount: studio.shotCount, resultCount: studio.resultCount, makingCount: 0
     )
 }
+
+// MARK: - 편집안
+
+extension SampleData {
+
+    /// 공개본 한 편(18.5초 숏츠)을 편집안으로 되짚어 만든 샘플이다.
+    ///
+    /// **장면 카드의 자막과 그 장면 프레임의 자막이 같다.** 아무 프레임이나 붙이면
+    /// 카드에는 "천천히 일어나주시면서" 인데 재생 막대에는 다른 자막이 떠서,
+    /// 화면을 보는 사람이 "둘 중 뭐가 맞나" 를 먼저 묻게 된다.
+    /// 프레임 속 자막은 크리에이터가 실제로 쓴 것이고 우리가 흉내 내 그린 게 아니다
+    /// (design-ai 지침 3 — 영상 안 자막은 디자인 대상이 아니다).
+    public static let planScenes: [SceneCardItem] = [
+        SceneCardItem(
+            id: "s1", number: 1, role: .hook,
+            caption: "골반이 틀어지신 분들은", secondary: "If your pelvis is misaligned,",
+            duration: 2.4, thumbnail: resultFrame("yt_0_6s.png")
+        ),
+        SceneCardItem(
+            id: "s2", number: 2, role: .hook,
+            caption: "이거 안되실걸요?", secondary: "you probably can't do this.",
+            duration: 1.8, thumbnail: resultFrame("yt_1_5s.png"),
+            removedGapAfter: 2.6
+        ),
+        SceneCardItem(
+            id: "s3", number: 3, role: .demo,
+            caption: "양쪽 다리를", secondary: "Position both legs",
+            captionCount: 2, duration: 3.2, thumbnail: resultFrame("yt_3s.png")
+        ),
+        SceneCardItem(
+            id: "s4", number: 4, role: .demo,
+            caption: "천천히 일어나주시면서", secondary: "Slowly stand up,",
+            duration: 4.1, thumbnail: resultFrame("yt_5s.png")
+        ),
+        SceneCardItem(
+            id: "s5", number: 5, role: .demo,
+            caption: "반대쪽도 똑같이 진행해주세요", secondary: "Repeat on the other side.",
+            duration: 3.6, thumbnail: resultFrame("yt_7s.png"),
+            removedGapAfter: 2.4
+        ),
+        SceneCardItem(
+            id: "s6", number: 6, role: .explain,
+            caption: "양 쪽을 비교해봤을때,", secondary: "Compare both sides.",
+            duration: 2.9, thumbnail: resultFrame("yt_11s.png")
+        ),
+        SceneCardItem(
+            id: "s7", number: 7, role: .explain,
+            caption: "일어나지 못한다면", secondary: "if you can't stand up,",
+            duration: 2.2, thumbnail: resultFrame("yt_13s.png")
+        ),
+        SceneCardItem(
+            id: "s8", number: 8, role: .explain,
+            caption: "가능성이 높다는 겁니다", secondary: "it's likely misaligned.",
+            duration: 3.4, thumbnail: resultFrame("yt_15s.png")
+        ),
+        SceneCardItem(
+            id: "s9", number: 9, role: .cta,
+            caption: "다음 영상으로 해결해보세요", secondary: "Check out the next video!",
+            duration: 3.4, thumbnail: resultFrame("yt_17s.png")
+        ),
+    ]
+
+    public static let plan = PlanView(
+        id: "c_02", shotID: "v_01",
+        shotTitle: "골반이 틀어져있다면, 이 동작 안되실걸요?",
+        platform: .reels,
+        versionLabel: Copy.Plan.version(2), versionCount: 2,
+        sourceDuration: 42, targetDuration: 27,
+        // 이 편은 앉아서 상반신을 보여주는 편이라 자막이 아래쪽이다
+        // (docs/findings/2026-09-25-caption-position-10.md 의 A 무리, 아래끝 0.235).
+        captionSlot: .lower, captionReason: Copy.Plan.Caption.reasonLower,
+        scenes: planScenes, resultCount: 3
+    )
+
+    /// 자막을 위로 올린 편집안. 바닥에서 동작하는 영상은 자막이 동작을 가린다.
+    public static let planUpperCaption = PlanView(
+        id: "c_03", shotID: "v_04",
+        shotTitle: "허리 아플 때 폼롤러 이렇게 쓰세요",
+        platform: .shorts,
+        versionLabel: Copy.Plan.version(1), versionCount: 1,
+        sourceDuration: 64, targetDuration: 48,
+        captionSlot: .upper, captionReason: Copy.Plan.Caption.reasonUpper,
+        scenes: Array(planScenes.prefix(6)), resultCount: 0
+    )
+
+    /// 소리가 없어서 자막을 못 만든 편집안. 장면은 나뉘었는데 자막 자리가 비어 있다.
+    /// 대화에서 "자막을 못 만들었어요" 라고 말하면 **목록도 그렇게 보여야** 한다.
+    public static let planNoCaptions = PlanView(
+        id: "c_10", shotID: "v_03",
+        shotTitle: "라운드숄더 자가 체크 먼저 해보세요",
+        platform: .reels,
+        versionLabel: Copy.Plan.version(1), versionCount: 1,
+        sourceDuration: 51, targetDuration: 44,
+        captionSlot: .upper, captionReason: Copy.Plan.Caption.reasonUpper,
+        scenes: (1...5).map { i in
+            SceneCardItem(
+                id: "n\(i)", number: i,
+                role: [SceneRoleKind.hook, .demo, .demo, .explain, .cta][i - 1],
+                caption: "", captionCount: 0,
+                duration: [6.2, 11.4, 9.8, 8.6, 7.6][i - 1],
+                thumbnail: shotFrame("v_0\(i + 2)")
+            )
+        },
+        resultCount: 0
+    )
+
+    public static let prepareSteps: [PrepareStep] = [
+        PrepareStep(title: Copy.Plan.Preparing.transcribe, state: .done),
+        PrepareStep(title: Copy.Plan.Preparing.split, state: .running, remaining: "20초쯤"),
+        PrepareStep(title: Copy.Plan.Preparing.findGaps, state: .waiting),
+        PrepareStep(title: Copy.Plan.Preparing.reframe, state: .waiting),
+    ]
+
+    // MARK: - 대화
+
+    public static let chat: [ChatMessage] = [
+        ChatMessage(id: "m1", kind: .user("쉬는 구간 빼고 인스타용으로 만들어줘"),
+                    stamp: "오늘 오후 2:20"),
+        ChatMessage(id: "m2", kind: .assistant(
+            "42초를 장면 9개로 나눴어요. 훅 2개 · 시범 3개 · 설명 3개 · 마무리 1개예요.")),
+        ChatMessage(id: "m3", kind: .assistant(
+            "쉬는 구간 2곳, 5초를 뺐습니다. 자막은 아래쪽에 뒀어요 — 앉아서 말하는 영상이라 "
+            + "아래가 비어 있어요.")),
+        ChatMessage(id: "m4", kind: .summary(EditSummary(lines: [
+            .init(label: "쉬는 구간 2곳", value: "−5초"),
+            .init(label: "인스타 규격", value: "세로"),
+            .init(label: "길이", value: "0:42 → 0:27"),
+        ]))),
+    ]
+
+    /// 만드는 중에 오는 대화. 아직 아무것도 못 보여주니 말로만 알린다.
+    public static let chatPreparing: [ChatMessage] = [
+        ChatMessage(id: "p1", kind: .user("쉬는 구간 빼고 인스타용으로 만들어줘"),
+                    stamp: "오늘 오후 2:20"),
+        ChatMessage(id: "p2", kind: .assistant(
+            "영상을 살펴보고 있어요. 장면을 나눈 다음 쉬는 구간을 찾아볼게요.")),
+        ChatMessage(id: "p3", kind: .typing),
+    ]
+
+    /// 막힌 경우 — 소리가 없어서 자막을 못 만들었다.
+    /// 붉은색을 쓰지 않는다. 대신 **다음 행동**을 준다 (AGENTS.md §1-6).
+    public static let chatStuck: [ChatMessage] = [
+        ChatMessage(id: "e1", kind: .assistant("51초짜리 영상을 장면 5개로 나눴어요."),
+                    stamp: "오늘 오후 3:05"),
+        ChatMessage(id: "e2", kind: .user("자막 넣어줘")),
+        ChatMessage(id: "e3", kind: .assistant(
+            "이 영상은 소리가 없어서 자막을 못 만들었어요. 찍을 때 마이크가 꺼져 있었던 것 같아요.")),
+        ChatMessage(id: "e4", kind: .choices([
+            ChatChoice(title: "자막 없이 만들기",
+                       detail: "동작 위주 영상이면 이대로도 괜찮아요", isPrimary: true),
+            ChatChoice(title: "자막 직접 적기", detail: "장면 카드마다 한 줄씩 적으면 돼요"),
+            ChatChoice(title: "같은 날 찍은 다른 영상 보기",
+                       detail: "오후 2:31에 찍은 영상은 소리가 있어요"),
+        ])),
+    ]
+
+    /// 품질 게이트가 "판정 불가" 를 낸 경우 (AGENTS.md §8 — 측정 불가가 20% 를 넘으면
+    /// 사용자에게 보인다). 실패가 아니라 **확인 못 했다**는 말이라 말투가 다르다.
+    public static let chatUnsureReframe: [ChatMessage] = chat + [
+        ChatMessage(id: "m5", kind: .assistant(
+            "한 가지만 알려드릴게요. 12~19초 구간은 화면에 사람이 거의 안 잡혀서 "
+            + "화면 잡기가 잘 됐는지 확인하지 못했어요. 만들고 나서 그 부분만 한번 봐주세요.")),
+    ]
+
+    public static let chatChips: [String] = [
+        Copy.Chat.Chips.cutGaps,
+        Copy.Chat.Chips.shorter,
+        Copy.Chat.Chips.hookFirst,
+        Copy.Chat.Chips.shorts,
+    ]
+}

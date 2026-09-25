@@ -195,3 +195,193 @@ public struct StudioStatus: Hashable, Sendable {
         }
     }
 }
+
+// MARK: - 편집안
+
+/// 자막을 화면 어디에 놓을지. **영상마다 하나다** — 장면마다 따로 고르지 않는다.
+///
+/// 공개본 10편을 재 보니 한 편 안에서는 자막 위치가 거의 완벽하게 고정이고
+/// (12프레임 전부 같은 값), 편 사이에서는 프레임 높이의 25% 까지 벌어졌다
+/// (`docs/findings/2026-09-25-caption-position-10.md`). 아래에서 동작하는 영상은
+/// 자막을 위로 올려 가리지 않게 한 것으로 보인다.
+///
+/// 그래서 화면에서도 **편집안 정보에 한 줄로** 보여주고, 장면 카드에는 두지 않는다.
+public enum CaptionSlot: Hashable, Sendable {
+    case lower, upper
+
+    public var label: String {
+        switch self {
+        case .lower: Copy.Plan.Caption.lower
+        case .upper: Copy.Plan.Caption.upper
+        }
+    }
+}
+
+public enum SceneRoleKind: Hashable, Sendable, CaseIterable {
+    case hook, demo, explain, cta, filler
+
+    public var label: String {
+        switch self {
+        case .hook: Copy.Role.hook
+        case .demo: Copy.Role.demo
+        case .explain: Copy.Role.explain
+        case .cta: Copy.Role.cta
+        case .filler: Copy.Role.filler
+        }
+    }
+
+    public var tint: Color {
+        switch self {
+        case .hook: Tokens.RoleTint.hook
+        case .demo: Tokens.RoleTint.demo
+        case .explain: Tokens.RoleTint.explain
+        case .cta: Tokens.RoleTint.cta
+        case .filler: Tokens.RoleTint.filler
+        }
+    }
+}
+
+/// 장면 카드 하나. 사람이 "틀린 곳을 짚을" 단위다 (AGENTS.md §1-3).
+///
+/// `Scene` 과 달리 원본 구간(`in`/`out`)을 들고 있지 않다. 화면에 안 나오기 때문이다.
+/// 나오는 것은 **몇 번째인지 · 무슨 역할인지 · 뭐라고 말하는지 · 몇 초인지** 넷이다.
+public struct SceneCardItem: Identifiable, Hashable, Sendable {
+    public var id: String
+    public var number: Int
+    public var role: SceneRoleKind
+    /// 이 장면의 자막. 여러 덩어리면 첫 덩어리를 보여주고 나머지는 `captionCount` 로 센다.
+    public var caption: String
+    public var secondary: String?
+    public var captionCount: Int
+    public var duration: Double
+    public var thumbnail: Thumbnail
+    /// 이 장면 **뒤에** 뺀 쉬는 구간. 되돌릴 수 있어야 하므로 화면에 남긴다.
+    public var removedGapAfter: Double?
+
+    public init(
+        id: String, number: Int, role: SceneRoleKind, caption: String,
+        secondary: String? = nil, captionCount: Int = 1, duration: Double,
+        thumbnail: Thumbnail = .none, removedGapAfter: Double? = nil
+    ) {
+        self.id = id; self.number = number; self.role = role; self.caption = caption
+        self.secondary = secondary; self.captionCount = captionCount
+        self.duration = duration; self.thumbnail = thumbnail
+        self.removedGapAfter = removedGapAfter
+    }
+}
+
+/// 편집안 하나. 화면에 보이는 것만 들고 있다.
+public struct PlanView: Identifiable, Hashable, Sendable {
+    public var id: String
+    public var shotID: String
+    public var shotTitle: String
+    public var platform: PlatformKind
+    /// `편집안 2`. 고칠 때마다 새로 생기므로 (AGENTS.md §10 `revisionOf`) 번호가 는다.
+    public var versionLabel: String
+    public var versionCount: Int
+    public var sourceDuration: Double
+    public var targetDuration: Double
+    public var captionSlot: CaptionSlot
+    /// 왜 그 자리인지 한 줄. "아래 동작을 가리지 않게".
+    public var captionReason: String
+    public var scenes: [SceneCardItem]
+    public var resultCount: Int
+
+    public init(
+        id: String, shotID: String, shotTitle: String, platform: PlatformKind,
+        versionLabel: String, versionCount: Int,
+        sourceDuration: Double, targetDuration: Double,
+        captionSlot: CaptionSlot, captionReason: String,
+        scenes: [SceneCardItem], resultCount: Int
+    ) {
+        self.id = id; self.shotID = shotID; self.shotTitle = shotTitle
+        self.platform = platform; self.versionLabel = versionLabel
+        self.versionCount = versionCount
+        self.sourceDuration = sourceDuration; self.targetDuration = targetDuration
+        self.captionSlot = captionSlot; self.captionReason = captionReason
+        self.scenes = scenes; self.resultCount = resultCount
+    }
+
+    public var removedGapCount: Int { scenes.filter { $0.removedGapAfter != nil }.count }
+    public var removedGapSeconds: Double { scenes.compactMap(\.removedGapAfter).reduce(0, +) }
+}
+
+/// 편집안을 짜는 동안 보여주는 단계. 퍼센트 하나보다 "지금 뭘 하는지" 가 안심이 된다.
+public struct PrepareStep: Identifiable, Hashable, Sendable {
+    public enum State: Hashable, Sendable {
+        case done, running, waiting
+    }
+
+    public var id: String { title }
+    public var title: String
+    public var state: State
+    /// `20초쯤 남음`. 없으면 안 보여준다 — 틀린 숫자를 보여주느니 없는 게 낫다.
+    public var remaining: String?
+
+    public init(title: String, state: State, remaining: String? = nil) {
+        self.title = title; self.state = state; self.remaining = remaining
+    }
+}
+
+/// 편집안 화면이 지금 무엇을 보여줄 상태인지.
+public enum PlanState: Hashable, Sendable {
+    /// AI 가 살펴보고 장면을 나누는 중.
+    case preparing([PrepareStep])
+    case ready(PlanView)
+    /// AI 가 연결돼 있지 않다. **오류가 아니다** — 한 줄만 말한다 (AGENTS.md §10).
+    case noAI
+}
+
+// MARK: - 대화
+
+/// 채팅 한 줄. 오류도 여기로 들어온다 (AGENTS.md §1-6 오류는 채팅 안에 AI 말투로).
+public struct ChatMessage: Identifiable, Hashable, Sendable {
+    public enum Kind: Hashable, Sendable {
+        case user(String)
+        case assistant(String)
+        /// 무엇이 바뀌었는지 표로. 숫자를 말로 풀어 쓰는 것보다 짧다.
+        case summary(EditSummary)
+        /// 다음 행동 버튼. 막혔을 때 **항상** 같이 준다.
+        case choices([ChatChoice])
+        /// AI 가 지금 쓰고 있는 중.
+        case typing
+    }
+
+    public var id: String
+    public var kind: Kind
+    /// `오늘 오후 2:20`. 묶음 첫 줄에만 보여준다.
+    public var stamp: String?
+
+    public init(id: String, kind: Kind, stamp: String? = nil) {
+        self.id = id; self.kind = kind; self.stamp = stamp
+    }
+}
+
+public struct EditSummary: Hashable, Sendable {
+    public struct Line: Identifiable, Hashable, Sendable {
+        public var id: String { label }
+        public var label: String
+        public var value: String
+        public init(label: String, value: String) { self.label = label; self.value = value }
+    }
+
+    public var lines: [Line]
+    /// `되돌리기` 를 줄지. 결과물이 이미 나온 편집안은 제자리에서 고치지 않는다 (§1-8).
+    public var canUndo: Bool
+
+    public init(lines: [Line], canUndo: Bool = true) {
+        self.lines = lines; self.canUndo = canUndo
+    }
+}
+
+public struct ChatChoice: Identifiable, Hashable, Sendable {
+    public var id: String { title }
+    public var title: String
+    /// 왜 이걸 고르는지 한 줄. 버튼만 있으면 무엇이 다른지 모른다.
+    public var detail: String?
+    public var isPrimary: Bool
+
+    public init(title: String, detail: String? = nil, isPrimary: Bool = false) {
+        self.title = title; self.detail = detail; self.isPrimary = isPrimary
+    }
+}
