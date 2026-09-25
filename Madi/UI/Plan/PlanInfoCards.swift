@@ -10,16 +10,21 @@ struct PlanInfoCard: View {
 
     var body: some View {
         InfoCard(title: Copy.Plan.Info.header) {
-            row(Copy.Plan.Info.length, Copy.Plan.Info.lengthChange(
-                from: Copy.duration(plan.sourceDuration),
-                to: Copy.duration(plan.targetDuration)
-            ))
+            row(Copy.Plan.Info.length, lengthLine)
             row(Copy.Plan.Info.scenes, sceneLine)
             row(Copy.Plan.Info.format, "\(plan.platform.label) (\(Copy.Platform.verticalNote))")
             // 자막 자리는 **영상이 주로 보여주는 몸의 범위**로 정해진다.
             // "위쪽 · 아래쪽" 같은 위치어를 쓰지 않는다 (기각된 가설 — ViewData 의 CaptionSlot 주석).
             row(Copy.Plan.Info.caption, plan.captionSlot.label)
         }
+    }
+
+    /// 짧은 촬영본은 자를 게 없어서 길이가 그대로다. 그때 `0:05 → 0:05` 라고 쓰면
+    /// 뭔가 한 것처럼 읽힌다. 바뀐 게 없으면 한 값만 쓴다.
+    private var lengthLine: String {
+        let source = Copy.duration(plan.sourceDuration)
+        let target = Copy.duration(plan.targetDuration)
+        return source == target ? target : Copy.Plan.Info.lengthChange(from: source, to: target)
     }
 
     private var sceneLine: String {

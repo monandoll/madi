@@ -152,6 +152,27 @@ let shots: [Shot] = [
             selectedSceneID: "s4"
         )
     },
+    Shot("plan-single-scene") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: .ready(SampleData.planSingleScene),
+            planMessages: SampleData.chatSingleScene,
+            planChips: SampleData.chatChipsShort,
+            opensPlan: true,
+            selectedSceneID: "one"
+        )
+    },
+    Shot("plan-too-long") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: SampleData.planTooLong,
+            planMessages: SampleData.chatTooLong,
+            planChips: [],
+            opensPlan: true
+        )
+    },
     Shot("plan-no-ai") {
         RootView(
             studio: SampleData.studioNoAI,

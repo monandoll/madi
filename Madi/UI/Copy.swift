@@ -228,6 +228,21 @@ public enum Copy {
             }
         }
 
+        /// 아직 다루지 못하는 촬영본. 롱폼은 `AGENTS.md §16` 에서 6단계 전까지 범위 밖이다.
+        /// **"못 만들어요" 가 아니라 "아직 못 만들어요" 다.**
+        public enum NotYet {
+            public static let title = "이 길이는 아직 못 만들어요"
+            /// ⚠ 10분은 **추측**이다. 크리에이터 촬영 길이를 아직 모른다 (decisions.md).
+            public static let longMessage =
+                "10분이 넘는 긴 영상은 아직 다루지 못해요. 짧은 촬영본으로 먼저 만들어볼까요?"
+            public static let pickAnother = "다른 촬영본 고르기"
+        }
+
+        /// 장면이 하나뿐인 편집안. 짧은 촬영본에서 나온다. **막지 않는다** — 그대로 만들 수 있다.
+        public enum SingleScene {
+            public static let note = "장면이 하나예요"
+        }
+
         /// AI 가 연결돼 있지 않을 때. **오류가 아니다** (AGENTS.md §10).
         public enum NoAI {
             public static let title = "AI를 연결하면 편집안을 만들어요"

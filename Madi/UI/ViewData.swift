@@ -364,6 +364,9 @@ public enum PlanState: Hashable, Sendable {
     case making(PlanView, MakingProgress)
     /// AI 가 연결돼 있지 않다. **오류가 아니다** — 한 줄만 말한다 (AGENTS.md §10).
     case noAI
+    /// 아직 다루지 못하는 촬영본. 롱폼은 6단계 통과 전에는 범위 밖이다 (`AGENTS.md §16`).
+    /// **실패가 아니라 "아직" 이다.** 왜 못 하는지 말하고 다른 길을 준다.
+    case notYet(shotTitle: String, reason: String)
 
     public var plan: PlanView? {
         switch self {

@@ -57,6 +57,16 @@ struct PlanScreen: View {
             ready(plan, progress: progress)
         case .preparing(let steps):
             PlanPreparingView(steps: steps, onStop: onStop)
+        case .notYet(_, let reason):
+            // 실패가 아니라 "아직" 이다. 왜 못 하는지 말하고 다른 길을 준다.
+            ContentUnavailableView {
+                Label(Copy.Plan.NotYet.title, systemImage: "hourglass")
+            } description: {
+                Text(reason)
+            } actions: {
+                Button(Copy.Plan.NotYet.pickAnother, action: onBack)
+                    .buttonStyle(.borderedProminent)
+            }
         case .noAI:
             // 한 줄만 말한다. AI 없이 도는 다른 길을 만들지 않는다 (AGENTS.md §10, §16).
             ContentUnavailableView {
@@ -143,6 +153,7 @@ struct PlanScreen: View {
     private var title: String {
         switch state {
         case .ready(let plan), .making(let plan, _): plan.shotTitle
+        case .notYet(let title, _): title
         case .preparing, .noAI: SampleTitlePlaceholder.title
         }
     }
@@ -155,7 +166,7 @@ struct PlanScreen: View {
             Copy.Plan.Making.title
         case .preparing:
             Copy.Plan.Preparing.title
-        case .noAI:
+        case .noAI, .notYet:
             ""
         }
     }

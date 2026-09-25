@@ -68,15 +68,23 @@ struct SceneList: View {
             ))
             .font(.headline)
 
-            Text(isReadOnly ? Copy.Plan.Making.readOnly : Copy.Plan.Scenes.reorderHint)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            // 줄이 하나면 순서를 바꿀 것도 없다. 안내를 띄우면 없는 기능을 찾게 된다.
+            if let hint {
+                Text(hint)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
             Spacer()
         }
         .padding(.horizontal, Tokens.Space.section)
         .padding(.top, Tokens.Space.inner)
         .padding(.bottom, Tokens.Space.tight)
+    }
+
+    private var hint: String? {
+        if isReadOnly { return Copy.Plan.Making.readOnly }
+        return plan.scenes.count > 1 ? Copy.Plan.Scenes.reorderHint : nil
     }
 
     private func row(_ scene: SceneCardItem) -> some View {

@@ -588,3 +588,59 @@ extension SampleData {
         ]
     )
 }
+
+// MARK: - 짧은 촬영본 · 아직 못 만드는 길이
+
+extension SampleData {
+
+    /// 장면이 **하나뿐인** 편집안. 5초짜리 촬영본에서 나온다.
+    ///
+    /// 막지 않는다 — 그대로 만들 수 있다. 다만 화면이 이상해지지 않아야 한다:
+    /// 목록에 줄이 하나고, 뺀 쉬는 구간이 없고, "장면 1개 · 0:05" 가 그대로 말이 된다.
+    public static let planSingleScene = PlanView(
+        id: "c_20", shotID: "v_20",
+        shotTitle: "어깨 으쓱, 이것만 기억하세요",
+        platform: .reels,
+        versionLabel: Copy.Plan.version(1), versionCount: 1,
+        sourceDuration: 5.4, targetDuration: 5.4,
+        captionSlot: .upperBody,
+        scenes: [
+            SceneCardItem(
+                id: "one", number: 1, role: .hook,
+                caption: "어깨 으쓱 3초만", secondary: "Shrug for three seconds.",
+                duration: 5.4, thumbnail: resultFrame("yt_1_5s.png")
+            )
+        ],
+        resultCount: 0
+    )
+
+    /// 장면이 하나일 때 AI 가 하는 말. **나누지 못한 걸 사과하지 않는다** —
+    /// 짧은 건 짧은 대로 쓸 수 있다고 말하고, 다음에 뭘 할 수 있는지 준다.
+    public static let chatSingleScene: [ChatMessage] = [
+        ChatMessage(id: "sc1", kind: .user("이걸로 릴스 만들어줘"), stamp: "오늘 오후 4:10"),
+        ChatMessage(id: "sc2", kind: .assistant(
+            "5초짜리라 나눌 곳이 없어서 장면 하나로 뒀어요. 자막만 넣었고 이대로 만들 수 있어요.")),
+        ChatMessage(id: "sc3", kind: .assistant(
+            "더 길게 가고 싶으면 같은 동작을 두세 번 반복해서 찍어 주시면 장면을 나눌 수 있어요.")),
+    ]
+
+    /// 짧은 영상에는 "쉬는 구간 잘라줘" · "30초로 줄여줘" 가 말이 안 된다.
+    /// 칩은 **지금 할 수 있는 것**만 보여준다.
+    public static let chatChipsShort: [String] = [
+        Copy.Chat.Chips.hookFirst,
+        Copy.Chat.Chips.shorts,
+        Copy.Chat.Chips.reels,
+    ]
+
+    /// 아직 다루지 못하는 길이. 롱폼은 6단계 전까지 범위 밖이다 (`AGENTS.md §16`).
+    public static let planTooLong = PlanState.notYet(
+        shotTitle: "고관절 가동성 루틴 전체 영상",
+        reason: Copy.Plan.NotYet.longMessage
+    )
+
+    public static let chatTooLong: [ChatMessage] = [
+        ChatMessage(id: "tl1", kind: .assistant(
+            "12분 24초짜리 영상이네요. 아직은 이렇게 긴 영상을 다루지 못해요."),
+            stamp: "오늘 오후 4:22"),
+    ]
+}
