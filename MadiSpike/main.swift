@@ -380,6 +380,120 @@ case "crop916":
                      made.size.width, made.size.height, made.duration))
     } catch { fail("\(error)") }
 
+case "g7test":
+    // G7 실측. **공개본이 이 게이트를 통과하는가?**
+    //
+    // §8 G7 은 "자막 박스가 어깨선 위 관절을 덮지 않음" 이다. 그런데
+    // docs/findings/2026-09-25-caption-position-rule-test.md 에서
+    // "크리에이터는 자막을 피사체 위에 얹는다" 가 나왔다. 둘이 충돌할 수 있다.
+    // G4(4.5%) · G5(13자) 때처럼 크리에이터 본인 영상이 탈락하는지 먼저 본다.
+    guard args.count > 1 else { fail("사용법: madi-spike g7test <영상> [--n 24]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let id = video.deletingPathExtension().lastPathComponent
+        let n = Int(option("n") ?? "") ?? 24
+        let info = try await FrameSheet.info(of: video)
+        let span = max(info.duration - 1, 1)
+        let times = (0..<n).map { 0.5 + span * Double($0) / Double(max(n - 1, 1)) }
+        let frames = try await FrameSheet.extract(
+            from: video, at: times,
+            into: URL(fileURLWithPath: "out/g7").appending(path: id), prefix: ""
+        )
+        let pose = VisionPoseProvider()
+        // 어깨선 **위** 관절. G7 이 보호하려는 것은 얼굴이다.
+        let above: [PoseObservation.Joint] = [
+            .nose, .leftEye, .rightEye, .leftEar, .rightEar, .neck,
+            .leftShoulder, .rightShoulder,
+        ]
+        var withCaption = 0, covered = 0, anyJoint = 0
+        var worstNames: [String] = []
+        for frame in frames {
+            let image = try StillRenderer.loadImage(frame)
+            let read = try CaptionReader.read(image)
+            guard !read.text.isEmpty, read.box.h > 0 else { continue }
+            withCaption += 1
+            guard let obs = try pose.detect(in: image).first else { continue }
+            anyJoint += 1
+            var hit: [String] = []
+            for joint in above {
+                guard let (p, conf) = obs.joints[joint], conf >= 0.3 else { continue }
+                let inside = p.x >= read.box.x && p.x <= read.box.x + read.box.w
+                    && p.y >= read.box.y && p.y <= read.box.y + read.box.h
+                if inside { hit.append(joint.rawValue) }
+            }
+            if !hit.isEmpty { covered += 1; worstNames += hit }
+        }
+        let names = Set(worstNames).sorted().joined(separator: ",")
+        print(String(format: "  %-14@ 자막 %2d프레임 · 관절검출 %2d · **덮임 %2d (%3.0f%%)**  %@",
+                     id as NSString, withCaption, anyJoint, covered,
+                     anyJoint > 0 ? Double(covered) / Double(anyJoint) * 100 : 0,
+                     names as NSString))
+    } catch { fail("\(error)") }
+
+case "captions":
+    // 공개본에 번인된 자막을 읽어 **분절 실측**을 한다.
+    //
+    // AGENTS.md §9 의 "한 줄 최대 15자" 는 공개본 **1편**(자막 15개)에서 나온 값이다.
+    // §0-7 이 "5편 이상 보고 정한다" 고 하므로 10편으로 다시 센다.
+    //
+    // Vision 의 VNRecognizeTextRequest 를 쓴다 — 온디바이스이고 외부 바이너리가 없다.
+    guard args.count > 1 else {
+        fail("사용법: madi-spike captions <영상> [--fps 4] [--until 30] [--raw]")
+    }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let id = video.deletingPathExtension().lastPathComponent
+        let sampleFPS = Double(option("fps") ?? "") ?? 4
+        let info = try await FrameSheet.info(of: video)
+        let until = min(Double(option("until") ?? "") ?? info.duration, info.duration - 0.05)
+        let times = stride(from: 0.0, to: until, by: 1 / sampleFPS).map { $0 }
+        let frames = try await FrameSheet.extract(
+            from: video, at: times,
+            into: URL(fileURLWithPath: "out/captions").appending(path: id), prefix: ""
+        )
+
+        var reads: [(t: Double, text: String, lines: Int, height: Double)] = []
+        for (i, frame) in frames.enumerated() {
+            let image = try StillRenderer.loadImage(frame)
+            let found = try CaptionReader.read(image)
+            guard !found.text.isEmpty else { continue }
+            reads.append((times[i], found.text, found.lines, found.inkHeightRatio))
+        }
+
+        // 같은 문구가 이어지면 한 덩어리다. 표본 간격만큼의 끊김은 이어 붙인다.
+        struct Chunk { var text: String; var start: Double; var end: Double
+                       var lines: Int; var height: Double }
+        var chunks: [Chunk] = []
+        for r in reads {
+            if var last = chunks.last, last.text == r.text,
+               r.t - last.end <= 1.5 / sampleFPS {
+                last.end = r.t
+                last.lines = max(last.lines, r.lines)
+                chunks[chunks.count - 1] = last
+            } else {
+                chunks.append(Chunk(text: r.text, start: r.t, end: r.t,
+                                    lines: r.lines, height: r.height))
+            }
+        }
+        // 한 표본에만 스친 것은 OCR 흔들림으로 본다.
+        let solid = chunks.filter { $0.end > $0.start }
+
+        if args.contains("--raw") {
+            for c in solid {
+                print(String(format: "  %5.1f-%5.1f  %2d자 %d줄  %@",
+                             c.start, c.end, c.text.count, c.lines, c.text as NSString))
+            }
+        }
+        let counts = solid.map { Double($0.text.count) }.sorted()
+        let durs = solid.map { $0.end - $0.start + 1 / sampleFPS }.sorted()
+        func med(_ v: [Double]) -> Double { v.isEmpty ? 0 : v[v.count / 2] }
+        let twoLine = solid.filter { $0.lines >= 2 }.count
+        print(String(format:
+            "  %-14@ 덩어리 %2d개 · 글자수 중앙 %2.0f 최대 %2.0f · 길이 중앙 %.2f초 · 2줄 %d개",
+            id as NSString, solid.count, med(counts), counts.last ?? 0,
+            med(durs), twoLine))
+    } catch { fail("\(error)") }
+
 case "maskshape":
     // G1 구멍 조사. "제대로 잡힌 화면" 의 마스크가 어떻게 생겼는지 재서
     // '잴 수 없는 마스크' 를 가를 기준을 찾는다. 숫자를 지어내지 않는다 (AGENTS.md §8).

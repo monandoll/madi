@@ -147,7 +147,35 @@ public struct StyleValues: Codable, Hashable, Sendable {
         ///
         /// ★ 글자 수는 실제 제약이 아니다. **폭이 제약**이고 `maxWidthRatio` 가 이미 막는다.
         ///   이 값은 근사치이므로 의심스러우면 느슨하게 두고 폭에 맡긴다.
+        /// 한 덩어리 글자 수 **상한**. G5 가 보는 값이다.
         public var maxChars: Int
+
+        /// 한 덩어리 글자 수 **목표**. 상한과 다른 값이다.
+        ///
+        /// ★ 공개본 10편 190덩어리에서 **중앙 9자 · p90 13자**였다
+        ///   (`docs/findings/2026-09-26-caption-segmentation-10.md §2`).
+        ///   **상한 15자까지 눌러 담으면 크리에이터 자막이 아니다.**
+        ///   분절은 이 값을 노리고, `maxChars` 는 넘지 말아야 할 선이다.
+        public var targetChars: Int
+
+        /// 한 덩어리 목표 길이(초). 공개본 10편 전부 중앙값이 0.75~1.25초였다.
+        /// **게이트가 아니다** — 실패 사례를 본 적이 없어 임계값으로 걸지 않는다.
+        public var targetDurationSec: Double
+
+        /// 한 덩어리가 이보다 길면 안 끊은 것으로 본다.
+        ///
+        /// ⚠ **추측한 값이다.** 실측 중앙값(0.75~1.25초)의 약 2배로 잡았다.
+        /// 크리에이터가 이보다 긴 자막을 쓴 사례는 10편에서 없었지만,
+        /// "없었다" 와 "안 된다" 는 다르다.
+        public var maxDurationSec: Double
+
+        /// 말이 이만큼 끊기면 덩어리를 나눈다.
+        ///
+        /// ⚠ **추측한 값이다.** 크리에이터의 **단어 단위** 타이밍을 가진 적이 없어
+        /// 실측할 수 없었다. 번인 자막 OCR 로는 덩어리 경계만 보이고 그 안의 쉼은 안 보인다.
+        public var pauseSec: Double
+
+        /// 줄 수 상한. **2줄은 상한이지 목표가 아니다** — 190덩어리 중 2줄은 1개였다.
         public var maxLines: Int
 
         /// 2줄일 때 줄 간격 ÷ 글자 높이.
@@ -281,6 +309,18 @@ public func validate(_ values: StyleValues) throws {
     check("caption.popInScaleFrom", c.popInScaleFrom, 0.3...1.0)
     if c.maxChars < 1 || c.maxChars > 40 {
         problems.append("caption.maxChars \(c.maxChars) 는 1~40 밖이다")
+    }
+    if c.targetChars < 1 || c.targetChars > c.maxChars {
+        problems.append("caption.targetChars \(c.targetChars) 는 1~maxChars 밖이다")
+    }
+    if c.targetDurationSec <= 0 || c.targetDurationSec > 5 {
+        problems.append("caption.targetDurationSec \(c.targetDurationSec) 는 0~5 밖이다")
+    }
+    if c.maxDurationSec < c.targetDurationSec || c.maxDurationSec > 10 {
+        problems.append("caption.maxDurationSec \(c.maxDurationSec) 는 목표~10 밖이다")
+    }
+    if c.pauseSec <= 0 || c.pauseSec > 2 {
+        problems.append("caption.pauseSec \(c.pauseSec) 는 0~2 밖이다")
     }
     if c.maxLines < 1 || c.maxLines > 3 {
         problems.append("caption.maxLines \(c.maxLines) 는 1~3 밖이다 (G5 는 2줄 이내)")

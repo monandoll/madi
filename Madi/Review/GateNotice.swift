@@ -24,6 +24,12 @@ public enum GateNotice: String, Codable, Hashable, Sendable, CaseIterable {
     /// `판정 불가` — 원본에서 인물이 이미 위·아래로 잘려 있어
     /// "우리가 새로 잘랐는가"(G2)를 물을 수 없다.
     case subjectAlreadyCropped
+
+    /// `판정 불가` — 편집안에 자막이 하나도 없어 G5 를 잴 게 없다.
+    case noCaptions
+
+    /// `판정 불가` — 전사가 없어 자막 싱크(G6)를 맞춰 볼 대상이 없다.
+    case noTranscript
 }
 
 /// 게이트 하나의 판정. **통과·실패만으로는 부족하다** (`AGENTS.md §8`).
