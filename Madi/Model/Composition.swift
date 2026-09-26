@@ -136,12 +136,12 @@ public struct Caption: Codable, Hashable, Sendable {
 /// 여기서는 kind 별 최소 계약만 강제한다.
 public struct Overlay: Codable, Hashable, Sendable {
     public enum Kind: String, Codable, Sendable {
-        case titleCard   // 훅 타이틀
+        case titleCard   // 훅 타이틀. 공개본 10편 중 0편 — Spec.json 에서 뺐다
         case arrow       // 방향 지시 (조사 5편 중 2편)
         case circle      // 부위 강조 (조사 5편 중 3편)
         case image       // 해부학 그림 등
-        case counter     // 횟수
-        case progress    // 진행 바
+        case counter     // 횟수. 공개본 0편 — Spec.json 에서 뺐다
+        case progress    // 진행 바. 공개본 0편 — Spec.json 에서 뺐다
     }
 
     public var id: String
@@ -238,7 +238,7 @@ public struct ReframeTrack: Codable, Hashable, Sendable {
 // MARK: - 장면
 
 /// `role` 은 템플릿이 "어떻게 그릴지"를 고르는 키다. 좌표나 스타일이 아니다.
-/// 품질 게이트 G8 은 0~1.5초에 `role == .hook` 장면 또는 titleCard 를 요구한다.
+/// 품질 게이트 G8 은 첫 장면이 `role == .hook` 이고 첫 자막이 0.5초 안에 시작하기를 요구한다.
 public enum SceneRole: String, Codable, Sendable {
     case hook, demo, explain, cta, filler
 }
