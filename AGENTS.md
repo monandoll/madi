@@ -248,16 +248,12 @@ enum CaptionSlot: String, Codable {
     case lowerBody   // 바닥 · 침대의 하체 클로즈업
 }
 
-// ⚠ 미결. 공개 숏폼 5편 조사 결과 우선순위대로
-//   (docs/findings/2026-09-23-layout-survey.md):
-//   1) source 가 영상만 가정한다. 해부학 그림이 **장면 자체**인 경우가 5편 중 2편 —
-//      enum Source { case video(id:String, in:Double, out:Double)
-//                    case image(assetID:String, duration:Double) }
-//   2) Overlay circle/arrow 의 payload 미정의 (5편 중 3편 · 2편). Spec.json 에 확정
-//   3) Caption.slot == .top 렌더 검증 — Before/After 라벨 (5편 중 2편)
-//   4) reframe 키프레임 보간 — 줌·클로즈업 (5편 중 3편, 1단계와 함께)
-//   5) layout: splitV + sources[] + Overlay .mark(o/x) — 5편 중 1편. 가장 나중
-//   구현 전에 10편까지 늘려 빈도를 다시 센다.
+// ⚠ 미결 (10편으로 다시 셌다 — docs/findings/2026-09-25-layout-survey-10.md ·
+//   2026-09-27-overlay-payload.md):
+//   - ~~Source.image~~ 10편 중 0편. 그림은 전부 영상 위에 얹은 카드였다 → Overlay.image
+//   - ~~Overlay payload~~ 확정 (arrow · circle · image · mark). 그리기(OverlayLayer)는 아직
+//   - Caption.slot == .top 렌더 검증 — Before/After 라벨 (10편 중 1편)
+//   - layout: splitV + sources[] — 상하 2분할 10편 중 **3편**. ○/✗ 가 칸마다 붙는다
 
 struct Caption: Codable {
     let id: String
@@ -271,11 +267,13 @@ struct Caption: Codable {
 
 struct Overlay: Codable {
     let id: String
-    var kind: Kind                  // titleCard · arrow · circle · image · counter · progress
+    var kind: Kind                  // arrow · circle · image · mark (공개본 2편 이상 나온 것만)
     var start: Double
     var end: Double
-    var anchor: CGPoint             // 0..1 정규화
-    var payload: [String: JSONValue]  // kind별. Spec.json 이 스키마를 정의
+    var anchor: CGPoint             // 0..1 정규화. 가운데, 화살표는 꼬리
+    var to: CGPoint?                // 화살표 머리. arrow 에만
+    var payload: [String: JSONValue]  // kind별 **뜻**만 (tone · path · form · covers …).
+                                      // Spec.json 이 알려 주고 OverlayPayload 가 검사한다. 모르는 키는 거절
 }
 ```
 

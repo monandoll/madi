@@ -115,7 +115,11 @@ struct CompositionTests {
                        "keyframes": [{ "t": 0, "rect": { "x": 0.1, "y": 0, "w": 0.5, "h": 1 } }] },
           "captions": [{ "id": "c", "start": 0, "end": 1, "text": "어깨가", "secondary": "shoulder" }],
           "overlays": [{ "id": "o", "kind": "circle", "start": 0, "end": 1,
-                         "anchor": { "x": 0.5, "y": 0.4 }, "payload": { "part": "shoulder" } }]
+                         "anchor": { "x": 0.5, "y": 0.4 },
+                         "payload": { "form": "ring", "tone": "neutral", "covers": "joint" } },
+                       { "id": "a", "kind": "arrow", "start": 0, "end": 1,
+                         "anchor": { "x": 0.6, "y": 0.4 }, "to": { "x": 0.4, "y": 0.4 },
+                         "payload": { "tone": "problem", "path": "curved", "bend": "left" } }]
         }]
         """))
         let data = try JSONEncoder().encode(comp)
@@ -245,7 +249,7 @@ struct CompositionTests {
         #expect(throws: CompositionError.self) {
             try parseComposition(minimalJSON(scenes: """
             [{ "id": "s1", "role": "hook", "source": { "videoId": "v1", "in": 0, "out": 3 },
-               "overlays": [{ "id": "o", "kind": "titleCard", "start": 0, "end": 1,
+               "overlays": [{ "id": "o", "kind": "circle", "start": 0, "end": 1,
                               "anchor": { "x": 0.5, "y": 0.5 },
                               "payload": { "style": { "look": { "fontFamily": "Pretendard" } } } }] }]
             """))
@@ -257,7 +261,7 @@ struct CompositionTests {
         #expect(throws: CompositionError.self) {
             try parseComposition(minimalJSON(scenes: """
             [{ "id": "s1", "role": "hook", "source": { "videoId": "v1", "in": 0, "out": 3 },
-               "overlays": [{ "id": "o", "kind": "counter", "start": 0, "end": 1,
+               "overlays": [{ "id": "o", "kind": "circle", "start": 0, "end": 1,
                               "anchor": { "x": 0.5, "y": 0.5 },
                               "payload": { "steps": [{ "label": "1" }, { "strokeColor": "#000" }] } }] }]
             """))
@@ -282,9 +286,9 @@ struct CompositionTests {
         [{ "id": "s1", "role": "hook", "source": { "videoId": "v1", "in": 0, "out": 3 },
            "overlays": [{ "id": "o", "kind": "circle", "start": 0, "end": 1,
                           "anchor": { "x": 0.5, "y": 0.5 },
-                          "payload": { "part": "shoulder", "emphasis": "high", "count": 3 } }] }]
+                          "payload": { "form": "ring", "tone": "problem", "covers": "part" } }] }]
         """))
-        #expect(comp.scenes[0].overlays[0].payload["part"]?.stringValue == "shoulder")
+        #expect(comp.scenes[0].overlays[0].payload["covers"]?.stringValue == "part")
     }
 
     // MARK: - 리프레임 보간

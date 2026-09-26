@@ -132,16 +132,16 @@ public struct Caption: Codable, Hashable, Sendable {
 /// 화면 위에 얹는 것. 물리치료 콘텐츠는 해부학 그림 · 화살표 · 횟수 카운터가 핵심이라
 /// 전작처럼 이게 불가능하면 크리에이터 스타일을 절대 못 따라간다.
 ///
-/// `payload` 의 구체 스키마는 템플릿의 `Spec.json` 이 정의한다.
-/// 여기서는 kind 별 최소 계약만 강제한다.
+/// `payload` 스키마는 `OverlayPayload` 가 검사하고 `Spec.json` 이 AI 에게 알려 준다.
+///
+/// kind 는 공개본 10편에서 **2편 이상** 나온 것만 둔다 (`docs/findings/2026-09-27-overlay-payload.md`).
+/// 타이틀카드 · 횟수 · 진행 바는 0편이라 뺐다.
 public struct Overlay: Codable, Hashable, Sendable {
     public enum Kind: String, Codable, Sendable {
-        case titleCard   // 훅 타이틀. 공개본 10편 중 0편 — Spec.json 에서 뺐다
-        case arrow       // 방향 지시 (조사 5편 중 2편)
-        case circle      // 부위 강조 (조사 5편 중 3편)
-        case image       // 해부학 그림 등
-        case counter     // 횟수. 공개본 0편 — Spec.json 에서 뺐다
-        case progress    // 진행 바. 공개본 0편 — Spec.json 에서 뺐다
+        case arrow       // 방향 · 문제 동작. 4편
+        case circle      // 테두리 원 · 깜빡이는 점 · 퍼지는 점. 5편
+        case image       // 해부학 그림 · 사진 카드. 4편
+        case mark        // ○ / ✗. 4편
     }
 
     public var id: String
@@ -149,17 +149,22 @@ public struct Overlay: Codable, Hashable, Sendable {
     /// 장면 로컬 초.
     public var start: Double
     public var end: Double
-    /// 0..1 정규화.
+    /// 0..1 정규화. 원 · 표시 · 그림은 **가운데**, 화살표는 **꼬리(시작점)**.
     public var anchor: NormPoint
+    /// 화살표 머리가 가리키는 점. **arrow 에만** 있다.
+    ///
+    /// payload 에 넣지 않는 이유: 좌표 키(`x` · `y`)는 payload 에서 스타일 금지 키다.
+    /// 가리키는 곳은 스타일이 아니라 내용(어느 관절인가)이므로 anchor 처럼 정식 필드로 둔다.
+    public var to: NormPoint?
     /// kind 별 내용. 스타일 값은 넣지 않는다 (`assertNoStyleValues()` 가 막는다).
     public var payload: [String: JSONValue]
 
     public init(
         id: String, kind: Kind, start: Double, end: Double,
-        anchor: NormPoint, payload: [String: JSONValue] = [:]
+        anchor: NormPoint, to: NormPoint? = nil, payload: [String: JSONValue] = [:]
     ) {
         self.id = id; self.kind = kind; self.start = start; self.end = end
-        self.anchor = anchor; self.payload = payload
+        self.anchor = anchor; self.to = to; self.payload = payload
     }
 
     public init(from decoder: Decoder) throws {
@@ -169,6 +174,7 @@ public struct Overlay: Codable, Hashable, Sendable {
         start = try c.decode(Double.self, forKey: .start)
         end = try c.decode(Double.self, forKey: .end)
         anchor = try c.decode(NormPoint.self, forKey: .anchor)
+        to = try c.decodeIfPresent(NormPoint.self, forKey: .to)
         payload = try c.decodeIfPresent([String: JSONValue].self, forKey: .payload) ?? [:]
     }
 }
@@ -522,6 +528,7 @@ private let forbiddenStyleKeys: Set<String> = [
     "outline", "outlinecolor", "outlinewidth", "stroke", "strokecolor", "strokewidth",
     "bold", "italic", "opacity", "easing", "shadow",
     "x", "y", "top", "bottom", "left", "right",
+    "size", "width", "height", "scale", "radius", "thickness", "dashed",
 ]
 
 public func assertNoStyleValues(_ comp: Composition) throws {
@@ -616,6 +623,7 @@ public func validate(_ comp: Composition) throws {
             if ov.anchor.x < 0 || ov.anchor.x > 1 || ov.anchor.y < 0 || ov.anchor.y > 1 {
                 problems.append("\(oat).anchor 가 0..1 밖이다")
             }
+            problems += OverlayPayload.problems(ov, at: oat)
         }
     }
 
