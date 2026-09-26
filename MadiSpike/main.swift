@@ -1146,6 +1146,147 @@ case "sheet":
         print("\(args[2])  " + used.map { String(format: "%.1fs", $0) }.joined(separator: " "))
     } catch { fail("\(error)") }
 
+case "secondary":
+    // 보조 문구(영문 노란 줄)를 **픽셀로** 잰다. 공개본 실측 전용.
+    //
+    // short.v1 의 secondary 값(scale · italic · fill)은 `EDpBGkaNJmU` 1편에서 나왔다.
+    // §0-7 대로 10편으로 다시 잰다. 본문 상자는 OCR 로 찾고, 나머지는 픽셀로 본다:
+    //   본문 잉크 = 검은 외곽선이 붙은 흰 픽셀 · 보조 = 본문 아래의 노란 픽셀 띠
+    //   기울기 = 행을 밀어 세로 획이 가장 곧게 모이는 각도 (정립 0°, 이탤릭은 +)
+    guard args.count > 1 else { fail("사용법: madi-spike secondary <영상> [--fps 2] [--raw]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let id = video.deletingPathExtension().lastPathComponent
+        let sampleFPS = Double(option("fps") ?? "") ?? 2
+        let info = try await FrameSheet.info(of: video)
+        let times = stride(from: 0.0, to: info.duration - 0.05, by: 1 / sampleFPS).map { $0 }
+        let frames = try await FrameSheet.extract(
+            from: video, at: times,
+            into: URL(fileURLWithPath: "out/secondary").appending(path: id), prefix: ""
+        )
+
+        /// 한 점 집합에서 세로 획이 가장 곧게 서는 전단 각도(도). 이탤릭이 오른쪽으로 누우면 +.
+        func slant(_ pts: [(x: Int, y: Int)], baseline: Int) -> Double {
+            guard pts.count > 50 else { return .nan }
+            var best = (a: 0.0, score: -1.0)
+            for deg in stride(from: -25.0, through: 25.0, by: 1) {
+                let t = tan(deg * .pi / 180)
+                var hist: [Int: Int] = [:]
+                for p in pts { hist[Int((Double(p.x) - Double(baseline - p.y) * t).rounded()), default: 0] += 1 }
+                let score = hist.values.reduce(0.0) { $0 + Double($1 * $1) }
+                if score > best.score { best = (deg, score) }
+            }
+            return best.a
+        }
+
+        struct Row { var t: Double; var bodyH: Double; var bodyBottom: Double
+                     var has: Bool; var asc: Double = .nan; var baseline: Double = .nan
+                     var offset: Double = .nan; var rgb: (Int, Int, Int) = (0, 0, 0)
+                     var secSlant: Double = .nan; var bodySlant: Double = .nan }
+        var rows: [Row] = []
+        var ocrFailed = 0
+
+        for (i, frame) in frames.enumerated() {
+            let image = try StillRenderer.loadImage(frame)
+            // ANE 가 `e5rtError` 로 죽는 프레임이 있다. 한 장 때문에 편 전체를 버리지 않는다.
+            guard let read = try? CaptionReader.read(image) else { ocrFailed += 1; continue }
+            guard !read.text.isEmpty else { continue }
+            let W = image.width, H = image.height
+            var buf = [UInt8](repeating: 0, count: W * H * 4)
+            let ctx = CGContext(data: &buf, width: W, height: H, bitsPerComponent: 8,
+                                bytesPerRow: W * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: W, height: H))
+            func px(_ x: Int, _ y: Int) -> (Int, Int, Int) {
+                let o = (y * W + x) * 4
+                return (Int(buf[o]), Int(buf[o + 1]), Int(buf[o + 2]))
+            }
+            func white(_ x: Int, _ y: Int) -> Bool { let p = px(x, y); return min(p.0, p.1, p.2) > 215 }
+            func dark(_ x: Int, _ y: Int) -> Bool {
+                guard x >= 0, y >= 0, x < W, y < H else { return false }
+                let p = px(x, y); return max(p.0, p.1, p.2) < 70
+            }
+            func outlinedWhite(_ x: Int, _ y: Int) -> Bool {
+                guard white(x, y) else { return false }
+                for d in 2...8 where dark(x + d, y) || dark(x - d, y) || dark(x, y + d) || dark(x, y - d) {
+                    return true
+                }
+                return false
+            }
+            func yellow(_ x: Int, _ y: Int) -> Bool {
+                let p = px(x, y); return p.0 > 170 && p.1 > 150 && p.2 < 150 && p.0 - p.2 > 60 && p.1 - p.2 > 45
+            }
+
+            // 본문 잉크 — OCR 상자 안쪽의 외곽선 붙은 흰 픽셀.
+            let bx0 = max(0, Int(read.box.x * Double(W)) - 20)
+            let bx1 = min(W - 1, Int((read.box.x + read.box.w) * Double(W)) + 20)
+            let by0 = max(0, Int((1 - read.box.y - read.box.h) * Double(H)) - 10)
+            let by1 = min(H - 1, Int((1 - read.box.y) * Double(H)) + 10)
+            var bodyPts: [(x: Int, y: Int)] = []
+            var bodyRows: [Int] = []
+            for y in by0...by1 {
+                var n = 0
+                for x in bx0...bx1 where outlinedWhite(x, y) { n += 1; bodyPts.append((x, y)) }
+                if n >= 3 { bodyRows.append(y) }
+            }
+            guard let bTop = bodyRows.first, let bBot = bodyRows.last else { continue }
+            var row = Row(t: times[i], bodyH: Double(bBot - bTop + 1) / Double(H),
+                          bodyBottom: Double(H - 1 - bBot) / Double(H), has: false)
+            row.bodySlant = slant(bodyPts, baseline: bBot)
+
+            // 보조 — 본문 잉크 바로 아래의 노란 띠.
+            let xs = Int(Double(W) * 0.03)..<Int(Double(W) * 0.97)
+            let yEnd = min(H, bBot + Int(Double(H) * 0.08))
+            var counts: [(y: Int, n: Int)] = []
+            for y in (bBot + 2)..<yEnd { counts.append((y, xs.filter { yellow($0, y) }.count)) }
+            if let start = counts.firstIndex(where: { $0.n >= 4 }) {
+                var end = start, quiet = 0
+                for k in start..<counts.count {
+                    if counts[k].n < 2 { quiet += 1; if quiet >= 3 { break } } else { quiet = 0; end = k }
+                }
+                let band = counts[start...end]
+                let peak = band.map(\.n).max() ?? 0
+                let top = band.first!.y
+                let base = band.last(where: { Double($0.n) >= 0.35 * Double(peak) })!.y
+                var pts: [(x: Int, y: Int)] = []
+                var cols: [(Int, Int, Int)] = []
+                for y in top...base { for x in xs where yellow(x, y) { pts.append((x, y)); cols.append(px(x, y)) } }
+                if pts.count > 50, base - top >= 8 {
+                    row.has = true
+                    row.asc = Double(base - top + 1) / Double(H)
+                    row.baseline = Double(H - 1 - base) / Double(H)
+                    row.offset = Double(base - bBot) / Double(H)
+                    let bright = cols.sorted { $0.0 + $0.1 + $0.2 > $1.0 + $1.1 + $1.2 }
+                        .prefix(max(1, cols.count * 3 / 10))
+                    func m(_ v: [Int]) -> Int { v.sorted()[v.count / 2] }
+                    row.rgb = (m(bright.map(\.0)), m(bright.map(\.1)), m(bright.map(\.2)))
+                    row.secSlant = slant(pts, baseline: base)
+                }
+            }
+            rows.append(row)
+            if args.contains("--raw") {
+                print(String(format: "  %5.1f 본문h %.4f 기울기 %+3.0f | 보조 %@ asc %.4f 간격 %.4f 기울기 %+3.0f #%02X%02X%02X",
+                             row.t, row.bodyH, row.bodySlant, (row.has ? "있음" : "없음") as NSString,
+                             row.asc, row.offset, row.secSlant, row.rgb.0, row.rgb.1, row.rgb.2))
+            }
+        }
+
+        func med(_ v: [Double]) -> Double {
+            let s = v.filter { !$0.isNaN }.sorted(); return s.isEmpty ? .nan : s[s.count / 2]
+        }
+        let sec = rows.filter(\.has)
+        let bodyH = med(rows.map(\.bodyH))
+        let asc = med(sec.map(\.asc))
+        func mi(_ v: [Int]) -> Int { v.isEmpty ? 0 : v.sorted()[v.count / 2] }
+        print(String(format:
+            "  %-12@ 자막 %3d · 보조 %3d (%3.0f%%) · 본문h %.4f 기울기 %+3.0f · 보조 asc %.4f (본문의 %.3f) · 간격 %.4f · 기울기 %+3.0f · #%02X%02X%02X",
+            id as NSString, rows.count, sec.count, 100 * Double(sec.count) / Double(max(1, rows.count)),
+            bodyH, med(rows.map(\.bodySlant)), asc, asc / bodyH, med(sec.map(\.offset)),
+            med(sec.map(\.secSlant)),
+            mi(sec.map(\.rgb.0)), mi(sec.map(\.rgb.1)), mi(sec.map(\.rgb.2))))
+        if ocrFailed > 0 { print("  (OCR 실패 \(ocrFailed)/\(frames.count) 프레임)") }
+    } catch { fail("\(error)") }
+
 case "compare":
     guard args.count > 3 else {
         fail("사용법: madi-spike compare <원본> <렌더> <out.png> [--at 1,2] [--band 0.7,0.85]")
