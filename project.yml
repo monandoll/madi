@@ -38,9 +38,12 @@ packages:
   # ⚠ 0.9 대에 고정한다. 0.18 은 Vapor(웹 서버) · swift-openapi 까지 끌고 오는데
   #   §16 이 "웹 UI · HTTP 서버" 를 하지 않기로 했고, Universal 빌드도 깨진다
   #   (`docs/findings/2026-09-26-whisperkit.md §2`).
+  # ★ exactVersion 이다. minorVersion 은 0.9.x 범위라 고정이 아니고,
+  #   Package.resolved 는 .gitignore(project.xcworkspace/)에 막혀 커밋되지 않는다.
+  #   즉 여기 적힌 값이 **레포에 남는 유일한 버전 기록**이다.
   WhisperKit:
     url: https://github.com/argmaxinc/WhisperKit
-    minorVersion: 0.9.0
+    exactVersion: 0.9.4
 
 targets:
   # 코어. 모델 · 템플릿 · 렌더가 전부 여기 있다.

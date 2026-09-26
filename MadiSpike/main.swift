@@ -394,6 +394,108 @@ case "transcribe":
         }
     } catch { fail("\(error)") }
 
+case "splittest":
+    // **분절 실측.** 우리 CaptionSplitter 가 쌤 분절과 얼마나 맞는가.
+    //
+    // 낱말(전사) → 우리 분절 vs 번인 자막(OCR) = 쌤 분절.
+    // 경계가 ±0.3초 안에서 겹치면 "같은 자리에서 끊었다" 로 본다.
+    // 덤으로 우리 편집안을 만들어 G6(싱크)을 실제로 돌린다.
+    guard args.count > 1 else { fail("사용법: madi-spike splittest <영상> [--until 60]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let id = video.deletingPathExtension().lastPathComponent
+        let info = try await FrameSheet.info(of: video)
+        let until = min(Double(option("until") ?? "") ?? info.duration, info.duration - 0.05)
+
+        let transcript = try await WhisperKitProvider(model: option("model") ?? "base")
+            .transcribe(video, languageCode: "ko")
+        let words = transcript.words.filter { $0.start <= until }
+        let ours = CaptionSplitter.split(words, style: values.caption)
+
+        // 쌤 분절 (OCR)
+        let sampleFPS = 4.0
+        let times = stride(from: 0.0, to: until, by: 1 / sampleFPS).map { $0 }
+        let frames = try await FrameSheet.extract(
+            from: video, at: times,
+            into: URL(fileURLWithPath: "out/captions").appending(path: id), prefix: ""
+        )
+        struct Chunk { var text: String; var start: Double; var end: Double }
+        var theirs: [Chunk] = []
+        for (i, frame) in frames.enumerated() {
+            let read = try CaptionReader.read(try StillRenderer.loadImage(frame))
+            guard !read.text.isEmpty else { continue }
+            if var last = theirs.last, last.text == read.text,
+               times[i] - last.end <= 1.5 / sampleFPS {
+                last.end = times[i]; theirs[theirs.count - 1] = last
+            } else {
+                theirs.append(Chunk(text: read.text, start: times[i], end: times[i]))
+            }
+        }
+        let solid = theirs.filter { $0.end > $0.start }
+
+        // 경계 일치. 첫 덩어리 시작은 빼고 **끊은 자리**만 본다.
+        let tol = Double(option("tol") ?? "") ?? 0.3
+        let ourBreaks = ours.dropFirst().map(\.start)
+        let theirBreaks = solid.dropFirst().map(\.start)
+        let matched = theirBreaks.filter { t in ourBreaks.contains { abs($0 - t) <= tol } }.count
+        let extra = ourBreaks.filter { o in !theirBreaks.contains { abs($0 - o) <= tol } }.count
+
+        func stat(_ v: [Int]) -> String {
+            guard !v.isEmpty else { return "-" }
+            let s = v.sorted()
+            return String(format: "중앙 %d 최대 %d", s[s.count / 2], s[s.count - 1])
+        }
+        // G6 — 우리가 만든 편집안을 실제로 걸어 본다.
+        let comp = Composition(
+            id: "split_" + id, videoID: id, templateID: "short",
+            meta: Composition.Meta(title: id, targetDurationSec: until),
+            captionSlot: .fullBody,
+            scenes: [Scene(
+                id: "s1", role: .demo,
+                source: Scene.Source(videoID: id, start: 0, end: until),
+                captions: ours
+            )]
+        )
+        let (g5, g5m) = Gate.g5(comp, frameSize: CGSize(width: 1080, height: 1920), style: values)
+        let (g6, g6m) = Gate.g6(comp, transcript: transcript)
+        func mark(_ r: GateResult) -> String {
+            switch r {
+            case .pass: "통과"; case .fail: "실패"
+            case .cannotJudge: "판정불가"; case .sourceLimited: "원본한계"
+            }
+        }
+        print(String(format:
+            "  %-14@ 우리 %2d덩어리(%@) · 쌤 %2d덩어리(%@) · 경계일치 %2d/%2d · 우리만 %2d · G5 %@ G6 %@ 최대오차 %.3f",
+            id as NSString,
+            ours.count, stat(ours.map(\.text.count)) as NSString,
+            solid.count, stat(solid.map(\.text.count)) as NSString,
+            matched, theirBreaks.count, extra,
+            mark(g5) as NSString, mark(g6) as NSString, g6m.worstError))
+        if args.contains("--raw") {
+            print("    [쌤]")
+            for c in solid {
+                print(String(format: "    %5.2f-%5.2f  %2d자  %@",
+                             c.start, c.end, c.text.count, c.text as NSString))
+            }
+            print("    [우리]")
+            for c in ours {
+                print(String(format: "    %5.2f-%5.2f  %2d자  %@",
+                             c.start, c.end, c.text.count, c.text as NSString))
+            }
+            print("    [낱말 사이 쉼 분포]")
+            var gaps: [Double] = []
+            for i in 1..<max(words.count, 1) { gaps.append(words[i].start - words[i - 1].end) }
+            let g = gaps.sorted()
+            if !g.isEmpty {
+                print(String(format: "    n=%d 중앙 %.3f p75 %.3f p90 %.3f 최대 %.3f · 0.30 이상 %d개",
+                             g.count, g[g.count / 2], g[g.count * 3 / 4],
+                             g[min(g.count - 1, g.count * 9 / 10)], g[g.count - 1],
+                             g.filter { $0 >= 0.30 }.count))
+            }
+            _ = g5m
+        }
+    } catch { fail("\(error)") }
+
 case "capsync":
     // **`pauseSec` · `maxDurationSec` 실측.**
     //

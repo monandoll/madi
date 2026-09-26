@@ -150,13 +150,16 @@ public struct StyleValues: Codable, Hashable, Sendable {
         /// 한 덩어리 글자 수 **상한**. G5 가 보는 값이다.
         public var maxChars: Int
 
-        /// 한 덩어리 글자 수 **목표**. 상한과 다른 값이다.
+        /// 구문 경계에서 끊기 전에 **최소한 담아야 할** 글자 수.
         ///
-        /// ★ 공개본 10편 190덩어리에서 **중앙 9자 · p90 13자**였다
-        ///   (`docs/findings/2026-09-26-caption-segmentation-10.md §2`).
-        ///   **상한 15자까지 눌러 담으면 크리에이터 자막이 아니다.**
-        ///   분절은 이 값을 노리고, `maxChars` 는 넘지 말아야 할 선이다.
-        public var targetChars: Int
+        /// ★ 목표값이 아니라 하한이다. 6 으로 두면 결과 덩어리 중앙값이 11~12자가 되고,
+        ///   그게 크리에이터 실측(중앙 9~11자)과 가장 가깝다.
+        ///   4~9 를 같은 3편에서 훑어 고른 값이다 —
+        ///   경계 일치 tc6 58% · tc5 54% · tc4 62%(군더더기 28) · tc9 48%
+        ///   (`docs/findings/2026-09-26-caption-splitter.md §3`).
+        ///
+        /// ⚠ **3~5편으로 고른 값이다.** 촬영본이 들어오면 다시 훑는다.
+        public var minCharsBeforeBreak: Int
 
         /// 한 덩어리 목표 길이(초). 공개본 10편 전부 중앙값이 0.75~1.25초였다.
         /// **게이트가 아니다** — 실패 사례를 본 적이 없어 임계값으로 걸지 않는다.
@@ -170,19 +173,6 @@ public struct StyleValues: Codable, Hashable, Sendable {
         /// ★ 처음엔 2.5 로 추측했는데 **재 보니 크리에이터 자막 하나가 걸렸다.**
         public var maxDurationSec: Double
 
-        /// 말이 이만큼 끊기면 덩어리를 나눈다.
-        ///
-        /// 재는 법: 전사(낱말 시각)와 번인 자막(OCR) 경계를 맞춰,
-        /// **끊은 자리의 쉼**과 **덩어리 안에서 안 끊은 쉼**을 따로 잰다. 공개본 6편:
-        ///
-        /// | | 중앙 | p90 | 최대 |
-        /// |---|---|---|---|
-        /// | 끊은 자리 | 0.26~0.44 | 0.54~0.80 | 0.68~2.26 |
-        /// | 안 끊은 자리 | **0.000** | 0.00~0.12 | 0.22~0.60 |
-        ///
-        /// 둘이 갈리는 0.30 으로 둔다. 안 끊은 쉼의 p90(0.12)보다 넉넉히 위이고
-        /// 끊은 자리 중앙값(6편 중 5편이 0.36~0.44)보다 아래다.
-        public var pauseSec: Double
 
         /// 줄 수 상한. **2줄은 상한이지 목표가 아니다** — 190덩어리 중 2줄은 1개였다.
         public var maxLines: Int
@@ -319,17 +309,16 @@ public func validate(_ values: StyleValues) throws {
     if c.maxChars < 1 || c.maxChars > 40 {
         problems.append("caption.maxChars \(c.maxChars) 는 1~40 밖이다")
     }
-    if c.targetChars < 1 || c.targetChars > c.maxChars {
-        problems.append("caption.targetChars \(c.targetChars) 는 1~maxChars 밖이다")
+    if c.minCharsBeforeBreak < 1 || c.minCharsBeforeBreak > c.maxChars {
+        problems.append(
+            "caption.minCharsBeforeBreak \(c.minCharsBeforeBreak) 는 1~maxChars 밖이다"
+        )
     }
     if c.targetDurationSec <= 0 || c.targetDurationSec > 5 {
         problems.append("caption.targetDurationSec \(c.targetDurationSec) 는 0~5 밖이다")
     }
     if c.maxDurationSec < c.targetDurationSec || c.maxDurationSec > 10 {
         problems.append("caption.maxDurationSec \(c.maxDurationSec) 는 목표~10 밖이다")
-    }
-    if c.pauseSec <= 0 || c.pauseSec > 2 {
-        problems.append("caption.pauseSec \(c.pauseSec) 는 0~2 밖이다")
     }
     if c.maxLines < 1 || c.maxLines > 3 {
         problems.append("caption.maxLines \(c.maxLines) 는 1~3 밖이다 (G5 는 2줄 이내)")

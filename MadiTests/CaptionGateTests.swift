@@ -46,7 +46,7 @@ struct CaptionGateTests {
         for c in captions { #expect(c.text.count <= style.caption.maxChars) }
     }
 
-    @Test("상한까지 눌러 담지 않는다 — 중앙값이 목표 근처다")
+    @Test("상한까지 눌러 담지 않는다")
     func aimsAtTargetNotMax() throws {
         let style = try style()
         // 공개본 실측: 중앙 9자 · p90 13자 · 상한 15자.
@@ -60,15 +60,24 @@ struct CaptionGateTests {
         #expect(median < style.caption.maxChars)
     }
 
-    @Test("목표를 채운 뒤 말이 쉬면 거기서 끊는다")
-    func breaksOnPauseAfterTarget() throws {
+    @Test("최소 글자 수를 넘긴 뒤 구문 경계에서 끊는다")
+    func breaksAtClauseBoundary() throws {
         let style = try style()
-        // 세 번째 낱말 뒤에 큰 쉼.
-        let ws = words(["골반이", "틀어지면", "아픕니다", "그래서", "스트레칭"],
-                       gapAfter: [2: style.caption.pauseSec + 0.2])
-        let captions = CaptionSplitter.split(ws, style: style.caption)
+        // "틀어지면" 이 연결어미다. 거기까지 9자라 하한(6)을 넘는다.
+        let captions = CaptionSplitter.split(
+            words(["골반이", "틀어지면", "허리가", "아픕니다"]), style: style.caption
+        )
         #expect(captions.count >= 2)
-        #expect(captions[0].text == "골반이 틀어지면 아픕니다")
+        #expect(captions[0].text == "골반이 틀어지면")
+    }
+
+    @Test("구문 경계를 문장 부호로도 인식한다")
+    func recognisesPunctuationAsClauseEnd() {
+        #expect(CaptionSplitter.endsClause("앉아주세요."))
+        #expect(CaptionSplitter.endsClause("하는데?"))
+        #expect(CaptionSplitter.endsClause("일어나주시고"))
+        #expect(CaptionSplitter.endsClause("상태에서"))
+        #expect(CaptionSplitter.endsClause("골반") == false)
     }
 
     @Test("장면 오프셋을 빼서 장면 로컬 시각으로 만든다")

@@ -21,7 +21,13 @@ public final class WhisperKitProvider: TranscriptionProvider, @unchecked Sendabl
     private var pipe: WhisperKit?
 
     /// - Parameter model: `tiny` · `base` · `small` · `medium` · `large-v3`.
-    public init(model: String = "base") {
+    ///
+    /// 기본이 `small` 인 이유: `base` 는 한국어를 자주 틀린다 —
+    /// "사람들은"→"그럼 들은", "서른 번씩"→"서로머시에". 그 오독이 분절을 망가뜨려
+    /// 쌤 경계와 **4/13** 밖에 안 맞았고, `small` 로 올리니 **9/13** 이 됐다.
+    /// 속도 차이는 데운 뒤 2.5초 vs 3.6초로 거의 없다
+    /// (`docs/findings/2026-09-26-caption-splitter.md §2`).
+    public init(model: String = "small") {
         self.modelName = model
     }
 
