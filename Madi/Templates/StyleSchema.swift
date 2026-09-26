@@ -97,20 +97,26 @@ public struct SlotPositions: Codable, Hashable, Sendable {
     }
 }
 
+/// 스타일 값은 두 층이다.
+///
+/// | 층 | 무엇 | 누가 바꾸나 |
+/// |---|---|---|
+/// | 템플릿 (`caption` · `secondary` · `shadow` · `reframe`) | 크기 · 위치 · 분절 · 리프레임 | 측정. 사용자는 안 만진다 |
+/// | **모양 (`look`)** | 글꼴 · 굵기 · 기울임 · 색 | **사용자가 설정에서 고른다** |
+///
+/// 근거: 크리에이터가 2026-08-27 에 자막 스타일을 바꿨는데, 바뀐 건 **글꼴과 기울임뿐**이었다.
+/// 글자 크기 · 보조 크기 · 색 · 위치 규칙은 그대로였다
+/// (`docs/findings/2026-09-27-secondary-10.md`). 스타일은 또 바뀔 수 있다 — 그때 바뀌는 쪽이 `look` 이다.
+///
+/// AI 는 어느 층도 쓸 수 없다 (`AGENTS.md §1-2`). `look` 은 **사람이** 고르는 값이다.
 public struct StyleValues: Codable, Hashable, Sendable {
     public var caption: CaptionValues
     public var secondary: SecondaryValues
     public var shadow: ShadowValues
     public var reframe: ReframeValues
+    public var look: LookValues
 
     public struct CaptionValues: Codable, Hashable, Sendable {
-        /// Pretendard 의 `wght` 가변 축. 400 Regular · 700 Bold · 800 ExtraBold · 900 Black.
-        ///
-        /// 재는 법: 원본 프레임에서 한글 세로 획의 **흰 폭(px)** 과 **글자 높이(px)** 를 재고
-        /// 그 비율이 나오는 웨이트를 고른다. `madi-spike stems` 가 웨이트별 비율을 찍어 준다.
-        /// 눈대중으로 "굵어 보인다"로 정하지 않는다.
-        public var weight: Double
-
         /// **그려진 글자의 높이** ÷ 프레임 높이.
         ///
         /// 재는 법: 자막 영역에서 흰 픽셀이 찍힌 행의 위아래 끝을 세고 프레임 높이로 나눈다.
@@ -181,10 +187,12 @@ public struct StyleValues: Codable, Hashable, Sendable {
         /// 재는 법: 두 줄의 같은 지점(예: 글자 아래끝) 사이 픽셀 간격 ÷ 글자 높이.
         public var lineGapRatio: Double
 
-        public var fill: HexColor
-        public var stroke: HexColor
-        /// 강조 구간 색. 쓰지 않을 수도 있다 — 원본이 강조를 안 쓰면 `emphasis` 를 비워 둔다.
-        public var emphasisFill: HexColor
+        /// `look` 이 기울임을 켰는데 고른 글꼴에 이탤릭 자형이 없을 때 **기울이는 각도(도)**.
+        ///
+        /// 재는 법: 행을 밀어 세로 획이 가장 곧게 모이는 전단 각도 (`madi-spike secondary`).
+        /// 크리에이터 B 스타일 6편이 본문 · 보조 모두 **+10°** 였다
+        /// (`docs/findings/2026-09-27-secondary-10.md §1`).
+        public var italicSlantDeg: Double
 
         /// 등장 애니메이션. 픽셀로 못 잰다.
         /// 재는 법: 연속 프레임 2~3장을 비교해 "몇 프레임 만에 제자리로 오는가"를 세고 fps 로 나눈다.
@@ -194,11 +202,16 @@ public struct StyleValues: Codable, Hashable, Sendable {
     }
 
     public struct SecondaryValues: Codable, Hashable, Sendable {
-        /// 본문 폰트 크기 대비 비율.
-        /// 재는 법: 보조 문구의 라틴 어센더 높이(`l` · `k` 위끝 ~ 베이스라인)를 재고,
-        /// 그 높이가 나오는 비율을 `madi-spike metrics` 로 맞춘다.
-        public var scale: Double
-        public var weight: Double
+        /// 보조 문구 **라틴 어센더 높이**(`Ilk` 위끝 ~ 베이스라인) ÷ 프레임 높이.
+        ///
+        /// ★ 본문처럼 **글자 높이**로 적는다. 폰트 크기로 적으면 글꼴을 바꾸는 순간 크기가 흔들린다.
+        ///   예전에는 "본문 폰트 크기 × 0.4444" 였는데, 본문 폰트 크기는 본문 글꼴의 한글 메트릭에서
+        ///   역산하므로 **본문 글꼴이 보조 크기를 바꿔 버린다.** 실측은 A · B 스타일에서 보조 크기가 같았다.
+        ///
+        /// 재는 법: 노란 띠 맨 위 행 ~ 베이스라인 행 ÷ 프레임 높이 (`madi-spike secondary`).
+        /// 값 0.01281271995563 은 옛 `scale` 0.4444 가 Pretendard 로 **실제로 그리던 높이**(24.60px @1920)다.
+        /// 원본 실측은 24px(0.0125)이지만, 이 전환에서는 기본 출력을 1px 도 바꾸지 않는다.
+        public var inkHeightRatio: Double
 
         /// 본문 글자 아래끝에서 보조 문구 **베이스라인**까지의 거리 ÷ 프레임 높이.
         /// 값이 클수록 보조가 본문에서 멀어진다(아래로 내려간다).
@@ -213,11 +226,41 @@ public struct StyleValues: Codable, Hashable, Sendable {
         ///   디센더 유무가 문구마다 달라서 ink 아래끝이 흔들린다. 베이스라인은 안 흔들린다.
         /// 재는 법: (본문 흰 픽셀 마지막 행) − (보조 행별 픽셀 수가 뚝 떨어지는 행) ÷ 프레임 높이.
         public var baselineOffsetRatio: Double
+    }
+
+    /// **사용자가 바꾸는 값.** 글꼴 · 굵기 · 기울임 · 색만 있다. 크기와 위치는 없다.
+    ///
+    /// 크리에이터에게 숫자를 만지게 하지 않는다 (`AGENTS.md §9`). 여기 값은 설정 화면에서
+    /// **고르는** 것이다 — 글꼴 목록 · 기울임 켜기/끄기 · 색 견본.
+    public struct LookValues: Codable, Hashable, Sendable {
+        public var caption: TextLook
+        public var secondary: TextLook
+    }
+
+    public struct TextLook: Codable, Hashable, Sendable {
+        /// 글꼴 **패밀리 이름**. `nil` 이면 앱에 들어 있는 Pretendard.
+        ///
+        /// ★ 이 Mac 에 설치된 글꼴에서 고른다. 앱이 글꼴을 배포하지 않으므로 라이선스는
+        ///   사용자 본인 것이다. 크리에이터가 편집 앱에서 쓰던 글꼴을 그대로 쓸 수 있다.
+        /// ★ 설치돼 있지 않으면 **다른 글꼴로 조용히 그리지 않는다.** 스타일 검증에서 실패한다.
+        public var fontFamily: String?
+
+        /// 굵기. 100~900 (400 Regular · 700 Bold · 900 Black).
+        /// 가변 글꼴이면 `wght` 축에 그대로 넣고, 아니면 가장 가까운 굵기의 자형을 고른다.
+        ///
+        /// 재는 법(Pretendard): 한글 세로 획 폭 ÷ 글자 높이가 원본과 같아지는 웨이트.
+        /// `madi-spike stems` 가 웨이트별 비율을 찍어 준다.
+        public var weight: Double
+
+        /// 기울임. 글꼴에 이탤릭 자형이 있으면 그걸 쓰고, 없으면 `caption.italicSlantDeg` 만큼 기울인다.
+        public var italic: Bool
 
         public var fill: HexColor
-        public var italic: Bool
-        /// 보조 문구에도 외곽선을 그릴지. 원본에 없으면 false.
-        public var hasStroke: Bool
+        /// 외곽선 색. `nil` 이면 외곽선을 그리지 않는다 (보조 문구 원본에는 없다).
+        /// 두께는 템플릿(`caption.strokeOuterRatio`)이 정한다.
+        public var stroke: HexColor?
+        /// 강조 구간 색. 원본은 강조를 안 쓴다. 없으면 `fill` 로 그린다.
+        public var emphasisFill: HexColor?
     }
 
     /// 자막 아래에 깔리는 흐린 그림자.
@@ -286,7 +329,6 @@ public func validate(_ values: StyleValues) throws {
     }
 
     let c = values.caption
-    check("caption.weight", c.weight, 100...900)
     // 품질 게이트 G4 하한이 0.032 다. 그보다 아래는 자동 자막처럼 보인다.
     check("caption.inkHeightRatio", c.inkHeightRatio, 0.02...0.12)
     for (slot, value) in c.inkBottomRatio.all {
@@ -306,6 +348,7 @@ public func validate(_ values: StyleValues) throws {
     check("caption.lineGapRatio", c.lineGapRatio, 1.0...3.0)
     check("caption.popInSec", c.popInSec, 0...1)
     check("caption.popInScaleFrom", c.popInScaleFrom, 0.3...1.0)
+    check("caption.italicSlantDeg", c.italicSlantDeg, 0...20)
     if c.maxChars < 1 || c.maxChars > 40 {
         problems.append("caption.maxChars \(c.maxChars) 는 1~40 밖이다")
     }
@@ -325,8 +368,7 @@ public func validate(_ values: StyleValues) throws {
     }
 
     let s = values.secondary
-    check("secondary.scale", s.scale, 0.2...1.0)
-    check("secondary.weight", s.weight, 100...900)
+    check("secondary.inkHeightRatio", s.inkHeightRatio, 0.005...c.inkHeightRatio)
     // 0 이면 본문과 겹치고, 음수면 본문 위로 올라간다. 실측은 0.031~0.041 이다.
     check("secondary.baselineOffsetRatio", s.baselineOffsetRatio, 0.005...0.15)
 
@@ -348,6 +390,17 @@ public func validate(_ values: StyleValues) throws {
             "caption.inkBottomRatio.\(slot.rawValue)(\(bottom)) 에서 "
             + "secondary.baselineOffsetRatio(\(s.baselineOffsetRatio)) 를 빼면 화면 밖이다"
         )
+    }
+
+    for (name, look) in [("look.caption", values.look.caption), ("look.secondary", values.look.secondary)] {
+        check("\(name).weight", look.weight, 100...900)
+        if let family = look.fontFamily {
+            if family.trimmingCharacters(in: .whitespaces).isEmpty {
+                problems.append("\(name).fontFamily 가 비었다. 기본 글꼴이면 null 로 둔다")
+            } else if !MadiFont.isInstalled(family: family) {
+                problems.append("\(name).fontFamily \"\(family)\" 가 이 Mac 에 설치돼 있지 않다")
+            }
+        }
     }
 
     guard problems.isEmpty else { throw StyleError(problems: problems) }

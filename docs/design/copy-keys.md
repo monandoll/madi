@@ -7,6 +7,32 @@
 
 ---
 
+## 자막 모양 설정 (`look`) — 설정 화면
+
+`AGENTS.md §9` "템플릿과 자막 모양". 크리에이터의 자막 스타일은 바뀐다 (2026-08-27 에 한 번 바뀌었다).
+사용자가 **고르는** 것만 있다. 숫자 입력칸을 만들지 않는다.
+
+개발 쪽 API:
+- 글꼴 목록 — `MadiFont.hangulFamilies()` (한글을 그릴 수 있는 설치 글꼴). 맨 앞에 "기본" (= `fontFamily: null`, Pretendard)
+- 값 — `StyleValues.look.caption` · `.look.secondary` 의 `fontFamily` · `weight` · `italic` · `fill` · `stroke`
+- 검증 — `validate(_:)`. 설치 안 된 글꼴이면 실패한다
+- 미리보기 — 같은 레이어 코드(`CaptionPainter.draw`)로 그린다. 따로 그리지 않는다 (`§7`)
+
+| 키 | 언제 | 무엇을 전달해야 하나 |
+|---|---|---|
+| `lookSectionTitle` | 설정의 자막 모양 묶음 제목 | 자막 글씨 모양을 여기서 바꾼다 |
+| `lookFontDefault` | 글꼴 목록 첫 항목 (`fontFamily: null`) | 앱 기본 글꼴 |
+| `lookFontHint` | 글꼴 목록 아래 | 편집 앱에서 쓰던 글꼴을 이 Mac 에 설치하면 여기 나온다 |
+| `lookItalic` | 기울임 켜기/끄기 | 글자를 살짝 기울인다 |
+| `lookWeight` | 굵기 고르기 (가늘게 ~ 굵게, 몇 단계) | 글자 굵기 |
+| `lookSecondarySameAsMain` | 보조 문구도 본문과 같은 글꼴 · 기울임을 쓸지 | 영문 줄도 같은 모양으로 |
+| `lookFontMissing` | 저장된 글꼴이 이 Mac 에서 지워졌을 때 (채팅) | 쓰던 글꼴을 찾을 수 없어서 편집안을 못 만든다. 글꼴을 다시 설치하거나 다른 글꼴을 고르면 된다 |
+
+- 크기 · 위치는 바꾸는 칸이 **없다.** 템플릿이 정한다
+- 미리보기 문장은 한글 본문 + 영문 보조 한 줄. 크기가 그대로인 게 보여야 한다
+
+---
+
 ## 품질 게이트 안내 (`GateNotice`)
 
 `AGENTS.md §8` — 하드 게이트가 결과를 막지 않는 경우에 채팅으로 알린다.

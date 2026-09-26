@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import CoreGraphics
+import CoreText
 @testable import MadiKit
 
 /// 스타일은 **데이터**라서 빌드를 안 거친다 (AGENTS.md §9).
@@ -140,9 +141,8 @@ struct CaptionGeometryTests {
         for text in ["어깨가", "골반 틀어졌으면", "가능성이 높다는 겁니다"] {
             let scan = try render(Caption(id: "t", start: 0, end: 1, text: text), style: style)
             heights.append(scan.inkHeight)
-            let font = MadiFont.pretendard(
-                size: CaptionLayout.metrics(frameSize: frame, style: style, slot: .upperBody).fontSize,
-                weight: CGFloat(style.caption.weight)
+            let font = style.captionFont(
+                size: CaptionLayout.metrics(frameSize: frame, style: style, slot: .upperBody).fontSize
             )
             widths.append(CaptionLayout.advanceWidth(text, font: font))
         }
@@ -166,7 +166,7 @@ struct CaptionGeometryTests {
     func wrapsOnWordBoundaries() throws {
         let style = try StyleStore.load().values
         let m = CaptionLayout.metrics(frameSize: frame, style: style, slot: .upperBody)
-        let font = MadiFont.pretendard(size: m.fontSize, weight: CGFloat(style.caption.weight))
+        let font = style.captionFont(size: m.fontSize)
         let lines = CaptionLayout.wrap(
             "어깨가 앞으로 말려 있으면", font: font,
             maxWidth: frame.width * CGFloat(style.caption.maxWidthRatio),
@@ -185,5 +185,83 @@ struct CaptionGeometryTests {
         let light = CaptionLayout.inkBounds("가힣", font: MadiFont.pretendard(size: 100, weight: 300))
         let heavy = CaptionLayout.inkBounds("가힣", font: MadiFont.pretendard(size: 100, weight: 900))
         #expect(light.height != heavy.height)
+    }
+}
+
+/// 자막 **모양**(`look`)은 사용자가 바꾼다. 바꿔도 템플릿(크기 · 위치)은 그대로여야 한다.
+///
+/// 근거: 크리에이터가 2026-08-27 에 글꼴 · 기울임을 바꿨지만 글자 크기 · 보조 크기 · 위치는 그대로였다
+/// (`docs/findings/2026-09-27-secondary-10.md`). 글꼴을 바꿨더니 자막이 커지면 그건 버그다.
+struct CaptionLookTests {
+    private let frame = CGSize(width: 1080, height: 1920)
+    /// 모든 macOS 에 들어 있는 한글 글꼴. 이탤릭 자형이 없다.
+    private let systemFamily = "Apple SD Gothic Neo"
+
+    private func scan(_ caption: Caption, _ style: StyleValues) throws -> StillRenderer.StrokeScan {
+        let image = try StillRenderer.renderCaption(
+            caption, size: frame, style: style, slot: .upperBody, backdrop: .solid(RGBA(0, 0, 0, 1))
+        )
+        return try #require(StillRenderer.scanStrokes(image))
+    }
+
+    @Test("글꼴을 바꿔도 본문 글자 높이와 아래끝은 그대로다")
+    func fontChangeKeepsGeometry() throws {
+        var style = try StyleStore.load().values
+        style.look.caption.fontFamily = systemFamily
+        try validate(style)
+        let s = try scan(Caption(id: "t", start: 0, end: 1, text: "가능성이 높다는 겁니다"), style)
+        #expect(abs(s.inkHeightRatio - style.caption.inkHeightRatio) <= 0.001)
+        #expect(abs(s.inkBottomRatio - style.caption.inkBottomRatio[.upperBody]) <= 0.003)
+    }
+
+    @Test("본문 글꼴을 바꿔도 보조 문구 크기는 그대로다")
+    func bodyFontDoesNotResizeSecondary() throws {
+        var style = try StyleStore.load().values
+        let before = CaptionLayout.metrics(frameSize: frame, style: style, slot: .upperBody)
+        style.look.caption.fontFamily = systemFamily
+        style.look.caption.weight = 800
+        let after = CaptionLayout.metrics(frameSize: frame, style: style, slot: .upperBody)
+        // 본문 폰트 크기는 글꼴마다 다르게 역산된다. 그래야 글자 높이가 같다.
+        #expect(abs(before.fontSize - after.fontSize) > 0.5)
+        #expect(abs(before.secondaryFontSize - after.secondaryFontSize) < 0.0001)
+    }
+
+    @Test("보조 글꼴을 바꾸면 그 글꼴로 같은 어센더 높이가 나온다")
+    func secondaryFontKeepsInkHeight() throws {
+        var style = try StyleStore.load().values
+        style.look.secondary.fontFamily = systemFamily
+        let m = CaptionLayout.metrics(frameSize: frame, style: style, slot: .upperBody)
+        let ink = CaptionLayout.inkBounds(
+            CaptionLayout.secondaryMetricProbe, font: style.secondaryFont(size: m.secondaryFontSize)
+        )
+        #expect(abs(ink.height / frame.height - style.secondary.inkHeightRatio) < 0.0002)
+    }
+
+    @Test("이탤릭 자형이 없는 글꼴은 템플릿 각도만큼 기울여 그린다")
+    func syntheticItalicUsesTemplateSlant() throws {
+        var style = try StyleStore.load().values
+        style.look.caption.fontFamily = systemFamily
+        style.look.caption.italic = true
+        let font = style.captionFont(size: 100)
+        let m = CTFontGetMatrix(font)
+        #expect(abs(Double(m.c) - tan(style.caption.italicSlantDeg * .pi / 180)) < 1e-6)
+        // 기울여도 글자 높이는 그대로다 (전단은 세로를 바꾸지 않는다).
+        let s = try scan(Caption(id: "t", start: 0, end: 1, text: "가능성이 높다는 겁니다"), style)
+        #expect(abs(s.inkHeightRatio - style.caption.inkHeightRatio) <= 0.001)
+    }
+
+    @Test("설치되지 않은 글꼴은 조용히 대체하지 않고 거절한다")
+    func rejectsMissingFont() throws {
+        var style = try StyleStore.load().values
+        style.look.caption.fontFamily = "없는 글꼴 이름 7f3a"
+        #expect(throws: StyleError.self) { try validate(style) }
+    }
+
+    @Test("글꼴 목록에는 한글을 그릴 수 있는 설치 글꼴이 나온다")
+    func listsHangulFamilies() {
+        let families = MadiFont.hangulFamilies()
+        #expect(families.contains(systemFamily))
+        // 라틴 전용 글꼴은 고르면 한글이 다른 글꼴로 대신 그려진다. 목록에 없어야 한다.
+        #expect(!families.contains("Helvetica"))
     }
 }

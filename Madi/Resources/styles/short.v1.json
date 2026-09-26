@@ -12,7 +12,6 @@
   ],
   "values": {
     "caption": {
-      "weight": 480,
       "inkHeightRatio": 0.0359,
       "inkBottomRatio": {
         "upperBody": 0.2352,
@@ -27,19 +26,13 @@
       "maxDurationSec": 3.0,
       "maxLines": 2,
       "lineGapRatio": 1.35,
-      "fill": "#FFFFFF",
-      "stroke": "#000000",
-      "emphasisFill": "#FFE04D",
+      "italicSlantDeg": 10,
       "popInSec": 0.1,
       "popInScaleFrom": 0.86
     },
     "secondary": {
-      "scale": 0.4444,
-      "weight": 400,
-      "baselineOffsetRatio": 0.0329,
-      "fill": "#FEE374",
-      "italic": false,
-      "hasStroke": false
+      "inkHeightRatio": 0.01281271995563,
+      "baselineOffsetRatio": 0.0329
     },
     "shadow": {
       "enabled": true,
@@ -53,6 +46,24 @@
       "maxUpscale": 1.25,
       "smoothingSec": 0.4,
       "padding": 0.08
+    },
+    "look": {
+      "_": "사용자가 바꾸는 값 (글꼴 · 굵기 · 기울임 · 색). 크기와 위치는 여기 없다. fontFamily null = 앱에 든 Pretendard",
+      "caption": {
+        "fontFamily": null,
+        "weight": 480,
+        "italic": false,
+        "fill": "#FFFFFF",
+        "stroke": "#000000",
+        "emphasisFill": "#FFE04D"
+      },
+      "secondary": {
+        "fontFamily": null,
+        "weight": 400,
+        "italic": false,
+        "fill": "#FEE374",
+        "stroke": null
+      }
     }
   }
 }

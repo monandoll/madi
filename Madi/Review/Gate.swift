@@ -47,9 +47,7 @@ public enum Gate {
         for scene in comp.scenes {
             let slot = comp.captionSlot(for: scene)
             let metrics = CaptionLayout.metrics(frameSize: frameSize, style: style, slot: slot)
-            let font = MadiFont.pretendard(
-                size: metrics.fontSize, weight: CGFloat(style.caption.weight)
-            )
+            let font = style.captionFont(size: metrics.fontSize)
             for caption in scene.captions {
                 counts.append(caption.text.count)
                 if caption.text.count > style.caption.maxChars { overChars.append(caption.id) }

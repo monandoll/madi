@@ -34,11 +34,12 @@ AGENTS.md §9. **스타일은 학습하지 않는다. 사람이 잰다.**
 | `caption.maxWidthRatio` | 가장 긴 자막 줄의 좌우 폭 ÷ 1080. 보통 0.85~0.92 |
 | `caption.maxChars` | 여러 프레임에서 한 번에 뜬 글자 수의 **최댓값** (공백 포함) |
 | `caption.lineHeight` | 2줄일 때 줄 기준선 간격 ÷ fontSize |
-| `caption.color` / `strokeColor` | 스포이드. 안티에일리어싱 경계가 아니라 **글자 안쪽**을 찍는다 |
-| `CAPTION_EMPHASIS.color` | 색이 다른 단어가 있으면 그 색. 없으면 강조 기능을 쓰지 않는다 |
+| `look.caption.fill` / `stroke` | 스포이드. 안티에일리어싱 경계가 아니라 **글자 안쪽**을 찍는다. ★ `look` 은 사용자가 설정에서 바꾸는 값이다 — 여기서 재는 건 **기본값** |
+| `look.caption.emphasisFill` | 색이 다른 단어가 있으면 그 색. 없으면 강조 기능을 쓰지 않는다 |
+| `look.*.fontFamily` · `italic` | 재지 않는다. **크리에이터에게 글꼴 이름을 묻는다.** 모양만 보고 비슷한 글꼴을 고르지 않는다 (`§0-4`). 기울기 각도는 `caption.italicSlantDeg` 에 잰다 (`madi-spike secondary`) |
 | `secondary.baselineBottomRatio` | 보조 문구 **베이스라인**에서 프레임 하단까지 ÷ 1920. 행별 픽셀 수가 뚝 떨어지는 행이 베이스라인이다. ★ 아래끝으로 재지 않는다 — `y` · `g` 디센더 유무로 문구마다 흔들린다 |
-| `secondary.scale` | 보조 fontSize ÷ 본문 fontSize. 라틴 어센더 높이를 재서 맞춘다 |
-| `hook.fontSize` / `topRatio` | 0~1.5초 구간 프레임에서 같은 방식으로 |
+| `secondary.inkHeightRatio` | 보조 문구 라틴 어센더 높이(맨 위 행 ~ 베이스라인) ÷ 1920. 폰트 크기가 아니라 **글자 높이**다 — 글꼴이 바뀌어도 크기가 그대로이게 |
+| (훅) | 따로 재지 않는다. 훅은 본문 자막과 같은 크기 · 자리다 (`docs/findings/2026-09-26-hook-titlecard-10.md`) |
 | `reframe.targetSubjectHeightRatio` | 인물의 **머리끝~발목** 픽셀 높이 ÷ 1920. 여러 프레임 평균 |
 
 ### 주의: 외곽선 (CoreText)

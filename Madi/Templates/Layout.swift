@@ -59,11 +59,16 @@ public enum CaptionLayout {
         // 1pt 당 실제 글자 높이를 재서 폰트 크기를 역산한다.
         // 큰 크기로 재야 힌팅·반올림이 비율에 덜 섞인다.
         let probeSize: CGFloat = 1000
-        let probeFont = MadiFont.pretendard(size: probeSize, weight: CGFloat(caption.weight))
+        let probeFont = style.captionFont(size: probeSize)
         let probeInk = inkBounds(metricProbe, font: probeFont)
         let perPoint = probeInk.height / probeSize
         let fontSize = targetInk / perPoint
         let inkMinYAtSize = probeInk.minY / probeSize * fontSize
+
+        // 보조도 **글자 높이**에서 역산한다. 본문 폰트 크기에 곱하면 본문 글꼴이 보조 크기를 바꾼다.
+        let secondaryProbe = inkBounds(secondaryMetricProbe, font: style.secondaryFont(size: probeSize))
+        let secondaryFontSize = CGFloat(style.secondary.inkHeightRatio) * H
+            / (secondaryProbe.height / probeSize)
 
         let strokeOuter = CGFloat(caption.strokeOuterRatio) * H
         // 획은 경로 **가운데** 기준으로 그려진다. 바깥으로 strokeOuter 만큼 나가게 하려면 2배.
@@ -82,7 +87,7 @@ public enum CaptionLayout {
             strokeOuter: strokeOuter,
             strokeWidthPercent: strokeWidthPercent,
             baselineFromBottom: baselineFromBottom,
-            secondaryFontSize: fontSize * CGFloat(style.secondary.scale),
+            secondaryFontSize: secondaryFontSize,
             // 보조는 **본문 아래끝에서 상대로** 잡는다. 본문이 움직이면 같이 움직여야 한다
             // (`docs/findings/2026-09-25-caption-position-10.md §3`).
             // 베이스라인으로 잡는 이유는 디센더 유무로 ink 아래끝이 흔들리기 때문이다.
@@ -139,5 +144,24 @@ public enum CaptionLayout {
             attributes: [NSAttributedString.Key(kCTFontAttributeName as String): font]
         )
         return CTLineCreateWithAttributedString(attributed)
+    }
+}
+
+// MARK: - 글꼴
+
+extension StyleValues {
+    /// 본문 글꼴. 크기만 정하면 나머지(글꼴 · 굵기 · 기울임)는 `look` 이 정한다.
+    public func captionFont(size: CGFloat) -> CTFont {
+        MadiFont.font(
+            family: look.caption.fontFamily, size: size, weight: CGFloat(look.caption.weight),
+            italic: look.caption.italic, slantDeg: CGFloat(caption.italicSlantDeg)
+        )
+    }
+
+    public func secondaryFont(size: CGFloat) -> CTFont {
+        MadiFont.font(
+            family: look.secondary.fontFamily, size: size, weight: CGFloat(look.secondary.weight),
+            italic: look.secondary.italic, slantDeg: CGFloat(caption.italicSlantDeg)
+        )
     }
 }

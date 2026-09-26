@@ -34,7 +34,8 @@ public enum CaptionPainter {
         scale: CGFloat = 1
     ) {
         let m = CaptionLayout.metrics(frameSize: frameSize, style: style, slot: slot)
-        let font = MadiFont.pretendard(size: m.fontSize, weight: CGFloat(style.caption.weight))
+        let font = style.captionFont(size: m.fontSize)
+        let look = style.look
         let maxWidth = CGFloat(style.caption.maxWidthRatio) * frameSize.width
         let lines = CaptionLayout.wrap(
             caption.text, font: font, maxWidth: maxWidth, style: style.caption
@@ -62,30 +63,26 @@ public enum CaptionPainter {
                 // 줄바꿈으로 사라진 공백 1자를 되돌려 원문 인덱스와 맞춘다.
                 emphasisOffset: lines.prefix(i).reduce(0) { $0 + $1.count + 1 },
                 font: font,
-                fill: style.caption.fill.rgba,
-                emphasisFill: style.caption.emphasisFill.rgba,
-                strokePercent: m.strokeWidthPercent,
-                strokeColor: style.caption.stroke.rgba,
+                fill: look.caption.fill.rgba,
+                emphasisFill: (look.caption.emphasisFill ?? look.caption.fill).rgba,
+                strokePercent: look.caption.stroke == nil ? 0 : m.strokeWidthPercent,
+                strokeColor: (look.caption.stroke ?? look.caption.fill).rgba,
                 baselineFromBottom: m.baselineFromBottom + fromLast * m.lineStep,
                 in: ctx, frameSize: frameSize, style: style
             )
         }
 
         if let secondary = caption.secondary, !secondary.isEmpty {
-            let sFont = MadiFont.pretendard(
-                size: m.secondaryFontSize,
-                weight: CGFloat(style.secondary.weight),
-                italic: style.secondary.italic
-            )
+            let sFont = style.secondaryFont(size: m.secondaryFontSize)
             drawLine(
                 text: secondary,
                 emphasis: [], emphasisOffset: 0,
                 font: sFont,
-                fill: style.secondary.fill.rgba,
-                emphasisFill: style.secondary.fill.rgba,
-                // 원본 보조 문구에는 외곽선이 없다 (6배 확대해서 확인).
-                strokePercent: style.secondary.hasStroke ? m.strokeWidthPercent : 0,
-                strokeColor: style.caption.stroke.rgba,
+                fill: look.secondary.fill.rgba,
+                emphasisFill: look.secondary.fill.rgba,
+                // 원본 보조 문구에는 외곽선이 없다 (6배 확대해서 확인) → `look.secondary.stroke` 가 null.
+                strokePercent: look.secondary.stroke == nil ? 0 : m.strokeWidthPercent,
+                strokeColor: (look.secondary.stroke ?? look.secondary.fill).rgba,
                 baselineFromBottom: m.secondaryBaselineFromBottom,
                 in: ctx, frameSize: frameSize, style: style
             )

@@ -49,7 +49,19 @@ do {
 } catch {
     fail("\(error)")
 }
-let values = style.values
+/// 자막 모양(`look`)을 명령줄에서 바꿔 본다. 설정 화면이 할 일을 미리 그려 보는 용도.
+///   --font "Apple SD Gothic Neo"   본문 · 보조 글꼴
+///   --italic                        본문 · 보조 기울임
+var values = style.values
+if let family = option("font") {
+    values.look.caption.fontFamily = family
+    values.look.secondary.fontFamily = family
+}
+if args.contains("--italic") {
+    values.look.caption.italic = true
+    values.look.secondary.italic = true
+}
+do { try validate(values) } catch { fail("\(error)") }
 
 /// 자막 위치 슬롯. 기본은 앉아서 말하는 상반신 (공개본 A 무리).
 let slot = CaptionSlot(rawValue: option("slot") ?? "upperBody") ?? .upperBody
@@ -69,6 +81,10 @@ case "font":
         print(String(format: "  wght %3.0f  폭 %7.2f  ink높이 %6.2f  ink아래끝 %6.2f",
                      w, width, ink.height, ink.minY))
     }
+
+case "fonts":
+    // 설정 화면의 글꼴 목록과 같은 것 — 한글을 그릴 수 있는 설치 글꼴.
+    for family in MadiFont.hangulFamilies() { print(family) }
 
 case "style":
     print("\(style.id) v\(style.version) — \(style.name)")
@@ -91,7 +107,7 @@ case "metrics":
     print(String(format: "  베이스라인(아래에서) %.2f px", m.secondaryBaselineFromBottom))
     print(String(format: "줄 간격               %.2f px", m.lineStep))
 
-    let font = MadiFont.pretendard(size: m.fontSize, weight: CGFloat(values.caption.weight))
+    let font = values.captionFont(size: m.fontSize)
     print("\n문자열별 ink 높이 (크기가 문자열에 따라 흔들리면 기준 문자열을 고쳐야 한다):")
     for s in [CaptionLayout.metricProbe, "가능성이 높다는 겁니다", "어깨가", "골반 틀어졌으면", "하나 둘 셋"] {
         let ink = CaptionLayout.inkBounds(s, font: font)
@@ -100,9 +116,7 @@ case "metrics":
                      CaptionLayout.advanceWidth(s, font: font)))
     }
 
-    let sFont = MadiFont.pretendard(
-        size: m.secondaryFontSize, weight: CGFloat(values.secondary.weight)
-    )
+    let sFont = values.secondaryFont(size: m.secondaryFontSize)
     let sInk = CaptionLayout.inkBounds(CaptionLayout.secondaryMetricProbe, font: sFont)
     print(String(format: "\n보조 라틴 어센더 높이 %.2f px  (원본 실측 16px @1280 = %.2f px @%d)",
                  sInk.height, 16.0 / 1280 * frameSize.height, Int(frameSize.height)))
@@ -125,7 +139,7 @@ case "stems":
     } else {
         for w in stride(from: 400.0, through: 900.0, by: 50.0) {
             var probe = values
-            probe.caption.weight = w
+            probe.look.caption.weight = w
             guard let image = try? StillRenderer.renderCaption(
                       goldenCaption, size: frameSize, style: probe, slot: slot,
                       backdrop: .solid(RGBA(0, 0, 0, 1))
