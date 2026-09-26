@@ -722,8 +722,9 @@ case "captions":
 
         if args.contains("--raw") {
             for c in solid {
-                print(String(format: "  %5.1f-%5.1f  %2d자 %d줄  %@",
-                             c.start, c.end, c.text.count, c.lines, c.text as NSString))
+                print(String(format: "  %5.1f-%5.1f  %2d자 %d줄  h%.4f  %@",
+                             c.start, c.end, c.text.count, c.lines, c.height,
+                             c.text as NSString))
             }
         }
         let counts = solid.map { Double($0.text.count) }.sorted()
