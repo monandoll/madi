@@ -741,6 +741,10 @@ PhotoKit 가져오기 → 다이제스트 → 큐 → 렌더 → 갤러리. AI �
 - 아키텍처 분기는 `TranscriptionProvider` · `PoseProvider` 두 곳에만 둔다.
   `#if arch(arm64)` 를 코드 곳곳에 뿌리지 않는다.
 - 테스트는 짧은 샘플 영상으로. Vision · WhisperKit 은 프로토콜로 감싸 테스트에서 대체한다.
+- **푸시는 작업 단위로, CI 는 단계 끝에만.** 푸시를 단계 끝까지 모아 두지 않는다 (로컬에만 있는 커밋은 잃는다).
+  CI(GitHub Actions `xcodebuild test`)는 푸시마다 돌리지 않는다. **단계 통과 태그 `stage-N` 푸시**와
+  **수동 실행(`workflow_dispatch`)** 에서만 돈다. 커밋마다 로컬 `xcodebuild test` 는 그대로 돌린다.
+  CI 는 아직 없다. 2단계 통과 때 붙인다. 샘플 영상 · 모델이 필요한 테스트를 CI 에서 어떻게 할지는 그때 정한다.
 
 ---
 
