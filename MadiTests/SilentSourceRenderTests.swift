@@ -72,7 +72,7 @@ struct SilentSourceRenderTests {
         #expect(audio.isEmpty)
 
         let comp = Composition(
-            id: "silent", videoID: "silent", templateID: "short",
+            id: "silent", videoID: "silent", templateID: "short",style: StyleRef(id: "short.v1", version: 1),
             size: Composition.Size(w: 128, h: 224), fps: 30,
             meta: Composition.Meta(title: "무음", targetDurationSec: 0.4),
             captionSlot: .fullBody,

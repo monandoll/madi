@@ -218,6 +218,7 @@ struct Composition: Codable {
     let videoID: String
     let templateID: String          // Templates/<id>. 스타일은 전부 여기 있다
     let templateVersion: Int
+    var style: StyleRef             // {id, version}. 그린 스타일 값. 필수. AI 가 아니라 앱이 찍는다
     var size: CGSize                // 1080 x 1920
     var fps: Int                    // 30
     var meta: Meta                  // title, platform, targetDurationSec
@@ -315,8 +316,14 @@ struct Style: Codable {
 }
 ```
 
-`Composition.templateID` 는 **그리기 로직**을 가리키고, `styleID` 는 **값**을 가리킨다.
+`Composition.templateID` 는 **그리기 로직**을 가리키고, `Composition.style` 은 **값**을 가리킨다.
 로직은 바꾸려면 빌드가 필요하지만 값은 아니다.
+
+- `style` 은 **버전까지** 적는다. 사용자가 자막 모양을 바꾸면 같은 id 의 새 버전이 생기고
+  (`StyleStore.saveLook`) 옛 버전은 지우지 않는다. 편집안은 항상 **자기 버전으로** 그린다 (`§1-8`)
+- 기본값이 없다. 없으면 파싱이 실패한다 — "지금 스타일" 로 그리면 옛 편집안이 새 모양으로 몰래 바뀐다
+- 새 편집안에는 저장 시점의 최신 버전(`StyleStore.latest`)을 **앱이** 찍는다. AI 는 이 칸을 쓰지 않는다
+- 번들 스타일 파일의 `version` 은 올리지 않는다. 템플릿 값이 바뀌면 새 id(`short.v2`)로 만든다
 
 ---
 

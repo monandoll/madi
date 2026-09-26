@@ -22,7 +22,7 @@ struct CompositionTests {
         Data("""
         {
           "id": "c1", "videoId": "v1",
-          "templateId": "SuhyunShortV1",
+          "templateId": "SuhyunShortV1", "style": { "id": "short.v1", "version": 1 },
           "meta": { "targetDurationSec": 30 },
           "captionSlot": "upperBody",
           "scenes": \(scenes)
@@ -54,8 +54,22 @@ struct CompositionTests {
         // (docs/findings/2026-09-25-caption-position-10.md).
         let json = Data("""
         {
-          "id": "c1", "videoId": "v1", "templateId": "short",
+          "id": "c1", "videoId": "v1", "templateId": "short", "style": { "id": "short.v1", "version": 1 },
           "meta": { "targetDurationSec": 30 },
+          "scenes": [{ "id": "s1", "role": "hook",
+                       "source": { "videoId": "v1", "in": 0, "out": 3 } }]
+        }
+        """.utf8)
+        #expect(throws: (any Error).self) { try parseComposition(json) }
+    }
+
+    @Test("style 이 없으면 거절한다")
+    func requiresStyle() {
+        // 기본값("지금 스타일")을 두면 옛 편집안이 새 모양으로 몰래 다시 그려진다 (§1-8).
+        let json = Data("""
+        {
+          "id": "c1", "videoId": "v1", "templateId": "short",
+          "meta": { "targetDurationSec": 30 }, "captionSlot": "upperBody",
           "scenes": [{ "id": "s1", "role": "hook",
                        "source": { "videoId": "v1", "in": 0, "out": 3 } }]
         }

@@ -113,7 +113,7 @@ struct CaptionGateTests {
 
     private func comp(captions: [Caption]) -> Composition {
         Composition(
-            id: "c", videoID: "v", templateID: "short",
+            id: "c", videoID: "v", templateID: "short",style: StyleRef(id: "short.v1", version: 1),
             meta: Composition.Meta(title: "t", targetDurationSec: 10),
             captionSlot: .upperBody,
             scenes: [Scene(

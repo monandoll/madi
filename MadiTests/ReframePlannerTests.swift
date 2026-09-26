@@ -253,7 +253,7 @@ struct ReframePlannerTests {
             reframe: ReframeTrack(mode: .auto)
         )
         let comp = Composition(
-            id: "c1", videoID: "v", templateID: "short",
+            id: "c1", videoID: "v", templateID: "short",style: StyleRef(id: "short.v1", version: 1),
             meta: Composition.Meta(title: "t", targetDurationSec: 10),
             captionSlot: .fullBody, scenes: [scene]
         )

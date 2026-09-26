@@ -265,3 +265,71 @@ struct CaptionLookTests {
         #expect(!families.contains("Helvetica"))
     }
 }
+
+/// 사용자가 자막 모양을 바꾸면 **새 버전**이 생기고 옛 버전은 남는다 (AGENTS.md §1-8 · §9).
+struct StyleVersionTests {
+    private func tempDir() throws -> URL {
+        let dir = FileManager.default.temporaryDirectory
+            .appending(path: "madi-style-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    @Test("모양을 저장하면 새 버전이 되고, 옛 버전은 그대로 읽힌다")
+    func saveLookMakesNewVersion() throws {
+        let dir = try tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let base = try StyleStore.load()
+        #expect(try StyleStore.latest(in: dir) == StyleRef(id: base.id, version: base.version))
+
+        var look = base.values.look
+        look.caption.italic = true
+        let v2 = try StyleStore.saveLook(look, basedOn: base, in: dir)
+        #expect(v2.version == base.version + 1)
+        #expect(try StyleStore.latest(in: dir).version == v2.version)
+
+        // 옛 버전으로 만든 편집안은 옛 모양으로 다시 그려진다.
+        let old = try StyleStore.load(StyleRef(id: base.id, version: base.version), in: dir)
+        #expect(old.values.look.caption.italic == false)
+        let new = try StyleStore.load(StyleRef(id: base.id, version: v2.version), in: dir)
+        #expect(new.values.look.caption.italic == true)
+        // 템플릿 값은 건드리지 않는다.
+        #expect(new.values.caption == base.values.caption)
+        #expect(new.values.secondary == base.values.secondary)
+    }
+
+    @Test("저장할 때마다 번호가 올라가고 덮어쓰지 않는다")
+    func neverOverwrites() throws {
+        let dir = try tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let base = try StyleStore.load()
+        var look = base.values.look
+        look.caption.weight = 700
+        let a = try StyleStore.saveLook(look, basedOn: base, in: dir)
+        look.caption.weight = 800
+        let b = try StyleStore.saveLook(look, basedOn: a, in: dir)
+        #expect(b.version == a.version + 1)
+        #expect(try StyleStore.load(StyleRef(id: base.id, version: a.version), in: dir)
+            .values.look.caption.weight == 700)
+    }
+
+    @Test("설치 안 된 글꼴은 저장하지 않는다")
+    func rejectsMissingFontOnSave() throws {
+        let dir = try tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let base = try StyleStore.load()
+        var look = base.values.look
+        look.caption.fontFamily = "없는 글꼴 이름 7f3a"
+        #expect(throws: StyleError.self) { try StyleStore.saveLook(look, basedOn: base, in: dir) }
+        #expect(try StyleStore.latest(in: dir).version == base.version)
+    }
+
+    @Test("없는 버전은 조용히 최신으로 대신하지 않는다")
+    func missingVersionFails() throws {
+        let dir = try tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        #expect(throws: StyleStore.Failure.self) {
+            try StyleStore.load(StyleRef(id: StyleStore.defaultID, version: 99), in: dir)
+        }
+    }
+}

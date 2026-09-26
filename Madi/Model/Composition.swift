@@ -384,6 +384,16 @@ public enum Platform: String, Codable, Sendable {
     case reels, shorts, tiktok
 }
 
+/// 어떤 스타일 **값**으로 그렸는지. `templateID` 는 그리기 로직, 이건 값이다 (AGENTS.md §5).
+///
+/// ★ 버전까지 적는다. 사용자가 자막 모양(`look`)을 바꾸면 같은 id 의 새 버전이 생기고
+///   옛 버전은 지우지 않는다. 옛 편집안은 **자기 버전으로** 다시 그려져야 한다 (§1-8).
+public struct StyleRef: Codable, Hashable, Sendable {
+    public var id: String
+    public var version: Int
+    public init(id: String, version: Int) { self.id = id; self.version = version }
+}
+
 public struct Composition: Codable, Hashable, Sendable {
     public struct Size: Codable, Hashable, Sendable {
         public var w: Int
@@ -415,6 +425,8 @@ public struct Composition: Codable, Hashable, Sendable {
     /// `Madi/Templates/<templateID>`. 스타일은 전부 여기 있다.
     public var templateID: String
     public var templateVersion: Int
+    /// 이 편집안을 그린 스타일 값. **AI 가 고르지 않는다** — 저장할 때 앱이 그 시점의 스타일을 찍는다.
+    public var style: StyleRef
     public var size: Size
     public var fps: Int
     public var meta: Meta
@@ -436,18 +448,18 @@ public struct Composition: Codable, Hashable, Sendable {
         case id
         case videoID = "videoId"
         case templateID = "templateId"
-        case templateVersion, size, fps, meta, captionSlot, scenes, audio, revisionOf, createdAt
+        case templateVersion, style, size, fps, meta, captionSlot, scenes, audio, revisionOf, createdAt
     }
 
     public init(
         id: String, videoID: String, templateID: String, templateVersion: Int = 1,
-        size: Size = Size(), fps: Int = 30, meta: Meta,
+        style: StyleRef, size: Size = Size(), fps: Int = 30, meta: Meta,
         captionSlot: CaptionSlot, scenes: [Scene],
         audio: AudioTracks = AudioTracks(), revisionOf: String? = nil,
         createdAt: Date = Date()
     ) {
         self.id = id; self.videoID = videoID; self.templateID = templateID
-        self.templateVersion = templateVersion; self.size = size; self.fps = fps
+        self.templateVersion = templateVersion; self.style = style; self.size = size; self.fps = fps
         self.meta = meta; self.captionSlot = captionSlot; self.scenes = scenes; self.audio = audio
         self.revisionOf = revisionOf; self.createdAt = createdAt
     }
@@ -458,6 +470,9 @@ public struct Composition: Codable, Hashable, Sendable {
         videoID = try c.decode(String.self, forKey: .videoID)
         templateID = try c.decode(String.self, forKey: .templateID)
         templateVersion = try c.decodeIfPresent(Int.self, forKey: .templateVersion) ?? 1
+        // 기본값을 두지 않는다. 없으면 "지금 스타일" 로 그리게 되는데, 그건 옛 편집안을
+        // 새 모양으로 몰래 다시 그리는 것이다 (§1-8).
+        style = try c.decode(StyleRef.self, forKey: .style)
         size = try c.decodeIfPresent(Size.self, forKey: .size) ?? Size()
         fps = try c.decodeIfPresent(Int.self, forKey: .fps) ?? 30
         meta = try c.decode(Meta.self, forKey: .meta)
@@ -551,6 +566,8 @@ public func validate(_ comp: Composition) throws {
     var problems: [String] = []
 
     if comp.templateID.isEmpty { problems.append("templateId 가 비어 있다") }
+    if comp.style.id.isEmpty { problems.append("style.id 가 비어 있다") }
+    if comp.style.version < 1 { problems.append("style.version \(comp.style.version) 은 1 이상이어야 한다") }
     if comp.scenes.isEmpty { problems.append("scenes 가 비어 있다") }
     if comp.size.w <= 0 || comp.size.h <= 0 { problems.append("size 가 0 이하다") }
     if comp.fps < 24 || comp.fps > 60 { problems.append("fps \(comp.fps) 는 24~60 밖이다") }

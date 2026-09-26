@@ -376,7 +376,7 @@ case "crop916":
         let h = Int(info.size.height.rounded()) / 2 * 2
         let w = Int((Double(h) * 9 / 16).rounded()) / 2 * 2
         let comp = Composition(
-            id: "crop916_" + id, videoID: id, templateID: "short",
+            id: "crop916_" + id, videoID: id, templateID: "short",style: StyleRef(id: "short.v1", version: 1),
             size: Composition.Size(w: w, h: h), fps: 30,
             meta: Composition.Meta(title: id, targetDurationSec: dur),
             captionSlot: .fullBody,
@@ -461,7 +461,7 @@ case "splittest":
         }
         // G6 — 우리가 만든 편집안을 실제로 걸어 본다.
         let comp = Composition(
-            id: "split_" + id, videoID: id, templateID: "short",
+            id: "split_" + id, videoID: id, templateID: "short",style: StyleRef(id: "short.v1", version: 1),
             meta: Composition.Meta(title: id, targetDurationSec: until),
             captionSlot: .fullBody,
             scenes: [Scene(
@@ -887,7 +887,7 @@ case "reframe":
                 reframe: ReframeTrack(mode: .auto)
             )
             let comp = Composition(
-                id: "reframe_" + id, videoID: id, templateID: "short",
+                id: "reframe_" + id, videoID: id, templateID: "short",style: StyleRef(id: "short.v1", version: 1),
                 size: Composition.Size(w: 1080, h: 1920), fps: 30,
                 meta: Composition.Meta(title: id, targetDurationSec: last),
                 captionSlot: .fullBody, scenes: [scene]
@@ -1349,7 +1349,12 @@ case "render":
             sources[id] = found
         }
 
-        try await Renderer().render(comp, sources: sources, style: values, to: outURL) { p in
+        // 편집안은 **자기가 적은 스타일 버전**으로 그린다 (§1-8).
+        // --font · --italic 을 줬을 때만 명령줄 모양으로 바꿔 그려 본다.
+        let lookOverride = option("font") != nil || args.contains("--italic")
+        let renderStyle = lookOverride ? values : try StyleStore.load(comp.style).values
+        print("스타일 \(comp.style.id) v\(comp.style.version)" + (lookOverride ? " (명령줄 모양)" : ""))
+        try await Renderer().render(comp, sources: sources, style: renderStyle, to: outURL) { p in
             FileHandle.standardError.write(Data("\r만드는 중 \(Int(p * 100))%   ".utf8))
         }
         FileHandle.standardError.write(Data("\r                 \r".utf8))

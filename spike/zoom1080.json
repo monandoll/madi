@@ -1,7 +1,7 @@
 {
   "id": "spike-zoom-IMG6022-1080",
   "videoId": "IMG_6022_1080",
-  "templateId": "short",
+  "templateId": "short", "style": { "id": "short.v1", "version": 1 },
   "templateVersion": 1,
   "size": {
     "w": 1080,
