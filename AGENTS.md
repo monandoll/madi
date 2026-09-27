@@ -741,6 +741,14 @@ PhotoKit 가져오기 → 다이제스트 → 큐 → 렌더 → 갤러리. AI �
   PhotoKit 경로로 들어오게 한다. **촬영본이 생기면 할 것**:
   iCloud 동기화 경로(아이폰 → Mac 사진 도착 시간) · 크리에이터 촬영본으로 G1 · G2 · G3 · 전사 오타율 ·
   잠정값 실측(무음 −40dB · 0.5초, 컷 기준 0.12)
+- ✅ **3단계 통과 (2026-09-27, 대용 기준).**
+  사진 앱에 넣은 1분 영상(`uw1aUHnMfo8` 앞 60초)이 PhotoKit 으로 저절로 들어와 **134.7초** 만에 완성본
+  (다이제스트 112.9 · 렌더 21.8, Release · Apple Silicon). G1 ~ G6 전부 통과.
+  Intel: whisper.cpp 로 Rosetta 동작 확인 + **CI 실제 x86_64**(`macos-15-intel`)에서 단위 테스트 125개 · 전사 한 편 통과.
+  Universal 2 는 `scripts/build-universal.sh`.
+  근거: `docs/stage-3.spec.md` · `docs/findings/2026-09-27-stage3-pipeline.md`
+  남긴 것: 위 "촬영본이 생기면 할 것" · 다이제스트 성능(컷 검출 · 사람 추적이 원본을 따로 디코딩 — 1분 넘는 영상) ·
+  첫 실행 비용(모델 받기 + 데우기 ~5분) · 판정 도구는 4단계에서 지운다
 
 **4. AI 1턴**
 `Process` 스폰 + MCP 2도구 + 프롬프트 조립.
@@ -868,5 +876,8 @@ node tools/measure.mjs <png> [<png> ...]      # 자막 지표 측정
   깨지므로 아키텍처마다 따로 빌드해 `lipo` 로 합친다. `.dmg` 는 하나다. x86_64 슬라이스에도 WhisperKit 이 들어 있다
 - **Intel 은 실기 확인 못 함** — 쓸 수 있는 Intel Mac 이 없다. 확인한 것은 **Rosetta 동작 확인까지**다:
   x86_64 도구로 GGML 모델 488MB 받기 · 해시 확인 · 전사 한 편(`8DF9jrxQM4U`, 낱말 41개, 앞부분이 WhisperKit 결과와 같음),
-  Universal 앱 x86_64 슬라이스가 켜져 10초간 죽지 않음. **성능 수치는 없다** — Rosetta 는 Tier 2 성능으로 치지 않는다 (위).
-  whisper.cpp 낱말 시각(토큰 시각을 묶은 것)이 WhisperKit 보다 거친지도 아직 안 쟀다
+  Universal 앱 x86_64 슬라이스가 켜져 10초간 죽지 않음. Rosetta 는 Tier 2 성능으로 치지 않는다 (위).
+- **CI 실제 x86_64 (`macos-15-intel`, stage-* 태그마다)** — 단위 테스트 125개 통과 · whisper.cpp 로 합성 음성 5.8초 전사:
+  모델 준비 50.8초 · **전사 48.5초 (실시간의 약 8배)** · 낱말 10개 정확. VM CPU 라 참고값이지만
+  1분 영상이면 전사만 ~8분 — Intel 에 "편집 10분" 목표를 적용하지 않는 이유가 실측으로 확인됐다. 실제 Intel Mac 은 여전히 못 봤다
+- whisper.cpp 낱말 시각(토큰 시각을 묶은 것)이 WhisperKit 보다 거친지는 아직 안 쟀다
