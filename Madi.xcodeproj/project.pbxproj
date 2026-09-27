@@ -23,6 +23,8 @@
 		498A29E3EF2E75257EADC4AD /* Font.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9198795506821EE4D71C606A /* Font.swift */; };
 		4F503468CEA9386910EDBD9A /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 64370709853D3ADF23396E36 /* WhisperKit */; };
 		55BFC2D227DCDDFD63F04E38 /* StyleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407CF4C64A45F212D6AA28FA /* StyleTests.swift */; };
+		55FD3BF48398663B3B8E1A62 /* Records.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF4FA327FAC7C7435A14479 /* Records.swift */; };
+		592A3D58F7705E5A035A311C /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 9BC92477796650B48B88A3DC /* GRDB */; };
 		631C3B5825F86943E42C6697 /* MadiKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; };
 		64E6401962C8137B5156C041 /* styles in Resources */ = {isa = PBXBuildFile; fileRef = 51E6B50BFE4E0F63A6994F30 /* styles */; };
 		6B3E982EF607902E95F17BE7 /* PoseOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D94087F95A27AD4220EBA1 /* PoseOverlay.swift */; };
@@ -33,6 +35,7 @@
 		7C9E11D054D39BC490258492 /* PretendardVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8148334F0D1C4607F6103479 /* PretendardVariable.ttf */; };
 		7CB49E7614D6007C3C11FAAE /* CaptionGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4181A1F305068579BF9A5C22 /* CaptionGateTests.swift */; };
 		7EC27D66EB8FA2EB23EF7B40 /* StyleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17ABE83D90BA6977FB20DD73 /* StyleStore.swift */; };
+		8D14896445466BABE07F2DCE /* StoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 447D4CB078F15F112C14D69A /* StoreTests.swift */; };
 		8F8D3E23A77E148BCC89AFA8 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = F441B6E8EB91AD06BD449DE9 /* OFL.txt */; };
 		926AF78D2A2B10AF2BCEC20B /* ReframeLimitsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2223B52C773741B4A0C9EA8F /* ReframeLimitsTests.swift */; };
 		927E3BBA58DC739C64FC1904 /* MadiKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; };
@@ -48,6 +51,7 @@
 		DF49714AE26CCB238A41B42F /* FrameSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA6ADD859B1A49D3B7AED392 /* FrameSheet.swift */; };
 		E7B5F43FB54DA90B9F02FFDF /* MadiKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; };
 		E98DDAE9458F83A89577DFF5 /* TranscriptionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E9CA9018D54ABF34880504E /* TranscriptionProvider.swift */; };
+		F072B94DA79AA4FFC95C31C4 /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DCB790C1C12A6031F486509 /* AppDatabase.swift */; };
 		F422E7EF80A79FA742B09A48 /* CaptionReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D14F74043F8EBA6673C7CE2 /* CaptionReader.swift */; };
 		F76C7F574A45D391BC82F937 /* CompositionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E21F644B2F761A97C070BE8 /* CompositionTests.swift */; };
 		FC3555D591D888294B8CF13A /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B2B8D01B0628FACEC7DDB1 /* Renderer.swift */; };
@@ -107,10 +111,12 @@
 		3CDC46588584CE5887303191 /* PoseProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseProvider.swift; sourceTree = "<group>"; };
 		3E21F644B2F761A97C070BE8 /* CompositionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionTests.swift; sourceTree = "<group>"; };
 		3E9CA9018D54ABF34880504E /* TranscriptionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionProvider.swift; sourceTree = "<group>"; };
+		3FF4FA327FAC7C7435A14479 /* Records.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Records.swift; sourceTree = "<group>"; };
 		407CF4C64A45F212D6AA28FA /* StyleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleTests.swift; sourceTree = "<group>"; };
 		409E7371C9108F4322587DF0 /* MadiKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MadiKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4181A1F305068579BF9A5C22 /* CaptionGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionGateTests.swift; sourceTree = "<group>"; };
 		445E24C845CB9F13A235589E /* Composition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composition.swift; sourceTree = "<group>"; };
+		447D4CB078F15F112C14D69A /* StoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreTests.swift; sourceTree = "<group>"; };
 		448203E1948EA675814B0793 /* Spec.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Spec.json; sourceTree = "<group>"; };
 		51E6B50BFE4E0F63A6994F30 /* styles */ = {isa = PBXFileReference; lastKnownFileType = folder; name = styles; path = Madi/Resources/styles; sourceTree = SOURCE_ROOT; };
 		67E1C649B3812749092A8C66 /* SourceInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceInfo.swift; sourceTree = "<group>"; };
@@ -125,6 +131,7 @@
 		97883FA1954A88DF0996BBD4 /* ReframePlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReframePlannerTests.swift; sourceTree = "<group>"; };
 		99FF29B03B61C75F0F2A1992 /* MadiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MadiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D14F74043F8EBA6673C7CE2 /* CaptionReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionReader.swift; sourceTree = "<group>"; };
+		9DCB790C1C12A6031F486509 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
 		9F09B5CE975F12C72180877E /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
 		A3ABAB60902BDDBB742C6804 /* CaptionSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionSplitter.swift; sourceTree = "<group>"; };
 		A6846090E3F100A140F296D0 /* Madi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Madi.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -167,6 +174,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4F503468CEA9386910EDBD9A /* WhisperKit in Frameworks */,
+				592A3D58F7705E5A035A311C /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -188,6 +196,15 @@
 				1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		3BCECEC8E255EB2D1E1D12DC /* Store */ = {
+			isa = PBXGroup;
+			children = (
+				9DCB790C1C12A6031F486509 /* AppDatabase.swift */,
+				3FF4FA327FAC7C7435A14479 /* Records.swift */,
+			);
+			path = Store;
 			sourceTree = "<group>";
 		};
 		3EAAB46E6972FB7A262FC8AD /* Render */ = {
@@ -219,6 +236,7 @@
 				2223B52C773741B4A0C9EA8F /* ReframeLimitsTests.swift */,
 				97883FA1954A88DF0996BBD4 /* ReframePlannerTests.swift */,
 				0317C0EB1C8B1BB9CC15D14A /* SilentSourceRenderTests.swift */,
+				447D4CB078F15F112C14D69A /* StoreTests.swift */,
 				407CF4C64A45F212D6AA28FA /* StyleTests.swift */,
 				001C72A8FC192CF7A3945894 /* TestVideo.swift */,
 			);
@@ -243,6 +261,7 @@
 				3EAAB46E6972FB7A262FC8AD /* Render */,
 				CEC1DE80438539AEC19813FE /* Resources */,
 				102C7B1CA4D969DC3D137C12 /* Review */,
+				3BCECEC8E255EB2D1E1D12DC /* Store */,
 				E43B38BE34ACF3DE05041893 /* Templates */,
 			);
 			path = Madi;
@@ -352,6 +371,7 @@
 			name = MadiKit;
 			packageProductDependencies = (
 				64370709853D3ADF23396E36 /* WhisperKit */,
+				9BC92477796650B48B88A3DC /* GRDB */,
 			);
 			productName = MadiKit;
 			productReference = 409E7371C9108F4322587DF0 /* MadiKit.framework */;
@@ -436,6 +456,7 @@
 			mainGroup = FD9084BA75892BC85BEA1E49;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				3248BFDF15EBE26EC543D693 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 				B5771C3E0A68DAA5E1DC7063 /* XCRemoteSwiftPackageReference "WhisperKit" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -493,6 +514,7 @@
 				926AF78D2A2B10AF2BCEC20B /* ReframeLimitsTests.swift in Sources */,
 				3E315E26A91D7C56D78B7F20 /* ReframePlannerTests.swift in Sources */,
 				7470FB3834CB5740E879BDC9 /* SilentSourceRenderTests.swift in Sources */,
+				8D14896445466BABE07F2DCE /* StoreTests.swift in Sources */,
 				55BFC2D227DCDDFD63F04E38 /* StyleTests.swift in Sources */,
 				41AD13869F240A2A4230BA82 /* TestVideo.swift in Sources */,
 			);
@@ -502,6 +524,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F072B94DA79AA4FFC95C31C4 /* AppDatabase.swift in Sources */,
 				A71CD837B55F05CD74CD62A5 /* CaptionLayer.swift in Sources */,
 				F422E7EF80A79FA742B09A48 /* CaptionReader.swift in Sources */,
 				33EA60172AF9CB94DF000674 /* CaptionSplitter.swift in Sources */,
@@ -515,6 +538,7 @@
 				BB8593E4885B0F74346EA5CB /* OverlayPayload.swift in Sources */,
 				6B3E982EF607902E95F17BE7 /* PoseOverlay.swift in Sources */,
 				2EE5D8289209DFCF1DC52EE2 /* PoseProvider.swift in Sources */,
+				55FD3BF48398663B3B8E1A62 /* Records.swift in Sources */,
 				7C21E63AC2A566BA5D401B0D /* ReframePlanner.swift in Sources */,
 				FC3555D591D888294B8CF13A /* Renderer.swift in Sources */,
 				70E53AA18374F6A0DD3FBC2E /* SourceInfo.swift in Sources */,
@@ -849,6 +873,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		3248BFDF15EBE26EC543D693 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				kind = exactVersion;
+				version = 7.11.1;
+			};
+		};
 		B5771C3E0A68DAA5E1DC7063 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/argmaxinc/WhisperKit";
@@ -864,6 +896,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B5771C3E0A68DAA5E1DC7063 /* XCRemoteSwiftPackageReference "WhisperKit" */;
 			productName = WhisperKit;
+		};
+		9BC92477796650B48B88A3DC /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3248BFDF15EBE26EC543D693 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

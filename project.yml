@@ -38,12 +38,15 @@ packages:
   # ⚠ 0.9 대에 고정한다. 0.18 은 Vapor(웹 서버) · swift-openapi 까지 끌고 오는데
   #   §16 이 "웹 UI · HTTP 서버" 를 하지 않기로 했고, Universal 빌드도 깨진다
   #   (`docs/findings/2026-09-26-whisperkit.md §2`).
-  # ★ exactVersion 이다. minorVersion 은 0.9.x 범위라 고정이 아니고,
-  #   Package.resolved 는 .gitignore(project.xcworkspace/)에 막혀 커밋되지 않는다.
-  #   즉 여기 적힌 값이 **레포에 남는 유일한 버전 기록**이다.
+  # ★ exactVersion 이다. minorVersion 은 0.9.x 범위라 고정이 아니다.
+  #   의존성의 의존성까지는 Package.resolved 가 고정한다 (2026-09-27 부터 커밋한다).
   WhisperKit:
     url: https://github.com/argmaxinc/WhisperKit
     exactVersion: 0.9.4
+  # 저장소 (AGENTS.md §3 — SwiftData 쓰지 않는다). 마이그레이션 · 관측 쿼리.
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    exactVersion: 7.11.1
 
 targets:
   # 코어. 모델 · 템플릿 · 렌더가 전부 여기 있다.
@@ -57,6 +60,7 @@ targets:
       - path: Madi/Render
       - path: Madi/Review
       - path: Madi/Templates
+      - path: Madi/Store
       - path: Madi/Templates/Spec.json
         buildPhase: resources
       - path: Madi/Resources/Fonts
@@ -68,6 +72,8 @@ targets:
     dependencies:
       - package: WhisperKit
         product: WhisperKit
+      - package: GRDB
+        product: GRDB
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.madi.kit
