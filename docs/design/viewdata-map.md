@@ -1,0 +1,153 @@
+# ViewData 대응표 — 엔진 → 화면 (6단계, 2026-09-27)
+
+`Madi/UI/ViewData.swift` 가 **약속**이다. 개발은 `Madi/UI/**` 를 건드리지 않는다.
+개발은 UI 밖에 **엔진 → ViewData 로 바꾸는 층**을 만든다. ViewData 를 바꿔야 하면 고치지 않고 아래 3절에 적는다.
+
+표시:
+- ✅ 엔진에 있다 — 옮겨 담기만 한다
+- 🔧 엔진에 재료는 있다 — 바꾸는 층에서 계산한다 (규칙을 같이 적었다)
+- 🛠 엔진에 없다 — 개발이 **UI 밖에** 새로 만든다 (6단계 개발 일)
+- ❓ 정해야 한다 — 기준이 없다. 누가 정할지 적었다
+
+엔진 쪽 이름: `video` · `digest` · `composition` · `output` · `job` · `event` 는 DB 표 (`Madi/Store/`),
+`Composition` 은 `Madi/Model/Composition.swift`.
+
+---
+
+## 1. 칸마다 어디서 오나
+
+### 썸네일 · 촬영본 · 갤러리
+
+| ViewData | 칸 | 출처 | |
+|---|---|---|---|
+| `Thumbnail` | `fileURL` | 원본 첫 화면 · 결과물 첫 화면 · 장면 첫 화면 한 장. 지금은 다이제스트 격자 시트뿐(`digest.sheetPaths`) | 🛠 한 장짜리 그림을 `~/Library/Caches/madi/thumbs/` 에 뽑는다. `§4` 의 720p 프록시는 아직 없다 |
+| `ShotItem` | `id` | `video.id` | ✅ |
+| | `title` | 말소리에서 뽑은 제목. 초안이 있으면 `Composition.meta.title`(AI 가 쓴다), 없으면 빈 문자열 | 🔧 초안 전에는 비어 있다 — 디자인 가정(“없으면 날짜”)대로 |
+| | `shotAt` | `video.capturedAt`, 없으면 `video.importedAt` | ✅ |
+| | `duration` | `video.durationSec` | ✅ |
+| | `speech` | `clear · noisy · silent` | ❓ `silent` 은 전사 낱말 수 0 으로 가를 수 있다. **`noisy` 를 가를 측정이 없다** (SNR 을 재지 않는다). 개발이 기준을 정해 보고한다 — 촬영본 전에는 `clear` / `silent` 둘만 나온다 |
+| | `isMaking` | 이 영상에 살아 있는 작업(`job` 의 analyze · agent · render · selfEval, queued/running)이 있는가 | 🔧 |
+| | `results` | 이 영상 편집안들의 `output` 중 `verdict == shown` | 🔧 |
+| `ResultRef` | `id` | `output.id` | ✅ |
+| | `platform` | `Composition.meta.platform` (기본 `reels`) | ✅ AI 는 지금 이 칸을 고르지 않는다 — 전부 릴스로 나온다 |
+| | `planLabel` | `편집안 N` — 이 영상의 **보이는** 편집안 순번 | 🔧 번호 규칙은 아래 `PlanVersion` |
+| | `when` | `output.createdAt` 을 사람 말로 (`오늘 오후 2:40`) | 🔧 |
+| | `duration` · `sceneCount` | 편집안에서 | ✅ |
+| | `isNew` | 아직 안 본 결과물 | 🛠 "봤다" 를 적는 칸이 없다 — 개발이 만든다 |
+| | `exportedNote` | 내보낸 이력 | 🛠 내보내기가 아직 없다 (6단계 개발 일) |
+| `ShotGroup` | `title` · `subtitle` | `shotAt` 으로 오늘 · 이번 주 · 지난주 · 그 전 | 🔧 |
+| `GalleryState` | `.loading` | DB 를 처음 읽는 동안 | 🔧 |
+| | `.empty` | `video` 가 0 행 | ✅ |
+| | `.importing(done, total)` | `video.status` 가 `importing` 인 행 수 · 전체 | 🔧 **한 편 안의 진행률은 없다** (iCloud 원본 받기 진행률을 엔진이 들고 있지 않다) |
+| | `.noPhotoAccess` | `PHPhotoLibrary.authorizationStatus` | 🔧 `PhotoLibraryWatcher.start()` 가 거절이면 false 를 돌려준다 — 상태로 들고 있지는 않다 |
+
+### 사이드바 · 설정 · 첫 실행
+
+| ViewData | 칸 | 출처 | |
+|---|---|---|---|
+| `AIConnection` | | `AgentJob.defaultChoice()` — 설정 `madi.agent`, 없으면 연결된 쪽(둘 다면 Claude) | ✅ |
+| `StudioStatus` | `studioName` | 설정값 | 🛠 저장 칸이 없다 (`UserDefaults` 키를 만든다). 코드에 박지 않는다 (`§1-7`) |
+| | `shotCount` · `resultCount` · `makingCount` | `video` 행 수 · `output(shown)` 수 · 살아 있는 작업이 있는 영상 수 | 🔧 |
+| `AISetup` | `.picked` · `.waiting` · `.connected(account)` | `CLILocator.connection` — 설치 · 로그인. `account` 는 Claude 만 준다(`claude auth status` 의 `email`). **Codex 는 계정 주소를 안 준다** | 🔧 / 🛠 로그인 대행(`waiting`)은 개발이 만든다 (`§2` — 앱이 CLI 설치 · 로그인 진입을 대신한다) |
+| `PhotoAccess` | | `PHPhotoLibrary.authorizationStatus` | 🔧 |
+| `SettingsValues` | `activeAI` | 설정 `madi.agent` | ✅ |
+| | `keepDays` | 보관 기간 | 🛠 기간이 지난 **앱 사본** 을 지우는 작업이 없다 |
+| | `albumName` | 어느 앨범에서 가져올지 | 🛠 지금은 "첫 실행 뒤 찍은 영상 전부" 를 들인다 — 앨범으로 거르는 길이 없다 |
+
+### 편집안
+
+| ViewData | 칸 | 출처 | |
+|---|---|---|---|
+| `CaptionSlot` · `SceneRoleKind` | | `Composition.captionSlot` · `Scene.role` — 이름이 같다 | ✅ |
+| `SceneCardItem` | `id` · `number` · `role` · `duration` | `Scene.id` · 순서 · `role` · `Scene.duration` | ✅ |
+| | `caption` · `moreCaptions` · `secondary` | `Scene.captions` 의 첫 덩어리 / 나머지 / 첫 덩어리의 영문. 자막은 **앱이 전사에서 채운다** (4단계) | ✅ 영문은 문장 번역을 덩어리에 나눈 것이라 한 덩어리만 보면 문장 중간에서 끊긴다 |
+| | `thumbnail` | 장면 첫 화면 | 🛠 (썸네일과 같다) |
+| | `removedGapAfter` | "이 장면 뒤에 뺀 쉬는 구간" | 🔧 **엔진에 이 개념이 없다.** AI 는 장면만 고른다. 원본에서 이어진 두 장면(`다음.in − 이번.out` > 0)이면 그 차이를 넣는다. 순서를 바꾼 장면 사이는 비운다. 뜻이 맞는지 디자인 확인 필요 |
+| `PlanVersion` | 전부 | 이 영상의 `composition` 들 | 🔧 **번호는 사람이 본 판만 센다** — 초안과 채팅 수정(`origin` draft · chat). 되먹임 판(`selfEval`)은 번호를 받지 않고, 보여진 결과물의 편집안이 그 자리를 대신한다 |
+| `PlanView` | `sourceDuration` · `targetDuration` | `video.durationSec` · `meta.targetDurationSec` | ✅ |
+| | 나머지 | 위에서 | ✅ / 🔧 |
+| `PrepareStep` | 제목 · 상태 | 디자인 가정은 **받아적기 → 장면 나누기 → 쉬는 구간 찾기 → 화면 잡기**. 실제 순서는 아래 | ❓ 이름을 맞춰야 한다 |
+| | `remaining` | | 🔧 분석은 영상 길이로 어림할 수 있다 (1분 원본 ≈ 2분, Apple Silicon). 모르면 비운다 |
+| `MakingProgress` | `fraction` | 렌더 진행률 | 🛠 지금 렌더러는 **0 과 1 만** 알린다 (`AVAssetExportSession.progress` 를 폴링해야 한다) |
+
+**실제 파이프라인 순서** (디자인의 `PrepareStep` 과 맞출 것):
+
+| 엔진 | 걸리는 시간 (1분 원본, Release, Apple Silicon) | 사람 말 후보 |
+|---|---|---|
+| 원본 받기 (iCloud, "저장 공간 최적화" 면) | 원본 크기 · 인터넷 | 영상 받는 중 |
+| (첫 실행 직후만) 편집 준비 — 모델 받기 · 데우기 | 받기 수십 초 · 데우기 ~5분 | 편집 준비 중 |
+| 다이제스트 — 전사 · 사람 찾기 · 소리 · 컷 · 시트 | ~2분 (사람 찾기 · 컷이 대부분) | 말 받아적기 · 사람 찾기 |
+| AI 초안 | 20~40초 | 장면 나누기 |
+| 렌더 (화면 잡기 · 자막 포함) | ~20초 | 영상 만들기 |
+| 검사 → (되먹임 → 다시 렌더) 최대 2회 | 되먹임 한 번에 20~30초 + 렌더 | 다시 다듬기 |
+
+"쉬는 구간 찾기" 는 따로 도는 단계가 없다 — AI 가 장면을 고르며 같이 한다.
+
+### 대화
+
+| ViewData | 칸 | 출처 | |
+|---|---|---|---|
+| `ChatMessage` | `.user` · `.assistant` | 채팅 저장소 | 🛠 **채팅 저장소가 없다.** 지금 AI 가 한 말은 `event(agent.turn.finished).said` 에만 남는다. 6단계에서 `chat` 표를 만든다 |
+| | `.userNotSent` | 보내지 못한 말 | 🛠 (채팅 수정과 같이) |
+| | `.summary(EditSummary)` | 두 편집안의 차이 | 🔧 길이 · 장면 수 · 바뀐 장면 · 자막 자리를 비교해 줄로 |
+| | `.choices` | 다음 행동 | 🔧 상황마다 (3절) |
+| | `.result(ResultRef)` | 보여진 결과물 | ✅ |
+| | `.typing` | AI 턴이 도는 중 | ✅ `agent.turn.started` ~ `finished` |
+| `EditSummary.canUndo` | | 결과물이 없는 편집안인가 | ✅ `output` 이 없으면 제자리에서 고칠 수 있다 (`§5`) |
+
+### 결과물 · 만드는 중
+
+| ViewData | 칸 | 출처 | |
+|---|---|---|---|
+| `ResultGroup` | | `output(shown)` 을 영상으로 묶는다 | 🔧 |
+| `ResultDetail` | `previous` · `changes` | 같은 영상의 바로 앞 **보여진** 결과물과 그 편집안 차이 | 🔧 |
+| `ResultsState` | | `output(shown)` 수 | ✅ |
+| `ExportTarget` | | 사진 앱 · Mac 에 저장 · AirDrop | 🛠 내보내기가 없다 (6단계 개발 일) |
+| `MakingJob` | `.running(progress)` | `job(render, running)` + 렌더 진행률 | 🔧 / 🛠 (진행률) |
+| | `.queued(note)` | `job(queued)` | ✅ |
+| | `.stopped(reason, actions)` | `job(failed)` + `error` | 🔧 `error` 는 개발자 문장이다 — 사람 말 이유로 옮기는 표가 필요하다 (3절) |
+| `DoneItem` | | 오늘 `verdict` 가 `shown` 이 된 결과물 | 🔧 |
+
+---
+
+## 2. 엔진에는 있는데 화면이 없는 상태 — **디자인에 넘기는 목록**
+
+이 상태들은 지금 **엔진이 실제로 들어가는** 상태인데 그릴 자리가 없다.
+문구 키가 이미 있는 것은 `copy-keys.md` 에 적혀 있다 (문장은 디자인이 쓴다).
+
+| # | 상태 | 엔진에서 | 언제 · 얼마나 | 문구 키 | 어디에 그릴지 (디자인이 정한다) |
+|---|---|---|---|---|---|
+| 1 | **편집 준비 중** — 모델 받는 중 · 데우는 중 · 멈춤(인터넷) · 실패 · 공간 부족 | `ModelPreparer.State` · `event(model.*)` | 첫 실행 직후 수 분. 앱 업데이트 뒤 데우기만 다시 | `modelDownloading` · `modelWarming` · `modelDownloadPaused` · `modelDownloadFailed` · `modelDiskFull` · `modelWaitingForVideo` | ViewData 에 칸이 없다 → 3절 요청 ①. 사이드바 푸터 한 줄? |
+| 2 | **다시 다듬는 중** (되먹임) | `output.verdict == hidden` + `job(selfEval)` | 초안 렌더 뒤 20초~1분 더. 4단계 판정에서 12편 중 1편 | `reviewChecking` | `PlanState.making` 의 한 단계로 보일 수 있다 — `PrepareStep` 이름 하나 추가면 된다 |
+| 3 | **끝내 기준에 못 미침** — 두 번 다듬어도 인물 크기 등 하드 기준 미달, 보여 줄 결과가 없다 | `output.verdict == failed` · `event(review.gaveUp)` | 드물다 (5단계 판정 0회) | `reviewGaveUp` | 편집안은 있는데 결과물이 없다. 채팅 한 줄 + 다음 행동? `PlanState` 에 자리가 없다 → 3절 요청 ② |
+| 4 | **보여 주되 아쉬운 점이 남음** — 두 번 다듬어도 길이 · 훅 등이 기준 밖 | `event(review.shown)` 의 `items` | 드물다 | `reviewSoftNote` | 채팅 한 줄 (`ChatMessage.assistant`) |
+| 5 | **원본 한계** — 인물이 너무 작게 찍혀 최대로 키워도 모자람. 결과는 보여 준다 | 리포트 `G1 = sourceLimited` | 대용 6편 중 2편(`NOCX` · `fuTj`) | `GateNotice` 키 (`Madi/Review/GateNotice.swift`) | `plan-unsure-reframe`(판정 불가)와 비슷한 자리 + **촬영 조언** 한 줄. 판정 불가와 **다른 상태**다 |
+| 6 | **AI 턴 실패** — 구독 한도 · 로그인 만료 · CLI 가 죽음 · 시간 초과 | `job(agent, failed)` · `event(agent.turn.finished).error` | 드물다 | `aiDraftFailed` | `PlanState.preparing` 이 끝나지 않은 채 멈춘다. 채팅 + 다시 하기? → 3절 요청 ② |
+| 7 | **AI 설치됨 · 로그인 안 됨** | `AgentConnection.notLoggedIn` | 로그인이 풀렸을 때 | `aiNotLoggedIn` | `AIConnection` 은 `none` 하나뿐 — "설치 안 됨" 과 구별되지 않는다. 다음 행동이 다르다 (설치 vs 로그인) → 3절 요청 ③ |
+| 8 | **원본 받기 실패** (iCloud 원본을 못 받음) | `video.status == failed` · `video.error` | 드묾 | 없음 → 키 필요 | 갤러리 칸 하나의 상태. `ShotItem` 에 자리가 없다 → 3절 요청 ④ |
+| 9 | **분석 실패** (전사 · 사람 찾기가 죽음) | `job(analyze, failed)` | 드묾 | 없음 → 키 필요 | 편집안 화면에서 `PlanState` 자리가 없다 → 요청 ② 와 같이 |
+| 10 | **이 Mac 은 느리다** (Intel) | `MachineArch.current == x86_64` | Intel Mac 첫 실행 | 없음 → 키 필요 (`§17` "이 Mac 에서는 만드는 데 더 오래 걸립니다") | 첫 실행 · 설정? |
+| 11 | **말이 없는 촬영본** | 전사 낱말 0 | 대용 세로 10편 중 9편(스톡) | `plan-stuck` 이 그린 상태 | ✅ 그려져 있다 — 엔진 쪽 조건은 "낱말 0" |
+
+---
+
+## 3. ViewData 변경 요청 (개발은 고치지 않는다)
+
+| # | 무엇 | 왜 | 제안 |
+|---|---|---|---|
+| ① | **편집 준비 상태**를 받을 칸 | 2절 1번. 첫 실행 직후 수 분간 "왜 아무것도 안 되지" 가 된다 | `StudioStatus` 에 `preparing: PrepareStep?` 같은 선택 칸 |
+| ② | 편집안 화면의 **멈춘 상태** | 2절 3 · 6 · 9번. 지금 `PlanState` 는 `preparing` 에서 끝나지 않으면 갈 곳이 없다 | `PlanState.stopped(plan: PlanView?, reason: String, actions: [ChatChoice])` — `MakingJob.State.stopped` 와 같은 모양 |
+| ③ | AI **설치 안 됨 / 로그인 안 됨** 구별 | 2절 7번. 다음 행동이 다르다 | `AIConnection` 에 `.notLoggedIn(AIConnection)` 또는 사이드바가 `AISetup` 을 받게 |
+| ④ | 촬영본 한 칸의 **받기 실패** | 2절 8번 | `ShotItem` 에 `problem: String?` |
+| ⑤ | 결과물의 **원본 한계 안내** | 2절 5번. 결과 옆에 촬영 조언을 붙일 자리 | `ResultRef` 에 `notice: String?` (또는 `ResultDetail`) |
+| ⑥ | `ShotItem.speech` 의 `noisy` | 1절. 엔진이 가를 측정이 없다 | 촬영본 뒤 기준이 생길 때까지 `noisy` 는 안 나온다 — 그대로 두되 알고 있기 |
+
+## 4. 개발이 UI 밖에 만들 것 (6단계 개발 일)
+
+- **바꾸는 층** — DB 를 관측해 위 ViewData 를 내는 곳 (`Madi/App/` 또는 새 폴더, `Madi/UI` 밖)
+- 썸네일 한 장 뽑기 · 렌더 진행률 · "봤다" 표시 · 스튜디오 이름 저장
+- **채팅 저장소 · 채팅 수정** (`§10` — 수정은 새 편집안 `revisionOf` · origin `chat`, "앞으로도 이렇게 할까요?")
+- **내보내기** — 사진 앱 · Mac 에 저장 (AirDrop 은 시스템 공유)
+- 보관 기간 지난 **앱 사본** 지우기 · 앨범 거르기
+- CLI 설치 · 로그인 대행 (`§2` · `§1-9`)
+- `.dmg` · Sparkle · 서명 (계정 · 비용이 드는 것은 결정으로 가져간다)
