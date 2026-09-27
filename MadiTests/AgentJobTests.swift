@@ -54,6 +54,8 @@ struct AgentJobTests {
         #expect(await AgentJob.defaultChoice(preferred: .codex, connection: both)?.kind == .codex)
         #expect(await AgentJob.defaultChoice(preferred: nil, connection: codexOnly)?.kind == .codex)
         #expect(await AgentJob.defaultChoice(preferred: .claude, connection: codexOnly) == nil)
+        // 설정의 "연결 끊기" — 연결돼 있어도 쓰지 않는다
+        #expect(await AgentJob.defaultChoice(preferred: nil, disabled: true, connection: both) == nil)
     }
 
     @Test("AI 가 연결돼 있지 않으면 스폰하지 않고 이벤트만 남긴다 — 실패가 아니다")

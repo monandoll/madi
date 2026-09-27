@@ -2,70 +2,65 @@ import SwiftUI
 import MadiKit
 import Sparkle
 
-/// 0단계의 프리뷰 창 하나. **본 UI 가 아니다** (docs/stage-0.spec.md 범위 밖).
+/// 앱 창 (6단계 — 화면을 붙였다).
 ///
-/// 여기 있는 이유는 딱 하나 — `CaptionLayer` 가 화면에서도 같은 그림을 내는지 눈으로 보기 위해서다.
-/// 갤러리 · 편집안 · 장면 카드 · 채팅은 6단계다. 여기에 기능을 붙이지 않는다.
+/// 화면은 디자인 것(`Madi/UI`)을 **그대로** 올린다. 여기서는 값과 행동만 잇는다 (`AppController`).
+/// 개발 쪽 뷰로 감싸거나 가운데 띄우는 틀을 만들지 않는다 — 높이가 글에 따라 바뀌는 것을 편집안 칸 가운데 두면
+/// AppKit 이 제약 갱신을 무한 반복하며 멈춘다 (docs/design/decisions.md "그리다 걸린 것").
 @main
 struct MadiApp: App {
-    /// 3단계 — 켜지면 가져오기 · 분석 · 렌더가 돈다. 화면은 아직 이 미리보기 창뿐이다.
-    @State private var pipeline = MadiPipeline()
+    @State private var controller = AppController(pipeline: MadiPipeline())
     /// 자동 업데이트 (§2 배포). 켜지면 하루 한 번 새 판을 확인한다 — 설정은 Info.plist (project.yml).
-    /// 메뉴의 "업데이트 확인…" 은 문구 키(`checkForUpdates`)를 디자인이 채운 뒤 붙인다.
     private let updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
     // `Scene` 은 SwiftUI 와 `Madi/Model` 양쪽에 있다. 모델 쪽 이름은 AGENTS.md §5 가 정한 것이라
     // 바꾸지 않고, UI 코드에서 SwiftUI 쪽을 명시한다.
     var body: some SwiftUI.Scene {
-        Window("마디 — 자막 확인", id: "spike") {
-            CaptionPreview()
-                .task { await pipeline.start() }
+        Window(Copy.Onboarding.appName, id: "main") {
+            MainWindow(controller: controller)
+        }
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button(Copy.Update.checkForUpdates) { updater.checkForUpdates(nil) }
+            }
+        }
+
+        Settings {
+            SettingsScreen(values: controller.settings, onAction: { controller.handle(.settings($0)) })
+        }
+
+        Window(Copy.Onboarding.appName, id: "onboarding") {
+            OnboardingWindow(state: controller.onboarding, onAction: { controller.handle(.onboarding($0)) })
         }
         .windowResizability(.contentSize)
     }
 }
 
-private struct CaptionPreview: View {
-    @State private var text = "가능성이 높다는 겁니다"
-    @State private var secondary = "is likely misaligned."
-
-    /// 원본 프레임 위에 겹쳐 봐야 어긋난 게 보인다 (docs/style-authoring.md §3).
-    private var backdrop: URL? {
-        let repoRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()  // App
-            .deletingLastPathComponent()  // Madi
-            .deletingLastPathComponent()  // repo
-        let url = repoRoot.appending(path: "reference/yt_15s.png")
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
-    }
+/// 본 창. `RootView` 에 값을 넣고 행동을 받는다 — 그 밖에는 아무것도 그리지 않는다.
+private struct MainWindow: View {
+    let controller: AppController
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
-        VStack(spacing: 12) {
-            if let image {
-                Image(image, scale: 1, label: Text("자막 미리보기"))
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(height: 720)
-            } else {
-                Text("자막을 그리지 못했어요")
-                    .frame(height: 720)
-            }
-            TextField("자막", text: $text)
-            TextField("보조 문구", text: $secondary)
-        }
-        .padding(16)
-        .frame(width: 460)
-    }
-
-    private var image: CGImage? {
-        guard let style = try? StyleStore.load() else { return nil }
-        let caption = Caption(id: "preview", start: 0, end: 2, text: text, secondary: secondary)
-        return try? StillRenderer.renderCaption(
-            caption,
-            size: CGSize(width: 1080, height: 1920),
-            style: style.values,
-            slot: .upperBody,
-            backdrop: backdrop.map { .image($0) } ?? .solid(RGBA(0.13, 0.13, 0.15, 1))
+        RootView(
+            studio: controller.studio,
+            gallery: controller.gallery,
+            plan: controller.plan,
+            planMessages: controller.planMessages,
+            planChips: controller.planChips,
+            results: controller.results,
+            exportTargets: controller.exportTargets,
+            resultsNotice: controller.resultsNotice,
+            making: controller.making,
+            onAction: controller.handle
         )
+        .task {
+            if controller.showsOnboarding { openWindow(id: "onboarding") }
+            await controller.start()
+        }
+        .onChange(of: controller.showsOnboarding) { _, shows in
+            if !shows { dismissWindow(id: "onboarding") }
+        }
     }
 }

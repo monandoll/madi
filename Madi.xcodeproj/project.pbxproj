@@ -111,6 +111,7 @@
 		9E9EE4E9653FAD55F33393EA /* ViewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B501D4D78085E4494C9267E0 /* ViewData.swift */; };
 		A0312AE4491C1E3124A66BBC /* OnboardingWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A81EF9CEC412D0497F06714 /* OnboardingWindow.swift */; };
 		A25B987BA9A16C8B7CA2AD56 /* MadiMCP in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = EDC6923A172F347F8E793BA6 /* MadiMCP */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A4EB4CBCDDB8095655DE5D7C /* AppController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FE6E0ADE2A7968992805114 /* AppController.swift */; };
 		A65D0CF5B16825226E4DF59A /* RenderJobTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D511153C80E7884291A47C55 /* RenderJobTests.swift */; };
 		A6F36ADDD48689551312F81C /* SubjectDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75236889EB2CBFE994D392D2 /* SubjectDetector.swift */; };
 		A71CD837B55F05CD74CD62A5 /* CaptionLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71CD7162AEC4CB13D3A85753 /* CaptionLayer.swift */; };
@@ -320,6 +321,7 @@
 		791C317B14C7AF92D43CDB3E /* GateNotice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GateNotice.swift; sourceTree = "<group>"; };
 		7AD3D942F0B86E1976B7C8E1 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		7F15A9316F358BEB41DF37AF /* Pipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pipeline.swift; sourceTree = "<group>"; };
+		7FE6E0ADE2A7968992805114 /* AppController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppController.swift; sourceTree = "<group>"; };
 		807D00B9149F72389F639F77 /* DigestBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigestBuilder.swift; sourceTree = "<group>"; };
 		8148334F0D1C4607F6103479 /* PretendardVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = PretendardVariable.ttf; sourceTree = "<group>"; };
 		8174C4882F6A4FE14235FC8F /* PromptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTests.swift; sourceTree = "<group>"; };
@@ -456,6 +458,7 @@
 			isa = PBXGroup;
 			children = (
 				5EB00CB6D8A314199C54D292 /* Bridge */,
+				7FE6E0ADE2A7968992805114 /* AppController.swift */,
 				10B4FB1D210A593AA3E0223D /* Info.plist */,
 				C16C3D47D05461E4318E33B0 /* Madi.entitlements */,
 				1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */,
@@ -1121,6 +1124,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A4EB4CBCDDB8095655DE5D7C /* AppController.swift in Sources */,
 				DEC2AF7261A0B3A387374A6F /* ChatPanel.swift in Sources */,
 				FDAD3F002F69F8295199DB0C /* Copy.swift in Sources */,
 				8EF2064B6501E6A6A705096E /* ExportSheet.swift in Sources */,

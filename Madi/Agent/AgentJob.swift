@@ -64,10 +64,15 @@ public struct AgentJob: Sendable {
     /// 사용자 설정(`madi.agent` = claude | codex)이 있으면 그것. 없으면 연결된 쪽 — 둘 다면 Claude
     /// (2026-09-27 결정. Claude 가 더 빨랐고 도구 목록을 코드로 검사할 수 있다). 설정한 쪽이 연결 안 됐으면 다른 쪽을 보지 않는다 —
     /// 사람이 고른 것을 몰래 바꾸지 않는다.
+    /// 설정 `madi.agent` 가 `none` 이면 AI 를 쓰지 않는다 — 설정의 "연결 끊기" (CLI 로그아웃은 하지 않는다).
+    public static let disabledValue = "none"
+
     public static func defaultChoice(
         preferred: AgentKind? = UserDefaults.standard.string(forKey: "madi.agent").flatMap(AgentKind.init(rawValue:)),
+        disabled: Bool = UserDefaults.standard.string(forKey: "madi.agent") == AgentJob.disabledValue,
         connection: @Sendable (AgentKind) async -> AgentConnection = { await CLILocator.connection($0) }
     ) async -> Choice? {
+        if disabled { return nil }
         for kind in preferred.map({ [$0] }) ?? [.claude, .codex] {
             if case .ready(let exe, let version) = await connection(kind) {
                 return Choice(kind: kind, executable: exe, version: version)

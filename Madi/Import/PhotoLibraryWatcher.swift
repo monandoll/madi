@@ -27,9 +27,12 @@ public final class PhotoLibraryWatcher: NSObject, PHPhotoLibraryChangeObserver, 
         self.since = since
     }
 
-    /// 권한을 묻고(첫 실행 한 번) 감시를 시작한다. 권한이 없으면 false — 폴더 감시만 쓴다.
-    public func start() async -> Bool {
-        let status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+    /// 감시를 시작한다. 권한이 없으면 false — 폴더 감시만 쓴다.
+    /// - Parameter ask: 아직 안 물었으면 권한 창을 띄울지. **앱을 켤 때는 묻지 않는다** — 첫 실행 창이 무엇을 읽는지
+    ///   먼저 말한 뒤 "사진 접근 허용" 에서 묻는다 (디자인 `onboarding-photos`). 켤 때 물으면 답을 기다리느라 시작이 막힌다
+    public func start(ask: Bool = false) async -> Bool {
+        let current = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        let status = current == .notDetermined && ask ? await PHPhotoLibrary.requestAuthorization(for: .readWrite) : current
         guard status == .authorized || status == .limited else {
             Self.log.notice("사진 보관함 권한 없음 (\(status.rawValue)) — 폴더 감시만 쓴다")
             return false

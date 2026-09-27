@@ -252,3 +252,21 @@ case .openSettings
 **맞다.** 원본에서 바로 이어진 두 장면 사이의 틈 = AI 가 뺀 쉬는 구간이다. 순서를 바꾼 장면 사이는 비운다 —
 그건 "뺀 것" 이 아니라 "옮긴 것" 이라 되돌릴 대상이 아니다. 10초 넘는 틈을 거르는 것도 좋다
 (그건 쉬는 구간이 아니라 다른 부분을 통째로 안 쓴 것이다).
+
+---
+
+## 6. 붙이면서 남은 것 (개발 → 디자인, 2026-09-28)
+
+`AppController`(`Madi/App`)가 `RootView` 에 값을 넣고 `UIAction` 을 받는다. 붙이면서 걸린 것:
+
+| # | 무엇 | 왜 | 제안 |
+|---|---|---|---|
+| ⑧ | **결과물 고르기가 밖으로 안 나온다** | `ResultsScreen` 이 고른 결과물을 안에서만 기억한다 — `resultDetail`(이전 판과 나란히)을 채울 수 없다. 지금은 비어 있다 | `UIAction.Results.select(ResultRef.ID)` |
+| ⑨ | 편집안 칸에서 **결과물을 연 것**이 안 나온다 | `plan(.openResults)` 는 어느 결과물인지 모른다 — "봤다" 를 적을 수 없다 | `openResults` 에 id, 또는 결과물 화면에서 ⑧ |
+
+개발 쪽에 남은 것 (디자인 일 아님):
+- 목록에서 숨기기(`gallery(.hide)`) — 엔진에 칸이 없다
+- 자막 모양 저장(`settings(.look)`) · 앨범 거르기(`settings(.pickAlbum)`)
+- "아쉬운 점 남음" 채팅 한 줄(`reviewSoftNote`) — 되먹임 판정 이벤트를 스냅숏에 넣어야 한다
+- 원본 받는 중 진행률(`ShotItem.fetchProgress`) — Importer 가 들고 있지 않다
+

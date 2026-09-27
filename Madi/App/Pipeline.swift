@@ -36,6 +36,13 @@ final class MadiPipeline {
         FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0].appending(path: "madi", directoryHint: .isDirectory)
     }
 
+    /// 첫 실행 창의 "사진 접근 허용" — 권한을 묻고, 허용되면 감시를 시작한다. 돌려주는 값은 허용 여부.
+    @discardableResult
+    func startPhotos() async -> Bool {
+        guard let photos else { return false }
+        return await photos.start(ask: true)
+    }
+
     func start() async {
         do {
             let db = try AppDatabase.openDefault()
@@ -106,7 +113,8 @@ final class MadiPipeline {
                     if case .ready = state { break }
                 }
             }
-            if await !photos.start() { Self.log.notice("사진 보관함 없이 폴더 감시만 쓴다: \(Self.inbox.path, privacy: .public)") }
+            // 켤 때는 권한을 묻지 않는다 — 이미 허용됐을 때만 감시한다 (묻는 것은 첫 실행 창)
+            if await !photos.start(ask: false) { Self.log.notice("사진 보관함 없이 폴더 감시만 쓴다: \(Self.inbox.path, privacy: .public)") }
             try db.log("app.started")
             // 보관 기간이 지난 촬영본의 앱 사본만 지운다 (사진 앱 원본 · 결과물은 그대로). 켤 때마다 한 번.
             Task.detached(priority: .background) { try? await Retention.sweep(db, keepDays: AppSettings().keepDays) }

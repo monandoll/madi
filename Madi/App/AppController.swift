@@ -1,0 +1,500 @@
+import AppKit
+import Foundation
+import Observation
+import Photos
+import MadiKit
+
+/// 화면과 엔진 사이 (docs/stage-6.spec.md · `docs/design/viewdata-map.md` 5절).
+///
+/// - **값을 낸다**: DB 스냅숏 · 편집 준비 상태 · AI 연결을 `ViewDataMapper` 로 ViewData 로 바꿔 들고 있다
+/// - **행동을 받는다**: 화면이 내보내는 것은 `UIAction` 하나다 (`RootView.onAction`). 무엇을 할지는 여기서 정한다
+/// - 화면(`Madi/UI`)은 디자인 소유다 — 여기서는 값과 행동만 다룬다. 뷰를 새로 짜지 않는다
+///   (편집안 칸 가운데 높이가 바뀌는 뷰를 띄우면 AppKit 이 멈춘다 — decisions.md "그리다 걸린 것")
+@MainActor
+@Observable
+final class AppController {
+    let pipeline: MadiPipeline
+
+    // MARK: 화면에 내는 값
+    var studio = StudioStatus(studioName: "", ai: .none, shotCount: 0, resultCount: 0, makingCount: 0)
+    var gallery: GalleryState = .loading
+    var plan: PlanState?
+    var planMessages: [ChatMessage] = []
+    var planChips: [String] = []
+    var results: ResultsState = .loading
+    var making: MakingState = .empty
+    var resultsNotice: ScreenNotice?
+    /// 내보낼 곳 — 사진 앱 · Mac 에 저장 · AirDrop (§2 — 아이폰에서 보려면 사진 앱으로)
+    let exportTargets: [ExportTarget] = [
+        ExportTarget(title: Copy.Results.Export.photos, detail: Copy.Results.Export.photosDetail, symbol: "photo.on.rectangle"),
+        ExportTarget(title: Copy.Results.Export.files, detail: Copy.Results.Export.filesDetail, symbol: "folder"),
+        ExportTarget(title: Copy.Results.Export.airdrop, detail: Copy.Results.Export.airdropDetail, symbol: "wifi"),
+    ]
+    var settings = SettingsValues(ai: .notPicked, activeAI: .none, studioName: "", keepDays: AppSettings.defaultKeepDays, photos: .notAsked)
+    var onboarding = OnboardingState(step: .photos)
+    var showsOnboarding = !UserDefaults.standard.bool(forKey: AppController.onboardedKey)
+
+    static let onboardedKey = "madi.onboarded"
+
+    // MARK: 엔진 쪽 상태
+    private var snapshot: LibrarySnapshot?
+    private var openShotID: String?
+    private var viewingVersionID: String?
+    private var ai: AIConnection = .none
+    private var photos: PhotoAccess = .notAsked
+    private var prep: EnginePrep?
+    private var modelReady = false
+    private let thumbnails = Thumbnails()
+    private let isSlowMac = MachineArch.current == "x86_64"
+
+    init(pipeline: MadiPipeline) { self.pipeline = pipeline }
+
+    // MARK: - 시작
+
+    func start() async {
+        photos = Self.photoAccess()
+        await pipeline.start()
+        Task { await refreshAI() }
+        guard let db = pipeline.db else { return }
+        Task.detached(priority: .utility) { [weak self] in await self?.backfillThumbnails(db) }
+        if let preparer = pipeline.preparer {
+            Task { [weak self] in
+                for await state in await preparer.states() { self?.apply(state) }
+            }
+        }
+        Task { [weak self] in
+            do {
+                for try await snap in db.snapshots() { await self?.receive(snap) }
+            } catch {}
+        }
+    }
+
+    private func receive(_ snap: LibrarySnapshot) async {
+        var s = snap
+        s.attach(thumbnails: thumbnails, progress: await pipeline.progress.snapshot())
+        snapshot = s
+        recompute()
+    }
+
+    private func apply(_ state: ModelPreparer.State) {
+        switch state {
+        case .notStarted, .ready: prep = nil
+        case .downloading(let p): prep = .downloading(p)
+        case .paused: prep = .paused
+        case .warming: prep = .warming
+        case .failed: prep = .failed
+        case .diskFull: prep = .diskFull
+        }
+        modelReady = state == .ready
+        recompute()
+    }
+
+    /// 쓰는 AI 와 그 상태 — 설정값(`madi.agent`), 없으면 연결된 쪽. 설치됐지만 로그인이 풀렸으면 `notLoggedIn`.
+    func refreshAI() async {
+        if UserDefaults.standard.string(forKey: "madi.agent") == AgentJob.disabledValue {
+            ai = .none
+            recompute()
+            return
+        }
+        let preferred = UserDefaults.standard.string(forKey: "madi.agent").flatMap(AgentKind.init(rawValue:))
+        var found: AIConnection = .none
+        for kind in preferred.map({ [$0] }) ?? [.claude, .codex] {
+            switch await CLILocator.connection(kind) {
+            case .ready: found = kind == .claude ? .claude : .codex
+            case .notLoggedIn: if found == .none { found = .notLoggedIn(kind == .claude ? .claude : .codex) }
+            case .notInstalled: continue
+            }
+            if found == .claude || found == .codex { break }
+        }
+        ai = found
+        recompute()
+    }
+
+    static func photoAccess() -> PhotoAccess {
+        switch PHPhotoLibrary.authorizationStatus(for: .readWrite) {
+        case .authorized, .limited: .granted
+        case .denied, .restricted: .denied
+        default: .notAsked
+        }
+    }
+
+    // MARK: - 값 다시 계산
+
+    private func recompute() {
+        let appSettings = AppSettings()
+        studio = ViewDataMapper.studio(snapshot ?? LibrarySnapshot(), studioName: appSettings.studioName, ai: ai, preparing: prep)
+        settings = SettingsValues(
+            ai: setup(for: ai), activeAI: ai, studioName: appSettings.studioName, keepDays: appSettings.keepDays,
+            photos: photos, isSlowMac: isSlowMac
+        )
+        onboarding.photos = photos
+        onboarding.isSlowMac = isSlowMac
+        guard let s = snapshot else { return }
+        gallery = ViewDataMapper.gallery(s, photos: photos)
+        results = ViewDataMapper.results(s)
+        making = ViewDataMapper.making(s)
+        if let id = openShotID {
+            plan = ViewDataMapper.plan(s, videoID: id, ai: ai, viewing: viewingVersionID, modelReady: modelReady)
+            planMessages = ViewDataMapper.chat(s, videoID: id)
+            planChips = [Copy.Chat.Chips.cutGaps, Copy.Chat.Chips.shorter, Copy.Chat.Chips.hookFirst]
+        } else {
+            plan = nil
+            planMessages = []
+        }
+    }
+
+    private func setup(for ai: AIConnection) -> AISetup {
+        switch ai {
+        case .claude: .connected(.claude, account: "")
+        case .codex: .connected(.codex, account: "")
+        case .notLoggedIn(let p): .notLoggedIn(p)
+        case .none: .notPicked
+        }
+    }
+
+    // MARK: - 행동
+
+    func handle(_ action: UIAction) {
+        Task { await perform(action) }
+    }
+
+    private func perform(_ action: UIAction) async {
+        guard let db = pipeline.db, let queue = pipeline.queue else { return }
+        do {
+            switch action {
+            case .gallery(let a): try await gallery(a, db, queue)
+            case .plan(let a): try await plan(a, db, queue)
+            case .chat(let a): try await chat(a, db, queue)
+            case .scene(let id, let a): try await scene(id, a, db)
+            case .results(let a): try await results(a, db)
+            case .making(let a): try await making(a, queue)
+            case .onboarding(let a): await onboarding(a)
+            case .settings(let a): await settings(a)
+            case .openSettings: NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            }
+        } catch {
+            MadiPipeline.log.error("행동 실패 \(String(describing: action), privacy: .public): \(String(describing: error), privacy: .public)")
+        }
+        recompute()
+    }
+
+    // MARK: 갤러리
+
+    private func gallery(_ a: UIAction.Gallery, _ db: AppDatabase, _ queue: JobQueue) async throws {
+        switch a {
+        case .makeShort(let id):
+            openShotID = id
+            viewingVersionID = nil
+            try await ensureDraft(videoID: id, db, queue)
+        case .play(let id), .revealInPhotos(let id):
+            if let path = snapshot?.videos.first(where: { $0.id == id })?.localPath {
+                NSWorkspace.shared.open(URL(fileURLWithPath: path))
+            } else {
+                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Photos.app"))
+            }
+        case .retryImport(let id):
+            try await queue.enqueue(.analyze, targetId: id)
+        case .addFromMac:
+            let panel = NSOpenPanel()
+            panel.allowsMultipleSelection = true
+            panel.allowedContentTypes = [.movie]
+            guard panel.runModal() == .OK else { return }
+            // 폴더 입구(보조 경로)로 복사하면 FolderWatcher 가 들인다 (§2)
+            try FileManager.default.createDirectory(at: MadiPipeline.inbox, withIntermediateDirectories: true)
+            for url in panel.urls { try? FileManager.default.copyItem(at: url, to: MadiPipeline.inbox.appending(path: url.lastPathComponent)) }
+        case .openSystemSettings:
+            Self.openPhotosPrivacy()
+        case .hide, .undoHide:
+            // 목록에서 숨기기 — 엔진에 칸이 아직 없다 (docs/stage-6.spec.md 남은 것)
+            break
+        }
+    }
+
+    /// 편집안이 없고 짜는 작업도 없으면 건다 — 분석이 안 됐으면 분석부터 (분석 뒤에는 파이프라인이 초안을 건다).
+    /// 판은 있는데 결과물도 도는 작업도 없으면(자동 렌더 전에 만든 판) 가장 최근 판을 렌더에 건다 — 검사한 결과만 보여 준다.
+    private func ensureDraft(videoID: String, _ db: AppDatabase, _ queue: JobQueue) async throws {
+        guard let s = snapshot, s.liveJobs(of: videoID).isEmpty else { return }
+        let versions = s.visibleVersions(of: videoID)
+        if let newest = versions.last {
+            let hasOutput = s.outputs.contains { s.versionRoot(of: $0.compositionId)?.id != nil && s.compositions(of: videoID).map(\.id).contains($0.compositionId) }
+            if !hasOutput { try await queue.enqueue(.render, targetId: newest.id) }
+            return
+        }
+        let hasDigest = try await db.writer.read { try DigestRecord.fetchOne($0, key: videoID) } != nil
+        try await queue.enqueue(hasDigest ? .agent : .analyze, targetId: videoID)
+    }
+
+    /// 그림이 생기기 전에 들어온 촬영본 · 결과물의 그림을 채운다 (캐시 — 못 만들어도 괜찮다).
+    private func backfillThumbnails(_ db: AppDatabase) async {
+        guard let (videos, outputs) = try? await db.writer.read({ db in (try VideoRecord.fetchAll(db), try OutputRecord.fetchAll(db)) }) else { return }
+        for v in videos where !FileManager.default.fileExists(atPath: thumbnails.video(v.id).path) {
+            if let p = v.localPath { try? await thumbnails.makeVideo(v.id, from: URL(fileURLWithPath: p)) }
+        }
+        for o in outputs where o.trashedAt == nil && !FileManager.default.fileExists(atPath: thumbnails.output(o.id).path) {
+            try? await thumbnails.makeOutput(o.id, from: URL(fileURLWithPath: o.path))
+        }
+        if let s = snapshot { await receive(s) }
+    }
+
+    // MARK: 편집안
+
+    private func currentVersionID() -> String? {
+        if case .ready(let p)? = plan { return p.id }
+        if case .making(let p, _)? = plan { return p.id }
+        if case .stopped(let p?, _, _, _)? = plan { return p.id }
+        return nil
+    }
+
+    private func plan(_ a: UIAction.Plan, _ db: AppDatabase, _ queue: JobQueue) async throws {
+        switch a {
+        case .close:
+            openShotID = nil
+            viewingVersionID = nil
+        case .make:
+            // 보고 있는 판에 결과물이 없으면 만든다 (사람이 고친 판). 있으면 이미 검사한 결과가 있다.
+            guard let id = currentVersionID(), let s = snapshot, s.shownOutput(forVersion: id) == nil,
+                  !s.outputs.contains(where: { s.versionRoot(of: $0.compositionId)?.id == id }) else { return }
+            try await queue.enqueue(.render, targetId: id)
+        case .stop:
+            guard let videoID = openShotID, let s = snapshot else { return }
+            var targets: Set<String> = [videoID]
+            targets.formUnion(s.compositions(of: videoID).map(\.id))
+            targets.formUnion(s.chats.filter { $0.videoId == videoID }.map(\.id))
+            try await queue.cancel(targetIds: targets)
+        case .pickVersion(let id):
+            viewingVersionID = id
+        case .moveScenes(let from, let to):
+            try await edit(.move(from: from, to: to), db)
+        case .choice(let c):
+            if c.title == Copy.Plan.Stopped.tryAgain, let id = openShotID {
+                try await queue.enqueue(.analyze, targetId: id)   // 다이제스트는 캐시다 — 분석 뒤 초안이 다시 걸린다
+            } else if c.title == Copy.Plan.Stopped.pickAnother {
+                openShotID = nil
+                viewingVersionID = nil
+            }
+        case .connectAI:
+            await connect(ai == .codex ? .codex : .claude)
+        case .login(let product):
+            await connect(product == .codex ? .codex : .claude)
+        case .openResults, .play:
+            break   // 길 찾기 · 재생은 화면이 한다
+        }
+    }
+
+    /// 사람이 고친 판을 새 편집안으로 저장하고 그 판을 보여 준다 (`SceneEdits`).
+    private func edit(_ e: SceneEdit, _ db: AppDatabase) async throws {
+        guard let id = currentVersionID(), let rec = try await db.writer.read({ try CompositionRecord.fetchOne($0, key: id) }) else { return }
+        let comp = try rec.composition()
+        let (words, duration) = try await db.writer.read { db in
+            (try LibrarySnapshot.words(db, videoID: rec.videoId), try VideoRecord.fetchOne(db, key: rec.videoId)?.durationSec)
+        }
+        let style = try StyleStore.load(comp.style).values.caption
+        let edited = try SceneEdits.apply(e, to: comp, newID: "edit_\(rec.videoId)_\(UUID().uuidString.prefix(8))",
+                                          words: words, style: style, sourceDuration: duration)
+        try db.saveComposition(edited, origin: .chat)
+        viewingVersionID = edited.id
+    }
+
+    // MARK: 장면
+
+    private func scene(_ id: SceneCardItem.ID, _ a: UIAction.Scene, _ db: AppDatabase) async throws {
+        switch a {
+        case .remove: try await edit(.remove(sceneID: id), db)
+        case .extend: try await edit(.extend(sceneID: id, seconds: 1), db)
+        case .shorten: try await edit(.shorten(sceneID: id, seconds: 1), db)
+        case .restoreGap: try await edit(.restoreGap(sceneID: id), db)
+        case .editCaption(let text, let secondary): try await edit(.editCaption(sceneID: id, text: text, secondary: secondary), db)
+        case .select, .playFromHere: break   // 화면이 한다
+        }
+    }
+
+    // MARK: 대화
+
+    private func chat(_ a: UIAction.Chat, _ db: AppDatabase, _ queue: JobQueue) async throws {
+        guard let videoID = openShotID else { return }
+        switch a {
+        case .send(let text), .chip(let text):
+            try await send(text, videoID: videoID, db, queue)
+        case .retrySend(let text):
+            // 보내지 못한 줄은 지우고 다시 보낸다 — 같은 말이 두 번 남지 않게
+            try await db.writer.write { db in
+                try db.execute(sql: "DELETE FROM chat WHERE videoId = ? AND kind = 'creatorNotSent' AND text = ?", arguments: [videoID, text])
+            }
+            try await send(text, videoID: videoID, db, queue)
+        case .choice(let c):
+            guard let ask = snapshot?.chats.last(where: { $0.videoId == videoID && $0.kind == .choices && $0.payloadValues["answered"] == nil }) else { return }
+            if c.title == Copy.Remember.rememberYes || c.title == Copy.Remember.rememberNo {
+                try await Chat.answerRemember(db: db, choicesID: ask.id, yes: c.title == Copy.Remember.rememberYes)
+            }
+        case .undo:
+            // 되돌리기 — 보고 있는 판의 이전 판을 본다 (새 판은 지우지 않는다, §1-8)
+            if let id = currentVersionID(), let prev = snapshot?.compositions.first(where: { $0.id == id })?.revisionOf {
+                viewingVersionID = snapshot?.versionRoot(of: prev)?.id ?? prev
+            }
+        case .openResult(let id):
+            try await Exporter.markSeen(db, outputID: id)
+        case .playFromStart:
+            break
+        }
+    }
+
+    private func send(_ text: String, videoID: String, _ db: AppDatabase, _ queue: JobQueue) async throws {
+        _ = try? await Chat.send(db: db, videoID: videoID, text: text, viewing: currentVersionID()) { id in
+            try await queue.enqueue(.chat, targetId: id)
+        }
+        viewingVersionID = nil   // 고친 판이 나오면 그걸 보여 준다
+    }
+
+    // MARK: 결과물
+
+    private func results(_ a: UIAction.Results, _ db: AppDatabase) async throws {
+        switch a {
+        case .export(let id, let target):
+            do {
+                if target.title == Copy.Results.Export.photos {
+                    try await Exporter.toPhotos(db, outputID: id)
+                } else if target.title == Copy.Results.Export.files {
+                    let panel = NSOpenPanel()
+                    panel.canChooseDirectories = true
+                    panel.canChooseFiles = false
+                    guard panel.runModal() == .OK, let folder = panel.url else { return }
+                    let name = snapshot.flatMap { s in s.outputs.first { $0.id == id }.flatMap { o in
+                        s.compositions.first { $0.id == o.compositionId }.flatMap { try? $0.composition().meta.title } } } ?? ""
+                    try await Exporter.toFolder(db, outputID: id, folder: folder, name: name)
+                } else if let path = snapshot?.outputs.first(where: { $0.id == id })?.path {
+                    NSSharingService(named: .sendViaAirDrop)?.perform(withItems: [URL(fileURLWithPath: path)])
+                }
+                resultsNotice = nil
+            } catch {
+                resultsNotice = ScreenNotice(
+                    message: Copy.Results.Export.failed(target.title) + " " + Copy.Results.Export.failedReason,
+                    actions: [ChatChoice(title: Copy.Results.Export.retry, isPrimary: true), ChatChoice(title: Copy.Results.Export.saveToMac)]
+                )
+            }
+        case .trash(let id):
+            try await Exporter.trash(db, outputID: id)
+        case .openPlan(let id):
+            guard let s = snapshot, let o = s.outputs.first(where: { $0.id == id }),
+                  let rec = s.compositions.first(where: { $0.id == o.compositionId }) else { return }
+            openShotID = rec.videoId
+            viewingVersionID = s.versionRoot(of: rec.id)?.id
+            try await Exporter.markSeen(db, outputID: id)
+        case .dismissNotice, .noticeChoice:
+            resultsNotice = nil
+        case .showShots:
+            break
+        }
+    }
+
+    // MARK: 만드는 중
+
+    private func making(_ a: UIAction.Making, _ queue: JobQueue) async throws {
+        switch a {
+        case .stop(let jobID), .cancel(let jobID):
+            // MakingJob.id 는 작업 번호다 — 그 작업의 대상을 멈춘다
+            guard let db = pipeline.db, let n = Int64(jobID),
+                  let job = try await db.writer.read({ try JobRecord.fetchOne($0, key: n) }) else { return }
+            try await queue.cancel(targetIds: [job.targetId])
+        case .openResult(let id):
+            if let db = pipeline.db { try await Exporter.markSeen(db, outputID: id) }
+        case .choice:
+            break
+        }
+    }
+
+    // MARK: AI 연결 (첫 실행 · 설정 · 편집안)
+
+    /// 설치가 안 됐으면 공식 방법으로 설치하고(결정 ②), 로그인을 띄워 기다린다. 사람은 브라우저에서 승인만 한다 (§1-9).
+    private func connect(_ kind: AgentKind) async {
+        let product: AIConnection = kind == .claude ? .claude : .codex
+        onboarding.ai = .waiting(product)
+        recompute()
+        do {
+            var exe = await CLILocator.locate(kind)
+            if exe == nil { exe = try await CLIInstaller.install(kind) }
+            if let exe, !(await CLILocator.connection(kind)).isReady {
+                try await CLIInstaller.login(kind, executable: exe)
+            }
+            UserDefaults.standard.set(kind.rawValue, forKey: "madi.agent")
+        } catch {
+            MadiPipeline.log.error("AI 연결 실패: \(String(describing: error), privacy: .public)")
+        }
+        await refreshAI()
+        if case .claude = ai { onboarding.ai = .connected(.claude, account: "") }
+        else if case .codex = ai { onboarding.ai = .connected(.codex, account: "") }
+        else { onboarding.ai = .picked(product) }
+        // 연결이 되면 열려 있는 촬영본의 초안을 건다
+        if ai == .claude || ai == .codex, let id = openShotID, let db = pipeline.db, let queue = pipeline.queue {
+            try? await ensureDraft(videoID: id, db, queue)
+        }
+    }
+
+    // MARK: 첫 실행
+
+    private func onboarding(_ a: UIAction.Onboarding) async {
+        switch a {
+        case .allowPhotos:
+            await pipeline.startPhotos()
+            photos = Self.photoAccess()
+        case .openSystemSettings:
+            Self.openPhotosPrivacy()
+        case .pickAI(let ai):
+            onboarding.ai = .picked(ai)
+        case .login:
+            if case .picked(let ai) = onboarding.ai { await connect(ai == .codex ? .codex : .claude) }
+        case .cancelLogin:
+            if case .waiting(let ai) = onboarding.ai { onboarding.ai = .picked(ai) }
+        case .otherAccount:
+            onboarding.ai = .notPicked
+        case .studioName(let name):
+            AppSettings().studioName = name
+            onboarding.studioName = name
+        case .next:
+            onboarding.step = Self.step(after: onboarding.step)
+        case .back:
+            onboarding.step = Self.step(before: onboarding.step)
+        case .skip:
+            onboarding.step = Self.step(after: onboarding.step)
+        case .start:
+            UserDefaults.standard.set(true, forKey: Self.onboardedKey)
+            showsOnboarding = false
+        }
+    }
+
+    static func step(after s: OnboardingStep) -> OnboardingStep {
+        let all = OnboardingStep.allCases
+        return all[min((all.firstIndex(of: s) ?? 0) + 1, all.count - 1)]
+    }
+
+    static func step(before s: OnboardingStep) -> OnboardingStep {
+        let all = OnboardingStep.allCases
+        return all[max((all.firstIndex(of: s) ?? 0) - 1, 0)]
+    }
+
+    // MARK: 설정
+
+    private func settings(_ a: UIAction.Settings) async {
+        switch a {
+        case .connect(let ai): await connect(ai == .codex ? .codex : .claude)
+        case .login(let p): await connect(p == .codex ? .codex : .claude)
+        case .disconnect:
+            // CLI 로그아웃은 하지 않는다 — 크리에이터의 다른 쓰임을 깨지 않게. 이 앱에서만 쓰지 않는다
+            UserDefaults.standard.set(AgentJob.disabledValue, forKey: "madi.agent")
+            await refreshAI()
+        case .activeAI(let ai):
+            if ai == .claude || ai == .codex { UserDefaults.standard.set(ai == .codex ? "codex" : "claude", forKey: "madi.agent") }
+            await refreshAI()
+        case .studioName(let name): AppSettings().studioName = name
+        case .keepDays(let days): AppSettings().keepDays = days
+        case .openSystemSettings: Self.openPhotosPrivacy()
+        case .pickAlbum, .look:
+            break   // 앨범 거르기 · 자막 모양 저장은 다음 커밋 (docs/stage-6.spec.md)
+        }
+    }
+
+    static func openPhotosPrivacy() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+}
