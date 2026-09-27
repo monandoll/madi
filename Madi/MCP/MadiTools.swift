@@ -12,6 +12,11 @@ public struct MadiTools: Sendable {
     public let videoID: String
     public let compositionID: String
     public let revisionOf: String?
+    /// 저장할 편집안의 출처 — 첫 초안이면 draft, 되먹임 턴이면 selfEval (§7 횟수를 센다).
+    public let origin: CompositionRecord.Origin
+    /// 되먹임 턴이면 지난 결과물(**내보낸 파일**, §7)의 프레임 시트. `read_digest` 가 원본 시트 뒤에 붙여 준다.
+    /// 도구를 늘리지 않고 AI 가 자기 결과를 보게 한다 (§1-4 · §10 도구 2개).
+    public let feedbackSheet: URL?
     /// 새 편집안에 찍을 스타일(가장 최근 버전). AI 가 아니라 앱이 찍는다 (§5). 자막 분절 값도 여기서 온다.
     /// 테스트에서 바꿔 끼운다.
     public let style: @Sendable () throws -> Style
@@ -24,10 +29,11 @@ public struct MadiTools: Sendable {
 
     public init(
         db: AppDatabase, videoID: String, compositionID: String, revisionOf: String? = nil,
+        origin: CompositionRecord.Origin = .draft, feedbackSheet: URL? = nil,
         style: @escaping @Sendable () throws -> Style = { try StyleStore.load(try StyleStore.latest()) }
     ) {
         self.db = db; self.videoID = videoID; self.compositionID = compositionID
-        self.revisionOf = revisionOf; self.style = style
+        self.revisionOf = revisionOf; self.origin = origin; self.feedbackSheet = feedbackSheet; self.style = style
     }
 
     public struct Output {
@@ -101,6 +107,14 @@ public struct MadiTools: Sendable {
                 continue
             }
             content.append(["type": "image", "data": data.base64EncodedString(), "mimeType": Self.mimeType(url)])
+        }
+        if let feedbackSheet {
+            if let data = try? Data(contentsOf: feedbackSheet) {
+                content.append(["type": "text", "text": "## 지난 결과물 — 내보낸 영상에서 뽑은 프레임 (자막이 그려진 그대로)"])
+                content.append(["type": "image", "data": data.base64EncodedString(), "mimeType": Self.mimeType(feedbackSheet)])
+            } else {
+                content.append(["type": "text", "text": "(지난 결과물 시트를 읽지 못했다)"])
+            }
         }
         return Output(content: content, isError: false)
     }
@@ -206,7 +220,7 @@ public struct MadiTools: Sendable {
         if !problems.isEmpty { return reject(problems) }
 
         do {
-            try db.saveComposition(comp)
+            try db.saveComposition(comp, origin: origin)
             try? db.log("agent.composition.saved", subject: comp.id,
                         payload: ["scenes": .number(Double(comp.scenes.count)), "duration": .number(comp.duration)])
         } catch {

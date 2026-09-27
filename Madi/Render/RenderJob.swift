@@ -117,10 +117,12 @@ public struct RenderJob: Sendable {
 
         // 채운 키프레임은 **렌더가 성공한 뒤에** 편집안에 되쓴다 (§7-1 재현 가능성).
         // 먼저 쓰면 렌더가 실패했을 때 편집안이 이미 keyframes 모드라, 다시 렌더할 때 화면 잡기와 G1~G3 를 건너뛴다.
-        if reframed { try db.saveComposition(comp, createdAt: record.createdAt) }
+        if reframed { try db.saveComposition(comp, createdAt: record.createdAt, origin: record.origin) }
         let reportJSON = String(decoding: try JSONEncoder().encode(report), as: UTF8.self)
         let output = OutputRecord(id: UUID().uuidString, compositionId: comp.id, path: out.path,
-                                  reviewReport: reportJSON, arch: MachineArch.current, createdAt: Date())
+                                  reviewReport: reportJSON, arch: MachineArch.current, createdAt: Date(),
+                                  // 검사가 끝나기 전에는 보이지 않는다 — 보여 줄지는 ReviewLoop 가 정한다 (§10)
+                                  verdict: .hidden)
         try await db.writer.write { try output.insert($0) }
         try db.log("render.done", subject: comp.id, payload: report)
         return output

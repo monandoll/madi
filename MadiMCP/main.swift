@@ -5,7 +5,8 @@ import MadiKit
 ///
 /// 앱이 AI 한 턴을 걸 때 설정에 이 실행 파일과 인자를 적어 넘긴다. 사람이 직접 부르지 않는다.
 ///
-///   madi-mcp --video <id> --composition <id> [--revision-of <id>] [--db <sqlite 경로>]
+///   madi-mcp --video <id> --composition <id> [--revision-of <id>] [--origin draft|selfEval|chat]
+///            [--feedback-sheet <png>] [--db <sqlite 경로>]
 ///
 /// 앱 초기화(사진 감시 · 큐 · 모델 받기)는 여기서 하지 않는다 — DB 를 열고 도구 2개만 연다.
 /// 표준 출력은 프로토콜 전용이다. 사람이 읽을 말은 표준 오류로.
@@ -32,4 +33,8 @@ do {
     fail("DB 를 열지 못했다: \(error)")
 }
 
-MCPServer(tools: MadiTools(db: db, videoID: video, compositionID: composition, revisionOf: option("revision-of"))).run()
+let origin = option("origin").flatMap(CompositionRecord.Origin.init(rawValue:)) ?? .draft
+MCPServer(tools: MadiTools(
+    db: db, videoID: video, compositionID: composition, revisionOf: option("revision-of"), origin: origin,
+    feedbackSheet: option("feedback-sheet").map { URL(fileURLWithPath: $0) }
+)).run()

@@ -54,29 +54,46 @@ public struct DigestRecord: Codable, Sendable, FetchableRecord, PersistableRecor
 /// 편집안. **직접 만들지 말고** `AppDatabase.saveComposition` 을 쓴다 — 검증을 거친다.
 public struct CompositionRecord: Codable, Hashable, Sendable, FetchableRecord, PersistableRecord {
     public static let databaseTableName = "composition"
+
+    /// 누가 만들었나. self-eval 횟수는 연속된 `selfEval` 조상으로 센다 (§7 최대 2회).
+    public enum Origin: String, Codable, Sendable { case draft, selfEval, chat }
+
     public var id: String
     public var videoId: String
     public var json: String
     public var revisionOf: String?
     public var createdAt: Date
+    public var origin: Origin
 
     public func composition() throws -> Composition { try parseComposition(Data(json.utf8)) }
 }
 
 public struct OutputRecord: Codable, Hashable, Sendable, FetchableRecord, PersistableRecord {
     public static let databaseTableName = "output"
+
+    /// 보여 줄 수 있나 (§8 · §10 "검사한 결과만 보여 준다"). 갤러리는 `shown` 만 읽는다.
+    public enum Verdict: String, Codable, Sendable {
+        /// 하드 게이트 통과, 또는 `원본 한계` · `판정 불가`
+        case shown
+        /// 되먹임 중이거나, 뒤 판이 대신 보여진다
+        case hidden
+        /// 되먹임 2회 뒤에도 하드 실패 — 보여 주지 않고 채팅에 한 줄
+        case failed
+    }
+
     public var id: String
     public var compositionId: String
     public var path: String
     public var reviewReport: String?
     public var arch: String
     public var createdAt: Date
+    public var verdict: Verdict = .shown
 }
 
 public struct JobRecord: Codable, Hashable, Sendable, FetchableRecord, MutablePersistableRecord {
     public static let databaseTableName = "job"
-    /// analyze · agent → video.id, render → composition.id
-    public enum Kind: String, Codable, Sendable, CaseIterable { case analyze, render, agent }
+    /// analyze · agent → video.id, render · selfEval → composition.id
+    public enum Kind: String, Codable, Sendable, CaseIterable { case analyze, render, agent, selfEval }
     public enum State: String, Codable, Sendable { case queued, running, done, failed }
 
     public var id: Int64?
@@ -116,7 +133,9 @@ extension AppDatabase {
     /// 편집안 저장. **검증을 통과한 것만** 들어간다 (`parseComposition` 과 같은 검사).
     /// JSON 은 이 함수가 다시 직렬화한다 — 들어온 문자열을 그대로 믿지 않는다.
     @discardableResult
-    public func saveComposition(_ comp: Composition, createdAt: Date = Date()) throws -> CompositionRecord {
+    public func saveComposition(
+        _ comp: Composition, createdAt: Date = Date(), origin: CompositionRecord.Origin = .draft
+    ) throws -> CompositionRecord {
         try validate(comp)
         try assertNoStyleValues(comp)
         let encoder = JSONEncoder()
@@ -124,7 +143,8 @@ extension AppDatabase {
         encoder.dateEncodingStrategy = .iso8601
         let json = String(decoding: try encoder.encode(comp), as: UTF8.self)
         let record = CompositionRecord(
-            id: comp.id, videoId: comp.videoID, json: json, revisionOf: comp.revisionOf, createdAt: createdAt
+            id: comp.id, videoId: comp.videoID, json: json, revisionOf: comp.revisionOf, createdAt: createdAt,
+            origin: origin
         )
         try writer.write { db in try record.save(db) }
         return record

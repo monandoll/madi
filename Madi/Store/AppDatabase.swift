@@ -160,6 +160,41 @@ public struct AppDatabase: Sendable {
                 WHERE state IN ('queued','running')
                 """)
         }
+        // 5단계 — self-eval 루프 (docs/stage-5.spec.md 3번).
+        // - composition.origin: 누가 만들었나. self-eval 횟수(최대 2, §7)는 연속된 selfEval 조상으로 센다 —
+        //   6단계 채팅 수정(chat)과 섞이지 않게
+        // - output.verdict: 보여 줄 수 있나 (§8 · §10 "검사한 결과만 보여 준다"). 기존 결과물은 보여 준 것으로 본다
+        // - job.kind: selfEval (targetId → composition.id). CHECK 를 못 고쳐 표를 다시 만든다
+        m.registerMigration("v3-self-eval") { db in
+            try db.alter(table: "composition") { t in
+                t.add(column: "origin", .text).notNull().defaults(to: "draft")
+                    .check(sql: "origin IN ('draft','selfEval','chat')")
+            }
+            try db.alter(table: "output") { t in
+                t.add(column: "verdict", .text).notNull().defaults(to: "shown")
+                    .check(sql: "verdict IN ('shown','hidden','failed')")
+            }
+            try db.create(table: "job_new") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("kind", .text).notNull().check(sql: "kind IN ('analyze','render','agent','selfEval')")
+                // analyze · agent → video.id, render · selfEval → composition.id
+                t.column("targetId", .text).notNull()
+                t.column("state", .text).notNull()
+                    .check(sql: "state IN ('queued','running','done','failed')")
+                t.column("attempts", .integer).notNull().defaults(to: 0)
+                t.column("error", .text)
+                t.column("createdAt", .datetime).notNull()
+                t.column("startedAt", .datetime)
+                t.column("finishedAt", .datetime)
+            }
+            try db.execute(sql: "INSERT INTO job_new SELECT id, kind, targetId, state, attempts, error, createdAt, startedAt, finishedAt FROM job")
+            try db.drop(table: "job")
+            try db.rename(table: "job_new", to: "job")
+            try db.execute(sql: """
+                CREATE UNIQUE INDEX job_one_live_per_target ON job(kind, targetId)
+                WHERE state IN ('queued','running')
+                """)
+        }
         return m
     }
 }

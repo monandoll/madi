@@ -26,9 +26,12 @@ public struct MCPLaunch: Sendable, Equatable {
 
     /// 번들 안 `madi-mcp` 로 영상 하나 · 편집안 하나에 묶어 띄운다 (결정 ①).
     public static func madi(executable: URL, videoID: String, compositionID: String,
-                            revisionOf: String? = nil, dbPath: String? = nil) -> MCPLaunch {
+                            revisionOf: String? = nil, origin: CompositionRecord.Origin = .draft,
+                            feedbackSheet: URL? = nil, dbPath: String? = nil) -> MCPLaunch {
         var args = ["--video", videoID, "--composition", compositionID]
         if let revisionOf { args += ["--revision-of", revisionOf] }
+        if origin != .draft { args += ["--origin", origin.rawValue] }
+        if let feedbackSheet { args += ["--feedback-sheet", feedbackSheet.path] }
         if let dbPath { args += ["--db", dbPath] }
         return MCPLaunch(executable: executable, arguments: args)
     }
