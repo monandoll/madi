@@ -185,4 +185,56 @@ struct ViewDataMapperTests {
         #expect(ref.isNew == false)
         #expect(ref.exportedNote == Copy.Results.Export.historyLine(target: Copy.Results.Export.photos, when: Copy.time(now)))
     }
+
+    @Test("멈춘 편집안 — 짜다 실패(편집안 없음) · 로그인 필요 · 두 번 다듬어도 안 됨(isFinal)")
+    func stoppedStates() throws {
+        var failed = job(.agent, "v", .failed)
+        failed.error = "AI 턴 실패: You've hit your usage limit."
+        failed.finishedAt = now
+        let s1 = LibrarySnapshot(videos: [video("v", at: now)], jobs: [failed], now: now)
+        guard case .stopped(let p, let reason, let actions, let isFinal) = try #require(ViewDataMapper.plan(s1, videoID: "v", ai: .claude)) else { Issue.record(""); return }
+        #expect(p == nil && !isFinal)
+        #expect(reason.contains(Copy.AI.reasonLimit))
+        #expect(actions.first?.title == Copy.Plan.Stopped.tryAgain)
+
+        let s2 = LibrarySnapshot(videos: [video("v", at: now)], now: now)
+        #expect(ViewDataMapper.plan(s2, videoID: "v", ai: .notLoggedIn(.codex)) == .notLoggedIn(.codex))
+
+        let s3 = LibrarySnapshot(videos: [video("v", at: now)],
+                                 compositions: [try comp("d", at: now - 60), try comp("r", origin: .selfEval, revisionOf: "d", at: now - 30)],
+                                 outputs: [output("o1", comp: "d", verdict: .hidden, at: now - 50), output("o2", comp: "r", verdict: .failed, at: now - 20)],
+                                 now: now)
+        guard case .stopped(let plan, _, _, let final) = try #require(ViewDataMapper.plan(s3, videoID: "v", ai: .claude)) else { Issue.record(""); return }
+        #expect(final && plan?.id == "d")
+    }
+
+    @Test("고른 판을 보여 준다 — 사람이 직접 고친 판(결과물 없음)도 ready")
+    func viewing() throws {
+        let s = LibrarySnapshot(videos: [video("v", at: now)],
+                                compositions: [try comp("d", at: now - 60), try comp("e", origin: .chat, revisionOf: "d", at: now - 10)],
+                                outputs: [output("o", comp: "d", verdict: .shown, at: now - 50)], now: now)
+        guard case .ready(let def) = try #require(ViewDataMapper.plan(s, videoID: "v", ai: .claude)) else { Issue.record(""); return }
+        #expect(def.id == "d")
+        guard case .ready(let edited) = try #require(ViewDataMapper.plan(s, videoID: "v", ai: .claude, viewing: "e")) else { Issue.record(""); return }
+        #expect(edited.id == "e" && edited.versionLabel == Copy.Plan.version(2))
+    }
+
+    @Test("채팅 '앞으로도?' — 규칙 문장은 버튼 설명에, 답하면 사라진다 · 받기 실패 · 원본 한계 안내")
+    func remembersAndNotices() throws {
+        let ask = ChatRecord(id: "q", videoId: "v", kind: .choices, payload: ["ask": .string("askRemember"), "rule": .string("영상은 15초 안팎으로")], createdAt: now)
+        let s = LibrarySnapshot(videos: [video("v", at: now, status: .failed)], chats: [ask], now: now)
+        let msgs = ViewDataMapper.chat(s, videoID: "v").map(\.kind)
+        #expect(msgs.first == .assistant(Copy.Remember.askRemember))
+        guard case .choices(let c) = msgs.last else { Issue.record(""); return }
+        #expect(c.first?.title == Copy.Remember.rememberYes && c.first?.detail == "영상은 15초 안팎으로")
+        var answered = ask
+        answered.payload = #"{"ask":"askRemember","rule":"x","answered":true}"#
+        #expect(ViewDataMapper.chat(LibrarySnapshot(videos: [video("v", at: now)], chats: [answered], now: now), videoID: "v").isEmpty)
+
+        #expect(ViewDataMapper.shot(s.videos[0], s).problem == Copy.Photos.importFailedShort)
+
+        var o = output("o", comp: "d", verdict: .shown, at: now)
+        o.reviewReport = #"{"G1":"sourceLimited:subjectTooSmallLowResolution"}"#
+        #expect(ViewDataMapper.gateTip(o) == Copy.Gate.tipResolution)
+    }
 }

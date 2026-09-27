@@ -16,12 +16,13 @@ enum ViewDataMapper {
 
     // MARK: - 사이드바
 
-    static func studio(_ s: LibrarySnapshot, studioName: String, ai: AIConnection) -> StudioStatus {
+    static func studio(_ s: LibrarySnapshot, studioName: String, ai: AIConnection, preparing: EnginePrep? = nil) -> StudioStatus {
         StudioStatus(
             studioName: studioName, ai: ai,
             shotCount: s.videos.count,
             resultCount: s.outputs.filter { $0.verdict == .shown }.count,
-            makingCount: s.videos.filter { !s.liveJobs(of: $0.id).isEmpty }.count
+            makingCount: s.videos.filter { !s.liveJobs(of: $0.id).isEmpty }.count,
+            preparing: preparing
         )
     }
 
@@ -79,7 +80,10 @@ enum ViewDataMapper {
             speech: s.wordCounts[v.id] == 0 ? .silent : .clear,
             isMaking: !s.liveJobs(of: v.id).isEmpty,
             thumbnail: thumb(s.thumbnailStore.video(v.id), s),
-            results: results(of: v.id, s)
+            results: results(of: v.id, s),
+            // 원본 받는 중 진행률은 엔진이 아직 들고 있지 않다 (viewdata-map 1절) — nil
+            fetchProgress: nil,
+            problem: v.status == .failed ? Copy.Photos.importFailedShort : nil
         )
     }
 
@@ -104,8 +108,23 @@ enum ViewDataMapper {
         return ResultRef(
             id: o.id, platform: platform(comp.meta.platform), planLabel: Copy.Plan.version(number),
             when: Copy.shotStamp(o.createdAt, now: s.now), duration: comp.duration, sceneCount: comp.scenes.count,
-            isNew: o.seenAt == nil, exportedNote: exportedNote(o.id, s), thumbnail: thumb(s.thumbnailStore.output(o.id), s)
+            isNew: o.seenAt == nil, exportedNote: exportedNote(o.id, s), thumbnail: thumb(s.thumbnailStore.output(o.id), s),
+            notice: gateTip(o)
         )
+    }
+
+    /// 원본 한계 · 판정 불가 안내 — 결과물 옆 짧은 꼴 (viewdata-map 3절 ⑤). 리포트의 G1 에서.
+    static func gateTip(_ o: OutputRecord) -> String? {
+        guard let json = o.reviewReport,
+              let report = try? JSONDecoder().decode([String: JSONValue].self, from: Data(json.utf8)),
+              case .string(let g1)? = report["G1"] else { return nil }
+        switch g1 {
+        case "sourceLimited:subjectTooSmallLowResolution": return Copy.Gate.tipResolution
+        case let x where x.hasPrefix("sourceLimited"): return Copy.Gate.tipCloser
+        case "cannotJudge:subjectNotFound": return Copy.Gate.tipBackground
+        case "cannotJudge:subjectAlreadyCropped": return Copy.Gate.tipWholeBody
+        default: return nil
+        }
     }
 
     /// 내보낸 이력 한 줄 — 가장 최근 것. 폴더 저장은 문구가 없어 아직 안 낸다 (copy-keys `exportedToFolder`).
@@ -144,28 +163,86 @@ enum ViewDataMapper {
 
     // MARK: - 편집안
 
-    static func plan(_ s: LibrarySnapshot, videoID: String, ai: AIConnection) -> PlanState? {
+    /// 편집안 화면. `viewing` 은 사람이 고른 판(판 고르기 · 직접 고친 판) — 없으면 가장 최근에 보여 준 판.
+    static func plan(_ s: LibrarySnapshot, videoID: String, ai: AIConnection, viewing: String? = nil,
+                     modelReady: Bool = true) -> PlanState? {
         guard let video = s.videos.first(where: { $0.id == videoID }) else { return nil }
         let versions = s.visibleVersions(of: videoID)
         let live = s.liveJobs(of: videoID)
         let shown = versions.filter { s.shownOutput(forVersion: $0.id) != nil }
-        guard let current = shown.last else {
-            // 아직 보여 줄 판이 없다 — 짜는 중이거나(검사 전 렌더 · 되먹임 포함) AI 가 없다.
-            if live.isEmpty && versions.isEmpty && ai == .none { return .noAI }
-            return .preparing(prepareSteps(live))
+        let current = viewing.flatMap { id in versions.first { $0.id == id } } ?? shown.last
+
+        if let current {
+            let view = planView(current, video: video, versions: versions, s)
+            // 이 판(또는 그 뒤 새 판)을 만드는 중 — 목록은 그대로, 읽기 전용
+            let makingIDs = live.filter { $0.kind == .render || $0.kind == .selfEval }.compactMap { s.versionRoot(of: $0.targetId)?.id }
+            let newer = versions.last.flatMap { $0.id != current.id && viewing == nil ? $0 : nil }
+            if let target = makingIDs.contains(current.id) ? current : (newer.flatMap { n in makingIDs.contains(n.id) || live.contains { $0.kind == .chat } ? n : nil }) {
+                let reviewing = live.contains { $0.kind == .selfEval } || s.outputs.contains { s.versionRoot(of: $0.compositionId)?.id == target.id }
+                let steps = [
+                    PrepareStep(title: Copy.Plan.Making.encode, state: reviewing ? .done : .running),
+                    PrepareStep(title: Copy.Plan.Making.review, state: reviewing ? .running : .waiting),
+                ]
+                let fraction = s.progress.first { s.versionRoot(of: $0.key)?.id == target.id }?.value ?? 0
+                return .making(view, MakingProgress(fraction: fraction, steps: steps))
+            }
+            if s.shownOutput(forVersion: current.id) == nil, gaveUp(current.id, s) {
+                return gaveUpState(current.id, view: view, s)
+            }
+            return .ready(view)
         }
-        let view = planView(current, video: video, versions: versions, s)
-        // 보여 준 판보다 새 판(채팅 수정)이 만들어지는 중이면 — 목록은 그대로, 읽기 전용
-        if let newest = versions.last, newest.id != current.id, !live.isEmpty {
-            // 만드는 중: 영상 만들기 → 살펴보고 다듬기 (검사 · 되먹임)
-            let reviewing = live.contains { $0.kind == .selfEval } || (s.output(of: newest.id) != nil)
-            let steps = [
-                PrepareStep(title: Copy.Plan.Making.encode, state: reviewing ? .done : .running),
-                PrepareStep(title: Copy.Plan.Making.review, state: reviewing ? .running : .waiting),
-            ]
-            return .making(view, MakingProgress(fraction: s.progress[newest.id] ?? 0, steps: steps))
+
+        if versions.isEmpty && live.isEmpty {
+            // 짜다가 멈췄다 — 오늘 실패한 작업 (viewdata-map 3절 ②)
+            let failed = s.jobs.filter { $0.state == .failed && $0.targetId == videoID && $0.error != "멈춤" }.last
+            if let failed, failed.kind == .agent {
+                return .stopped(plan: nil, reason: Copy.AI.aiDraftFailed + " " + failureReason(failed.error, ai: ai),
+                                actions: stoppedActions, isFinal: false)
+            }
+            if let failed, failed.kind == .analyze {
+                return .stopped(plan: nil, reason: Copy.AI.analyzeFailed, actions: stoppedActions, isFinal: false)
+            }
+            switch ai {
+            case .none: return .noAI
+            case .notLoggedIn(let product): return .notLoggedIn(product)
+            default: break
+            }
         }
-        return .ready(view)
+        // 판은 있는데 보여 준 것이 없고 더 도는 것도 없다 — 두 번 다듬어도 안 됐다
+        if let newest = versions.last, live.isEmpty, gaveUp(newest.id, s) {
+            return gaveUpState(newest.id, view: planView(newest, video: video, versions: versions, s), s)
+        }
+        return .preparing(prepareSteps(live, fetchingOriginal: video.status == .importing, modelReady: modelReady))
+    }
+
+    static var stoppedActions: [ChatChoice] {
+        [ChatChoice(title: Copy.Plan.Stopped.tryAgain, detail: Copy.Plan.Stopped.tryAgainDetail, isPrimary: true),
+         ChatChoice(title: Copy.Plan.Stopped.pickAnother, detail: Copy.Plan.Stopped.pickAnotherDetail)]
+    }
+
+    /// 사람이 본 판 하나에서 나온 결과물이 전부 끝내 실패(verdict failed)인가.
+    static func gaveUp(_ versionID: String, _ s: LibrarySnapshot) -> Bool {
+        let outs = s.outputs.filter { s.versionRoot(of: $0.compositionId)?.id == versionID }
+        return !outs.isEmpty && outs.contains { $0.verdict == .failed } && !outs.contains { $0.verdict == .shown }
+    }
+
+    /// 끝내 기준 미달 — **붉은색은 여기뿐** (`isFinal`). 이유는 인물 크기(하드 G1) 기준으로 말한다.
+    static func gaveUpState(_ versionID: String, view: PlanView, _ s: LibrarySnapshot) -> PlanState {
+        .stopped(plan: view,
+                 reason: Copy.Review.reviewGaveUp(reason: Copy.Review.gaveUpReasonSmall, tip: Copy.Review.gaveUpTipCloser),
+                 actions: [ChatChoice(title: Copy.Plan.Stopped.pickAnother, detail: Copy.Plan.Stopped.pickAnotherDetail)],
+                 isFinal: true)
+    }
+
+    /// 작업 실패 문장(개발자 말)을 사람 말 이유로 — 한도 · 로그인 · 모름.
+    static func failureReason(_ error: String?, ai: AIConnection) -> String {
+        let e = (error ?? "").lowercased()
+        if e.contains("limit") || e.contains("한도") || e.contains("quota") { return Copy.AI.reasonLimit }
+        if e.contains("login") || e.contains("로그인") || e.contains("auth") {
+            let product: AIProduct = { if case .codex = ai { return .codex }; if case .notLoggedIn(let p) = ai { return p }; return .claude }()
+            return Copy.AI.reasonLoggedOut(product.name)
+        }
+        return Copy.AI.reasonUnknown
     }
 
     /// 짜는 중 단계 — **엔진이 실제로 도는 순서** (디자인 답 2026-09-28, viewdata-map 5절):
@@ -272,8 +349,19 @@ enum ViewDataMapper {
                 if let cid = row.compositionId, let o = s.shownOutput(forVersion: cid), let ref = resultRef(o, s) {
                     out.append(ChatMessage(id: row.id + ".result", kind: .result(ref)))
                 }
-            case .choices, .notice:
-                continue
+            case .choices:
+                // "앞으로도 이렇게 할까요?" — 답한 것은 다시 보이지 않는다. 버튼 설명 칸에 AI 가 다듬은 규칙 문장
+                let values = row.payloadValues
+                guard values["answered"] == nil, case .string(let rule)? = values["rule"] else { continue }
+                out.append(ChatMessage(id: row.id + ".ask", kind: .assistant(Copy.Remember.askRemember), stamp: stamp))
+                out.append(ChatMessage(id: row.id, kind: .choices([
+                    ChatChoice(title: Copy.Remember.rememberYes, detail: rule, isPrimary: true),
+                    ChatChoice(title: Copy.Remember.rememberNo),
+                ])))
+            case .notice:
+                if case .string(let key)? = row.payloadValues["key"], key == Chat.Key.aiDraftFailed {
+                    out.append(ChatMessage(id: row.id, kind: .assistant(Copy.AI.aiEditFailed), stamp: stamp))
+                }
             }
         }
         let myChats = Set(s.chats.filter { $0.videoId == videoID }.map(\.id))
