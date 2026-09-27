@@ -1,0 +1,30 @@
+# AGENTS.md §14 — CI 는 푸시마다 돌리지 않는다.
+# 단계 통과 태그(stage-N) 푸시와 수동 실행(workflow_dispatch)에서만 돈다.
+# 커밋마다의 `xcodebuild test` 는 로컬에서 그대로 돌린다.
+#
+# 여기서 도는 건 단위 테스트뿐이다. 합성 영상 · 모든 Mac 에 있는 글꼴만 쓴다.
+# 공개본 영상 · WhisperKit 모델이 필요한 2단계 판정(`madi-spike stage2`)은 로컬에 남긴다
+# (docs/findings/2026-09-27-stage2-export.md).
+name: test
+
+on:
+  push:
+    tags: ["stage-*"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode
+        run: |
+          # 가장 새 Xcode 를 쓴다. Swift 6 이 필요하다.
+          latest=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$latest"
+          xcodebuild -version
+      - name: 테스트
+        run: |
+          xcodebuild -project Madi.xcodeproj -scheme Madi -configuration Debug \
+            -derivedDataPath build -destination 'platform=macOS' test
