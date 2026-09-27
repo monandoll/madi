@@ -1369,7 +1369,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Madi/App/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "아이폰으로 찍은 영상을 옮기지 않고 바로 편집하려고 사진 보관함을 읽어요. 영상은 이 Mac 을 떠나지 않아요.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "아이폰으로 찍은 영상을 옮기지 않고 바로 편집하려고 사진 보관함을 읽어요. 영상은 이 Mac을 떠나지 않아요.";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = app.madi.Madi;
 				SDKROOT = macosx;
@@ -1544,7 +1544,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Madi/App/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "아이폰으로 찍은 영상을 옮기지 않고 바로 편집하려고 사진 보관함을 읽어요. 영상은 이 Mac 을 떠나지 않아요.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "아이폰으로 찍은 영상을 옮기지 않고 바로 편집하려고 사진 보관함을 읽어요. 영상은 이 Mac을 떠나지 않아요.";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = app.madi.Madi;
 				SDKROOT = macosx;

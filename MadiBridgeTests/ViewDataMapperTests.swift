@@ -102,13 +102,22 @@ struct ViewDataMapperTests {
 
         let drafting = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.agent, "v", .running)], now: now)
         guard case .preparing(let steps) = try #require(ViewDataMapper.plan(drafting, videoID: "v", ai: .claude)) else { Issue.record(""); return }
-        #expect(steps.map(\.state) == [.done, .running, .running, .waiting])
+        // 단계는 엔진 순서 (디자인 답 2026-09-28): 말 받아적기 → 사람 찾기 → 장면 나누기
+        #expect(steps.map(\.title) == [Copy.Plan.Preparing.transcribe, Copy.Plan.Preparing.findPerson, Copy.Plan.Preparing.split])
+        #expect(steps.map(\.state) == [.done, .done, .running])
+
+        let analyzing = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], now: now)
+        guard case .preparing(let a) = try #require(ViewDataMapper.plan(analyzing, videoID: "v", ai: .claude)) else { Issue.record(""); return }
+        #expect(a.map(\.state) == [.running, .running, .waiting])
+        // 편집 준비가 안 끝났으면 맨 앞에 "편집 준비", 나머지는 기다린다
+        let first = ViewDataMapper.prepareSteps([job(.analyze, "v", .running)], modelReady: false)
+        #expect(first.first?.title == Copy.Plan.Preparing.prepare && first.dropFirst().allSatisfy { $0.state == .waiting })
 
         // 초안은 있는데 검사 전 렌더 중 — 아직 보여 주지 않는다
         let rendering = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now)],
                                         jobs: [job(.render, "d", .running)], now: now)
         guard case .preparing(let s2) = try #require(ViewDataMapper.plan(rendering, videoID: "v", ai: .claude)) else { Issue.record(""); return }
-        #expect(s2.last?.state == .running)
+        #expect(s2.allSatisfy { $0.state == .done })      // 짜기는 끝났다 — 검사 전 렌더 중
     }
 
     @Test("채팅 — 크리에이터 · AI 말, 고친 판이 보여지면 결과물 카드. 선택지 · 알림은 문구가 생길 때까지 안 낸다")

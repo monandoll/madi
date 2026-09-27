@@ -152,7 +152,8 @@ targets:
         # 사진 보관함 권한 (§2). 문장은 디자인 쪽이 다듬는다 — docs/design/copy-keys.md `photoLibraryUsage`
         # Hardened Runtime 에서 사진 보관함을 읽는 권한 (docs/stage-6.spec.md 3번).
         CODE_SIGN_ENTITLEMENTS: Madi/App/Madi.entitlements
-        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "아이폰으로 찍은 영상을 옮기지 않고 바로 편집하려고 사진 보관함을 읽어요. 영상은 이 Mac 을 떠나지 않아요."
+        # 문장은 Copy.Photos.photoLibraryUsage 를 그대로 옮긴 것이다 (Info.plist 라 Copy 로는 안 닿는다). 바뀌면 같이 고친다.
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "아이폰으로 찍은 영상을 옮기지 않고 바로 편집하려고 사진 보관함을 읽어요. 영상은 이 Mac을 떠나지 않아요."
         GENERATE_INFOPLIST_FILE: YES
         LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
 

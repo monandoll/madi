@@ -157,32 +157,43 @@ enum ViewDataMapper {
         let view = planView(current, video: video, versions: versions, s)
         // 보여 준 판보다 새 판(채팅 수정)이 만들어지는 중이면 — 목록은 그대로, 읽기 전용
         if let newest = versions.last, newest.id != current.id, !live.isEmpty {
+            // 만드는 중: 영상 만들기 → 살펴보고 다듬기 (검사 · 되먹임)
+            let reviewing = live.contains { $0.kind == .selfEval } || (s.output(of: newest.id) != nil)
             let steps = [
-                PrepareStep(title: Copy.Plan.Making.captions, state: .done),
-                PrepareStep(title: Copy.Plan.Making.reframe, state: .running),
-                PrepareStep(title: Copy.Plan.Making.encode, state: .waiting),
+                PrepareStep(title: Copy.Plan.Making.encode, state: reviewing ? .done : .running),
+                PrepareStep(title: Copy.Plan.Making.review, state: reviewing ? .running : .waiting),
             ]
             return .making(view, MakingProgress(fraction: s.progress[newest.id] ?? 0, steps: steps))
         }
         return .ready(view)
     }
 
-    /// 실제 파이프라인을 디자인이 그린 네 단계에 얹는다 (viewdata-map 1절 — 이름을 맞춰야 한다).
-    /// "쉬는 구간 찾기" 는 따로 도는 단계가 없다 — AI 가 장면을 고르며 같이 한다.
-    static func prepareSteps(_ live: [JobRecord]) -> [PrepareStep] {
-        let running = Set(live.filter { $0.state == .running }.map(\.kind))
-        let queued = Set(live.map(\.kind))
-        let stage: Int = {
-            if running.contains(.render) || running.contains(.selfEval) || queued.contains(.render) || queued.contains(.selfEval) { return 3 }
-            if running.contains(.agent) || queued.contains(.agent) { return 1 }
-            return 0
-        }()
-        let titles = [Copy.Plan.Preparing.transcribe, Copy.Plan.Preparing.split, Copy.Plan.Preparing.findGaps, Copy.Plan.Preparing.reframe]
-        return titles.enumerated().map { i, t in
-            let done = i < stage && !(stage == 1 && i == 2)
-            let run = i == stage || (stage == 1 && i == 2)
-            return PrepareStep(title: t, state: done ? .done : run ? .running : .waiting)
+    /// 짜는 중 단계 — **엔진이 실제로 도는 순서** (디자인 답 2026-09-28, viewdata-map 5절):
+    /// 영상 받기(iCloud 원본을 받아야 할 때만) → 편집 준비(준비가 안 끝났을 때만) → 말 받아적기 → 사람 찾기 → 장면 나누기.
+    /// 검사 전 렌더 · 되먹임은 "장면 나누기" 가 끝난 뒤 — 사람에게는 아직 짜는 중이다 (결정 ① 검사한 결과만 보여 준다).
+    static func prepareSteps(_ live: [JobRecord], fetchingOriginal: Bool = false, modelReady: Bool = true) -> [PrepareStep] {
+        let kinds = Set(live.map(\.kind))
+        let rendering = kinds.contains(.render) || kinds.contains(.selfEval)
+        let drafting = kinds.contains(.agent)
+        let analyzing = kinds.contains(.analyze)
+        // 몇 번째 단계까지 왔나 (0 받아적기 · 1 사람 찾기 · 2 장면 나누기 · 3 끝)
+        let stage = rendering ? 3 : drafting ? 2 : analyzing ? 0 : 0
+        var steps: [PrepareStep] = []
+        if fetchingOriginal { steps.append(PrepareStep(title: Copy.Plan.Preparing.fetchOriginal, state: .running)) }
+        if !modelReady { steps.append(PrepareStep(title: Copy.Plan.Preparing.prepare, state: fetchingOriginal ? .waiting : .running)) }
+        let blocked = fetchingOriginal || !modelReady
+        // 분석(다이제스트)은 받아적기 · 사람 찾기를 한 작업으로 돈다 — 둘 다 "도는 중" 으로 보인다
+        let titles = [Copy.Plan.Preparing.transcribe, Copy.Plan.Preparing.findPerson, Copy.Plan.Preparing.split]
+        for (i, t) in titles.enumerated() {
+            let state: PrepareStep.State
+            if blocked { state = .waiting }
+            else if stage == 3 || i < stage && !(stage == 0) { state = .done }
+            else if stage == 0 && i < 2 { state = .running }
+            else if stage == 2 && i == 2 { state = .running }
+            else { state = i < stage ? .done : .waiting }
+            steps.append(PrepareStep(title: t, state: state))
         }
+        return steps
     }
 
     static func planView(_ rec: CompositionRecord, video: VideoRecord, versions: [CompositionRecord], _ s: LibrarySnapshot) -> PlanView {
