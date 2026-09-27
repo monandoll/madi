@@ -42,7 +42,8 @@
   릴리스에 올리려 했는데, 거기에는 **전작 v0.2 릴리스가 `Latest`(v0.2.22)로 걸려 있어** `releases/latest` 가 전작을 가리킨다.
   업데이트용 레포를 따로 두면 전작과 섞이지 않고 소스 레포 공개 여부와도 상관없다. 릴리스에는 `.dmg` 와 `appcast.xml` 만
   (⚠ 만들다가 로그인 계정 `ejinhvn-0112` 아래에 `ejinhvn-0112/madi-releases` 가 잘못 생겼다 — monandoll 은 개인 계정이라
-  협업자가 그 아래에 레포를 만들 수 없고 `gh` 가 오류 없이 로그인 계정에 만들었다. 계정을 monandoll 로 바꾸기로 했다)
+  협업자가 그 아래에 레포를 만들 수 없고 `gh` 가 오류 없이 로그인 계정에 만들었다. `gh` 계정을 monandoll 로 바꾸고(ejinhvn-0112 로그아웃)
+  2026-09-28 `monandoll/madi-releases` 를 만들었다 — 공개, 비로그인 접근 200. `ejinhvn-0112/madi-releases` 는 아직 남아 있다(README 뿐))
 
 ### 4번 — Sparkle (2026-09-27)
 
