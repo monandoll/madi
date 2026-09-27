@@ -43,7 +43,11 @@ final class MadiPipeline {
             let preparer = try ModelPreparer(catalog: catalog)
             let analyze = AnalyzeJob(db: db, transcriber: PreparedTranscriber(preparer: preparer, db: db))
             let render = RenderJob(db: db)
-            let queue = JobQueue(db: db, handlers: [.analyze: analyze.handler, .render: render.handler])
+            // 3단계 판정 도구 — `-stage3Slot` 옵션이 있을 때만 (4단계에서 지운다).
+            let queueBox = QueueBox()
+            let analyzeHandler = Stage3Harness.wrap(analyze.handler, db: db) { queueBox.queue }
+            let queue = JobQueue(db: db, handlers: [.analyze: analyzeHandler, .render: render.handler])
+            queueBox.queue = queue
             try await queue.start()
 
             let importer = Importer(db: db, queue: queue)
@@ -56,10 +60,33 @@ final class MadiPipeline {
 
             // 첫 실행이 끝나자마자 모델을 받기 시작한다 — 첫 영상이 기다리지 않게 (결정 A).
             Task.detached(priority: .utility) { await preparer.prepare() }
+            // 모델 상태가 바뀔 때만 기록한다 (진행률 틱은 빼고) — 3분 판정 · "편집 10분" 이 읽는다.
+            Task.detached(priority: .utility) {
+                var last = ""
+                for await state in await preparer.states() {
+                    let name: String
+                    switch state {
+                    case .notStarted: name = "notStarted"
+                    case .downloading: name = "downloading"
+                    case .paused: name = "paused"
+                    case .warming: name = "warming"
+                    case .ready: name = "ready"
+                    case .failed: name = "failed"
+                    case .diskFull: name = "diskFull"
+                    }
+                    if name != last { try? db.log("model." + name); last = name }
+                    if case .ready = state { break }
+                }
+            }
             if await !photos.start() { Self.log.notice("사진 보관함 없이 폴더 감시만 쓴다: \(Self.inbox.path, privacy: .public)") }
             try db.log("app.started")
         } catch {
             Self.log.fault("파이프라인을 시작하지 못했다: \(String(describing: error), privacy: .public)")
         }
     }
+}
+
+/// 판정 도구가 큐를 늦게 참조하려고 쓰는 상자 (큐를 만들기 전에 처리기를 넘겨야 해서).
+private final class QueueBox: @unchecked Sendable {
+    var queue: JobQueue?
 }

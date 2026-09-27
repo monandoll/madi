@@ -14,6 +14,7 @@
 		0DAEDA57821856B2058C07DF /* Spec.json in Resources */ = {isa = PBXBuildFile; fileRef = 448203E1948EA675814B0793 /* Spec.json */; };
 		124F4209189DF02E619840F8 /* DigestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A688321A465B55932B0112B /* DigestTests.swift */; };
 		1C33500A52B9172F220E23E1 /* ModelPreparer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FCE5F549E1ED9C1381E8561 /* ModelPreparer.swift */; };
+		1CF637C4AAE6B0FF9671FF72 /* Stage3Harness.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE2417445C6A79DA922079F6 /* Stage3Harness.swift */; };
 		20F79FEC3C95C79948001FFA /* WhisperKitProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB46CE8965E4DE8BB246F32 /* WhisperKitProvider.swift */; };
 		21DFBCFCDA2E27211AF8BA14 /* SceneCutDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E4A203004BE72EA1BF6F0EA /* SceneCutDetector.swift */; };
 		2BA892758BC7F49E8495F281 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006AFA79D5ADACA512DB698F /* main.swift */; };
@@ -171,6 +172,7 @@
 		A4681562F04878CEC2D88BB3 /* FontLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontLibrary.swift; sourceTree = "<group>"; };
 		A6846090E3F100A140F296D0 /* Madi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Madi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACC2DA0E608DE6F2C2FD7C62 /* SubjectTrack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubjectTrack.swift; sourceTree = "<group>"; };
+		BE2417445C6A79DA922079F6 /* Stage3Harness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stage3Harness.swift; sourceTree = "<group>"; };
 		C3B2B8D01B0628FACEC7DDB1 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		CA96EF54F56D70E495B80CF0 /* Importer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Importer.swift; sourceTree = "<group>"; };
 		CFB46CE8965E4DE8BB246F32 /* WhisperKitProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperKitProvider.swift; sourceTree = "<group>"; };
@@ -233,6 +235,7 @@
 			children = (
 				1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */,
 				7F15A9316F358BEB41DF37AF /* Pipeline.swift */,
+				BE2417445C6A79DA922079F6 /* Stage3Harness.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -599,6 +602,7 @@
 			files = (
 				41D529605EC5629F9025E152 /* MadiApp.swift in Sources */,
 				363EB979B9A40786AA646B7B /* Pipeline.swift in Sources */,
+				1CF637C4AAE6B0FF9671FF72 /* Stage3Harness.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

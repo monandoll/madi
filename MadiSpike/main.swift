@@ -3,6 +3,7 @@ import CoreGraphics
 import CoreText
 import AVFoundation
 import Vision
+import Photos
 import MadiKit
 
 /// 0단계 측정 루프용 도구. **제품 기능이 아니다.**
@@ -1285,6 +1286,42 @@ case "modeltest":
         let transcript = try await PreparedTranscriber(preparer: preparer).transcribe(URL(fileURLWithPath: args[1]))
         print(String(format: "  전사 %.1f초 · 낱말 %d · 앞: %@", Date().timeIntervalSince(t1), transcript.words.count,
                      transcript.words.prefix(6).map(\.text).joined(separator: " ") as NSString))
+    } catch { fail("\(error)") }
+
+case "trim":
+    // 앞부분만 잘라 낸다 — 재인코딩 없이(패스스루). 촬영일 메타데이터는 **지금**으로 적는다
+    // (사진 앱에 "방금 찍은 영상" 으로 들어가야 앱의 가져오기 필터에 걸린다).
+    guard args.count > 2 else { fail("사용법: madi-spike trim <영상> <out.mov> [--to 60]") }
+    do {
+        let asset = AVURLAsset(url: URL(fileURLWithPath: args[1]))
+        let out = URL(fileURLWithPath: args[2])
+        try? FileManager.default.removeItem(at: out)
+        guard let export = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetPassthrough) else { fail("내보내기 불가") }
+        export.outputURL = out
+        export.outputFileType = .mov
+        export.timeRange = CMTimeRange(start: .zero, duration: CMTime(seconds: Double(option("to") ?? "") ?? 60, preferredTimescale: 600))
+        let date = AVMutableMetadataItem()
+        date.identifier = .quickTimeMetadataCreationDate
+        date.value = ISO8601DateFormatter().string(from: Date()) as NSString
+        export.metadata = [date]
+        await export.export()
+        guard export.status == .completed else { fail("자르기 실패: \(export.error?.localizedDescription ?? "?")") }
+        print("  \(out.path)  \(String(format: "%.1f초", try await FrameSheet.info(of: out).duration))")
+    } catch { fail("\(error)") }
+
+case "addphoto":
+    // 사진 보관함에 넣는다 — 앱의 PhotoKit 가져오기 경로를 판정하려고. 촬영일은 지금.
+    guard args.count > 1 else { fail("사용법: madi-spike addphoto <영상>") }
+    let status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+    guard status == .authorized else { fail("사진 보관함 권한이 없다 (\(status.rawValue))") }
+    do {
+        let url = URL(fileURLWithPath: args[1])
+        try await PHPhotoLibrary.shared().performChanges {
+            let req = PHAssetCreationRequest.forAsset()
+            req.creationDate = Date()
+            req.addResource(with: .video, fileURL: url, options: nil)
+        }
+        print("  사진 보관함에 넣음 \(ISO8601DateFormatter().string(from: Date()))")
     } catch { fail("\(error)") }
 
 case "captionband":
