@@ -27,7 +27,7 @@
 | 3 | **서명 · 공증 · `.dmg`** — Developer ID · Hardened Runtime · 엔타이틀먼트 · notarytool · stapler ✅ 공증 앞까지 (자격 증명 대기) | `scripts/` · `project.yml` | 공증된 `.dmg` 를 다른 계정(또는 격리 속성 붙인 채)에서 열어 Gatekeeper 통과 |
 | 4 | **Sparkle** — 업데이트 확인 · EdDSA 서명 · appcast (GitHub Releases) ✅ 첫 릴리스 전까지 | `Madi/App/` · `scripts/` | 옛 판이 새 판을 찾아 설치 |
 | 5 | **채팅 수정 (엔진)** — `chat` 저장소 · 수정 턴(`origin chat` · `revisionOf`) → 렌더 → 검사 · "앞으로도 이렇게 할까요?" → 사용자 규칙 ✅ (실제 Claude 수정 1회 확인) | `Madi/Agent/` · `Madi/Store/` | 가짜 CLI 테스트 · 실제 CLI 수정 1회 |
-| 6 | **바꾸는 층** — DB → ViewData (값을 내는 쪽). 행동 받기는 요청 ⑦ 결정 뒤 | `Madi/App/Bridge/` | 테스트: DB 상태마다 ViewData |
+| 6 | **바꾸는 층** — DB → ViewData (값을 내는 쪽). 행동 받기는 요청 ⑦ 결정 뒤 ✅ 값을 내는 쪽 | `Madi/App/Bridge/` · `Madi/Store/LibrarySnapshot.swift` | 테스트: DB 상태마다 ViewData (`MadiBridgeTests` 7개) |
 | 7 | **UI 밖 부품** — 썸네일 한 장 · 렌더 진행률 · "봤다" · 스튜디오 이름 · 내보내기(사진 앱 · Mac) · 보관 기간 · CLI 설치 · 로그인 대행 | 여러 곳 | 각자 테스트 |
 | 8 | **판정** — 크리에이터 3편 · 깨끗한 Mac | — | 사람이 한다 |
 

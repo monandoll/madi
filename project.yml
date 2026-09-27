@@ -196,6 +196,26 @@ targets:
         # 앱이 아니라 CLI 라서 @main 대신 main.swift 를 쓴다.
         SWIFT_VERSION: "6.0"
 
+  # 바꾸는 층(엔진 → ViewData) 테스트. 앱을 띄우지 않는다 — 띄우면 파이프라인이 켜져 사진 보관함 · DB 를 건드린다.
+  # 그래서 바꾸는 층과 ViewData · Copy · Tokens 파일만 여기에 같이 컴파일한다 (docs/stage-6.spec.md 6번).
+  MadiBridgeTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: MadiBridgeTests
+      - path: Madi/App/Bridge
+      - path: Madi/UI/ViewData.swift
+      - path: Madi/UI/Copy.swift
+      - path: Madi/UI/Tokens.swift
+    dependencies:
+      - target: MadiKit
+        embed: false
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.madi.bridgetests
+        LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks @loader_path/../Frameworks"
+
   MadiTests:
     type: bundle.unit-test
     platform: macOS
@@ -222,6 +242,7 @@ schemes:
       config: Debug
       targets:
         - MadiTests
+        - MadiBridgeTests
   MadiSpike:
     build:
       targets:

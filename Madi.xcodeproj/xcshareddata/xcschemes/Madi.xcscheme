@@ -64,6 +64,17 @@
                ReferencedContainer = "container:Madi.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BD735D294161DC9D189EDA77"
+               BuildableName = "MadiBridgeTests.xctest"
+               BlueprintName = "MadiBridgeTests"
+               ReferencedContainer = "container:Madi.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>

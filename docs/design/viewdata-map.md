@@ -158,6 +158,14 @@ onRetrySend · onOpenResult`, `SceneList.onRemove · onExtend · onShorten · on
 `.scene(SceneCardItem.ID, SceneAction)` · `.export(ResultRef.ID, ExportTarget)` · `.trash(ResultRef.ID)` …).
 **이게 없으면 화면을 앱에 붙여도 보기만 된다.** 디자인 쪽 결정 전까지 개발은 바꾸는 층을 "값을 내는 쪽" 만 만든다.
 
+### 바꾸는 층이 아직 내지 않는 것 (문장이 `Copy.swift` 에 없어서)
+
+`Madi/App/Bridge/ViewDataMapper.swift` 는 문장을 `Copy` 에서 **읽기만** 한다. 아래는 엔진에 줄이 있지만 문장이 없어 화면에 내지 않는다 —
+`copy-keys.md` 의 키가 `Copy.swift` 에 생기면 낸다:
+- 채팅 선택지 "앞으로도 이렇게 할까요?" (`askRemember` · `rememberYes` · `rememberNo`)
+- 채팅 알림 — 수정 실패 (`aiDraftFailed`), 되먹임 끝내 실패 (`reviewGaveUp`), 아쉬운 점 남음 (`reviewSoftNote`), 원본 한계 안내
+- 만드는 중 화면의 멈춘 작업 이유 (`job.error` 는 개발자 문장이다)
+
 ## 4. 개발이 UI 밖에 만들 것 (6단계 개발 일)
 
 - **바꾸는 층** — DB 를 관측해 위 ViewData 를 내는 곳 (`Madi/App/` 또는 새 폴더, `Madi/UI` 밖)
