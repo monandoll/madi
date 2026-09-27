@@ -23,6 +23,9 @@ settings:
     #   (docs/stage-3.spec.md 결정 ③ A). 아키텍처마다 따로 가면 WhisperKit 도 둘 다 빌드된다.
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
+    # 판 번호 (Sparkle 이 비교한다). 올리는 법은 scripts/release.sh.
+    MARKETING_VERSION: "0.6.0"
+    CURRENT_PROJECT_VERSION: "1"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGNING_REQUIRED: NO
@@ -126,6 +129,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.madi.Madi
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         # 사진 보관함 권한 (§2). 문장은 디자인 쪽이 다듬는다 — docs/design/copy-keys.md `photoLibraryUsage`
+        # Hardened Runtime 에서 사진 보관함을 읽는 권한 (docs/stage-6.spec.md 3번).
+        CODE_SIGN_ENTITLEMENTS: Madi/App/Madi.entitlements
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "아이폰으로 찍은 영상을 옮기지 않고 바로 편집하려고 사진 보관함을 읽어요. 영상은 이 Mac 을 떠나지 않아요."
         GENERATE_INFOPLIST_FILE: YES
         LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"

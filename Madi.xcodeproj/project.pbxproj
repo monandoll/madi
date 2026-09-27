@@ -309,6 +309,7 @@
 		B84516A32EC9A9582A4C6CF3 /* CaptionFillerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionFillerTests.swift; sourceTree = "<group>"; };
 		BAABD8A5FF82020B90D7687A /* PlanScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanScreen.swift; sourceTree = "<group>"; };
 		BD3DE2F64D15C0B58E43CE28 /* MCPTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPTests.swift; sourceTree = "<group>"; };
+		C16C3D47D05461E4318E33B0 /* Madi.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Madi.entitlements; sourceTree = "<group>"; };
 		C211B53F5E2651BFF8637F28 /* SceneList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneList.swift; sourceTree = "<group>"; };
 		C353F07622E1853C9A758B5F /* ShotCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotCell.swift; sourceTree = "<group>"; };
 		C3B2B8D01B0628FACEC7DDB1 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
@@ -397,6 +398,7 @@
 		27175C2EBCA3FF78E2BCD6E4 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				C16C3D47D05461E4318E33B0 /* Madi.entitlements */,
 				1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */,
 				7F15A9316F358BEB41DF37AF /* Pipeline.swift */,
 			);
@@ -1196,6 +1198,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Madi/App/Madi.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -1338,6 +1341,7 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1351,6 +1355,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.6.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = NO;
@@ -1367,6 +1372,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Madi/App/Madi.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -1414,6 +1420,7 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -1433,6 +1440,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.6.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

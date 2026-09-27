@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- AGENTS.md §2 — App Sandbox 는 끈다(AI CLI 를 자식 프로세스로 띄운다). Hardened Runtime 은 켠다(공증에 필요).
+	     Hardened Runtime 에서 사진 보관함을 읽으려면 이 권한이 있어야 한다 (§2 촬영본이 들어오는 길). -->
+	<key>com.apple.security.personal-information.photos-library</key>
+	<true/>
+</dict>
+</plist>
