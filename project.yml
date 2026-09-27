@@ -112,8 +112,9 @@ targets:
     info:
       path: Madi/App/Info.plist
       properties:
-        # 새 판 목록 — GitHub Releases 의 최신 릴리스 (레포가 공개다, docs/stage-6.spec.md 결정)
-        SUFeedURL: https://github.com/monandoll/madi/releases/latest/download/appcast.xml
+        # 새 판 목록 — **업데이트 전용 공개 레포** 의 최신 릴리스. 소스 레포(monandoll/madi)에는 전작 v0.2 릴리스가
+        # Latest 로 걸려 있어 섞이면 안 된다 (docs/stage-6.spec.md 결정)
+        SUFeedURL: https://github.com/monandoll/madi-releases/releases/latest/download/appcast.xml
         # 업데이트 서명 검증 키 (EdDSA). 비밀 키는 만든 Mac 의 키체인(계정 madi)에만 있다
         SUPublicEDKey: pwBJBDEFPFnk/T8UQRiv+6QDgaqrfc+nvKlv4AOaqhQ=
         # 하루 한 번 알아서 확인한다 — 크리에이터는 "업데이트 있음" 알림과 버튼만 본다 (§2)

@@ -21,7 +21,8 @@ PROFILE="${MADI_NOTARY_PROFILE:-madi-notary}"
 ENTITLEMENTS="$ROOT/Madi/App/Madi.entitlements"
 # Sparkle 도구(generate_appcast)가 있는 곳 — Sparkle 배포본(2.10.0)의 bin/. 앱에는 들어가지 않는 개발 도구다.
 SPARKLE_BIN="${MADI_SPARKLE_BIN:-}"
-REPO="monandoll/madi"
+# 업데이트 전용 공개 레포 — 소스 레포에는 전작 v0.2 릴리스가 Latest 로 있다
+REPO="monandoll/madi-releases"
 NOTARIZE=1
 PUBLISH=0
 for a in "$@"; do

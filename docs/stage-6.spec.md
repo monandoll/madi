@@ -38,12 +38,16 @@
   **macOS 15 부터 우클릭 → 열기가 막혀** 시스템 설정 > 개인정보 보호에서 따로 허용해야 한다 — `§12-6` "터미널 0회" 와
   크리에이터 부담을 생각해 지금 서명 · 공증한다. 공증 자격 증명은 사용자가 한 번 저장한다 (`notarytool store-credentials`).
   멤버십이 유효해야 공증이 된다. `§2` 문장을 고친다
-- **Sparkle 업데이트 — GitHub Releases (2026-09-27).** 레포 `monandoll/madi` 가 공개라 릴리스에 `.dmg` 와 `appcast.xml` 을 올린다
+- **Sparkle 업데이트 — 업데이트 전용 공개 레포 `monandoll/madi-releases` (2026-09-27).** 처음엔 소스 레포 `monandoll/madi`
+  릴리스에 올리려 했는데, 거기에는 **전작 v0.2 릴리스가 `Latest`(v0.2.22)로 걸려 있어** `releases/latest` 가 전작을 가리킨다.
+  업데이트용 레포를 따로 두면 전작과 섞이지 않고 소스 레포 공개 여부와도 상관없다. 릴리스에는 `.dmg` 와 `appcast.xml` 만
+  (⚠ 만들다가 로그인 계정 `ejinhvn-0112` 아래에 `ejinhvn-0112/madi-releases` 가 잘못 생겼다 — monandoll 은 개인 계정이라
+  협업자가 그 아래에 레포를 만들 수 없고 `gh` 가 오류 없이 로그인 계정에 만들었다. 계정을 monandoll 로 바꾸기로 했다)
 
 ### 4번 — Sparkle (2026-09-27)
 
 - Sparkle **2.10.0** (SwiftPM, 판 고정). 하루 한 번 자동 확인 (`SUEnableAutomaticChecks` · 86400초)
-- appcast: `https://github.com/monandoll/madi/releases/latest/download/appcast.xml`
+- appcast: `https://github.com/monandoll/madi-releases/releases/latest/download/appcast.xml`
 - **업데이트 서명 키(EdDSA)** — 공개 키는 Info.plist (`project.yml`), **비밀 키는 이 Mac 로그인 키체인(계정 `madi`)에만 있다.**
   이 키를 잃으면 이미 설치된 앱에 업데이트를 보낼 수 없다 — 백업이 필요하다 (`generate_keys --account madi -x <파일>`)
 - `scripts/release.sh`: Sparkle 안쪽(XPC · `Updater.app` · `Autoupdate`)을 깊은 것부터 서명 → 공증 뒤
