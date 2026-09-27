@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import AVFoundation
 import GRDB
 @testable import MadiKit
 
@@ -82,5 +83,31 @@ struct DigestTests {
         try await db.writer.write { try VideoRecord(id: "v1", source: .photos, sourceRef: "ph:1").insert($0) }
         let job = AnalyzeJob(db: db, transcriber: FakeTranscriber())
         await #expect(throws: AnalyzeJob.Failure.self) { try await job.run(videoId: "v1") }
+    }
+
+    @Test("빅엔디언 오디오(AIFF)도 제 값으로 읽는다")
+    func readsBigEndianAudio() async throws {
+        // `say` 가 만드는 AIFF 는 빅엔디언 16비트다. 엔디언을 명시하지 않았을 때 샘플이 3.4e38 로 나와
+        // whisper.cpp 가 낱말을 하나도 못 뽑았다 (Intel CI 준비 중 발견).
+        let url = FileManager.default.temporaryDirectory.appending(path: "madi-be-\(UUID().uuidString).aiff")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let settings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 22_050.0, AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 16, AVLinearPCMIsFloatKey: false, AVLinearPCMIsBigEndianKey: true,
+        ]
+        let format = try #require(AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 22_050, channels: 1, interleaved: false))
+        let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 22_050))
+        buffer.frameLength = 22_050
+        for i in 0..<22_050 { buffer.floatChannelData![0][i] = 0.5 * sin(Float(i) * 2 * .pi * 440 / 22_050) }
+        do {
+            let file = try AVAudioFile(forWriting: url, settings: settings, commonFormat: .pcmFormatFloat32, interleaved: false)
+            try file.write(from: buffer)
+        }
+        let samples = try await AudioAnalyzer.mono16k(url)
+        #expect(abs(Double(samples.count) - 16_000) < 200)
+        let peak = samples.map(abs).max() ?? 0
+        #expect(peak > 0.4 && peak < 0.6, "최댓값 \(peak)")
+        let rms = try await AudioAnalyzer.analyze(url).rmsDB
+        #expect(rms.allSatisfy { $0 < 0 && $0 > -20 }, "RMS \(rms.prefix(3))")   // 사인 0.5 ≈ −9dB
     }
 }

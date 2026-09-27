@@ -1266,7 +1266,7 @@ case "subjprof":
 
 case "modeltest":
     // 모델 준비(받기 · 확인 · 데우기) → 전사 한 편. `--root` 에 이미 있는 파일은 해시가 맞으면 건너뛴다.
-    guard args.count > 1, let rootPath = option("root") else { fail("사용법: madi-spike modeltest <영상> --root <폴더> [--fetch-font 'Do Hyeon']") }
+    guard args.count > 1, let rootPath = option("root") else { fail("사용법: madi-spike modeltest <영상> --root <폴더> [--fetch-font 'Do Hyeon'] [--lang ko] [--expect-words N]") }
     do {
         let root = URL(fileURLWithPath: rootPath)
         let catalog = try DownloadCatalog.bundled()
@@ -1283,9 +1283,15 @@ case "modeltest":
         _ = await watch.value
         print(String(format: "  준비 %.1f초", Date().timeIntervalSince(t0)))
         let t1 = Date()
-        let transcript = try await PreparedTranscriber(preparer: preparer).transcribe(URL(fileURLWithPath: args[1]))
-        print(String(format: "  전사 %.1f초 · 낱말 %d · 앞: %@", Date().timeIntervalSince(t1), transcript.words.count,
+        let transcript = try await PreparedTranscriber(preparer: preparer)
+            .transcribe(URL(fileURLWithPath: args[1]), languageCode: option("lang") ?? "ko")
+        print(String(format: "  엔진 %@ · 전사 %.1f초 · 낱말 %d · 앞: %@", await preparer.engine.rawValue as NSString,
+                     Date().timeIntervalSince(t1), transcript.words.count,
                      transcript.words.prefix(6).map(\.text).joined(separator: " ") as NSString))
+        if case .failed(let reason) = await preparer.state { fail("모델 준비 실패: \(reason)") }
+        if let need = Int(option("expect-words") ?? ""), transcript.words.count < need {
+            fail("낱말이 \(transcript.words.count)개뿐이다 (기대 \(need)개 이상)")
+        }
     } catch { fail("\(error)") }
 
 case "trim":

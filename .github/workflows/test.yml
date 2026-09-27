@@ -28,3 +28,43 @@ jobs:
         run: |
           xcodebuild -project Madi.xcodeproj -scheme Madi -configuration Debug \
             -derivedDataPath build -destination 'platform=macOS' test
+
+  # §17 Tier 2 — **실제 x86_64 기계**에서 동작 확인. Intel Mac 이 없어 Rosetta 로만 봤던 것을 여기서 채운다.
+  # 단위 테스트 + whisper.cpp 로 전사 한 편 (모델 받기 · 해시 확인 · 전사). 시간은 참고용 (VM).
+  intel:
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$latest"
+          xcodebuild -version
+          uname -m
+      - name: 단위 테스트 (x86_64)
+        run: |
+          xcodebuild -project Madi.xcodeproj -scheme Madi -configuration Debug \
+            -derivedDataPath build -destination 'platform=macOS,arch=x86_64' test
+      - name: 스파이크 도구 빌드 (Release · x86_64)
+        run: |
+          xcodebuild -project Madi.xcodeproj -scheme MadiSpike -configuration Release \
+            -derivedDataPath build-rel ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO build -quiet
+      - name: GGML 모델 캐시
+        uses: actions/cache@v4
+        with:
+          path: dl
+          # 목록의 해시가 바뀌면 새로 받는다.
+          key: ggml-small-1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b
+      - name: 전사 한 편 (whisper.cpp)
+        run: |
+          # 레포에는 음성 원본이 없다 — macOS 음성 합성으로 만든다. 한국어 음성이 없으면 영어로.
+          if say -v '?' | grep -q '^Yuna'; then
+            say -v Yuna -o sample.aiff "오늘은 골반 스트레칭을 알려드릴게요. 양쪽 다리를 펴고 천천히 숙여 주세요."
+            LANG_CODE=ko
+          else
+            say -o sample.aiff "Today we will stretch the hips. Straighten both legs and bend forward slowly."
+            LANG_CODE=en
+          fi
+          ./build-rel/Build/Products/Release/madi-spike modeltest sample.aiff --root dl --lang "$LANG_CODE" --expect-words 5
+

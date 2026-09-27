@@ -32,8 +32,9 @@ settings:
       ONLY_ACTIVE_ARCH: YES
 
 packages:
-  # 전사. word 단위 타임스탬프가 필수라 이걸 고른다 (AGENTS.md §3).
-  # Intel 폴백(whisper.cpp)은 3단계에서 붙인다 — 지금은 Apple Silicon 경로만.
+  # 전사 (Apple Silicon). word 단위 타임스탬프가 필수라 이걸 고른다 (AGENTS.md §3).
+  # Intel 은 WhisperKit 이 전사 중 죽어서 whisper.cpp 를 쓴다 — 아래 WhisperCpp 패키지.
+  # 엔진은 런타임에 TranscriptionEngine.forThisMachine 한 곳에서 고른다 (docs/stage-3.spec.md 결정 ④ B).
   # ⚠ 0.9 대에 고정한다. 0.18 은 Vapor(웹 서버) · swift-openapi 까지 끌고 오는데
   #   §16 이 "웹 UI · HTTP 서버" 를 하지 않기로 했고, Universal 빌드도 깨진다
   #   (`docs/findings/2026-09-26-whisperkit.md §2`).

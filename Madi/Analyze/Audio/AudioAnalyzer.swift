@@ -38,6 +38,8 @@ public enum AudioAnalyzer {
             AVLinearPCMBitDepthKey: 32,
             AVLinearPCMIsFloatKey: true,
             AVLinearPCMIsNonInterleaved: false,
+            // ★ 명시해야 한다. 빼면 빅엔디언 원본(AIFF 등)이 뒤집힌 float 로 나온다 — 최댓값 3.4e38 이었다.
+            AVLinearPCMIsBigEndianKey: false,
         ])
         reader.add(output)
         guard reader.startReading() else {
@@ -81,6 +83,8 @@ public enum AudioAnalyzer {
         let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
             AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 16_000.0, AVNumberOfChannelsKey: 1,
             AVLinearPCMBitDepthKey: 32, AVLinearPCMIsFloatKey: true, AVLinearPCMIsNonInterleaved: false,
+            // ★ 명시해야 한다. 빼면 빅엔디언 원본(AIFF 등)이 뒤집힌 float 로 나온다 — 최댓값 3.4e38 이었다.
+            AVLinearPCMIsBigEndianKey: false,
         ])
         reader.add(output)
         guard reader.startReading() else { throw reader.error ?? CocoaError(.fileReadCorruptFile) }
