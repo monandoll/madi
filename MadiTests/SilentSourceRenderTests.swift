@@ -15,49 +15,6 @@ import CoreGraphics
 /// 무음이다. 여기서 막아 둔다.
 struct SilentSourceRenderTests {
 
-    /// 소리 없는 아주 작은 mp4 를 만든다.
-    private func makeSilentVideo(at url: URL, seconds: Double = 0.5) async throws {
-        try? FileManager.default.removeItem(at: url)
-        let size = CGSize(width: 128, height: 128)
-        let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
-        let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
-            AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: Int(size.width), AVVideoHeightKey: Int(size.height),
-        ])
-        input.expectsMediaDataInRealTime = false
-        let adaptor = AVAssetWriterInputPixelBufferAdaptor(
-            assetWriterInput: input,
-            sourcePixelBufferAttributes: [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-            ]
-        )
-        writer.add(input)
-        writer.startWriting()
-        writer.startSession(atSourceTime: .zero)
-
-        var pixelBuffer: CVPixelBuffer?
-        CVPixelBufferCreate(
-            kCFAllocatorDefault, Int(size.width), Int(size.height),
-            kCVPixelFormatType_32BGRA, nil, &pixelBuffer
-        )
-        let buffer = try #require(pixelBuffer)
-        CVPixelBufferLockBaseAddress(buffer, [])
-        if let base = CVPixelBufferGetBaseAddress(buffer) {
-            memset(base, 90, CVPixelBufferGetBytesPerRow(buffer) * Int(size.height))
-        }
-        CVPixelBufferUnlockBaseAddress(buffer, [])
-
-        let fps = 30
-        for frame in 0..<Int(seconds * Double(fps)) {
-            while !input.isReadyForMoreMediaData { try await Task.sleep(nanoseconds: 2_000_000) }
-            adaptor.append(
-                buffer, withPresentationTime: CMTime(value: CMTimeValue(frame), timescale: 30)
-            )
-        }
-        input.markAsFinished()
-        await writer.finishWriting()
-    }
-
     @Test("오디오 트랙이 없는 원본도 내보내진다")
     func rendersSourceWithoutAudio() async throws {
         let dir = FileManager.default.temporaryDirectory
@@ -66,7 +23,7 @@ struct SilentSourceRenderTests {
         defer { try? FileManager.default.removeItem(at: dir) }
 
         let source = dir.appending(path: "silent.mp4")
-        try await makeSilentVideo(at: source)
+        try await TestVideo.makeSolid(at: source)
         // 먼저 전제를 확인한다 — 정말 오디오가 없어야 이 테스트가 의미 있다.
         let audio = try await AVURLAsset(url: source).loadTracks(withMediaType: .audio)
         #expect(audio.isEmpty)

@@ -510,6 +510,132 @@ case "splittest":
         }
     } catch { fail("\(error)") }
 
+case "stage2":
+    // **2단계 통과 판정 (`AGENTS.md §12-2`: G4 · G5 · G6 · G7) 을 내보낸 영상 위에서 잰다.**
+    //
+    // 전사 → 분절 → 편집안 → 렌더 → 내보낸 mp4 에서 프레임을 뽑아 잰다 (§7: self-eval 프레임은
+    // 반드시 내보낸 파일에서). 설정값으로 계산한 G4 가 아니라 **실제로 그려진 글자**를 잰다.
+    //
+    // 원본(공개본)에는 크리에이터 자막이 이미 박혀 있다. 그래서 같은 편집안을 **자막 없이 한 번 더**
+    // 렌더하고 두 프레임의 차이만 본다 — 차이 = 우리가 그린 자막 픽셀.
+    guard args.count > 1, let slotName = option("slot"), let chosen = CaptionSlot(rawValue: slotName) else {
+        fail("사용법: madi-spike stage2 <영상> --slot upperBody|fullBody|lowerBody [--until 60] [--model small] [--sheet out.jpg]")
+    }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let id = video.deletingPathExtension().lastPathComponent
+        let info = try await FrameSheet.info(of: video)
+        let until = min(Double(option("until") ?? "") ?? info.duration, info.duration - 0.05)
+        let outDir = URL(fileURLWithPath: "out/stage2").appending(path: id)
+        try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
+
+        // 편집안에 찍히는 스타일 = 앱이 새 편집안에 찍는 것과 같다 (최신 버전).
+        let ref = try StyleStore.latest()
+        let style = try StyleStore.load(ref).values
+
+        let transcript = try await WhisperKitProvider(model: option("model") ?? "small")
+            .transcribe(video, languageCode: "ko")
+        let captions = CaptionSplitter.split(transcript.words.filter { $0.end <= until }, style: style.caption)
+
+        // 공개본은 이미 9:16 이다. 화면 잡기는 1단계에서 따로 판정했으니 여기서는 원본 그대로 둔다.
+        let whole = ReframeTrack(mode: .fixed, keyframes: [.init(t: 0, rect: NormRect(x: 0, y: 0, w: 1, h: 1))], padding: 0)
+        func comp(_ caps: [Caption]) -> Composition {
+            Composition(
+                id: "stage2_" + id, videoID: id, templateID: "short", style: ref,
+                meta: Composition.Meta(title: id, targetDurationSec: until),
+                captionSlot: chosen,
+                scenes: [Scene(id: "s1", role: .hook, source: Scene.Source(videoID: id, start: 0, end: until),
+                               reframe: whole, captions: caps)]
+            )
+        }
+        // 재현 기록 — 이 결과를 만든 편집안 그대로 (§1-8).
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        try encoder.encode(comp(captions)).write(to: outDir.appending(path: "composition.json"))
+        let withURL = outDir.appending(path: "with.mp4"), bareURL = outDir.appending(path: "bare.mp4")
+        for url in [withURL, bareURL] { try? FileManager.default.removeItem(at: url) }
+        try await Renderer().render(comp(captions), sources: [id: video], style: style, to: withURL) { _ in }
+        try await Renderer().render(comp([]), sources: [id: video], style: style, to: bareURL) { _ in }
+
+        // 자막마다 한가운데 시각에서 잰다 (등장 애니메이션을 피한다).
+        let times = captions.map { ($0.start + $0.end) / 2 }
+        let withFrames = try await FrameSheet.extract(from: withURL, at: times, into: outDir.appending(path: "with"), prefix: "")
+        let bareFrames = try await FrameSheet.extract(from: bareURL, at: times, into: outDir.appending(path: "bare"), prefix: "")
+
+        struct Measured { var inkH: Double; var inkBottom: Double; var box: NormRect }
+        func measure(_ a: CGImage, _ b: CGImage) -> Measured? {
+            let W = a.width, H = a.height
+            func pixels(_ img: CGImage) -> [UInt8] {
+                var buf = [UInt8](repeating: 0, count: W * H * 4)
+                let ctx = CGContext(data: &buf, width: W, height: H, bitsPerComponent: 8, bytesPerRow: W * 4,
+                                    space: CGColorSpaceCreateDeviceRGB(),
+                                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+                ctx.draw(img, in: CGRect(x: 0, y: 0, width: W, height: H))
+                return buf
+            }
+            let pa = pixels(a), pb = pixels(b)
+            var minX = W, maxX = -1, minY = H, maxY = -1
+            var inkRows = [Int](repeating: 0, count: H)
+            for y in 0..<H {
+                for x in 0..<W {
+                    let o = (y * W + x) * 4
+                    let d = max(abs(Int(pa[o]) - Int(pb[o])), abs(Int(pa[o + 1]) - Int(pb[o + 1])),
+                                abs(Int(pa[o + 2]) - Int(pb[o + 2])))
+                    guard d > 40 else { continue }
+                    minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+                    // 흰 채움 = 우리 글자 몸통.
+                    if min(pa[o], pa[o + 1], pa[o + 2]) > 215 { inkRows[y] += 1 }
+                }
+            }
+            guard maxY >= 0, let top = inkRows.firstIndex(where: { $0 >= 3 }),
+                  let bottom = inkRows.lastIndex(where: { $0 >= 3 }) else { return nil }
+            return Measured(
+                inkH: Double(bottom - top + 1) / Double(H),
+                inkBottom: Double(H - 1 - bottom) / Double(H),
+                // G7 은 Vision 좌표(y 위로)로 본다.
+                box: NormRect(x: Double(minX) / Double(W), y: Double(H - 1 - maxY) / Double(H),
+                              w: Double(maxX - minX + 1) / Double(W), h: Double(maxY - minY + 1) / Double(H))
+            )
+        }
+
+        let pose = VisionPoseProvider()
+        var measured: [Measured] = []
+        var g7Judged = 0, g7Covered = 0
+        var sheet: [CGImage] = []
+        for (i, (w, b)) in zip(withFrames, bareFrames).enumerated() {
+            let wi = try StillRenderer.loadImage(w), bi = try StillRenderer.loadImage(b)
+            guard let m = measure(wi, bi) else { continue }
+            measured.append(m)
+            if let obs = try pose.detect(in: bi).first {
+                g7Judged += 1
+                if Gate.g7(captionBox: m.box, joints: obs.joints).covered { g7Covered += 1 }
+            }
+            if sheet.count < 10, i % max(1, captions.count / 5) == 0 { sheet += [bi, wi] }
+        }
+
+        let frameSize = CGSize(width: 1080, height: 1920)
+        let (g5, g5m) = Gate.g5(comp(captions), frameSize: frameSize, style: style)
+        let (g6, g6m) = Gate.g6(comp(captions), transcript: transcript)
+        let hs = measured.map(\.inkH).sorted(), bs = measured.map(\.inkBottom).sorted()
+        func med(_ v: [Double]) -> Double { v.isEmpty ? .nan : v[v.count / 2] }
+        let g4Pass = !hs.isEmpty && hs[0] >= Gate.minInkHeightRatio
+        func mark(_ r: GateResult) -> String {
+            switch r { case .pass: "통과"; case .fail: "실패"; case .cannotJudge: "판정불가"; case .sourceLimited: "원본한계" }
+        }
+        print(String(format:
+            "  %-12@ %@ v%d · 자막 %2d개 (잰 것 %2d) · G4 %@ 글자높이 최소 %.4f 중앙 %.4f (목표 %.4f) · 아래끝 중앙 %.4f (목표 %.4f) · G5 %@ (글자 중앙 %d) · G6 %@ 최대오차 %.3f · G7 덮임 %d/%d",
+            id as NSString, ref.id as NSString, ref.version, captions.count, measured.count,
+            (g4Pass ? "통과" : "실패") as NSString, hs.first ?? .nan, med(hs), style.caption.inkHeightRatio,
+            med(bs), style.caption.inkBottomRatio[chosen],
+            mark(g5) as NSString, g5m.charCounts.sorted().dropFirst(g5m.charCounts.count / 2).first ?? 0,
+            mark(g6) as NSString, g6m.worstError, g7Covered, g7Judged))
+        if let path = option("sheet"), !sheet.isEmpty {
+            try FrameSheet.gridOf(sheet, columns: 2, cellWidth: 360, to: URL(fileURLWithPath: path))
+            print("  시트: \(path)  (왼쪽 원본 · 오른쪽 우리 자막)")
+        }
+    } catch { fail("\(error)") }
+
 case "capsync":
     // **`pauseSec` · `maxDurationSec` 실측.**
     //

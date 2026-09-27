@@ -239,7 +239,13 @@ public final class CaptionLayer: CALayer {
         self.contentsScale = 1
         self.isOpaque = false
         self.needsDisplayOnBoundsChange = true
+        // ★ 지금 바로 그린다. `AVVideoCompositionCoreAnimationTool` 은 오프라인 내보내기에서
+        //   `setNeedsDisplay()` 를 처리해 주지 않는다 — 창이 없으니 표시 주기가 돌지 않는다.
+        //   이게 없으면 `draw(in:)` 이 한 번도 불리지 않아 **내보낸 영상에 자막이 없다**
+        //   (`docs/findings/2026-09-27-stage2-export.md`). 자막을 미리 구워 두는 게 아니다 —
+        //   렌더할 때마다 이 레이어를 새로 만들고 CoreText 로 다시 그린다 (§14).
         setNeedsDisplay()
+        displayIfNeeded()
     }
 
     public override init() { super.init() }
@@ -289,8 +295,14 @@ public final class CaptionLayer: CALayer {
         hide.beginTime = end + beginTimeAtZero
         hide.duration = 1.0 / 60
 
+        // ★ 사라지기는 `.forwards` 만. `.both` 로 두면 시작 전 구간에 fromValue(1)가 채워져서
+        //   같은 opacity 를 잡은 나타나기(0 유지)를 덮는다 — 모든 자막이 **0초부터 자기 끝까지**
+        //   겹쳐 떠 있었다 (`docs/findings/2026-09-27-stage2-export.md`).
+        //   나타나기는 `.both` — 시작 전엔 0, 뒤로는 1 을 쥐고 있다가 사라지기가 이어받는다.
+        fade.fillMode = .both
+        pop.fillMode = .both
+        hide.fillMode = .forwards
         for (animation, key) in [(fade, "madi.fadeIn"), (pop, "madi.popIn"), (hide, "madi.fadeOut")] {
-            animation.fillMode = .both
             animation.isRemovedOnCompletion = false
             add(animation, forKey: key)
         }
