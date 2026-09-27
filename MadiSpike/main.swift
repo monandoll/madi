@@ -1732,6 +1732,56 @@ case "loop":
         print(String(format: "(%.1f초)", Date().timeIntervalSince(t0)))
     } catch { fail("\(error)") }
 
+case "chat":
+    // 6단계 5번 — 채팅 수정 한 번을 앱과 같은 큐(chat → 렌더 → 검사 → 되먹임)로 돌려 대화와 사슬을 찍는다. 판정 전용 DB 에서만.
+    guard let dbPath = option("db"), let work = option("work"), let video = option("video"), let text = option("text"),
+          let kind = option("kind").flatMap(AgentKind.init(rawValue:)) else {
+        fail("사용법: madi-spike chat --db <sqlite> --work <폴더> --kind <claude|codex> --video <id> [--viewing <편집안 id>] --text <말>")
+    }
+    do {
+        let db = try AppDatabase.open(path: dbPath)
+        let workURL = URL(fileURLWithPath: work)
+        final class Box: @unchecked Sendable { var queue: JobQueue? }
+        let box = Box()
+        let agent = AgentJob(
+            db: db, mcpExecutable: Stage5.mcp(option("mcp")),
+            choose: {
+                guard case .ready(let exe, let v) = await CLILocator.connection(kind) else { return nil }
+                return AgentJob.Choice(kind: kind, executable: exe, version: v)
+            },
+            userRules: { (try? db.userRules()) ?? [] },
+            workRoot: workURL.appending(path: "agent"),
+            onDraft: { id in try await box.queue?.enqueue(.render, targetId: id) }
+        )
+        let render = RenderJob(db: db, outputs: workURL.appending(path: "outputs"))
+        let review = ReviewLoop(db: db) { id in try await box.queue?.enqueue(.selfEval, targetId: id) }
+        let queue = JobQueue(db: db, handlers: [
+            .chat: agent.chatHandler, .selfEval: agent.selfEvalHandler,
+            .render: { job in try await review.afterRender(try await render.run(compositionId: job.targetId)) },
+        ])
+        box.queue = queue
+        try await queue.start()
+        let t0 = Date()
+        let sent = try await Chat.send(db: db, videoID: video, text: text, viewing: option("viewing")) { id in
+            try await queue.enqueue(.chat, targetId: id)
+        }
+        await queue.waitUntilIdle()
+        let rows = try await db.writer.read { db in try ChatRecord.fetchAll(db).filter { $0.videoId == video && $0.createdAt >= sent.createdAt } }
+        for r in rows.sorted(by: { $0.createdAt < $1.createdAt }) {
+            print("[\(r.kind.rawValue)] " + (r.text ?? r.payload ?? ""))
+        }
+        if let made = rows.first(where: { $0.kind == .assistant })?.compositionId {
+            Stage5.printChain(try await Stage5.chain(db: db, from: made))
+            if let prev = option("viewing"), let p = try await db.writer.read({ try CompositionRecord.fetchOne($0, key: prev) })?.composition() {
+                print(String(format: "보고 있던 판: %.1f/%.0f초 · 장면 %d", p.duration, p.meta.targetDurationSec, p.scenes.count))
+            }
+        }
+        for j in try await db.writer.read({ try JobRecord.fetchAll($0).filter { $0.state == .failed && $0.createdAt >= sent.createdAt } }) {
+            print("실패한 작업: \(j.kind.rawValue) \(j.targetId) — \(j.error ?? "")")
+        }
+        print(String(format: "(%.1f초)", Date().timeIntervalSince(t0)))
+    } catch { fail("\(error)") }
+
 case "stage5":
     // 5단계 판정 (docs/stage-5.spec.md 6번 · 결정 ③). 각 CLI 의 4단계 초안(j_<cli>_<영상>)에 결함을 하나 넣고
     // 같은 CLI 가 되먹임으로 고치는지 본다. 사례 통과 = 1회 되먹임 뒤 판에 하드 실패가 없고 주입한 항목이 통과.
@@ -1988,6 +2038,21 @@ enum Stage5 {
         }
         var rows: [Row] = []
         var current = all.first { $0.id == draft }
+        while let c = current {
+            let o = outputs.first { $0.compositionId == c.id }
+            let report = (try? JSONDecoder().decode([String: JSONValue].self, from: Data((o?.reviewReport ?? "{}").utf8))) ?? [:]
+            let items: [String] = { if case .array(let a)? = report["selfEval"] { a.compactMap { if case .string(let s) = $0 { s } else { nil } } } else { [] } }()
+            rows.append(Row(round: rows.count, id: c.id, origin: c.origin, items: items, verdict: o?.verdict, report: report, comp: try c.composition()))
+            current = all.first { $0.revisionOf == c.id }
+        }
+        return rows
+    }
+
+    /// 편집안 하나에서 revisionOf 를 따라 내려간 사슬.
+    static func chain(db: AppDatabase, from start: String) async throws -> [Row] {
+        let (all, outputs) = try await db.writer.read { db in (try CompositionRecord.fetchAll(db), try OutputRecord.fetchAll(db)) }
+        var rows: [Row] = []
+        var current = all.first { $0.id == start }
         while let c = current {
             let o = outputs.first { $0.compositionId == c.id }
             let report = (try? JSONDecoder().decode([String: JSONValue].self, from: Data((o?.reviewReport ?? "{}").utf8))) ?? [:]
