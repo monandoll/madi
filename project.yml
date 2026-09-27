@@ -63,6 +63,9 @@ targets:
       - path: Madi/Store
       - path: Madi/Queue
       - path: Madi/Import
+      - path: Madi/Downloads
+      - path: Madi/Resources/downloads.json
+        buildPhase: resources
       - path: Madi/Templates/Spec.json
         buildPhase: resources
       - path: Madi/Resources/Fonts

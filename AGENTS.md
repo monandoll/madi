@@ -85,7 +85,11 @@ madi.app  (Swift · SwiftUI · macOS 14+)
 ```
 
 - **Apple Silicon 에서는 외부 바이너리를 받지 않는다.** ffmpeg · onnxruntime · Chrome Headless 전부 불필요.
-  애플 프레임워크로 대체된다. 첫 실행 준비 화면도, quarantine 해제도 필요 없다.
+  애플 프레임워크로 대체된다. quarantine 해제도 필요 없다.
+  **받는 것은 데이터 두 가지뿐이다** — 전사 모델 가중치(~490MB, **첫 실행이 끝나자마자 백그라운드로**)와
+  사용자가 고른 무료 글꼴(OFL). 둘 다 공식 배포처 · 커밋 고정 · SHA-256 확인 (`Resources/downloads.json`).
+  **첫 실행 준비 화면은 없다** — 기다리게 하지 않고 조용히 받는다. 첫 영상이 먼저 오면 준비가 끝나는 대로 본다
+  (`docs/stage-3.spec.md`).
   **Intel Mac 에서만** 전사 폴백으로 whisper.cpp 를 받는다 (`§17`). 그때는 quarantine 해제가 필요하다.
 - **HTTP 서버가 없다.** 화면이 같은 프로세스 안이라 함수 호출로 끝난다.
   포트 · CORS · WebSocket · mixed content · 페어링 토큰이 전부 소멸한다.
@@ -153,7 +157,9 @@ madi.app  (Swift · SwiftUI · macOS 14+)
 | 배포 | 공증 `.dmg` + Sparkle | **Universal 2** (`ARCHS = arm64 x86_64`). App Store 안 함 (샌드박스 불가) |
 | 폰트 | UI: **시스템 글꼴(SF)** / 영상 자막: **사용자가 고른 설치 글꼴**, 기본값 **Pretendard Variable** (OFL, 번들) | 둘을 섞지 않는다. 자막 글꼴은 `§9` 자막 모양 |
 
-Python 없음. 네트워크 요청은 AI CLI 와 (Intel 전용) whisper.cpp 다운로드 외에 없다.
+Python 없음. 네트워크 요청은 AI CLI · 전사 모델 · 무료 글꼴 받기 · (Intel 전용) whisper.cpp 다운로드 외에 없다.
+받는 것은 전부 `Resources/downloads.json` 에 **커밋 고정 주소와 SHA-256** 으로 적혀 있다. 영상은 어디로도 보내지 않는다.
+저장은 `~/Library/Application Support/madi/` 한 곳 (DB · 원본 사본 · 다이제스트 · 받은 파일). `~/Documents` 는 쓰지 않는다.
 
 **추상화는 두 개만 만든다.** `TranscriptionProvider` · `PoseProvider`.
 아키텍처 분기를 이 두 곳에 가두고 다른 데로 새지 않게 한다.
@@ -171,7 +177,8 @@ Madi/
   Model/            Composition · Scene · Caption · Overlay · Digest (Codable)  ← §5
   Store/            GRDB 스키마 · 마이그레이션 · 리포지토리
   Queue/            actor 기반 작업 큐
-  Import/           PhotoKit, 폴더 감시, 프록시 생성
+  Import/           PhotoKit, 폴더 감시, 원본 사본
+  Downloads/        전사 모델 · 무료 글꼴 받기 (커밋 고정 · SHA-256)
   Analyze/          Digest 생성
     Transcription/  TranscriptionProvider — WhisperKit(arm64) · WhisperCpp(x86_64)
     Pose/           PoseProvider — Vision

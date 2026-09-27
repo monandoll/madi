@@ -20,7 +20,7 @@
 | 글꼴 | 느낌 | 굵기 | 크기 | 공식 배포처 (파일) |
 |---|---|---|---|---|
 | Pretendard | 고딕 (기본) | 가변 | 6.7MB | **번들** (`Madi/Resources/Fonts/`) |
-| SUIT | 고딕 | 가변 | ~1MB | `github.com/sun-typeface/SUIT` — `fonts/variable/ttf/SUIT-Variable.ttf` |
+| SUIT (패밀리 이름 `SUIT Variable`) | 고딕 | 가변 | ~1MB | `github.com/sun-typeface/SUIT` — `fonts/variable/ttf/SUIT-Variable.ttf` |
 | Noto Sans KR | 고딕 | 가변 | 9.9MB | `github.com/google/fonts` — `ofl/notosanskr/NotoSansKR[wght].ttf` |
 | Gothic A1 | 고딕 | 9단계 | 파일당 ~2MB | `google/fonts` — `ofl/gothica1/GothicA1-*.ttf` |
 | Jua | 둥근 굵은 제목체 | 1 | 2.0MB | `google/fonts` — `ofl/jua/Jua-Regular.ttf` |
@@ -43,3 +43,12 @@
 - 편집안이 쓰던 목록 글꼴이 지워졌으면 다시 받아 복구할 수 있다 (사용자가 직접 설치한 글꼴은 못 한다)
 - 굵기가 하나뿐인 글꼴을 고르면 설정의 굵기 선택을 숨긴다 (`docs/design/copy-keys.md` 에 키 추가)
 - 글꼴을 고치거나 잘라 쓰지(subset) 않는다 — OFL 의 예약 글꼴 이름 조항에 걸리지 않게
+
+## 만들었다 (2026-09-27)
+
+`Resources/downloads.json` · `Madi/Downloads/`. 전사 모델과 같은 방식으로 한 번에 만들었다.
+
+- 고정: `google/fonts` `23e54b51ddffbc7713c583748e3bd86f62b1fa4a` · SUIT `55118d981336d8fce005eb62888c12c0568ef7b0` (v2.0.5)
+- SUIT 의 실제 패밀리 이름은 **`SUIT Variable`** 이다 (파일에서 읽음). 스타일은 이 이름으로 찾는다
+- SUIT 라이선스 파일 이름은 `LICENSE` — 받아서 `OFL.txt` 로 둔다. 7종 모두 본문이 SIL OFL 인지 확인했다
+- 실제로 받아 봤다: Do Hyeon 0.9MB · 0.7초 · 해시 일치 · 프로세스 등록 후 `isInstalled` 참

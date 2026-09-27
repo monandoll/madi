@@ -17,6 +17,8 @@ public final class WhisperKitProvider: TranscriptionProvider, @unchecked Sendabl
     private static let log = Logger(subsystem: "app.madi", category: "transcribe")
 
     private let modelName: String
+    private let modelFolder: URL?
+    private let tokenizerFolder: URL?
     private let lock = NSLock()
     private var pipe: WhisperKit?
 
@@ -27,9 +29,17 @@ public final class WhisperKitProvider: TranscriptionProvider, @unchecked Sendabl
     /// 쌤 경계와 **4/13** 밖에 안 맞았고, `small` 로 올리니 **9/13** 이 됐다.
     /// 속도 차이는 데운 뒤 2.5초 vs 3.6초로 거의 없다
     /// (`docs/findings/2026-09-26-caption-splitter.md §2`).
-    public init(model: String = "small") {
+    /// - Parameters:
+    ///   - modelFolder · tokenizerFolder: 앱이 받아 둔 폴더 (`ModelPreparer`). 주면 **WhisperKit 이 아무것도 받지 않는다** —
+    ///     안 주면 WhisperKit 이 `~/Documents/huggingface/` 에 받는다 (측정 도구에서만 쓴다).
+    public init(model: String = "small", modelFolder: URL? = nil, tokenizerFolder: URL? = nil) {
         self.modelName = model
+        self.modelFolder = modelFolder
+        self.tokenizerFolder = tokenizerFolder
     }
+
+    /// 모델을 올리고 한 번 데운다. 처음(새 빌드마다 한 번)은 CoreML 컴파일로 ~50초 걸린다.
+    public func warmUp() async throws { _ = try await pipeline() }
 
     private func cached() -> WhisperKit? {
         lock.lock(); defer { lock.unlock() }
@@ -44,7 +54,11 @@ public final class WhisperKitProvider: TranscriptionProvider, @unchecked Sendabl
     private func pipeline() async throws -> WhisperKit {
         if let made = cached() { return made }
         do {
-            let made = try await WhisperKit(WhisperKitConfig(model: modelName))
+            let config = modelFolder.map {
+                WhisperKitConfig(model: modelName, modelFolder: $0.path, tokenizerFolder: tokenizerFolder,
+                                 prewarm: true, load: true, download: false)
+            } ?? WhisperKitConfig(model: modelName)
+            let made = try await WhisperKit(config)
             store(made)
             return made
         } catch {
@@ -65,8 +79,10 @@ public final class WhisperKitProvider: TranscriptionProvider, @unchecked Sendabl
         )
 
         var words: [Word] = []
+        var segments = 0
         for result in results {
             for segment in result.segments {
+                segments += 1
                 guard let timings = segment.words else { continue }
                 for w in timings {
                     let text = w.word.trimmingCharacters(in: .whitespaces)
@@ -77,7 +93,9 @@ public final class WhisperKitProvider: TranscriptionProvider, @unchecked Sendabl
                 }
             }
         }
-        guard !words.isEmpty else { throw TranscriptionFailure.noWordTimestamps }
+        // 말이 있었는데(구간이 있는데) 낱말 시각이 없으면 wordTimestamps 가 안 켜진 것이다.
+        // 말이 아예 없는 영상(음악 · 효과음만)은 빈 전사가 맞다 — 분석을 실패시키지 않는다.
+        guard segments == 0 || !words.isEmpty else { throw TranscriptionFailure.noWordTimestamps }
 
         let id = url.deletingPathExtension().lastPathComponent
         Self.log.info("전사 \(id, privacy: .public): 낱말 \(words.count)개")

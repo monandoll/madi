@@ -1263,6 +1263,30 @@ case "subjprof":
         }
     } catch { fail("\(error)") }
 
+case "modeltest":
+    // 모델 준비(받기 · 확인 · 데우기) → 전사 한 편. `--root` 에 이미 있는 파일은 해시가 맞으면 건너뛴다.
+    guard args.count > 1, let rootPath = option("root") else { fail("사용법: madi-spike modeltest <영상> --root <폴더> [--fetch-font 'Do Hyeon']") }
+    do {
+        let root = URL(fileURLWithPath: rootPath)
+        let catalog = try DownloadCatalog.bundled()
+        if let family = option("fetch-font") {
+            let t = Date()
+            try await FontLibrary.fetch(family: family, catalog: catalog, root: root)
+            print(String(format: "  글꼴 %@ 받음 %.1f초 · 설치 확인 %@", family, Date().timeIntervalSince(t),
+                         MadiFont.isInstalled(family: family) ? "예" : "아니오"))
+        }
+        let preparer = try ModelPreparer(catalog: catalog, root: root)
+        let watch = Task { for await s in await preparer.states() { print("  상태 \(s)") ; if s == .ready { break }; if case .failed = s { break } } }
+        let t0 = Date()
+        await preparer.prepare(retryDelaySec: 5)
+        _ = await watch.value
+        print(String(format: "  준비 %.1f초", Date().timeIntervalSince(t0)))
+        let t1 = Date()
+        let transcript = try await PreparedTranscriber(preparer: preparer).transcribe(URL(fileURLWithPath: args[1]))
+        print(String(format: "  전사 %.1f초 · 낱말 %d · 앞: %@", Date().timeIntervalSince(t1), transcript.words.count,
+                     transcript.words.prefix(6).map(\.text).joined(separator: " ") as NSString))
+    } catch { fail("\(error)") }
+
 case "captionband":
     // 자막 위치 가설 검증 (1단계 첫 작업).
     // 후보 위치마다 "그 높이에서 사람이 가로로 얼마나 차지하나" 를 잰다.
