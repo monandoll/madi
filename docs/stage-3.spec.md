@@ -16,7 +16,7 @@ Intel 폴백(WhisperCppProvider)도 붙이고 동작만 확인한다. 시간은 
 | 2 | **큐** — actor + `jobs` 테이블, 분석 1 · 렌더 1 동시, 앱 재시작 후 이어 하기 | `Madi/Queue/` | 테스트: 동시성 상한 · 재시작 복구 · 실패 기록 |
 | 3 | **다이제스트** — `§6` transcript · subject · audio · scene · frames, 캐시 | `Madi/Analyze/Digest*` | 공개본 1편 다이제스트 텍스트 + 프레임 시트 |
 | 4 | **가져오기** — PhotoKit 새 영상 감시 · 원본 요청(iCloud) · 로컬 사본 · 폴더 감시(보조) | `Madi/Import/` | 아이폰에서 찍은 영상이 저절로 DB 에 들어온다 |
-| 5 | **연결** — 가져오기 → 분석 작업 → (수동 편집안) → 렌더 작업 → 결과물 · 게이트 리포트 · `events` | `Madi/App/` 연결부 | 3분 판정 (아래) |
+| 5 | **연결** — 가져오기 → 분석 작업 → (수동 편집안) → 렌더 작업 → 결과물 · 게이트 리포트 · `events` | `Madi/App/` 연결부 | 3분 판정 (아래) — ✅ **134.7초** (`findings/2026-09-27-stage3-pipeline.md`) |
 | 6 | **Intel 폴백** — `WhisperCppProvider` 동작만 | `Madi/Analyze/Transcription/` | x86_64 에서 전사 1편 |
 
 미뤄 둔 결정 넷(모델 받기 · 글꼴 목록 / Universal 빌드 / 모델 저장 위치 / Intel 폴백)은
