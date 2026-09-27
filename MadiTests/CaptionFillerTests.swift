@@ -49,3 +49,20 @@ struct CaptionFillerTests {
         #expect(CaptionFiller.distribute("me!", over: ["잘", "들어?"]) == ["me!", nil])
     }
 }
+
+extension CaptionFillerTests {
+    @Test("낱말 안에 떨어진 장면 경계는 가까운 낱말 경계로 옮긴다")
+    func snaps() throws {
+        // in 10.5 는 "골반"(10.4~10.8) 앞쪽 → 10.4 (넣는다). out 11.3 은 "스트레칭을"(10.8~11.4) 뒤쪽 → 11.4 (넣는다)
+        var c = comp(start: 10.5, end: 11.3)
+        #expect(CaptionFiller.snapToWords(&c, words: words) == 1)
+        #expect(c.scenes[0].source.start == 10.4 && c.scenes[0].source.end == 11.4)
+        // out 10.9 는 "스트레칭을" 앞쪽 → 10.8 (뺀다)
+        var d = comp(start: 10.0, end: 10.9)
+        CaptionFiller.snapToWords(&d, words: words)
+        #expect(d.scenes[0].source.end == 10.8)
+        // 낱말 경계에 있으면 그대로
+        var e = comp(start: 10.0, end: 12.2)
+        #expect(CaptionFiller.snapToWords(&e, words: words) == 0)
+    }
+}

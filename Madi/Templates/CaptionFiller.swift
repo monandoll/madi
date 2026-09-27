@@ -22,6 +22,30 @@ public enum CaptionFiller {
     /// 다이제스트는 소수 둘째 자리까지 적는다. 그보다 느슨하게 맞춘다.
     static let sentenceTolerance = 0.02
 
+    /// 장면 경계가 **낱말 안에** 떨어지면 가까운 낱말 경계로 옮긴다. 옮긴 곳 수를 돌려준다.
+    ///
+    /// AI 는 문장 단위 전사만 보고 문장 안을 어림으로 자른다. 그대로 두면 소리에는 반쯤 잘린 낱말이 남고
+    /// 자막에서는 빠진다 (2026-09-27 첫 초안 — "20초 동안" 의 "20초" 한가운데서 잘렸다).
+    /// 경계가 낱말 가운데보다 앞이면 그 낱말을 넣고, 뒤면 뺀다.
+    @discardableResult
+    public static func snapToWords(_ comp: inout Composition, words: [Word]) -> Int {
+        var moved = 0
+        for i in comp.scenes.indices {
+            var src = comp.scenes[i].source
+            if let w = words.first(where: { $0.start < src.start && src.start < $0.end }) {
+                src.start = src.start < (w.start + w.end) / 2 ? w.start : w.end
+            }
+            if let w = words.first(where: { $0.start < src.end && src.end < $0.end }) {
+                src.end = src.end > (w.start + w.end) / 2 ? w.end : w.start
+            }
+            if src != comp.scenes[i].source, src.end > src.start {
+                comp.scenes[i].source = src
+                moved += 1
+            }
+        }
+        return moved
+    }
+
     /// 장면마다 원본 구간 안의 낱말을 분절해 `captions` 를 채우고, 영문을 나눠 붙인다.
     /// 문제가 있으면 AI 가 고칠 수 있는 문장으로 돌려준다 (빈 배열이면 성공).
     public static func fill(

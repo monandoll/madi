@@ -146,6 +146,18 @@ public struct MadiTools: Sendable {
             translations.append(.init(sentenceStart: at, text: text))
         }
 
+        // 영상 하나에 묶인 서버라 원본 id 는 하나뿐이다 — 안 적으면 채운다. 장면 id 도 안 적으면 순서대로 붙인다.
+        if var scenes = body["scenes"] as? [[String: Any]] {
+            for i in scenes.indices {
+                if scenes[i]["id"] == nil { scenes[i]["id"] = "s\(i + 1)" }
+                if var source = scenes[i]["source"] as? [String: Any], source["videoId"] == nil {
+                    source["videoId"] = videoID
+                    scenes[i]["source"] = source
+                }
+            }
+            body["scenes"] = scenes
+        }
+
         let styleValue: Style
         do { styleValue = try style() } catch { return .text("스타일을 읽지 못했다 (앱 문제): \(error)", error: true) }
         let styleRef = StyleRef(id: styleValue.id, version: styleValue.version)
@@ -168,7 +180,7 @@ public struct MadiTools: Sendable {
             return reject(["\(error)"])
         }
 
-        var problems: [String] = []
+        var problems = Renderer.unsupported(comp)
         let duration = try? db.writer.read { try VideoRecord.fetchOne($0, key: videoID)?.durationSec }
         for (i, scene) in comp.scenes.enumerated() {
             if scene.source.videoID != videoID {
@@ -189,6 +201,7 @@ public struct MadiTools: Sendable {
         } catch {
             return .text("전사를 읽지 못했다 (앱 문제): \(error)", error: true)
         }
+        let snapped = CaptionFiller.snapToWords(&comp, words: words)
         problems = CaptionFiller.fill(&comp, words: words, style: styleValue.values.caption, translations: translations)
         if !problems.isEmpty { return reject(problems) }
 
@@ -202,7 +215,9 @@ public struct MadiTools: Sendable {
         let captions = comp.scenes.flatMap(\.captions)
         let withSecondary = captions.filter { $0.secondary != nil }.count
         return .text("저장했다 — 장면 \(comp.scenes.count)개 · 길이 \(String(format: "%.1f", comp.duration))초 · "
-                     + "자막 \(captions.count)덩어리(영문 \(withSecondary)). 렌더는 앱이 한다.")
+                     + "자막 \(captions.count)덩어리(영문 \(withSecondary))"
+                     + (snapped > 0 ? " · 낱말 중간에 걸린 장면 경계 \(snapped)곳을 낱말 경계로 옮겼다" : "")
+                     + ". 렌더는 앱이 한다.")
     }
 
     private func reject(_ problems: [String]) -> Output {

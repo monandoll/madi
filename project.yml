@@ -69,9 +69,13 @@ targets:
       - path: Madi/Downloads
       - path: Madi/MCP
       - path: Madi/Agent
+        excludes: ["*.md"]
       - path: Madi/Resources/downloads.json
         buildPhase: resources
       - path: Madi/Templates/Spec.json
+        buildPhase: resources
+      # AI 제작 지침 (AGENTS.md §10 컨텍스트 1번). PromptAssembler 가 읽는다.
+      - path: Madi/Agent/playbook.md
         buildPhase: resources
       - path: Madi/Resources/Fonts
         buildPhase: resources

@@ -1665,7 +1665,7 @@ case "agent":
     // 4단계 3번 · 6번 (docs/stage-4.spec.md) — AI CLI 한 턴을 AgentRunner 로 돌려 사건을 찍는다.
     // 앱 DB 를 건드리지 않으려면 사본을 --db 로 준다. 편집안은 그 DB 에 --composition id 로 저장된다.
     guard args.count > 1, let kind = AgentKind(rawValue: args[1]), let video = option("video"), let dbPath = option("db") else {
-        fail("사용법: madi-spike agent <claude|codex> --db <sqlite> --video <id> [--composition <id>] [--mcp <madi-mcp>] [--prompt <글> | --prompt-file <파일>]")
+        fail("사용법: madi-spike agent <claude|codex> --db <sqlite> --video <id> [--composition <id>] [--mcp <madi-mcp>] [--prompt <글> | --prompt-file <파일>]  (없으면 첫 초안 프롬프트)")
     }
     let connection = await CLILocator.connection(kind)
     guard case .ready(let exe, let version) = connection else { fail("\(kind.rawValue) 연결 안 됨: \(connection)") }
@@ -1673,7 +1673,7 @@ case "agent":
     let mcp = option("mcp").map { URL(fileURLWithPath: $0) }
         ?? URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath().deletingLastPathComponent().appending(path: "madi-mcp")
     let prompt = try option("prompt-file").map { try String(contentsOfFile: $0, encoding: .utf8) }
-        ?? option("prompt") ?? "madi 의 read_digest 를 videoId \(video) 로 불러 영상 길이를 한 줄로 답하라."
+        ?? option("prompt") ?? PromptAssembler.assemble(videoID: video)
     let workDir = FileManager.default.temporaryDirectory.appending(path: "madi-agent-\(UUID().uuidString)", directoryHint: .isDirectory)
     let req = AgentRequest(
         prompt: prompt,

@@ -230,3 +230,19 @@ struct MCPTests {
         #expect(try tool(f.server, "render", [:]).isError)
     }
 }
+
+extension MCPTests {
+    @Test("장면 id · 원본 id 는 안 적어도 앱이 채운다")
+    func fillsSceneIDs() throws {
+        let f = try fixture()
+        let bare: [String: Any] = [
+            "meta": ["title": "골반", "targetDurationSec": 8], "captionSlot": "fullBody",
+            "scenes": [["role": "hook", "source": ["in": 0.1, "out": 5.2]], ["role": "cta", "source": ["in": 0.1, "out": 2.3]]],
+        ]
+        let out = try tool(f.server, "write_composition", ["composition": bare])
+        #expect(!out.isError, "\(out.text)")
+        let comp = try #require(try f.db.writer.read { try CompositionRecord.fetchOne($0, key: "c_ai") }).composition()
+        #expect(comp.scenes.map(\.id) == ["s1", "s2"])
+        #expect(comp.scenes.allSatisfy { $0.source.videoID == "v1" })
+    }
+}

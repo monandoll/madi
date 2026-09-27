@@ -23,6 +23,20 @@ public struct Renderer {
 
     private static let log = Logger(subsystem: "app.madi", category: "render")
 
+    /// 편집안에 적을 수는 있지만 **아직 그리지 못하는 것.** 적힌 채로 렌더하면 편집안에는 있는데 결과물에는 없다 —
+    /// 결과물이 편집안에서 재현되지 않는다 (AGENTS.md §1-8). 그래서 AI 가 쓰면 저장을 거절한다 (`write_composition`).
+    /// 그리기를 만들면 여기서 지운다.
+    public static func unsupported(_ comp: Composition) -> [String] {
+        var out: [String] = []
+        for (i, s) in comp.scenes.enumerated() {
+            if !s.overlays.isEmpty { out.append("scenes[\(i)].overlays — 오버레이는 아직 그리지 못한다") }
+            if s.transitionIn != .cut { out.append("scenes[\(i)].transitionIn \(s.transitionIn.rawValue) — 전환은 아직 cut 만 된다") }
+        }
+        if comp.audio.bgm != nil { out.append("audio.bgm — 배경 음악은 아직 넣지 못한다") }
+        if !comp.audio.sfx.isEmpty { out.append("audio.sfx — 효과음은 아직 넣지 못한다") }
+        return out
+    }
+
     public enum Failure: Error, CustomStringConvertible {
         case missingSource(String)
         case noVideoTrack(String)
