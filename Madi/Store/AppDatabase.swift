@@ -14,6 +14,12 @@ public struct AppDatabase: Sendable {
         try Self.migrator.migrate(writer)
     }
 
+    /// 파일 DB 의 경로. 메모리 DB 면 nil. `madi-mcp`(다른 프로세스)에게 같은 파일을 열게 할 때 쓴다.
+    public var filePath: String? {
+        let p = writer.path
+        return p.isEmpty || p == ":memory:" || p.hasPrefix("file::memory:") ? nil : p
+    }
+
     /// `~/Library/Application Support/madi/madi.sqlite`
     public static func openDefault() throws -> AppDatabase {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -130,6 +136,29 @@ public struct AppDatabase: Sendable {
                 t.column("arch", .text).notNull()
                 t.column("createdAt", .datetime).notNull()
             }
+        }
+        // 4단계 — AI 한 턴도 큐 작업이다 (docs/stage-4.spec.md 5번). SQLite 는 CHECK 를 고칠 수 없어 표를 다시 만든다.
+        m.registerMigration("v2-agent-job") { db in
+            try db.create(table: "job_new") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("kind", .text).notNull().check(sql: "kind IN ('analyze','render','agent')")
+                // analyze · agent → video.id, render → composition.id
+                t.column("targetId", .text).notNull()
+                t.column("state", .text).notNull()
+                    .check(sql: "state IN ('queued','running','done','failed')")
+                t.column("attempts", .integer).notNull().defaults(to: 0)
+                t.column("error", .text)
+                t.column("createdAt", .datetime).notNull()
+                t.column("startedAt", .datetime)
+                t.column("finishedAt", .datetime)
+            }
+            try db.execute(sql: "INSERT INTO job_new SELECT id, kind, targetId, state, attempts, error, createdAt, startedAt, finishedAt FROM job")
+            try db.drop(table: "job")
+            try db.rename(table: "job_new", to: "job")
+            try db.execute(sql: """
+                CREATE UNIQUE INDEX job_one_live_per_target ON job(kind, targetId)
+                WHERE state IN ('queued','running')
+                """)
         }
         return m
     }

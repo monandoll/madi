@@ -75,7 +75,8 @@ public struct OutputRecord: Codable, Hashable, Sendable, FetchableRecord, Persis
 
 public struct JobRecord: Codable, Hashable, Sendable, FetchableRecord, MutablePersistableRecord {
     public static let databaseTableName = "job"
-    public enum Kind: String, Codable, Sendable { case analyze, render }
+    /// analyze · agent → video.id, render → composition.id
+    public enum Kind: String, Codable, Sendable, CaseIterable { case analyze, render, agent }
     public enum State: String, Codable, Sendable { case queued, running, done, failed }
 
     public var id: Int64?

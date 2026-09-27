@@ -5,8 +5,8 @@ import os
 /// 앱이 켜지면 조립하는 파이프라인 (AGENTS.md §2 · docs/stage-3.spec.md).
 ///
 /// ```
-/// 사진 보관함 · 폴더 → Importer → [분석 작업] → 다이제스트
-///                                   편집안 → [렌더 작업] → 결과물 · 리포트
+/// 사진 보관함 · 폴더 → Importer → [분석 작업] → 다이제스트 → [AI 작업] → 편집안 초안
+///                                   (사용자가 고르면) 편집안 → [렌더 작업] → 결과물 · 리포트
 /// 모델 준비는 첫 실행 직후부터 백그라운드로
 /// ```
 /// 화면은 없다 — 갤러리는 디자인 쪽이 `db` 를 관측해 그린다 (`Madi/UI` 는 디자인 소유).
@@ -43,7 +43,18 @@ final class MadiPipeline {
             let preparer = try ModelPreparer(catalog: catalog)
             let analyze = AnalyzeJob(db: db, transcriber: PreparedTranscriber(preparer: preparer, db: db))
             let render = RenderJob(db: db)
-            let queue = JobQueue(db: db, handlers: [.analyze: analyze.handler, .render: render.handler])
+            // 분석이 끝나면 AI 한 턴으로 초안을 만든다 (§10). 렌더는 걸지 않는다 — 사용자가 고른다 (결정 ③).
+            guard let mcp = Bundle.main.url(forAuxiliaryExecutable: "madi-mcp") else {
+                throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: "Contents/MacOS/madi-mcp"])
+            }
+            let agent = AgentJob(db: db, mcpExecutable: mcp)
+            let queueBox = QueueBox()
+            let analyzeThenDraft: JobQueue.Handler = { job in
+                try await analyze.handler(job)
+                try await queueBox.queue?.enqueue(.agent, targetId: job.targetId)
+            }
+            let queue = JobQueue(db: db, handlers: [.analyze: analyzeThenDraft, .render: render.handler, .agent: agent.handler])
+            queueBox.queue = queue
             try await queue.start()
 
             let importer = Importer(db: db, queue: queue)
@@ -80,4 +91,9 @@ final class MadiPipeline {
             Self.log.fault("파이프라인을 시작하지 못했다: \(String(describing: error), privacy: .public)")
         }
     }
+}
+
+/// 분석 처리기가 큐를 늦게 참조하려고 쓰는 상자 (큐를 만들기 전에 처리기를 넘겨야 해서).
+private final class QueueBox: @unchecked Sendable {
+    var queue: JobQueue?
 }

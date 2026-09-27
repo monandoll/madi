@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-/// 작업 큐 (AGENTS.md §2 Queue). **분석 1 · 렌더 1** 이 동시에 돈다.
+/// 작업 큐 (AGENTS.md §2 Queue). **분석 1 · 렌더 1 · AI 1** 이 동시에 돈다.
 ///
 /// - 상태는 전부 DB(`job`)에 있다. 앱이 도중에 죽어도 다시 켜면 이어 한다
 /// - 실패는 에러와 함께 남기고 다음 작업으로 넘어간다. 자동으로 다시 시도하지 않는다 —
@@ -70,7 +70,8 @@ public actor JobQueue {
     }
 
     private func pump() {
-        for kind in [JobRecord.Kind.analyze, .render] where !busy.contains(kind) {
+        // 종류마다 하나씩 동시에 돈다 — 분석 1 · 렌더 1 (§2) · AI 1 (4단계).
+        for kind in JobRecord.Kind.allCases where !busy.contains(kind) {
             guard let job = try? claimNext(kind) else { continue }
             busy.insert(kind)
             Task { await self.run(job) }

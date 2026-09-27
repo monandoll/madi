@@ -1297,7 +1297,7 @@ case "modeltest":
 case "trim":
     // 앞부분만 잘라 낸다 — 재인코딩 없이(패스스루). 촬영일 메타데이터는 **지금**으로 적는다
     // (사진 앱에 "방금 찍은 영상" 으로 들어가야 앱의 가져오기 필터에 걸린다).
-    guard args.count > 2 else { fail("사용법: madi-spike trim <영상> <out.mov> [--to 60]") }
+    guard args.count > 2 else { fail("사용법: madi-spike trim <영상> <out.mov> [--from 0] [--to 60]") }
     do {
         let asset = AVURLAsset(url: URL(fileURLWithPath: args[1]))
         let out = URL(fileURLWithPath: args[2])
@@ -1305,7 +1305,9 @@ case "trim":
         guard let export = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetPassthrough) else { fail("내보내기 불가") }
         export.outputURL = out
         export.outputFileType = .mov
-        export.timeRange = CMTimeRange(start: .zero, duration: CMTime(seconds: Double(option("to") ?? "") ?? 60, preferredTimescale: 600))
+        let from = Double(option("from") ?? "") ?? 0
+        export.timeRange = CMTimeRange(start: CMTime(seconds: from, preferredTimescale: 600),
+                                       duration: CMTime(seconds: (Double(option("to") ?? "") ?? (from + 60)) - from, preferredTimescale: 600))
         let date = AVMutableMetadataItem()
         date.identifier = .quickTimeMetadataCreationDate
         date.value = ISO8601DateFormatter().string(from: Date()) as NSString
