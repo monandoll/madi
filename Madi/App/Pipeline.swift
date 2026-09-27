@@ -5,8 +5,8 @@ import os
 /// 앱이 켜지면 조립하는 파이프라인 (AGENTS.md §2 · docs/stage-3.spec.md).
 ///
 /// ```
-/// 사진 보관함 · 폴더 → Importer → [분석 작업] → 다이제스트 → [AI 작업] → 편집안 초안
-///                                   (사용자가 고르면) 편집안 → [렌더 작업] → 결과물 · 리포트
+/// 사진 보관함 · 폴더 → Importer → [분석] → 다이제스트 → [AI] → 초안 → [렌더] → 검사(ReviewLoop)
+///                                   ↑ 되먹임 항목이 남으면 [selfEval] → 새 편집안 ─┘  (최대 2회, §7-6)
 /// 모델 준비는 첫 실행 직후부터 백그라운드로
 /// ```
 /// 화면은 없다 — 갤러리는 디자인 쪽이 `db` 를 관측해 그린다 (`Madi/UI` 는 디자인 소유).
@@ -43,17 +43,27 @@ final class MadiPipeline {
             let preparer = try ModelPreparer(catalog: catalog)
             let analyze = AnalyzeJob(db: db, transcriber: PreparedTranscriber(preparer: preparer, db: db))
             let render = RenderJob(db: db)
-            // 분석이 끝나면 AI 한 턴으로 초안을 만든다 (§10). 렌더는 걸지 않는다 — 사용자가 고른다 (결정 ③).
+            // 분석 → AI 초안 → 렌더 → 검사 → (되먹임 → 렌더 → 검사)… → 검사한 결과만 보여 준다
+            // (§10 · §7-6 · §8, 5단계 결정 ①).
             guard let mcp = Bundle.main.url(forAuxiliaryExecutable: "madi-mcp") else {
                 throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: "Contents/MacOS/madi-mcp"])
             }
-            let agent = AgentJob(db: db, mcpExecutable: mcp)
             let queueBox = QueueBox()
+            let agent = AgentJob(db: db, mcpExecutable: mcp, onDraft: { id in
+                try await queueBox.queue?.enqueue(.render, targetId: id)
+            })
+            let review = ReviewLoop(db: db) { id in try await queueBox.queue?.enqueue(.selfEval, targetId: id) }
             let analyzeThenDraft: JobQueue.Handler = { job in
                 try await analyze.handler(job)
                 try await queueBox.queue?.enqueue(.agent, targetId: job.targetId)
             }
-            let queue = JobQueue(db: db, handlers: [.analyze: analyzeThenDraft, .render: render.handler, .agent: agent.handler])
+            let renderThenReview: JobQueue.Handler = { job in
+                try await review.afterRender(try await render.run(compositionId: job.targetId))
+            }
+            let queue = JobQueue(db: db, handlers: [
+                .analyze: analyzeThenDraft, .agent: agent.handler,
+                .render: renderThenReview, .selfEval: agent.selfEvalHandler,
+            ])
             queueBox.queue = queue
             try await queue.start()
 

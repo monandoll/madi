@@ -204,6 +204,12 @@ public struct MadiTools: Sendable {
                 problems.append("scenes[\(i)].source.out(\(scene.source.end)) 이 영상 길이(\(String(format: "%.2f", d))) 를 넘는다")
             }
         }
+        // 되먹임 턴은 목표 길이를 못 바꾼다 — 바꾸면 G11 을 장면이 아니라 목표로 "고칠" 수 있다.
+        if origin == .selfEval, let revisionOf,
+           let prev = try? db.writer.read({ try CompositionRecord.fetchOne($0, key: revisionOf) })?.composition(),
+           abs(prev.meta.targetDurationSec - comp.meta.targetDurationSec) > 0.001 {
+            problems.append("meta.targetDurationSec 는 바꾸지 않는다 — 지난 편집안의 \(prev.meta.targetDurationSec) 그대로 둔다")
+        }
         if !problems.isEmpty { return reject(problems) }
 
         let words: [Word]
