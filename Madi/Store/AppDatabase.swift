@@ -14,6 +14,21 @@ public struct AppDatabase: Sendable {
         try Self.migrator.migrate(writer)
     }
 
+    /// DB 가 바뀔 때마다 스냅숏을 흘려보낸다 — 화면(바꾸는 층)이 관측한다. 앱은 GRDB 를 직접 들이지 않는다.
+    public func snapshots() -> AsyncThrowingStream<LibrarySnapshot, Error> {
+        let observation = ValueObservation.tracking { db in try LibrarySnapshot.read(db) }
+        let writer = self.writer
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    for try await snapshot in observation.values(in: writer) { continuation.yield(snapshot) }
+                    continuation.finish()
+                } catch { continuation.finish(throwing: error) }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     /// 파일 DB 의 경로. 메모리 DB 면 nil. `madi-mcp`(다른 프로세스)에게 같은 파일을 열게 할 때 쓴다.
     public var filePath: String? {
         let p = writer.path

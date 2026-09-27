@@ -64,6 +64,11 @@ public struct LibrarySnapshot: Sendable {
 
     // MARK: - 자주 쓰는 물음
 
+    /// 이 영상 편집안에 쓰는 전사 낱말 (자막 다시 채우기). 스냅숏에는 수만 있어서 따로 읽는다.
+    public static func words(_ db: Database, videoID: String) throws -> [Word] {
+        try DigestRecord.fetchOne(db, key: videoID)?.transcript.words ?? []
+    }
+
     public func compositions(of videoID: String) -> [CompositionRecord] {
         compositions.filter { $0.videoId == videoID }
     }

@@ -46,6 +46,24 @@ public actor JobQueue {
         return job
     }
 
+    /// 줄 선 작업을 멈춘다 ("멈추기"). **이미 도는 작업은 끝까지 간다** — 도중에 끊는 길은 아직 없다.
+    /// 멈춘 작업은 `failed` + 이유 "멈춤" 으로 남는다 (자동으로 다시 하지 않는다).
+    @discardableResult
+    public func cancel(targetIds: Set<String>) throws -> Int {
+        guard !targetIds.isEmpty else { return 0 }
+        let ids = Array(targetIds)
+        let n = try db.writer.write { db -> Int in
+            try db.execute(sql: """
+                UPDATE job SET state = 'failed', error = '멈춤', finishedAt = ?
+                WHERE state = 'queued' AND targetId IN (\(ids.map { _ in "?" }.joined(separator: ",")))
+                """, arguments: StatementArguments([Date()] + ids)!)
+            return db.changesCount
+        }
+        if n > 0 { try? db.log("job.cancelled", payload: ["count": .number(Double(n))]) }
+        pump()
+        return n
+    }
+
     /// 실패한 작업을 다시 줄 세운다.
     public func retry(jobId: Int64) throws {
         try db.writer.write { db in
