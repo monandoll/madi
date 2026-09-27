@@ -23,6 +23,20 @@ struct ExportCaptionTests {
         return n
     }
 
+    /// 보조 문구 노랑 (`look.secondary.fill` #FEE374 근처).
+    private func yellowPixels(_ image: CGImage) -> Int {
+        let W = image.width, H = image.height
+        var buf = [UInt8](repeating: 0, count: W * H * 4)
+        let ctx = CGContext(data: &buf, width: W, height: H, bitsPerComponent: 8, bytesPerRow: W * 4,
+                            space: CGColorSpaceCreateDeviceRGB(),
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: W, height: H))
+        var n = 0
+        for i in stride(from: 0, to: buf.count, by: 4)
+        where buf[i] > 200 && buf[i + 1] > 180 && buf[i + 2] < 160 { n += 1 }
+        return n
+    }
+
     private func frame(_ url: URL, at t: Double) async throws -> CGImage {
         let gen = AVAssetImageGenerator(asset: AVURLAsset(url: url))
         gen.requestedTimeToleranceBefore = .zero
@@ -48,7 +62,7 @@ struct ExportCaptionTests {
             scenes: [Scene(
                 id: "s1", role: .hook,
                 source: Scene.Source(videoID: "grey", start: 0, end: 1.9),
-                captions: [Caption(id: "c", start: 0.2, end: 1.0, text: "양쪽 다리를")]
+                captions: [Caption(id: "c", start: 0.2, end: 1.0, text: "양쪽 다리를", secondary: "Position both legs")]
             )]
         )
         let out = dir.appending(path: "out.mp4")
@@ -58,10 +72,13 @@ struct ExportCaptionTests {
         // 시작 전에도 없어야 한다. 사라지기 애니메이션의 채움이 시작 전까지 번지면
         // 모든 자막이 0초부터 자기 끝 시각까지 겹쳐 떠 있게 된다 (실제로 그랬다).
         let before = whitePixels(try await frame(out, at: 0.05))
-        let during = whitePixels(try await frame(out, at: 0.6))
+        let duringFrame = try await frame(out, at: 0.6)
+        let during = whitePixels(duringFrame)
+        let yellow = yellowPixels(duringFrame)
         let after = whitePixels(try await frame(out, at: 1.5))
         #expect(before < 20, "자막이 시작하기 전 0.05초에 흰 픽셀이 \(before)개 있다")
         #expect(during > 200, "자막이 떠 있어야 할 0.6초에 흰 글자 픽셀이 \(during)개뿐이다")
+        #expect(yellow > 30, "보조 문구(노랑) 픽셀이 \(yellow)개뿐이다")
         #expect(after < 20, "자막이 끝난 1.5초에 흰 픽셀이 \(after)개 남아 있다")
     }
 }
