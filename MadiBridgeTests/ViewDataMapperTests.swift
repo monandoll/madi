@@ -163,4 +163,17 @@ struct ViewDataMapperTests {
         #expect(p.fraction == 0.4)
         try? FileManager.default.removeItem(at: dir)
     }
+
+    @Test("결과물 — 안 본 것은 새 것, 사진 앱으로 보낸 이력 한 줄")
+    func seenAndExported() throws {
+        var o = output("o", comp: "d", verdict: .shown, at: now - 10)
+        let s1 = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)], outputs: [o], now: now)
+        #expect(ViewDataMapper.results(of: "v", s1).first?.isNew == true)
+        o.seenAt = now
+        let s2 = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)], outputs: [o], now: now,
+                                 exports: [ExportRecord(outputId: "o", target: .photos, location: "x", createdAt: now)])
+        let ref = try #require(ViewDataMapper.results(of: "v", s2).first)
+        #expect(ref.isNew == false)
+        #expect(ref.exportedNote == Copy.Results.Export.historyLine(target: Copy.Results.Export.photos, when: Copy.time(now)))
+    }
 }

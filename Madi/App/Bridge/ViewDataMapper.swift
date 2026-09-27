@@ -104,8 +104,14 @@ enum ViewDataMapper {
         return ResultRef(
             id: o.id, platform: platform(comp.meta.platform), planLabel: Copy.Plan.version(number),
             when: Copy.shotStamp(o.createdAt, now: s.now), duration: comp.duration, sceneCount: comp.scenes.count,
-            isNew: false, exportedNote: nil, thumbnail: thumb(s.thumbnailStore.output(o.id), s)
+            isNew: o.seenAt == nil, exportedNote: exportedNote(o.id, s), thumbnail: thumb(s.thumbnailStore.output(o.id), s)
         )
+    }
+
+    /// 내보낸 이력 한 줄 — 가장 최근 것. 폴더 저장은 문구가 없어 아직 안 낸다 (copy-keys `exportedToFolder`).
+    static func exportedNote(_ outputID: String, _ s: LibrarySnapshot) -> String? {
+        guard let e = s.exports.last(where: { $0.outputId == outputID && $0.target == .photos }) else { return nil }
+        return Copy.Results.Export.historyLine(target: Copy.Results.Export.photos, when: Copy.time(e.createdAt))
     }
 
     static func results(of videoID: String, _ s: LibrarySnapshot) -> [ResultRef] {

@@ -88,6 +88,8 @@ public struct OutputRecord: Codable, Hashable, Sendable, FetchableRecord, Persis
     public var arch: String
     public var createdAt: Date
     public var verdict: Verdict = .shown
+    public var seenAt: Date?
+    public var trashedAt: Date?
 }
 
 public struct JobRecord: Codable, Hashable, Sendable, FetchableRecord, MutablePersistableRecord {
@@ -159,6 +161,23 @@ public struct ChatRecord: Codable, Hashable, Sendable, FetchableRecord, Persista
     public var payloadValues: [String: JSONValue] {
         payload.flatMap { try? JSONDecoder().decode([String: JSONValue].self, from: Data($0.utf8)) } ?? [:]
     }
+}
+
+/// 내보낸 이력 한 줄.
+public struct ExportRecord: Codable, Hashable, Sendable, FetchableRecord, MutablePersistableRecord {
+    public static let databaseTableName = "export"
+    public enum Target: String, Codable, Sendable { case photos, folder }
+    public var id: Int64?
+    public var outputId: String
+    public var target: Target
+    public var location: String?
+    public var createdAt: Date
+
+    public init(outputId: String, target: Target, location: String?, createdAt: Date = Date()) {
+        self.outputId = outputId; self.target = target; self.location = location; self.createdAt = createdAt
+    }
+
+    public mutating func didInsert(_ inserted: InsertionSuccess) { id = inserted.rowID }
 }
 
 /// 사용자 규칙 (§10 컨텍스트 4번 — 세기가 가장 세다).

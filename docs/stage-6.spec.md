@@ -28,7 +28,7 @@
 | 4 | **Sparkle** — 업데이트 확인 · EdDSA 서명 · appcast (GitHub Releases) ✅ 첫 릴리스 전까지 | `Madi/App/` · `scripts/` | 옛 판이 새 판을 찾아 설치 |
 | 5 | **채팅 수정 (엔진)** — `chat` 저장소 · 수정 턴(`origin chat` · `revisionOf`) → 렌더 → 검사 · "앞으로도 이렇게 할까요?" → 사용자 규칙 ✅ (실제 Claude 수정 1회 확인) | `Madi/Agent/` · `Madi/Store/` | 가짜 CLI 테스트 · 실제 CLI 수정 1회 |
 | 6 | **바꾸는 층** — DB → ViewData (값을 내는 쪽). 행동 받기는 요청 ⑦ 결정 뒤 ✅ 값을 내는 쪽 | `Madi/App/Bridge/` · `Madi/Store/LibrarySnapshot.swift` | 테스트: DB 상태마다 ViewData (`MadiBridgeTests` 7개) |
-| 7 | **UI 밖 부품** — 썸네일 한 장 · 렌더 진행률 · "봤다" · 스튜디오 이름 · 내보내기(사진 앱 · Mac) · 보관 기간 · CLI 설치 · 로그인 대행 | 여러 곳 | 각자 테스트 |
+| 7 | **UI 밖 부품** — 썸네일 한 장 · 렌더 진행률 · "봤다" · 스튜디오 이름 · 내보내기(사진 앱 · Mac) · 보관 기간 · CLI 설치 · 로그인 대행 ✅ (앨범 거르기 남음) | 여러 곳 | 각자 테스트 |
 | 8 | **판정** — 크리에이터 3편 · 깨끗한 Mac | — | 사람이 한다 |
 
 ## 결정
@@ -43,7 +43,7 @@
   업데이트용 레포를 따로 두면 전작과 섞이지 않고 소스 레포 공개 여부와도 상관없다. 릴리스에는 `.dmg` 와 `appcast.xml` 만
   (⚠ 만들다가 로그인 계정 `ejinhvn-0112` 아래에 `ejinhvn-0112/madi-releases` 가 잘못 생겼다 — monandoll 은 개인 계정이라
   협업자가 그 아래에 레포를 만들 수 없고 `gh` 가 오류 없이 로그인 계정에 만들었다. `gh` 계정을 monandoll 로 바꾸고(ejinhvn-0112 로그아웃)
-  2026-09-28 `monandoll/madi-releases` 를 만들었다 — 공개, 비로그인 접근 200. `ejinhvn-0112/madi-releases` 는 아직 남아 있다(README 뿐))
+  2026-09-28 `monandoll/madi-releases` 를 만들었다 — 공개, 비로그인 접근 200. `ejinhvn-0112/madi-releases` 는 무시한다(README 뿐, 사용자 결정))
 
 ### 4번 — Sparkle (2026-09-27)
 
@@ -108,6 +108,17 @@ AI 가 일반화한 규칙 문장을 같이 내게 할지(예: "영상은 15초 
 - **진행률**: 렌더러가 0.5초마다 `AVAssetExportSession.progress` 를 읽어 메모리 게시판(`RenderProgressBoard`)에 올린다.
   만드는 중 화면 · 편집안 만드는 중(`MakingProgress.fraction`)이 읽는다. DB 에 적지 않는다
 - 렌더 **출력 픽셀은 바꾸지 않았다** (알림만 더했다) — 프레임 시트는 붙이지 않았다
+
+### 7번 — 내보내기 · 봤다 · 휴지통 · 설정 · 보관 기간 (2026-09-28)
+
+- v5: `output.seenAt` · `output.trashedAt`, `export`(내보낸 이력). 휴지통은 **행을 지우지 않는다** — 결과물이 있는 편집안이 제자리 수정을 막는 규칙(§5)을 지킨다
+- `Exporter`: 사진 앱(`PHAssetCreationRequest`) · 고른 폴더에 복사(이름 겹치면 번호) · 봤다(처음 한 번만) · macOS 휴지통
+- `AppSettings`: 스튜디오 이름 · 보관 기간(기본 90일, 0 = 계속). `Retention.sweep`: 기간이 지난 촬영본의 **앱 사본만** 지운다,
+  작업이 걸린 영상은 건너뛴다 — 앱을 켤 때마다 한 번
+- 바꾸는 층: 휴지통으로 옮긴 결과물은 어디에도 안 나온다 · 안 본 결과물은 `isNew` · 사진 앱으로 보낸 이력 한 줄
+  (폴더 저장 이력은 문구 키 `exportedToFolder` 가 생기면)
+- **사진 앱 보내기는 실제로 돌려 보지 않았다** — 사용자 사진 보관함에 영상이 들어간다. 판정 때 크리에이터 Mac 에서 본다
+- 남은 것: **앨범으로 거르기**(설정 `albumName`) — PhotoKit 앨범 고르기가 필요하다. 행동 입구(요청 ⑦) 뒤
 
 ## 미뤄 둔 결정
 

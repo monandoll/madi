@@ -108,6 +108,8 @@ final class MadiPipeline {
             }
             if await !photos.start() { Self.log.notice("사진 보관함 없이 폴더 감시만 쓴다: \(Self.inbox.path, privacy: .public)") }
             try db.log("app.started")
+            // 보관 기간이 지난 촬영본의 앱 사본만 지운다 (사진 앱 원본 · 결과물은 그대로). 켤 때마다 한 번.
+            Task.detached(priority: .background) { try? await Retention.sweep(db, keepDays: AppSettings().keepDays) }
         } catch {
             Self.log.fault("파이프라인을 시작하지 못했다: \(String(describing: error), privacy: .public)")
         }

@@ -12,6 +12,7 @@ public struct LibrarySnapshot: Sendable {
     /// 살아 있는 작업 (queued · running) + 오늘 실패한 작업
     public var jobs: [JobRecord]
     public var chats: [ChatRecord]
+    public var exports: [ExportRecord] = []
     /// 영상마다 전사 낱말 수. 다이제스트가 없으면 없다.
     public var wordCounts: [String: Int]
     public var now: Date
@@ -23,9 +24,12 @@ public struct LibrarySnapshot: Sendable {
     public var thumbnailStore = Thumbnails()
 
     public init(videos: [VideoRecord] = [], compositions: [CompositionRecord] = [], outputs: [OutputRecord] = [],
-                jobs: [JobRecord] = [], chats: [ChatRecord] = [], wordCounts: [String: Int] = [:], now: Date = Date()) {
-        self.videos = videos; self.compositions = compositions; self.outputs = outputs
-        self.jobs = jobs; self.chats = chats; self.wordCounts = wordCounts; self.now = now
+                jobs: [JobRecord] = [], chats: [ChatRecord] = [], wordCounts: [String: Int] = [:], now: Date = Date(),
+                exports: [ExportRecord] = []) {
+        self.videos = videos; self.compositions = compositions
+        // 휴지통으로 옮긴 결과물은 어디에도 안 나온다 — 여기서 한 번 거른다
+        self.outputs = outputs.filter { $0.trashedAt == nil }
+        self.jobs = jobs; self.chats = chats; self.wordCounts = wordCounts; self.now = now; self.exports = exports
     }
 
     /// 있는 그림만 골라 둔다 (파일을 한 번씩 본다).
@@ -53,7 +57,8 @@ public struct LibrarySnapshot: Sendable {
             jobs: jobs,
             chats: try ChatRecord.order(Column("createdAt")).fetchAll(db),
             wordCounts: words,
-            now: now
+            now: now,
+            exports: try ExportRecord.order(Column("createdAt")).fetchAll(db)
         )
     }
 

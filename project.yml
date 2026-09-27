@@ -77,6 +77,7 @@ targets:
       - path: Madi/MCP
       - path: Madi/Agent
         excludes: ["*.md"]
+      - path: Madi/Export
       - path: Madi/Resources/downloads.json
         buildPhase: resources
       - path: Madi/Templates/Spec.json

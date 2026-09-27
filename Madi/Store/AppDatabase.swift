@@ -241,6 +241,24 @@ public struct AppDatabase: Sendable {
                 WHERE state IN ('queued','running')
                 """)
         }
+        // 6단계 7번 — 결과물을 쓰는 일 (docs/stage-6.spec.md).
+        // - output.seenAt: 사람이 봤나 (ViewData ResultRef.isNew)
+        // - output.trashedAt: 휴지통으로 옮겼나. 행은 지우지 않는다 — 편집안이 결과물이 있는 채로 남아야 제자리 수정이 막힌다 (§5)
+        // - export: 내보낸 이력 (목록 줄 "사진 앱에 저장함 · 오후 2:40" — 올렸는지 헷갈리지 않게)
+        m.registerMigration("v5-export") { db in
+            try db.alter(table: "output") { t in
+                t.add(column: "seenAt", .datetime)
+                t.add(column: "trashedAt", .datetime)
+            }
+            try db.create(table: "export") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("outputId", .text).notNull().references("output", onDelete: .cascade)
+                t.column("target", .text).notNull().check(sql: "target IN ('photos','folder')")
+                // 사진 앱 localIdentifier 또는 저장한 파일 경로
+                t.column("location", .text)
+                t.column("createdAt", .datetime).notNull()
+            }
+        }
         return m
     }
 }
