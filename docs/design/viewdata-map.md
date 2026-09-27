@@ -142,6 +142,22 @@
 | ⑤ | 결과물의 **원본 한계 안내** | 2절 5번. 결과 옆에 촬영 조언을 붙일 자리 | `ResultRef` 에 `notice: String?` (또는 `ResultDetail`) |
 | ⑥ | `ShotItem.speech` 의 `noisy` | 1절. 엔진이 가를 측정이 없다 | 촬영본 뒤 기준이 생길 때까지 `noisy` 는 안 나온다 — 그대로 두되 알고 있기 |
 
+### ⑦ — 가장 먼저 필요하다: `RootView` 가 사람의 행동을 밖으로 넘기지 않는다
+
+하위 화면에는 콜백이 다 있다 (`PlanScreen.onMake · onStop · onConnectAI`, `ChatPanel.onSend · onChip · onChoice · onUndo ·
+onRetrySend · onOpenResult`, `SceneList.onRemove · onExtend · onShorten · onRestoreGap · onMove`, `PlanVersionList.onPick`,
+`SettingsScreen.on…`). 그런데 **`RootView` 가 이어 주지 않는다**:
+
+- `GalleryScreen.onMakeShort` 는 누른 `ShotItem` 을 받지만 버리고 `showsPlan = true` 만 한다 —
+  엔진은 **어느 촬영본을 열었는지** 모른다. `plan` 도 하나만 받으므로 바꾸는 층이 그 촬영본의 편집안을 넣어 줄 수 없다
+- `PlanScreen` · `ChatPanel` · `SceneList` 의 콜백이 `RootView` 에서 연결되지 않는다 — 채팅 · 만들기 · 멈추기 · 장면 손질이 엔진에 안 닿는다
+- `ResultsScreen` 의 내보내기 · 휴지통, `MakingScreen` 의 멈춘 작업 다음 행동도 같다
+
+제안: `RootView` 가 행동 하나를 받는 입구를 둔다 — 예 `var onAction: (UIAction) -> Void`, `UIAction` 은 값 타입
+(`.openShot(ShotItem.ID)` · `.send(String)` · `.chip(String)` · `.choice(ChatChoice)` · `.make` · `.stop` · `.pickVersion(PlanVersion.ID)` ·
+`.scene(SceneCardItem.ID, SceneAction)` · `.export(ResultRef.ID, ExportTarget)` · `.trash(ResultRef.ID)` …).
+**이게 없으면 화면을 앱에 붙여도 보기만 된다.** 디자인 쪽 결정 전까지 개발은 바꾸는 층을 "값을 내는 쪽" 만 만든다.
+
 ## 4. 개발이 UI 밖에 만들 것 (6단계 개발 일)
 
 - **바꾸는 층** — DB 를 관측해 위 ViewData 를 내는 곳 (`Madi/App/` 또는 새 폴더, `Madi/UI` 밖)
