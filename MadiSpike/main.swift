@@ -1718,6 +1718,67 @@ case "softgates":
         } catch { print("\(file) | 실패: \(error)") }
     }
 
+case "loop":
+    // 5단계 (docs/stage-5.spec.md) — 이미 있는 초안 하나에서 앱과 같은 루프(렌더 → 검사 → 되먹임 …)를 돌려 사슬을 찍는다.
+    guard let dbPath = option("db"), let work = option("work"), let draft = option("composition"),
+          let kind = option("kind").flatMap(AgentKind.init(rawValue:)) else {
+        fail("사용법: madi-spike loop --db <sqlite> --work <폴더> --kind <claude|codex> --composition <초안 id>")
+    }
+    do {
+        let db = try AppDatabase.open(path: dbPath)
+        let t0 = Date()
+        let chain = try await Stage5.runLoop(db: db, work: URL(fileURLWithPath: work), kind: kind, draft: draft, mcp: Stage5.mcp(option("mcp")))
+        Stage5.printChain(chain)
+        print(String(format: "(%.1f초)", Date().timeIntervalSince(t0)))
+    } catch { fail("\(error)") }
+
+case "stage5":
+    // 5단계 판정 (docs/stage-5.spec.md 6번 · 결정 ③). 각 CLI 의 4단계 초안(j_<cli>_<영상>)에 결함을 하나 넣고
+    // 같은 CLI 가 되먹임으로 고치는지 본다. 사례 통과 = 1회 되먹임 뒤 판에 하드 실패가 없고 주입한 항목이 통과.
+    guard let dbPath = option("db"), let work = option("work") else {
+        fail("사용법: madi-spike stage5 --db <sqlite> --work <폴더> [--kinds claude,codex] [--faults g8,g11] <영상 id> …")
+    }
+    let kinds = (option("kinds") ?? "claude,codex").split(separator: ",").compactMap { AgentKind(rawValue: String($0)) }
+    let faults = (option("faults") ?? "g8,g11").split(separator: ",").map(String.init)
+    let videos = args.dropFirst().enumerated().filter { i, a in !a.hasPrefix("--") && !(i > 0 && args.dropFirst()[args.dropFirst().startIndex + i - 1].hasPrefix("--")) }.map(\.element)
+    do {
+        let db = try AppDatabase.open(path: dbPath)
+        print("CLI | 영상 | 주입 | 첫 판 항목 | 되먹임 | 1회 뒤 항목 | 최종 보이기 | 훅 확인 | 사례")
+        for kind in kinds {
+            var passed = 0, total = 0
+            for video in videos {
+                for fault in faults {
+                    let base = "j_\(kind.rawValue)_\(video)"
+                    do {
+                        let injected = try Stage5.inject(db: db, draft: base, fault: fault)
+                        let chain = try await Stage5.runLoop(db: db, work: URL(fileURLWithPath: work), kind: kind, draft: injected, mcp: Stage5.mcp(option("mcp")))
+                        let first = chain.first
+                        let second = chain.count > 1 ? chain[1] : nil
+                        let gate = fault.uppercased()
+                        let ran = !(first?.items.isEmpty ?? true)
+                        let passedGate = ran && second.map { ReviewLoop.hardItems($0.items).isEmpty && $0.label(gate) == "pass" } == true
+                        // G8 은 이름만 hook 으로 바꿔도 통과한다 — 원래 훅 구간이 맨 앞으로 돌아왔는지 따로 본다.
+                        var honest = "-"
+                        if fault == "g8", let original = try await db.writer.read({ try CompositionRecord.fetchOne($0, key: base) })?.composition(),
+                           let hook = original.scenes.first, let fixed = second?.comp.scenes.first {
+                            let same = abs(fixed.source.start - hook.source.start) < 0.5 && abs(fixed.source.end - hook.source.end) < 0.5
+                            honest = same ? "원래 훅" : "다른 구간 \(String(format: "%.1f-%.1f", fixed.source.start, fixed.source.end))"
+                        }
+                        let ok = passedGate
+                        if ran { total += 1; if ok { passed += 1 } }
+                        print([kind.rawValue, video, fault, first?.items.joined(separator: ",") ?? "-",
+                               "\(max(chain.count - 1, 0))회", second?.items.joined(separator: ",").nonEmpty ?? "없음",
+                               chain.last(where: { $0.verdict == .shown }).map { "판 \($0.round)" } ?? "없음(\(chain.last?.verdict?.rawValue ?? "?"))",
+                               honest, ran ? (ok ? "✅" : "❌") : "되먹임 안 돎(분모 제외)"].joined(separator: " | "))
+                    } catch {
+                        print("\(kind.rawValue) | \(video) | \(fault) | 실패: \(error)")
+                    }
+                }
+            }
+            print("== \(kind.rawValue): \(passed)/\(total)")
+        }
+    } catch { fail("\(error)") }
+
 case "stage4":
     // 4단계 판정 (docs/stage-4.spec.md 6번 · 결정 ④). **판정 전용 DB** 에 영상을 들이고 앱과 같은 부품
     // (AnalyzeJob → AgentJob → RenderJob)을 CLI 마다 돌려 게이트를 읽는다. 사람은 편집안을 한 글자도 고치지 않는다.
@@ -1828,4 +1889,121 @@ default:
 
     공통 옵션: --text --secondary --width --height --style --slot
     """)
+}
+
+// MARK: - 5단계 판정 도우미
+
+extension String {
+    var nonEmpty: String? { isEmpty ? nil : self }
+}
+
+enum Stage5 {
+    struct Row {
+        var round: Int
+        var id: String
+        var origin: CompositionRecord.Origin
+        var items: [String]
+        var verdict: OutputRecord.Verdict?
+        var report: [String: JSONValue]
+        var comp: Composition
+        func label(_ k: String) -> String { if case .string(let s)? = report[k] { s } else { "-" } }
+    }
+
+    static func mcp(_ given: String?) -> URL {
+        given.map { URL(fileURLWithPath: $0) }
+            ?? URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath().deletingLastPathComponent().appending(path: "madi-mcp")
+    }
+
+    /// 초안을 복사해 결함을 하나 넣는다. 화면 잡기는 자동으로 되돌린다 (앱이 채우는 칸).
+    /// - g8: 훅 장면을 맨 뒤로 → 첫 장면이 훅이 아니다
+    /// - g11: 뒤에서부터 장면을 빼 길이를 목표의 60% 밑으로 (훅은 남긴다)
+    static func inject(db: AppDatabase, draft: String, fault: String) throws -> String {
+        guard let rec = try db.writer.read({ try CompositionRecord.fetchOne($0, key: draft) }) else {
+            throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: draft])
+        }
+        var c = try rec.composition()
+        let id = "\(draft)_inj_\(fault)"
+        try db.writer.write { db in
+            // 다시 돌릴 때를 위해 앞선 주입 사슬을 지운다 (판정 전용 DB).
+            let ids = try String.fetchAll(db, sql: "SELECT id FROM composition WHERE id = ? OR id LIKE ?", arguments: [id, id + "_r%"])
+            for x in ids { try db.execute(sql: "DELETE FROM output WHERE compositionId = ?", arguments: [x]) }
+            try db.execute(sql: "DELETE FROM composition WHERE id LIKE ?", arguments: [id + "_r%"])
+            try db.execute(sql: "DELETE FROM composition WHERE id = ?", arguments: [id])
+        }
+        c = Composition(id: id, videoID: c.videoID, templateID: c.templateID, templateVersion: c.templateVersion,
+                        style: c.style, size: c.size, fps: c.fps, meta: c.meta, captionSlot: c.captionSlot,
+                        scenes: c.scenes, audio: c.audio, revisionOf: nil, createdAt: Date())
+        for i in c.scenes.indices { c.scenes[i].reframe = ReframeTrack() }
+        switch fault {
+        case "g8":
+            let hook = c.scenes.removeFirst()
+            c.scenes.append(hook)
+        case "g11":
+            while c.scenes.count > 1, c.duration > c.meta.targetDurationSec * 0.6 { c.scenes.removeLast() }
+        default:
+            throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "모르는 결함: \(fault)"])
+        }
+        try db.saveComposition(c, origin: .draft)
+        return id
+    }
+
+    /// 앱과 같은 루프를 초안 하나에서 돌리고 사슬을 돌려준다.
+    static func runLoop(db: AppDatabase, work: URL, kind: AgentKind, draft: String, mcp: URL) async throws -> [Row] {
+        try await db.writer.write { db in try db.execute(sql: "DELETE FROM output WHERE compositionId = ?", arguments: [draft]) }
+        guard let rec = try await db.writer.read({ try CompositionRecord.fetchOne($0, key: draft) }) else {
+            throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: draft])
+        }
+        var comp = try rec.composition()
+        for i in comp.scenes.indices { comp.scenes[i].reframe = ReframeTrack() }
+        try db.saveComposition(comp, createdAt: rec.createdAt, origin: rec.origin)
+
+        final class Box: @unchecked Sendable { var queue: JobQueue? }
+        let box = Box()
+        let agent = AgentJob(
+            db: db, mcpExecutable: mcp,
+            choose: {
+                guard case .ready(let exe, let v) = await CLILocator.connection(kind) else { return nil }
+                return AgentJob.Choice(kind: kind, executable: exe, version: v)
+            },
+            workRoot: work.appending(path: "agent"),
+            makeCompositionID: { _ in "\(draft)_r\(UUID().uuidString.prefix(4))" },
+            onDraft: { id in try await box.queue?.enqueue(.render, targetId: id) }
+        )
+        let render = RenderJob(db: db, outputs: work.appending(path: "outputs"))
+        let review = ReviewLoop(db: db) { id in try await box.queue?.enqueue(.selfEval, targetId: id) }
+        let queue = JobQueue(db: db, handlers: [
+            .selfEval: agent.selfEvalHandler,
+            .render: { job in try await review.afterRender(try await render.run(compositionId: job.targetId)) },
+        ])
+        box.queue = queue
+        try await queue.start()
+        try await queue.enqueue(.render, targetId: draft)
+        await queue.waitUntilIdle()
+
+        let (all, outputs, failedJobs) = try await db.writer.read { db in
+            (try CompositionRecord.fetchAll(db), try OutputRecord.fetchAll(db), try JobRecord.fetchAll(db).filter { $0.state == .failed })
+        }
+        for j in failedJobs where all.contains(where: { $0.id == j.targetId && ($0.id == draft || $0.id.hasPrefix(draft + "_r")) }) {
+            FileHandle.standardError.write(Data("실패한 작업: \(j.kind.rawValue) \(j.targetId) — \(j.error ?? "")\n".utf8))
+        }
+        var rows: [Row] = []
+        var current = all.first { $0.id == draft }
+        while let c = current {
+            let o = outputs.first { $0.compositionId == c.id }
+            let report = (try? JSONDecoder().decode([String: JSONValue].self, from: Data((o?.reviewReport ?? "{}").utf8))) ?? [:]
+            let items: [String] = { if case .array(let a)? = report["selfEval"] { a.compactMap { if case .string(let s) = $0 { s } else { nil } } } else { [] } }()
+            rows.append(Row(round: rows.count, id: c.id, origin: c.origin, items: items, verdict: o?.verdict, report: report, comp: try c.composition()))
+            current = all.first { $0.revisionOf == c.id }
+        }
+        return rows
+    }
+
+    static func printChain(_ rows: [Row]) {
+        print("판 | 출처 | 되먹임 항목 | 보이기 | G1 | G8 | G9 | G11 | 길이/목표")
+        for r in rows {
+            print(["\(r.round)", r.origin.rawValue, r.items.isEmpty ? "없음" : r.items.joined(separator: ","),
+                   r.verdict?.rawValue ?? "(렌더 없음)", r.label("G1"), r.label("G8"), r.label("G9"), r.label("G11"),
+                   String(format: "%.1f/%.0f", r.comp.duration, r.comp.meta.targetDurationSec)].joined(separator: " | "))
+        }
+    }
 }
