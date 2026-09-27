@@ -222,9 +222,13 @@ private struct LookSettings: View {
             } header: {
                 Text(Copy.Look.preview)
             } footer: {
-                Text(Copy.Look.lookSectionDetail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: Tokens.Space.hairline) {
+                    Text(Copy.Look.lookSectionDetail)
+                    // 이미 만든 영상이 바뀌는 줄 알면 고르기가 무섭다. 바뀌지 않는다고 먼저 말한다.
+                    Text(Copy.Look.appliesNext)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             Section {

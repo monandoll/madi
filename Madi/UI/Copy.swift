@@ -670,6 +670,8 @@ public enum Copy {
     public enum Look {
         public static let lookSectionTitle = "자막 모양"
         public static let lookSectionDetail = "글씨 모양만 바꿔요. 크기와 자리는 그대로예요."
+        /// 옛 결과물은 자기 모양으로 재현돼야 한다 (`§9` · `§1-8`). 그래서 바꾼 모양은 **다음 영상부터**다.
+        public static let appliesNext = "바꾼 모양은 다음에 만드는 영상부터 적용돼요. 이미 만든 영상은 그대로예요."
         public static let font = "글꼴"
         public static let lookFontDefault = "기본 글꼴"
         public static let lookFontHint = "편집 앱에서 쓰던 글꼴을 이 Mac에 설치하면 여기 나와요."
