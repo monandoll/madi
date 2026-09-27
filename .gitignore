@@ -3,6 +3,7 @@
 
 # Xcode
 build/
+build-rel/
 DerivedData/
 *.xcuserstate
 *.xcworkspace/xcuserdata/

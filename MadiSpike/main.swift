@@ -1695,6 +1695,88 @@ case "agent":
         }
     } catch { fail("\(error)") }
 
+case "stage4":
+    // 4단계 판정 (docs/stage-4.spec.md 6번 · 결정 ④). **판정 전용 DB** 에 영상을 들이고 앱과 같은 부품
+    // (AnalyzeJob → AgentJob → RenderJob)을 CLI 마다 돌려 게이트를 읽는다. 사람은 편집안을 한 글자도 고치지 않는다.
+    // 렌더는 결정 ③ 대로 이 도구가 건다 (앱은 초안까지).
+    guard let dbPath = option("db"), let work = option("work") else {
+        fail("사용법: madi-spike stage4 --db <sqlite> --work <폴더> [--kinds claude,codex] <영상> …")
+    }
+    let files = args.dropFirst().filter { !$0.hasPrefix("--") && args[args.firstIndex(of: $0)! - 1].hasPrefix("--") == false }
+    let kinds = (option("kinds") ?? "claude,codex").split(separator: ",").compactMap { AgentKind(rawValue: String($0)) }
+    do {
+        let db = try AppDatabase.open(path: dbPath)
+        let workURL = URL(fileURLWithPath: work)
+        let catalog = try DownloadCatalog.bundled()
+        let preparer = try ModelPreparer(catalog: catalog)
+        Task.detached { await preparer.prepare() }
+        let analyze = AnalyzeJob(db: db, transcriber: PreparedTranscriber(preparer: preparer), root: workURL.appending(path: "analysis"))
+        let render = RenderJob(db: db, outputs: workURL.appending(path: "outputs"))
+        let mcp = option("mcp").map { URL(fileURLWithPath: $0) }
+            ?? URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath().deletingLastPathComponent().appending(path: "madi-mcp")
+
+        print("영상 | CLI | AI초 | 모델 | 장면 | 길이/목표 | 장면중앙 | 첫자막 | G1 | G4 | G6 | 하드 | G2 | G3 | G5")
+        for file in files {
+            let url = URL(fileURLWithPath: file)
+            let id = url.deletingPathExtension().lastPathComponent
+            let info = try await FrameSheet.info(of: url)
+            try await db.writer.write { db in
+                if try VideoRecord.fetchOne(db, key: id) == nil {
+                    try VideoRecord(id: id, source: .folder, sourceRef: url.path, localPath: url.path,
+                                    durationSec: info.duration, status: .ready).insert(db)
+                }
+            }
+            if try await db.writer.read({ try DigestRecord.fetchOne($0, key: id) }) == nil {
+                FileHandle.standardError.write(Data("\(id) 분석 중…\n".utf8))
+                _ = try await analyze.run(videoId: id)
+            }
+            for kind in kinds {
+                let compID = "j_\(kind.rawValue)_\(id)"
+                var agentSeconds = 0.0
+                do {
+                    if try await db.writer.read({ try CompositionRecord.fetchOne($0, key: compID) }) == nil {
+                        let t0 = Date()
+                        let job = AgentJob(
+                            db: db, mcpExecutable: mcp,
+                            choose: {
+                                guard case .ready(let exe, let v) = await CLILocator.connection(kind) else { return nil }
+                                return AgentJob.Choice(kind: kind, executable: exe, version: v)
+                            },
+                            workRoot: workURL.appending(path: "agent"), makeCompositionID: { _ in compID }
+                        )
+                        FileHandle.standardError.write(Data("\(id) \(kind.rawValue) 턴…\n".utf8))
+                        try await job.handler(JobRecord(kind: .agent, targetId: id))
+                        agentSeconds = Date().timeIntervalSince(t0)
+                    }
+                    FileHandle.standardError.write(Data("\(id) \(kind.rawValue) 렌더…\n".utf8))
+                    let output = try await render.run(compositionId: compID)
+                    let comp = try await db.writer.read { try CompositionRecord.fetchOne($0, key: compID)! }.composition()
+                    let report = try JSONDecoder().decode([String: JSONValue].self, from: Data((output.reviewReport ?? "{}").utf8))
+                    func label(_ k: String) -> String { if case .string(let s)? = report[k] { s } else { "-" } }
+                    let g4 = report.filter { $0.key.hasPrefix("G4.") }.map { if case .string(let s) = $0.value { s } else { "?" } }
+                    let g4Label = g4.allSatisfy { $0 == "pass" } ? "pass" : g4.joined(separator: "/")
+                    let g1 = label("G1")
+                    let hard = (g1 == "pass" || g1.hasPrefix("sourceLimited") || g1.hasPrefix("cannotJudge")) && g4Label == "pass" && label("G6") == "pass"
+                    let durations = comp.scenes.map(\.duration).sorted()
+                    let median = durations.isEmpty ? 0 : (durations[durations.count / 2] + durations[(durations.count - 1) / 2]) / 2
+                    let firstCap = comp.scenes.first?.captions.first?.start ?? -1
+                    let model = try await db.writer.read { db in
+                        try EventRecord.fetchAll(db).last { $0.kind == "agent.turn.finished" && ($0.payload ?? "").contains(compID) }?.payload
+                    }.flatMap { p -> String? in
+                        guard let d = try? JSONDecoder().decode([String: JSONValue].self, from: Data(p.utf8)), case .string(let m)? = d["model"] else { return nil }
+                        return m.isEmpty ? "(안 알려 줌)" : m
+                    } ?? "?"
+                    print([id, kind.rawValue, agentSeconds > 0 ? String(format: "%.1f", agentSeconds) : "(앞서)", model,
+                           "\(comp.scenes.count)", String(format: "%.1f/%.0f", comp.duration, comp.meta.targetDurationSec),
+                           String(format: "%.2f", median), String(format: "%.2f", firstCap),
+                           g1, g4Label, label("G6"), hard ? "✅" : "❌", label("G2"), label("G3"), label("G5")].joined(separator: " | "))
+                } catch {
+                    print("\(id) | \(kind.rawValue) | 실패: \(error)")
+                }
+            }
+        }
+    } catch { fail("\(error)") }
+
 
 default:
     print("""
@@ -1709,6 +1791,7 @@ default:
       frames <영상> <디렉토리> [--at 1,2]  비교용 프레임 추출
       render <composition.json> <out.mp4>  영상 한 편
       agent <claude|codex> --db <sqlite> --video <id>  AI CLI 한 턴 (4단계)
+      stage4 --db <sqlite> --work <폴더> <영상> …        4단계 판정 (앱 부품 그대로, 판정 전용 DB)
       compare <원본> <렌더> <out.png>     같은 시각을 나란히 (B 판정용)
       sheet <영상> <out.png> [--cols 5]   한 편을 격자로 훑어본다
       pose <영상> <디렉토리> [--conf 0.3]  사람 감지 정확도 (1단계 준비)
