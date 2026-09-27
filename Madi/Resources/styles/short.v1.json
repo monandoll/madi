@@ -25,7 +25,7 @@
       "targetDurationSec": 1.0,
       "maxDurationSec": 3.0,
       "maxLines": 2,
-      "lineGapRatio": 1.35,
+      "lineGapRatio": 1.175,
       "italicSlantDeg": 10,
       "popInSec": 0.1,
       "popInScaleFrom": 0.86

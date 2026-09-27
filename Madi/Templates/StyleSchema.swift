@@ -184,7 +184,12 @@ public struct StyleValues: Codable, Hashable, Sendable {
         public var maxLines: Int
 
         /// 2줄일 때 줄 간격 ÷ 글자 높이.
-        /// 재는 법: 두 줄의 같은 지점(예: 글자 아래끝) 사이 픽셀 간격 ÷ 글자 높이.
+        /// 재는 법: 두 줄의 같은 지점(예: 글자 아래끝) 사이 픽셀 간격 ÷ **목표** 글자 높이(`inkHeightRatio`).
+        /// 코드가 `목표 글자 높이 × lineGapRatio` 로 쓰므로 목표 높이로 나눠야 픽셀이 재현된다.
+        ///
+        /// 1.175 = 81px ÷ 68.9px @1920. `nCshtY04NiY` 12.25~13.5초 2줄 자막, 6프레임 모두 81px.
+        /// ⚠ **1편 · 1덩어리 근거다.** 2줄 자막이 190덩어리 중 1개뿐이라 더 모을 데가 없다.
+        ///   이전 값 1.35 는 근거 없는 추측이었다 (`docs/findings/2026-09-27-stage2-export.md §5`).
         public var lineGapRatio: Double
 
         /// `look` 이 기울임을 켰는데 고른 글꼴에 이탤릭 자형이 없을 때 **기울이는 각도(도)**.

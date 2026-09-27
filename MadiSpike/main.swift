@@ -1156,6 +1156,65 @@ case "subjects":
         print("  덩어리 2개 이상 \(multi)/\(n) · 1등이 9:16 폭을 넘는 프레임 \(over)/\(n)")
     } catch { fail("\(error)") }
 
+case "emphasis":
+    // **강조색을 쓰는가.** 본문 자막 상자 안의 "검은 외곽선이 붙은 밝은 픽셀" 을 흰색과 유색으로 나눈다.
+    // 유색 비율이 높은 프레임 = 본문 안에 색이 다른 낱말이 있다 (강조).
+    // 입력은 이미 뽑아 둔 프레임 디렉토리 (`madi-spike secondary` 가 out/secondary/<id>/ 에 남긴다).
+    guard args.count > 1 else { fail("사용법: madi-spike emphasis <프레임디렉토리> [--raw]") }
+    do {
+        let dir = URL(fileURLWithPath: args[1])
+        let files = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+            .filter { $0.hasSuffix(".png") }.sorted()
+        var withCaption = 0, emphasized: [String] = []
+        for name in files {
+            let image = try StillRenderer.loadImage(dir.appending(path: name))
+            guard let read = try? CaptionReader.read(image), !read.text.isEmpty else { continue }
+            withCaption += 1
+            let W = image.width, H = image.height
+            var buf = [UInt8](repeating: 0, count: W * H * 4)
+            let ctx = CGContext(data: &buf, width: W, height: H, bitsPerComponent: 8, bytesPerRow: W * 4,
+                                space: CGColorSpaceCreateDeviceRGB(),
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: W, height: H))
+            func px(_ x: Int, _ y: Int) -> (Int, Int, Int) {
+                let o = (y * W + x) * 4; return (Int(buf[o]), Int(buf[o + 1]), Int(buf[o + 2]))
+            }
+            func dark(_ x: Int, _ y: Int) -> Bool {
+                guard x >= 0, y >= 0, x < W, y < H else { return false }
+                let p = px(x, y); return max(p.0, p.1, p.2) < 70
+            }
+            let x0 = max(0, Int(read.box.x * Double(W))), x1 = min(W - 1, Int((read.box.x + read.box.w) * Double(W)))
+            let y0 = max(0, Int((1 - read.box.y - read.box.h) * Double(H))), y1 = min(H - 1, Int((1 - read.box.y) * Double(H)))
+            var white = 0, colored = 0
+            var hueSum = (0, 0, 0)
+            for y in y0...y1 {
+                for x in x0...x1 {
+                    let p = px(x, y)
+                    guard max(p.0, p.1, p.2) > 190 else { continue }
+                    var outlined = false
+                    for d in 2...8 where dark(x + d, y) || dark(x - d, y) || dark(x, y + d) || dark(x, y - d) {
+                        outlined = true; break
+                    }
+                    guard outlined else { continue }
+                    if max(p.0, p.1, p.2) - min(p.0, p.1, p.2) > 70 {
+                        colored += 1; hueSum.0 += p.0; hueSum.1 += p.1; hueSum.2 += p.2
+                    } else if min(p.0, p.1, p.2) > 200 { white += 1 }
+                }
+            }
+            let ratio = Double(colored) / Double(max(1, white + colored))
+            let tag = ratio > 0.08 ? String(format: "강조? 유색 %.0f%% #%02X%02X%02X", ratio * 100,
+                                            hueSum.0 / max(1, colored), hueSum.1 / max(1, colored), hueSum.2 / max(1, colored)) : ""
+            if ratio > 0.08 { emphasized.append(name) }
+            if args.contains("--raw") {
+                print(String(format: "  %@  아래끝 %.4f  유색 %4.1f%%  %@  %@", name as NSString, read.inkBottomRatio,
+                             ratio * 100, read.text.replacingOccurrences(of: "\n", with: " / ") as NSString, tag as NSString))
+            }
+        }
+        print(String(format: "  %-14@ 자막 프레임 %3d · 유색 8%% 넘는 프레임 %d  %@",
+                     dir.lastPathComponent as NSString, withCaption, emphasized.count,
+                     emphasized.prefix(6).joined(separator: " ") as NSString))
+    } catch { fail("\(error)") }
+
 case "captionband":
     // 자막 위치 가설 검증 (1단계 첫 작업).
     // 후보 위치마다 "그 높이에서 사람이 가로로 얼마나 차지하나" 를 잰다.
