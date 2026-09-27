@@ -68,6 +68,7 @@ targets:
       - path: Madi/Import
       - path: Madi/Downloads
       - path: Madi/MCP
+      - path: Madi/Agent
       - path: Madi/Resources/downloads.json
         buildPhase: resources
       - path: Madi/Templates/Spec.json

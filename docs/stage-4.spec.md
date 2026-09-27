@@ -18,7 +18,7 @@ Process 스폰 + MCP 2도구 + 프롬프트 조립.
 |---|---|---|---|
 | 1 | **판정 도구 지우기** — `Stage3Harness` · `Pipeline` 연결부 · `§12-3` 언급 | `Madi/App/` | 빌드 · 테스트 녹색. `-stage3Slot` 이 코드에 없다 |
 | 2 | **MCP 서버** — stdio JSON-RPC, 도구 2개 (`§10`) ✅ | `Madi/MCP/` · `MadiMCP/` | 테스트: `initialize` · `tools/list` 가 2개만 · `read_digest` 가 텍스트 + 시트 이미지 · `write_composition` 이 검증 실패를 그대로 돌려준다 · 스타일 값 거절 |
-| 3 | **AgentProvider** — Claude · Codex 스폰, 스트림 읽기, 연결 상태(설치 · 로그인) | `Madi/Agent/` | 두 CLI 로 각각 "도구 2개만 보인다" 확인 턴 1회 · 가짜 CLI 로 단위 테스트 |
+| 3 | **AgentProvider** — Claude · Codex 스폰, 스트림 읽기, 연결 상태(설치 · 로그인) ✅ | `Madi/Agent/` | 두 CLI 로 각각 "도구 2개만 보인다" 확인 턴 1회 · 가짜 CLI 로 단위 테스트 |
 | 4 | **프롬프트 조립** — `§10` 순서: 제작 지침 → Spec.json → 게이트 요약 → 사용자 규칙 → digest → 대화 | `Madi/Agent/` | 테스트: 순서 · 빠진 칸 없음. 제작 지침 초안(`Madi/Agent/playbook.md`) — 근거는 `docs/findings/` |
 | 5 | **연결** — 분석 끝 → AI 1턴 → 편집안 저장 → (렌더) · `events` 에 요청 종류 · 소요 시간 · CLI · 모델 | `Madi/Queue/` · `Madi/App/` | 대용 영상 1편이 사람 손 없이 편집안까지 간다 |
 | 6 | **판정** — 아래 | `docs/findings/` | 판정 표 |
@@ -42,7 +42,7 @@ Process 스폰 + MCP 2도구 + 프롬프트 조립.
 | # | 결정 | 닿는 단위 |
 |---|---|---|
 | ① | ~~MCP 서버를 어디에 두나~~ → **번들 안 별도 도구** (아래) | 2 |
-| ② | 모델을 고정하나 — CLI 기본값(구독이 주는 것) / 앱이 지정 | 3 |
+| ② | ~~모델을 고정하나~~ → **CLI 기본값 + 기록** (아래) | 3 |
 | ③ | 판정 때 렌더를 무엇이 거나 — 자동 렌더 금지(`§10`)와 "사람 손 없이" 사이 | 5 |
 | ④ | 판정 재료 — 촬영본이 없다. 대용 몇 편 · 두 CLI 각각 몇 번 | 6 |
 
@@ -56,6 +56,23 @@ Process 스폰 + MCP 2도구 + 프롬프트 조립.
   AI 는 다른 영상을 못 읽고, 앱은 턴이 끝난 뒤 볼 편집안 id 를 미리 안다. AI 가 여러 번 쓰면 같은 id 를 덮어쓴다.
   `write_composition` 은 앱이 채우는 칸(`id` · `videoId` · `templateId` · `templateVersion` · `style` · `revisionOf` · `createdAt`)을
   AI 가 적으면 거절하고, 원본 구간이 영상 길이를 넘는지도 본다 (`validate` 는 영상 길이를 모른다)
+
+- **② 모델 — 지정하지 않는다. CLI 기본값을 쓰고 기록한다 (2026-09-27).** 구독 등급마다 쓸 수 있는 모델이 달라,
+  앱이 박은 모델이 크리에이터 구독에 없으면 턴이 실패한다. Claude 는 `init` · `result` 에 모델 이름이 온다
+  (2026-09-27 기본값 `claude-opus-5-5`). Codex 는 알려 주지 않아 CLI 판만 남는다. Codex 는 사용자 설정을 무시하고
+  띄우므로(`--ignore-user-config`) 사용자가 `config.toml` 에 적은 모델도 쓰지 않는다 — CLI 기본값이다.
+  CLI 판이 바뀌면 결과가 달라질 수 있다. 그건 `events` 의 판 · 모델로 추적한다
+
+### 3번 확인 (2026-09-27)
+
+`madi-spike agent <claude|codex>` — `CLILocator` → `AgentRunner` → 번들 옆 `madi-mcp` → 앱 DB **사본**(대용 영상 다이제스트).
+
+| | 판 | 모델 | 보인 도구 | read_digest | 걸린 시간 |
+|---|---|---|---|---|---|
+| Claude | 2.1.283 | claude-opus-5-5 | madi 2개 | 성공 | 4.4초 |
+| Codex | 0.156.1 | (안 알려 줌) | (안 알려 줌) | 성공 | 16.6초 |
+
+Claude 는 `init` 의 도구 목록에 madi 말고 다른 것이 있으면 `AgentRunner` 가 턴을 끊는다 (테스트로 지킨다).
 
 ## 판정 (6번)
 

@@ -1661,6 +1661,38 @@ case "render":
         print(outURL.path)
     } catch { fail("\(error)") }
 
+case "agent":
+    // 4단계 3번 · 6번 (docs/stage-4.spec.md) — AI CLI 한 턴을 AgentRunner 로 돌려 사건을 찍는다.
+    // 앱 DB 를 건드리지 않으려면 사본을 --db 로 준다. 편집안은 그 DB 에 --composition id 로 저장된다.
+    guard args.count > 1, let kind = AgentKind(rawValue: args[1]), let video = option("video"), let dbPath = option("db") else {
+        fail("사용법: madi-spike agent <claude|codex> --db <sqlite> --video <id> [--composition <id>] [--mcp <madi-mcp>] [--prompt <글> | --prompt-file <파일>]")
+    }
+    let connection = await CLILocator.connection(kind)
+    guard case .ready(let exe, let version) = connection else { fail("\(kind.rawValue) 연결 안 됨: \(connection)") }
+    print("\(kind.rawValue) \(version ?? "?") · \(exe.path)")
+    let mcp = option("mcp").map { URL(fileURLWithPath: $0) }
+        ?? URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath().deletingLastPathComponent().appending(path: "madi-mcp")
+    let prompt = try option("prompt-file").map { try String(contentsOfFile: $0, encoding: .utf8) }
+        ?? option("prompt") ?? "madi 의 read_digest 를 videoId \(video) 로 불러 영상 길이를 한 줄로 답하라."
+    let workDir = FileManager.default.temporaryDirectory.appending(path: "madi-agent-\(UUID().uuidString)", directoryHint: .isDirectory)
+    let req = AgentRequest(
+        prompt: prompt,
+        mcp: .madi(executable: mcp, videoID: video, compositionID: option("composition") ?? "agent_\(kind.rawValue)", dbPath: dbPath),
+        workDir: workDir
+    )
+    let t0 = Date()
+    do {
+        for try await event in AgentRunner(executable: exe, provider: AgentProviders.provider(kind)).run(req) {
+            switch event {
+            case .started(let model, let tools): print("▶ 시작 모델 \(model ?? "(안 알려 줌)") · 도구 \(tools.map { $0.joined(separator: ", ") } ?? "(안 알려 줌)")")
+            case .text(let t): print("💬 " + t.trimmingCharacters(in: .whitespacesAndNewlines))
+            case .toolCall(let name, let ok): print("🔧 \(name) " + (ok.map { $0 ? "성공" : "실패" } ?? "…"))
+            case .warning(let w): print("⚠ " + w)
+            case .finished(let o): print((o.isError ? "✗ 실패 " : "✓ 끝 ") + (o.model ?? "") + String(format: " · %.1f초", Date().timeIntervalSince(t0)) + (o.isError ? "\n" + (o.message ?? "") : ""))
+            }
+        }
+    } catch { fail("\(error)") }
+
 
 default:
     print("""
@@ -1674,6 +1706,7 @@ default:
       probe <영상>                       해상도 · 길이 · fps · 코덱
       frames <영상> <디렉토리> [--at 1,2]  비교용 프레임 추출
       render <composition.json> <out.mp4>  영상 한 편
+      agent <claude|codex> --db <sqlite> --video <id>  AI CLI 한 턴 (4단계)
       compare <원본> <렌더> <out.png>     같은 시각을 나란히 (B 판정용)
       sheet <영상> <out.png> [--cols 5]   한 편을 격자로 훑어본다
       pose <영상> <디렉토리> [--conf 0.3]  사람 감지 정확도 (1단계 준비)
