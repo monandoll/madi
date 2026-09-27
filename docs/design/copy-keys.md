@@ -7,6 +7,34 @@
 
 ---
 
+
+## 채운 곳 (디자인, 2026-09-28)
+
+아래 키는 **전부 `Copy.swift` 에 있다.** 멤버 이름을 키 이름과 똑같이 맞췄다 — 키로 찾으면 된다.
+진행률 · 이름처럼 값이 들어가는 것은 함수다.
+
+| 절 | 키 → `Copy` 위치 |
+|---|---|
+| 편집 준비 | `Copy.Prep.modelDownloading(fraction)` · `.modelWarming` · `.modelWaitingForVideo` · `.modelDownloadPaused` · `.modelDownloadFailed` · `.modelDiskFull` (+ 사이드바 짧은 꼴 `.sidebarStopped` · `.sidebarNeedsInternet` · `.sidebarNeedsSpace`) |
+| AI 연결 | `Copy.AI.aiNotConnected` · `.aiNotLoggedIn(name)` · `.aiDrafting` · `.aiDraftReady` · `.aiDraftFailed` (이유 한 줄 `.reasonLimit` · `.reasonLoggedOut(name)`) · 채팅 수정 실패는 `.aiEditFailed` · **새 키** `.analyzeFailed` |
+| 스스로 살펴보기 | `Copy.Review.reviewChecking` · `.reviewGaveUp(reason:tip:)` (이유 · 요령 예 `.gaveUpReason…` · `.gaveUpTip…`) · `.reviewSoftNote(item)` (예 `.softShort` · `.softLong` · `.softHook`) |
+| 채팅 수정 | `Copy.Remember.askRemember` · `.askRememberDetail` · `.rememberYes` · `.rememberNo` |
+| 업데이트 | `Copy.Update.checkForUpdates` = "업데이트 확인…" |
+| 사진 보관함 | `Copy.Photos.photoLibraryUsage` · `.photoLibraryDenied(folder:)` · `.importFromPhotosSince` · `.importFetchingOriginal(fraction)` · `.importFailed` (+ `.importFailedShort` · `.retryImport`) |
+| 자막 모양 | `Copy.Look.lookSectionTitle` · `.lookFontDefault` · `.lookFontHint` · `.lookItalic` · `.lookWeight` · `.lookSecondarySameAsMain` · `.lookFontMissing` (+ 굵기 이름 · 색 이름 · 미리보기 문장 `.previewMain` · `.previewSecondary`) |
+| 품질 안내 | `Copy.Gate.subjectTooSmall` · `.subjectTooSmallLowResolution` · `.subjectNotFound` · `.subjectAlreadyCropped` (+ 결과물 줄에 붙는 짧은 꼴 `.tipCloser` · `.tipResolution` · `.tipBackground` · `.tipWholeBody`) |
+| 느린 Mac (`§17`) | **새 키** `Copy.Machine.slowMac` · `.slowMacDetail` |
+
+**개발 일 하나**: `photoLibraryUsage` 는 `Info.plist` 에 들어가야 해서 `Copy` 로는 안 닿는다.
+`project.yml` 의 `INFOPLIST_KEY_NSPhotoLibraryUsageDescription` 에 `Copy.Photos.photoLibraryUsage` 문장을 그대로 옮겨 적는다
+(지금 넣어 둔 임시 문장과 뜻이 같고 띄어쓰기만 다르다 — "이 Mac을").
+
+**자막 모양 화면**: 설정에 **탭**을 하나 새로 두었다 (`일반` · `자막 모양`, `settings-look`). 미리보기는 화면이 그리지 않는다 —
+바꾸는 층이 `CaptionPainter.draw` 로 그려 `CaptionLook.preview` 에 넣는다 (`§7` 레이어 트리는 하나).
+글꼴이 지워졌으면 `CaptionLook.fontMissing = true` — 목록에 그 이름을 그대로 두고 이유를 한 줄 붙인다 (`settings-look-font-missing`).
+
+---
+
 ## 전사 모델 준비 — 첫 실행 뒤 (3단계)
 
 **디자인 첫 실행 화면에는 이 상태가 없다.** 개발 쪽에서 필요한 상태를 넘긴다. 어디에 보일지는 디자인이 정한다.

@@ -62,16 +62,22 @@ public struct ResultRef: Identifiable, Hashable, Sendable {
     /// **올렸는지 헷갈리지 않게** 목록 줄에 그대로 남긴다.
     public var exportedNote: String?
     public var thumbnail: Thumbnail
+    /// 결과는 올릴 수 있지만 **다음 촬영 때 도움이 될 한 줄** (원본 한계 — 인물이 작게 찍힘 등).
+    /// 실패가 아니다. `Copy.Gate.tip…` 의 **짧은 꼴**을 넣는다 — 목록 줄에 들어가야 해서다.
+    /// 긴 설명(`Copy.Gate.subjectTooSmall` 등)은 채팅으로 간다 (viewdata-map 3절 ⑤).
+    public var notice: String?
 
     public init(
         id: String, platform: PlatformKind, planLabel: String, when: String,
         duration: Double, sceneCount: Int, isNew: Bool = false,
         exportedNote: String? = nil,
-        thumbnail: Thumbnail = .none
+        thumbnail: Thumbnail = .none,
+        notice: String? = nil
     ) {
         self.id = id; self.platform = platform; self.planLabel = planLabel
         self.when = when; self.duration = duration; self.sceneCount = sceneCount
         self.isNew = isNew; self.exportedNote = exportedNote; self.thumbnail = thumbnail
+        self.notice = notice
     }
 }
 
@@ -87,15 +93,21 @@ public struct ShotItem: Identifiable, Hashable, Sendable {
     public var isMaking: Bool
     public var thumbnail: Thumbnail
     public var results: [ResultRef]
+    /// iCloud 에서 원본을 받는 중이면 0...1. "저장 공간 최적화" 면 오래 걸린다.
+    public var fetchProgress: Double?
+    /// 원본을 못 받았다. 사람 말 이유 한 줄 (viewdata-map 3절 ④). **붉은색이 아니다.**
+    public var problem: String?
 
     public init(
         id: String, title: String, shotAt: Date, duration: Double,
         speech: SpeechLevel = .clear, isMaking: Bool = false,
-        thumbnail: Thumbnail = .none, results: [ResultRef] = []
+        thumbnail: Thumbnail = .none, results: [ResultRef] = [],
+        fetchProgress: Double? = nil, problem: String? = nil
     ) {
         self.id = id; self.title = title; self.shotAt = shotAt; self.duration = duration
         self.speech = speech; self.isMaking = isMaking
         self.thumbnail = thumbnail; self.results = results
+        self.fetchProgress = fetchProgress; self.problem = problem
     }
 
     public var hasResult: Bool { !results.isEmpty }
@@ -135,18 +147,39 @@ public enum GalleryState: Hashable, Sendable {
 
 // MARK: - 사이드바
 
+/// 어느 AI 인가. 연결 상태와 따로 떼어 둔다 — "Claude 로그인 필요" 처럼 **어느 쪽**인지만 말할 때 쓴다.
+public enum AIProduct: Hashable, Sendable, CaseIterable {
+    case claude, codex
+
+    public var name: String {
+        switch self {
+        case .claude: Copy.Onboarding.AI.claude
+        case .codex: Copy.Onboarding.AI.codex
+        }
+    }
+}
+
 public enum AIConnection: Hashable, Sendable {
     case claude, codex, none
+    /// **설치는 됐는데 로그인이 풀렸다.** `none`(설치 안 됨)과 다음 행동이 다르다 —
+    /// 설치하기가 아니라 로그인하기다 (viewdata-map 3절 ③).
+    case notLoggedIn(AIProduct)
 
     public var label: String {
         switch self {
         case .claude: Copy.Sidebar.aiConnected
         case .codex: Copy.Sidebar.aiConnectedCodex
         case .none: Copy.Sidebar.aiDisconnected
+        case .notLoggedIn(let product): Copy.Sidebar.aiNeedsLogin(product.name)
         }
     }
 
-    public var isConnected: Bool { self != .none }
+    public var isConnected: Bool {
+        switch self {
+        case .claude, .codex: true
+        case .none, .notLoggedIn: false
+        }
+    }
 }
 
 /// 사이드바가 고르는 칸.
@@ -174,6 +207,22 @@ public enum LibrarySection: Hashable, Sendable, CaseIterable, Identifiable {
 }
 
 /// 사이드바 푸터 + 배지에 필요한 것.
+/// 첫 실행 직후 앱이 **혼자** 하는 편집 준비 (말 알아듣기 준비 — 받기 · 데우기).
+/// 기다리게 하는 화면이 아니라 조용한 상태 표시다 (`§1-6`). 끝나면 아무 말도 하지 않는다 — `nil`.
+/// "모델" · "다운로드" 는 화면에 나오지 않는다 (`§1-5`).
+public enum EnginePrep: Hashable, Sendable {
+    /// 받는 중. 0...1.
+    case downloading(Double)
+    /// 다 받고 처음 한 번 준비하는 중 (~1분). 앱 업데이트 뒤에도 한 번 온다.
+    case warming
+    /// 인터넷이 끊겨 멈췄다. **실패가 아니다** — 되면 이어서 받는다.
+    case paused
+    /// 여러 번 해도 안 됐다. 사람이 인터넷을 한 번 봐야 한다.
+    case failed
+    /// 저장 공간이 모자란다 (약 1GB 필요).
+    case diskFull
+}
+
 public struct StudioStatus: Hashable, Sendable {
     /// 설정값이다. 코드에 박지 않는다 (AGENTS.md §1-7).
     public var studioName: String
@@ -181,14 +230,17 @@ public struct StudioStatus: Hashable, Sendable {
     public var shotCount: Int
     public var resultCount: Int
     public var makingCount: Int
+    /// 편집 준비가 안 끝났으면 사이드바 아래에 한 줄. 끝났으면 `nil` (viewdata-map 3절 ①).
+    public var preparing: EnginePrep?
 
     public init(
         studioName: String, ai: AIConnection,
-        shotCount: Int, resultCount: Int, makingCount: Int
+        shotCount: Int, resultCount: Int, makingCount: Int,
+        preparing: EnginePrep? = nil
     ) {
         self.studioName = studioName; self.ai = ai
         self.shotCount = shotCount; self.resultCount = resultCount
-        self.makingCount = makingCount
+        self.makingCount = makingCount; self.preparing = preparing
     }
 
     public func count(for section: LibrarySection) -> Int {
@@ -392,6 +444,14 @@ public enum PlanState: Hashable, Sendable {
     case making(PlanView, MakingProgress)
     /// AI 가 연결돼 있지 않다. **오류가 아니다** — 한 줄만 말한다 (AGENTS.md §10).
     case noAI
+    /// AI 는 설치돼 있는데 로그인이 풀렸다. 설치가 아니라 로그인만 하면 된다.
+    case notLoggedIn(AIProduct)
+    /// 멈췄다 — AI 가 초안을 못 짰거나, 분석이 죽었거나, 두 번 다듬어도 기준에 못 미쳤다
+    /// (viewdata-map 2절 3 · 6 · 9, 3절 ②). `MakingJob.State.stopped` 와 같은 모양이다.
+    /// 편집안이 이미 있으면 `plan` 에 넣는다 — 장면 목록은 그대로 보인다.
+    /// **붉은색은 다시 해도 안 될 때만** — 이유와 다음 행동이 같이 온다.
+    /// `isFinal` 은 **다시 해도 안 되는** 경우(두 번 다듬어도 기준 미달)에만 켠다 — 그때만 붉은색이다.
+    case stopped(plan: PlanView?, reason: String, actions: [ChatChoice], isFinal: Bool = false)
     /// 아직 다루지 못하는 촬영본. 롱폼은 6단계 통과 전에는 범위 밖이다 (`AGENTS.md §16`).
     /// **실패가 아니라 "아직" 이다.** 왜 못 하는지 말하고 다른 길을 준다.
     case notYet(shotTitle: String, reason: String)
@@ -399,6 +459,7 @@ public enum PlanState: Hashable, Sendable {
     public var plan: PlanView? {
         switch self {
         case .ready(let plan), .making(let plan, _): plan
+        case .stopped(let plan, _, _, _): plan
         default: nil
         }
     }
@@ -598,11 +659,14 @@ public enum AISetup: Hashable, Sendable {
     /// 브라우저에서 로그인하는 중. 앱이 기다린다.
     case waiting(AIConnection)
     case connected(AIConnection, account: String)
+    /// 설치는 돼 있는데 로그인이 풀렸다. 설정에서 "로그인하기" 로 이어진다.
+    case notLoggedIn(AIProduct)
 
     public var picked: AIConnection? {
         switch self {
         case .notPicked: nil
         case .picked(let ai), .waiting(let ai), .connected(let ai, _): ai
+        case .notLoggedIn(let product): product == .claude ? .claude : .codex
         }
     }
 }
@@ -612,12 +676,15 @@ public struct OnboardingState: Hashable, Sendable {
     public var photos: PhotoAccess
     public var ai: AISetup
     public var studioName: String
+    /// Intel Mac. **솔직하게 알린다** — 조용히 느려지게 두지 않는다 (`§17`).
+    public var isSlowMac: Bool
 
     public init(
         step: OnboardingStep, photos: PhotoAccess = .notAsked,
-        ai: AISetup = .notPicked, studioName: String = ""
+        ai: AISetup = .notPicked, studioName: String = "", isSlowMac: Bool = false
     ) {
         self.step = step; self.photos = photos; self.ai = ai; self.studioName = studioName
+        self.isSlowMac = isSlowMac
     }
 }
 
@@ -634,12 +701,84 @@ public struct SettingsValues: Hashable, Sendable {
     /// 어느 앨범에서 가져올지. 비면 전체 보관함.
     public var albumName: String?
     public var photos: PhotoAccess
+    /// 자막 모양 (`§9`). 사람이 고르는 값 — AI 는 못 쓴다.
+    public var look: CaptionLook?
+    /// Intel Mac 이면 설정에도 한 줄 (`§17`).
+    public var isSlowMac: Bool
 
     public init(
         ai: AISetup, activeAI: AIConnection, studioName: String,
-        keepDays: Int, albumName: String? = nil, photos: PhotoAccess
+        keepDays: Int, albumName: String? = nil, photos: PhotoAccess,
+        look: CaptionLook? = nil, isSlowMac: Bool = false
     ) {
         self.ai = ai; self.activeAI = activeAI; self.studioName = studioName
         self.keepDays = keepDays; self.albumName = albumName; self.photos = photos
+        self.look = look; self.isSlowMac = isSlowMac
+    }
+}
+
+/// 자막 모양 — 글꼴 · 굵기 · 기울임 · 색 (`AGENTS.md §9` "템플릿과 자막 모양").
+///
+/// **고르는 것만 있다.** 크기 · 위치 칸은 없다 — 템플릿이 정하고, 글꼴을 바꿔도 글자 높이 ·
+/// 위치는 그대로다. 미리보기는 바꾸는 층이 **렌더 코드(`CaptionPainter`)로 그려서** 넣는다 —
+/// 화면이 자막을 흉내 내 그리지 않는다 (`§7` 레이어 트리는 하나).
+public struct CaptionLook: Hashable, Sendable {
+    public enum Weight: Hashable, Sendable, CaseIterable {
+        case regular, medium, bold, heavy
+
+        public var label: String {
+            switch self {
+            case .regular: Copy.Look.weightRegular
+            case .medium: Copy.Look.weightMedium
+            case .bold: Copy.Look.weightBold
+            case .heavy: Copy.Look.weightHeavy
+            }
+        }
+    }
+
+    /// 색 견본 하나. 숫자(#RRGGBB)는 화면에 나오지 않는다 — 이름과 색만.
+    public struct Swatch: Identifiable, Hashable, Sendable {
+        public var id: String
+        public var label: String
+        public var red: Double
+        public var green: Double
+        public var blue: Double
+
+        public init(id: String, label: String, red: Double, green: Double, blue: Double) {
+            self.id = id; self.label = label; self.red = red; self.green = green; self.blue = blue
+        }
+
+        public var color: Color { Color(red: red, green: green, blue: blue) }
+    }
+
+    /// 이 Mac 에 설치된, 한글을 그릴 수 있는 글꼴 (`MadiFont.hangulFamilies()`).
+    /// "기본" 은 목록에 없다 — 화면이 맨 앞에 붙인다.
+    public var fonts: [String]
+    /// nil 이면 앱 기본 글꼴.
+    public var font: String?
+    public var weight: Weight
+    public var italic: Bool
+    public var fills: [Swatch]
+    public var fill: Swatch.ID
+    public var secondaryFills: [Swatch]
+    public var secondaryFill: Swatch.ID
+    /// 보조 문구도 본문과 같은 글꼴 · 기울임을 쓸지.
+    public var secondarySameAsMain: Bool
+    /// 지금 고른 모양으로 그린 자막 한 장 (본문 + 영문 보조). 렌더 코드가 그린다.
+    public var preview: Thumbnail
+    /// 저장된 글꼴이 이 Mac 에서 지워졌다. 조용히 대체하지 않는다 (`§9`).
+    public var fontMissing: Bool
+
+    public init(
+        fonts: [String], font: String?, weight: Weight, italic: Bool,
+        fills: [Swatch], fill: Swatch.ID,
+        secondaryFills: [Swatch], secondaryFill: Swatch.ID,
+        secondarySameAsMain: Bool, preview: Thumbnail = .none, fontMissing: Bool = false
+    ) {
+        self.fonts = fonts; self.font = font; self.weight = weight; self.italic = italic
+        self.fills = fills; self.fill = fill
+        self.secondaryFills = secondaryFills; self.secondaryFill = secondaryFill
+        self.secondarySameAsMain = secondarySameAsMain
+        self.preview = preview; self.fontMissing = fontMissing
     }
 }

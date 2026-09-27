@@ -32,6 +32,10 @@ struct Shot {
 }
 
 let defaultSizes = [Tokens.Size.windowIdeal, Tokens.Size.windowMin]
+/// 설정 창 크기. 탭이 들어가 예전(520×520)보다 조금 크다.
+/// ⚠ `shots` 보다 **위에** 있어야 한다. main.swift 의 전역은 적힌 순서대로 만들어져서,
+/// 아래에 두면 목록을 만들 때 아직 0×0 이다 (실제로 `settings-…-0x0.png` 가 나왔다).
+let settingsSize = CGSize(width: 540, height: 580)
 
 let shots: [Shot] = [
     Shot("gallery-loaded") {
@@ -325,18 +329,152 @@ let shots: [Shot] = [
     },
 
     // 설정은 `Settings` 씬이라 창이 작다.
-    Shot("settings-connected", sizes: [CGSize(width: 520, height: 520)]) {
-        SettingsScreen(values: SampleData.settings)
+    Shot("onboarding-ready-slow", sizes: [Tokens.Size.onboarding]) {
+        OnboardingWindow(state: SampleData.onboardingReadySlow)
     },
-    Shot("settings-disconnected", sizes: [CGSize(width: 520, height: 520)]) {
+
+    // 설정은 `Settings` 씬이라 창이 작다. 탭 둘 — 일반 · 자막 모양.
+    Shot("settings-connected", sizes: [settingsSize]) {
+        SettingsScreen(values: SampleData.settingsWithLook)
+    },
+    Shot("settings-disconnected", sizes: [settingsSize]) {
         SettingsScreen(values: SampleData.settingsDisconnected)
     },
-    Shot("settings-loading", sizes: [CGSize(width: 520, height: 520)]) {
-        SettingsScreen(values: SampleData.settings, isLoading: true)
+    Shot("settings-loading", sizes: [settingsSize]) {
+        SettingsScreen(values: SampleData.settingsWithLook, isLoading: true)
+    },
+    Shot("settings-slow-logged-out", sizes: [settingsSize]) {
+        SettingsScreen(values: SampleData.settingsSlowLoggedOut)
+    },
+    Shot("settings-look", sizes: [settingsSize]) {
+        SettingsScreen(values: SampleData.settingsWithLook, initialTab: .look)
+    },
+    Shot("settings-look-font-missing", sizes: [settingsSize]) {
+        SettingsScreen(values: SampleData.settingsFontMissing, initialTab: .look)
+    },
+
+    // ── 6단계: 엔진에는 있는데 화면이 없던 상태 (viewdata-map 2절) ──
+    Shot("gallery-preparing") {
+        RootView(
+            studio: SampleData.studio(preparing: .downloading(0.42)),
+            gallery: .loaded(SampleData.groups),
+            selectedShotID: SampleData.shotsToday[0].id
+        )
+    },
+    Shot("gallery-prep-stopped") {
+        RootView(
+            studio: SampleData.studio(preparing: .diskFull),
+            gallery: .loaded(SampleData.groups)
+        )
+    },
+    Shot("gallery-import-states") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groupsImportStates),
+            selectedShotID: SampleData.shotsToday[2].id
+        )
+    },
+    Shot("plan-first-run") {
+        RootView(
+            studio: SampleData.studio(preparing: .warming),
+            gallery: .loaded(SampleData.groups),
+            plan: .preparing(SampleData.prepareStepsFirstRun),
+            planMessages: SampleData.chatModelWaiting,
+            planChips: SampleData.chatChips,
+            opensPlan: true
+        )
+    },
+    Shot("plan-gave-up") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: SampleData.planGaveUp,
+            planMessages: SampleData.chatGaveUp,
+            planChips: SampleData.chatChips,
+            opensPlan: true,
+            selectedSceneID: "s4"
+        )
+    },
+    Shot("plan-draft-failed") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: SampleData.planDraftFailed,
+            planMessages: SampleData.chatDraftFailed,
+            planChips: SampleData.chatChips,
+            opensPlan: true
+        )
+    },
+    Shot("plan-analyze-failed") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: SampleData.planAnalyzeFailed,
+            planMessages: [],
+            planChips: SampleData.chatChips,
+            opensPlan: true
+        )
+    },
+    Shot("plan-logged-out") {
+        RootView(
+            studio: SampleData.studioLoggedOut,
+            gallery: .loaded(SampleData.groups),
+            plan: .notLoggedIn(.claude),
+            opensPlan: true
+        )
+    },
+    Shot("plan-soft-note") {
+        RootView(
+            studio: SampleData.studioAfterMake,
+            gallery: .loaded(SampleData.groups),
+            plan: .ready(SampleData.plan),
+            planMessages: SampleData.chatSoftNote,
+            planChips: SampleData.chatChips,
+            opensPlan: true,
+            selectedSceneID: "s4"
+        )
+    },
+    Shot("plan-gate-notice") {
+        RootView(
+            studio: SampleData.studioAfterMake,
+            gallery: .loaded(SampleData.groups),
+            plan: .ready(SampleData.plan),
+            planMessages: SampleData.chatGateNotice,
+            planChips: SampleData.chatChips,
+            opensPlan: true,
+            selectedSceneID: "s4"
+        )
+    },
+    Shot("plan-ask-remember") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: .ready(SampleData.plan),
+            planMessages: SampleData.chatAskRemember,
+            planChips: SampleData.chatChips,
+            opensPlan: true,
+            selectedSceneID: "s4"
+        )
+    },
+    Shot("results-notice") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            results: .loaded(SampleData.resultGroupsWithNotice),
+            resultDetail: SampleData.resultDetailWithNotice,
+            exportTargets: SampleData.exportTargets,
+            selectedResultID: SampleData.results[0].id,
+            section: .results
+        )
     },
 ]
 
+
 // MARK: - 들어가기
+
+// 줄마다 내보낸다. 파일로 돌리면 stdout 이 덩어리로 쌓이는데, 끝의 `exit(0)` 은 그걸 비우지 않아서
+// 로그가 통째로 사라졌다 (어느 화면에서 죽었는지 알 길이 없었다).
+setvbuf(stdout, nil, _IOLBF, 0)
 
 let arguments = CommandLine.arguments
 
@@ -553,8 +691,12 @@ func withCaveat(_ rep: NSBitmapImageRep) -> Data? {
     return flattened.representation(using: .png, properties: [:])
 }
 
+/// `MADI_SHOTS_ONLY=plan-draft` 처럼 주면 이름이 그걸로 시작하는 화면만 뜬다.
+/// 한 화면을 고치고 확인할 때 전부(수 분) 다시 뜨지 않으려고 둔다.
+let only = ProcessInfo.processInfo.environment["MADI_SHOTS_ONLY"]
+
 MainActor.assumeIsolated {
-    for shot in shots {
+    for shot in shots where only.map({ shot.name.hasPrefix($0) }) ?? true {
         for size in shot.sizes ?? defaultSizes {
             let name = "\(shot.name)-\(Int(size.width))x\(Int(size.height)).png"
             guard let (rep, drawn) = capture(shot, size: size) else {

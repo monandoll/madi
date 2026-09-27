@@ -340,11 +340,20 @@ extension SampleData {
         resultCount: 0
     )
 
+    /// 엔진 순서 그대로 (viewdata-map 1절): 말 받아적기 → 사람 찾기 → 장면 나누기.
     public static let prepareSteps: [PrepareStep] = [
         PrepareStep(title: Copy.Plan.Preparing.transcribe, state: .done),
+        PrepareStep(title: Copy.Plan.Preparing.findPerson, state: .done),
         PrepareStep(title: Copy.Plan.Preparing.split, state: .running, remaining: "20초쯤"),
-        PrepareStep(title: Copy.Plan.Preparing.findGaps, state: .waiting),
-        PrepareStep(title: Copy.Plan.Preparing.reframe, state: .waiting),
+    ]
+
+    /// iCloud 원본을 받아야 하고, 첫 실행 직후라 편집 준비도 안 끝난 경우 — 앞에 둘이 더 붙는다.
+    public static let prepareStepsFirstRun: [PrepareStep] = [
+        PrepareStep(title: Copy.Plan.Preparing.fetchOriginal, state: .done),
+        PrepareStep(title: Copy.Plan.Preparing.prepare, state: .running),
+        PrepareStep(title: Copy.Plan.Preparing.transcribe, state: .waiting),
+        PrepareStep(title: Copy.Plan.Preparing.findPerson, state: .waiting),
+        PrepareStep(title: Copy.Plan.Preparing.split, state: .waiting),
     ]
 
     // MARK: - 대화
@@ -403,9 +412,9 @@ extension SampleData {
     public static let makingProgress = MakingProgress(
         fraction: 0.66,
         steps: [
-            PrepareStep(title: Copy.Plan.Making.captions, state: .done),
-            PrepareStep(title: Copy.Plan.Making.reframe, state: .running),
-            PrepareStep(title: Copy.Plan.Making.encode, state: .waiting),
+            // 렌더 한 번에 자막 · 화면 잡기까지 된다 (~20초). 그다음 살펴보고 다듬는다.
+            PrepareStep(title: Copy.Plan.Making.encode, state: .done),
+            PrepareStep(title: Copy.Plan.Making.review, state: .running),
         ],
         remaining: "약 1분"
     )
@@ -698,4 +707,177 @@ extension SampleData {
             return ResultGroup(shotTitle: title, items: items)
         }
     }()
+}
+
+// MARK: - 6단계 — 엔진에는 있는데 화면이 없던 상태 (viewdata-map 2절)
+
+extension SampleData {
+
+    // 1. 편집 준비 — 사이드바 한 줄
+    public static func studio(preparing: EnginePrep) -> StudioStatus {
+        var s = studio
+        s.preparing = preparing
+        return s
+    }
+
+    // 7. 설치됨 · 로그인 안 됨
+    public static let studioLoggedOut = StudioStatus(
+        studioName: studio.studioName, ai: .notLoggedIn(.claude),
+        shotCount: studio.shotCount, resultCount: studio.resultCount, makingCount: 0
+    )
+
+    // 8. 원본 받는 중 · 받기 실패 — 갤러리 칸
+    public static let groupsImportStates: [ShotGroup] = {
+        var today = shotsToday
+        today[1].fetchProgress = 0.42
+        today[2].isMaking = false
+        today[2].problem = Copy.Photos.importFailed
+        return [
+            ShotGroup(title: Copy.Gallery.Group.today, subtitle: Copy.day(Date()), shots: today),
+            groups[1], groups[2],
+        ]
+    }()
+
+    // 2 · 4 · 5 — 다듬는 중은 `makingProgress`, 아쉬운 점 · 원본 한계는 채팅 한 줄
+    public static let chatSoftNote: [ChatMessage] = chatMade + [
+        ChatMessage(id: "sn1", kind: .assistant(Copy.Review.reviewSoftNote(Copy.Review.softShort))),
+    ]
+
+    public static let chatGateNotice: [ChatMessage] = chatMade + [
+        ChatMessage(id: "gn1", kind: .assistant(Copy.Gate.subjectTooSmall)),
+    ]
+
+    /// 결과물에 원본 한계 안내가 붙은 경우 (3절 ⑤). 결과는 올려도 된다 — 다음 촬영 요령만.
+    public static let resultDetailWithNotice: ResultDetail = {
+        var d = resultDetail
+        d.current.notice = Copy.Gate.tipCloser
+        return d
+    }()
+
+    public static let resultGroupsWithNotice: [ResultGroup] = {
+        var g = resultGroups
+        g[0].items[0].notice = Copy.Gate.tipCloser
+        return g
+    }()
+
+    // 채팅 수정 뒤 한 번 묻기 (§10)
+    public static let chatAskRemember: [ChatMessage] = chat + [
+        ChatMessage(id: "ar1", kind: .user("자막 좀 더 빨리 넘겨줘"), stamp: "오늘 오후 2:47"),
+        ChatMessage(id: "ar2", kind: .assistant("자막을 조금 더 짧게 끊어서 빨리 넘어가게 했어요.")),
+        ChatMessage(id: "ar3", kind: .assistant(Copy.Remember.askRemember)),
+        ChatMessage(id: "ar4", kind: .choices([
+            ChatChoice(title: Copy.Remember.rememberYes, detail: Copy.Remember.askRememberDetail, isPrimary: true),
+            ChatChoice(title: Copy.Remember.rememberNo),
+        ])),
+    ]
+
+    // 1. 편집 준비가 안 끝났는데 영상이 들어왔다 — 편집안 화면에서
+    public static let chatModelWaiting: [ChatMessage] = [
+        ChatMessage(id: "mw1", kind: .user("이걸로 릴스 만들어줘"), stamp: "오늘 오후 1:05"),
+        ChatMessage(id: "mw2", kind: .assistant(Copy.Prep.modelWaitingForVideo)),
+    ]
+
+    // 3. 끝내 기준에 못 미침 — 편집안은 있고 결과물이 없다. **다시 해도 안 되는 경우라 붉은색**
+    public static let planGaveUp = PlanState.stopped(
+        plan: plan,
+        reason: Copy.Review.reviewGaveUp(
+            reason: Copy.Review.gaveUpReasonSmall, tip: Copy.Review.gaveUpTipCloser
+        ),
+        actions: [
+            ChatChoice(title: Copy.Plan.Stopped.pickAnother,
+                       detail: Copy.Plan.Stopped.pickAnotherDetail, isPrimary: true),
+            ChatChoice(title: Copy.Plan.Stopped.shootingTips,
+                       detail: Copy.Plan.Stopped.shootingTipsDetail),
+        ],
+        isFinal: true
+    )
+
+    public static let chatGaveUp: [ChatMessage] = chatMaking + [
+        ChatMessage(id: "gu1", kind: .assistant(Copy.Review.reviewGaveUp(
+            reason: Copy.Review.gaveUpReasonSmall, tip: Copy.Review.gaveUpTipCloser
+        ))),
+    ]
+
+    // 6. AI 가 초안을 못 짬 — 편집안이 아직 없다
+    public static let planDraftFailed = PlanState.stopped(
+        plan: nil,
+        reason: Copy.AI.aiDraftFailed + " " + Copy.AI.reasonLimit,
+        actions: [
+            ChatChoice(title: Copy.Plan.Stopped.tryAgain,
+                       detail: Copy.Plan.Stopped.tryAgainDetail, isPrimary: true),
+            ChatChoice(title: Copy.Plan.Stopped.pickAnother,
+                       detail: Copy.Plan.Stopped.pickAnotherDetail),
+        ]
+    )
+
+    public static let chatDraftFailed: [ChatMessage] = [
+        ChatMessage(id: "df1", kind: .user("쉬는 구간 빼고 인스타용으로 만들어줘"), stamp: "오늘 오후 2:20"),
+        ChatMessage(id: "df2", kind: .assistant(Copy.AI.aiDraftFailed + " " + Copy.AI.reasonLimit)),
+    ]
+
+    // 9. 분석이 멈춤
+    public static let planAnalyzeFailed = PlanState.stopped(
+        plan: nil,
+        reason: Copy.AI.analyzeFailed,
+        actions: [
+            ChatChoice(title: Copy.Plan.Stopped.tryAgain,
+                       detail: Copy.Plan.Stopped.tryAgainDetail, isPrimary: true),
+        ]
+    )
+
+    // 10. 느린 Mac
+    public static let onboardingReadySlow = OnboardingState(step: .ready, isSlowMac: true)
+
+    // 자막 모양 (§9) — 설정
+    public static let swatchesMain: [CaptionLook.Swatch] = [
+        .init(id: "white", label: "흰색", red: 1, green: 1, blue: 1),
+        .init(id: "yellow", label: "노란색", red: 1, green: 0.86, blue: 0.25),
+        .init(id: "sky", label: "하늘색", red: 0.55, green: 0.82, blue: 1),
+    ]
+
+    public static let swatchesSecondary: [CaptionLook.Swatch] = [
+        .init(id: "yellow", label: "노란색", red: 1, green: 0.86, blue: 0.25),
+        .init(id: "white", label: "흰색", red: 1, green: 1, blue: 1),
+        .init(id: "sky", label: "하늘색", red: 0.55, green: 0.82, blue: 1),
+    ]
+
+    /// 이 Mac 에 깔린 한글 글꼴의 **예시**. 실제 목록은 `MadiFont.hangulFamilies()` 가 준다.
+    public static let installedFonts = [
+        "Apple SD 산돌고딕 Neo", "나눔고딕", "나눔스퀘어 네오", "G마켓 산스",
+    ]
+
+    /// 미리보기는 렌더 코드가 그린다. 디자인에서는 크리에이터 공개본의 자막 띠를 잘라 자리만 채운다.
+    public static let look = CaptionLook(
+        fonts: installedFonts, font: nil, weight: .bold, italic: false,
+        fills: swatchesMain, fill: "white",
+        secondaryFills: swatchesSecondary, secondaryFill: "yellow",
+        secondarySameAsMain: true,
+        preview: file("docs/design/sample-frames/look-preview.jpg")
+    )
+
+    /// 저장된 글꼴이 지워진 경우 — 조용히 바꾸지 않는다.
+    public static let lookFontMissing: CaptionLook = {
+        var l = look
+        l.font = "여기어때 잘난체"
+        l.fontMissing = true
+        return l
+    }()
+
+    public static let settingsWithLook = SettingsValues(
+        ai: settings.ai, activeAI: settings.activeAI, studioName: settings.studioName,
+        keepDays: settings.keepDays, albumName: settings.albumName, photos: settings.photos,
+        look: look
+    )
+
+    public static let settingsFontMissing = SettingsValues(
+        ai: settings.ai, activeAI: settings.activeAI, studioName: settings.studioName,
+        keepDays: settings.keepDays, albumName: settings.albumName, photos: settings.photos,
+        look: lookFontMissing
+    )
+
+    public static let settingsSlowLoggedOut = SettingsValues(
+        ai: .notLoggedIn(.claude), activeAI: .claude, studioName: settings.studioName,
+        keepDays: settings.keepDays, albumName: settings.albumName, photos: settings.photos,
+        look: look, isSlowMac: true
+    )
 }

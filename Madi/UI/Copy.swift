@@ -51,6 +51,8 @@ public enum Copy {
         public static let aiConnected = "Claude 연결됨"
         public static let aiConnectedCodex = "Codex 연결됨"
         public static let aiDisconnected = "AI 연결 안 됨"
+        /// 설치는 됐는데 로그인이 풀렸다. 설치와 다음 행동이 달라서 따로 말한다.
+        public static func aiNeedsLogin(_ name: String) -> String { "\(name) 로그인 필요" }
         /// AI 미연결은 **오류가 아니다**. 붉은색을 쓰지 않는다.
         public static let aiDisconnectedHint = "AI를 연결하면 편집안을 만들어요"
         /// 설정은 앱 메뉴 `마디 > 설정…` (⌘,) 가 기본 경로다.
@@ -220,17 +222,28 @@ public enum Copy {
             public static let captionPlaceholder = "여기 자막을 적어주세요"
             /// 영문 보조도 직접 고칠 수 있다. 비워 두면 AI 가 본문에 맞춰 다시 만든다.
             public static let secondaryPlaceholder = "영문 보조"
-            public static let secondaryHint = "비워 두면 AI가 다시 맞춰요"
+            /// 영문을 손대지 않으면 AI 가 새 본문에 맞춰 다시 만든다.
+            public static let secondaryHint = "영문을 그대로 두면 AI가 다시 맞춰요"
             public static let doneEditing = "완료"
         }
 
         /// 편집안을 짜는 중.
+        /// 편집안을 짜는 단계. **엔진이 실제로 도는 순서와 이름을 맞췄다** (viewdata-map 1절).
+        /// 영상 받기 → (편집 준비) → 말 받아적기 → 사람 찾기 → 장면 나누기.
+        /// 앞의 둘은 해당될 때만 넣는다 — iCloud 원본을 받아야 할 때, 첫 실행 직후 준비가 안 끝났을 때.
         public enum Preparing {
             public static let title = "편집안 만드는 중…"
             public static let header = "진행"
-            public static let transcribe = "말한 내용 받아적기"
+            public static let fetchOriginal = "영상 받기"
+            public static let prepare = "편집 준비"
+            public static let transcribe = "말 받아적기"
+            public static let findPerson = "사람 찾기"
             public static let split = "장면 나누기"
+            /// ⚠ 엔진에 따로 도는 단계가 없다 — AI 가 장면을 고르며 같이 한다. 단계 목록에 넣지 않는다.
+            @available(*, deprecated, message: "엔진에 없는 단계다. 목록에서 빼고 split 하나로 (viewdata-map 1절)")
             public static let findGaps = "쉬는 구간 찾기"
+            /// ⚠ 화면 잡기는 렌더 안에서 된다 — 짜는 단계가 아니라 `Making.encode` 에 들어 있다.
+            @available(*, deprecated, message: "화면 잡기는 렌더 안에서 된다. Making.encode 로 (viewdata-map 1절)")
             public static let reframe = "화면 잡기"
             public static let done = "끝"
             public static func remaining(_ text: String) -> String { "\(text) 남음" }
@@ -239,11 +252,17 @@ public enum Copy {
         }
 
         /// 영상을 만드는 중. 화면을 떠나지 않는다.
+        /// 엔진은 자막 · 화면 잡기 · 인코딩을 **렌더 한 번**에 한다 (~20초). 그다음 살펴보고,
+        /// 모자라면 다시 다듬는다 (최대 2회). 그래서 단계는 둘이다.
         public enum Making {
             public static let title = "영상 만드는 중…"
-            public static let captions = "자막 만들기"
-            public static let reframe = "화면 잡기"
             public static let encode = "영상 만들기"
+            /// 검사 + 되먹임. "검사" · "렌더" 는 금지어라 이렇게 쓴다 (copy-keys `reviewChecking`).
+            public static let review = "살펴보고 다듬기"
+            @available(*, deprecated, message: "렌더 한 번에 자막까지 된다. encode 하나로 (viewdata-map 1절)")
+            public static let captions = "자막 만들기"
+            @available(*, deprecated, message: "렌더 한 번에 화면 잡기까지 된다. encode 하나로 (viewdata-map 1절)")
+            public static let reframe = "화면 잡기"
             public static let keepsGoing = "창을 닫아도 계속 만들어요. 다 되면 알림으로 알려드려요."
             public static let readOnly = "만드는 동안에는 고칠 수 없어요"
             public static func percent(_ fraction: Double) -> String {
@@ -264,6 +283,26 @@ public enum Copy {
         /// 장면이 하나뿐인 편집안. 짧은 촬영본에서 나온다. **막지 않는다** — 그대로 만들 수 있다.
         public enum SingleScene {
             public static let note = "장면이 하나예요"
+        }
+
+        /// 멈춘 편집안 (`PlanState.stopped`). 이유 문장은 `Copy.AI` · `Copy.Review` 에서 온다.
+        public enum Stopped {
+            public static let title = "여기서 멈췄어요"
+            public static let tryAgain = "다시 해 보기"
+            public static let tryAgainDetail = "같은 영상으로 한 번 더 짜 볼게요"
+            public static let pickAnother = "다른 촬영본 고르기"
+            public static let pickAnotherDetail = "다른 영상으로 먼저 만들어 봐요"
+            public static let login = "로그인하기"
+            public static let loginDetail = "브라우저가 열리고, 로그인하면 자동으로 돌아와요"
+            public static let shootingTips = "다시 찍을 때 요령"
+            public static let shootingTipsDetail = "사람이 크게 · 배경이 단순하게"
+        }
+
+        /// 로그인이 풀린 AI. 설치가 아니라 **로그인만** 하면 된다.
+        public enum NotLoggedIn {
+            public static func title(_ name: String) -> String { "\(name) 로그인만 하면 돼요" }
+            public static let message = "로그인이 풀려서 편집안을 부탁할 수 없어요. 한 번만 다시 로그인해 주세요."
+            public static let action = "로그인하기"
         }
 
         /// AI 가 연결돼 있지 않을 때. **오류가 아니다** (AGENTS.md §10).
@@ -475,6 +514,7 @@ public enum Copy {
 
     public enum Settings {
         public static let title = "설정"
+        public static let tabGeneral = "일반"
 
         public enum AI {
             public static let header = "AI 연결"
@@ -511,6 +551,170 @@ public enum Copy {
         }
 
         public static let loading = "연결을 확인하고 있어요"
+    }
+
+
+    // MARK: - 개발 쪽 문구 키 (docs/design/copy-keys.md)
+    //
+    // 아래는 엔진이 **키만** 들고 있는 문장이다. 멤버 이름을 키 이름과 똑같이 맞췄다 —
+    // 개발은 copy-keys.md 의 키로 여기서 찾는다. 어디에 쓰이는지는 각 줄 주석에.
+
+    /// 편집 준비 — 첫 실행 뒤 앱이 혼자 하는 것. **기다리게 하는 화면이 아니라 조용한 상태 표시다.**
+    /// "모델" · "다운로드" · "CoreML" · "컴파일" 은 쓰지 않는다 (`§1-5`).
+    /// 준비가 끝나면 **아무 말도 하지 않는다.**
+    public enum Prep {
+        /// 사이드바 아래 한 줄. 진행률이 같이 온다.
+        public static func modelDownloading(_ fraction: Double) -> String {
+            "편집 준비 중 · \(Int((fraction * 100).rounded()))%"
+        }
+        public static let modelDownloadingDetail = "기다리지 않아도 돼요. 영상은 그대로 들어와요."
+        public static let modelWarming = "편집 준비 거의 다 됐어요"
+        /// 채팅 — 영상이 먼저 들어왔을 때.
+        public static let modelWaitingForVideo = "영상은 받아 뒀어요. 편집 준비가 끝나는 대로 바로 볼게요."
+        /// 사이드바 — 인터넷이 끊겨 멈춤. **실패가 아니다.**
+        public static let modelDownloadPaused = "인터넷이 되면 편집 준비를 이어서 해요"
+        /// 채팅 — 여러 번 해도 안 될 때.
+        public static let modelDownloadFailed = "편집 준비를 마치지 못했어요. 인터넷 연결을 한 번 봐 주세요. 연결되면 다시 해 볼게요."
+        /// 채팅 — 저장 공간.
+        public static let modelDiskFull = "편집 준비에 저장 공간이 1GB쯤 더 필요해요. 조금 비워 주시면 이어서 할게요."
+        /// 사이드바 — 위 둘의 짧은 꼴.
+        public static let sidebarStopped = "편집 준비가 멈췄어요"
+        public static let sidebarNeedsInternet = "인터넷 연결을 확인해 주세요"
+        public static let sidebarNeedsSpace = "저장 공간이 1GB쯤 필요해요"
+    }
+
+    /// AI 연결 · 편집안 만들기. "CLI" · "MCP" · "프롬프트" · "토큰" · "턴" 은 쓰지 않는다.
+    public enum AI {
+        public static let aiNotConnected = "AI를 연결하면 편집안을 만들어요"
+        public static func aiNotLoggedIn(_ name: String) -> String { "\(name) 로그인만 하면 돼요" }
+        /// 조용한 상태 표시.
+        public static let aiDrafting = "영상을 보고 편집안을 짜고 있어요"
+        /// 채팅 — 초안이 나왔다. 만들기는 사람이 고른다.
+        public static let aiDraftReady = "편집안이 나왔어요. 장면을 한번 보시고 ‘만들기’를 눌러 주세요."
+        /// 채팅 — 초안을 못 짰다.
+        /// 이유 문장(`reason…`)을 **뒤에 붙인다.** "다시 해 볼게요" 는 이유마다 때가 달라서 여기 넣지 않는다
+        /// (한도면 "조금 뒤에", 모르면 "한 번 더").
+        public static let aiDraftFailed = "이번엔 편집안을 못 만들었어요."
+        /// 채팅 — 채팅 수정을 못 했다 (같은 키, 수정 턴).
+        public static let aiEditFailed = "이번엔 못 고쳤어요. 쓰신 말은 그대로 있으니 다시 보내 주세요."
+        /// `aiDraftFailed` 의 이유 한 줄 — 구독 한도 · 로그인 만료.
+        public static let reasonLimit = "지금 쓰시는 AI 구독의 사용량이 다 찼어요. 조금 뒤에 다시 해 볼게요."
+        /// 까닭을 모를 때.
+        public static let reasonUnknown = "한 번 더 해 볼게요."
+        public static func reasonLoggedOut(_ name: String) -> String {
+            "\(name) 로그인이 풀렸어요. 다시 로그인해 주시면 이어서 할게요."
+        }
+        /// 분석이 멈췄을 때 (viewdata-map 2절 9 — 새 키 `analyzeFailed`).
+        public static let analyzeFailed = "영상을 살펴보다 멈췄어요. 한 번 더 해 볼게요."
+    }
+
+    /// 스스로 살펴보고 다시 다듬기. "검사" · "게이트" · "self-eval" · "렌더" 는 쓰지 않는다.
+    public enum Review {
+        /// 조용한 상태 표시.
+        public static let reviewChecking = "거의 다 됐어요"
+        /// 채팅 — 두 번 다듬어도 기준에 못 미쳐 보여 줄 결과가 없다. **붉은색은 여기에만.**
+        public static func reviewGaveUp(reason: String, tip: String) -> String {
+            "이번 영상으로는 올릴 만한 결과를 못 만들었어요. \(reason) \(tip)"
+        }
+        public static let gaveUpReasonSmall = "사람이 화면에서 너무 작게 잡혀요."
+        public static let gaveUpReasonFast = "사람이 화면 밖으로 자주 나가요."
+        public static let gaveUpTipCloser = "다음엔 조금 더 가까이서 찍어 주시면 잘 나와요."
+        public static let gaveUpTipStill = "다음엔 한자리에서 움직여 주시면 잘 나와요."
+        /// 채팅 — 올릴 수는 있는데 한 가지가 남았다. **짧게.**
+        public static func reviewSoftNote(_ item: String) -> String {
+            "올려도 괜찮아요. 다만 \(item). 신경 쓰이시면 말씀해 주세요."
+        }
+        public static let softShort = "목표보다 조금 짧아요"
+        public static let softLong = "목표보다 조금 길어요"
+        public static let softHook = "첫 1초가 조금 밋밋해요"
+    }
+
+    /// 채팅 수정 뒤 한 번 묻는 것 (`§10`).
+    public enum Remember {
+        public static let askRemember = "앞으로도 이렇게 할까요?"
+        public static let askRememberDetail = "‘앞으로도’를 누르시면 다음 영상부터 같은 방식으로 만들어요."
+        public static let rememberYes = "앞으로도 이렇게"
+        public static let rememberNo = "이번만"
+    }
+
+    /// 앱 메뉴 (`마디` 메뉴). 새 판 알림 창은 Sparkle 이 그린다.
+    public enum Update {
+        public static let checkForUpdates = "업데이트 확인…"
+    }
+
+    /// 사진 보관함.
+    public enum Photos {
+        /// ⚠ `Copy.swift` 가 아니라 `Info.plist` 에 들어간다 — `project.yml` 의
+        /// `INFOPLIST_KEY_NSPhotoLibraryUsageDescription` 에 이 문장을 옮겨 적는다 (개발 일).
+        /// 영상이 Mac 을 떠나지 않는다는 걸 권한 창에서 먼저 말한다 (수강생 · 회원이 찍힐 수 있다 — §2).
+        public static let photoLibraryUsage =
+            "아이폰으로 찍은 영상을 옮기지 않고 바로 편집하려고 사진 보관함을 읽어요. 영상은 이 Mac을 떠나지 않아요."
+        /// 채팅 — 권한을 안 줬을 때.
+        public static func photoLibraryDenied(folder: String) -> String {
+            "사진 보관함을 못 봐도 괜찮아요. ‘\(folder)’ 폴더에 영상을 넣어 주시면 바로 가져와요. 나중에 설정에서 다시 켤 수 있어요."
+        }
+        /// 첫 실행 뒤 조용한 안내 — **앞으로 찍는 영상부터** 들어온다.
+        public static let importFromPhotosSince = "지금부터 찍는 영상이 들어와요. 예전 영상은 가져오지 않아요."
+        /// 갤러리 칸 · 정보 패널 — iCloud 에서 원본을 받는 중.
+        public static func importFetchingOriginal(_ fraction: Double) -> String {
+            "원본 가져오는 중 · \(Int((fraction * 100).rounded()))%"
+        }
+        public static let importFetchingOriginalDetail = "iCloud ‘저장 공간 최적화’가 켜져 있으면 오래 걸릴 수 있어요."
+        /// 채팅 · 갤러리 칸 — 원본을 못 받았다.
+        public static let importFailed = "이 영상을 가져오지 못했어요. 다음에 다시 해 볼게요."
+        public static let importFailedShort = "가져오지 못했어요"
+        public static let retryImport = "다시 가져오기"
+    }
+
+    /// 자막 모양 — 설정. **고르는 것만 있다.** 크기 · 위치 칸은 없다 (`§9`).
+    public enum Look {
+        public static let lookSectionTitle = "자막 모양"
+        public static let lookSectionDetail = "글씨 모양만 바꿔요. 크기와 자리는 그대로예요."
+        public static let font = "글꼴"
+        public static let lookFontDefault = "기본 글꼴"
+        public static let lookFontHint = "편집 앱에서 쓰던 글꼴을 이 Mac에 설치하면 여기 나와요."
+        public static let lookItalic = "기울임"
+        public static let lookWeight = "굵기"
+        public static let weightRegular = "보통"
+        public static let weightMedium = "조금 굵게"
+        public static let weightBold = "굵게"
+        public static let weightHeavy = "아주 굵게"
+        public static let fill = "본문 색"
+        public static let secondaryFill = "영문 줄 색"
+        public static let lookSecondarySameAsMain = "영문 줄도 같은 글꼴 · 기울임으로"
+        public static let preview = "미리보기"
+        /// 채팅 · 설정 — 저장된 글꼴이 지워졌다. 조용히 대체하지 않는다.
+        public static let lookFontMissing =
+            "쓰시던 글꼴을 이 Mac에서 찾을 수 없어서 편집안을 못 만들어요. 글꼴을 다시 설치하거나 다른 글꼴을 골라 주세요."
+        public static let lookFontMissingShort = "이 Mac에 없는 글꼴이에요"
+        /// 미리보기 문장. 크기가 그대로인 게 보여야 해서 한글 본문 + 영문 한 줄.
+        public static let previewMain = "반대쪽도 똑같이 진행해주세요"
+        public static let previewSecondary = "Repeat on the other side."
+    }
+
+    /// 품질 안내 (`Madi/Review/GateNotice.swift`). 결과는 나왔고 **다음 촬영 때 도움이 될 한 줄**이다.
+    /// 붉은색이 아니다. 탓하지 않는다 — "잘못 찍었다" 가 아니라 "다음엔 이렇게 하면 더 좋다".
+    /// 숫자를 보여 주지 않는다. "리프레임" · "마스크" · "업스케일" 은 쓰지 않는다.
+    public enum Gate {
+        public static let subjectTooSmall =
+            "영상은 다 만들었어요. 다음엔 조금 더 가까이서 찍으시면 사람이 화면에 크게 나와요."
+        public static let subjectTooSmallLowResolution =
+            "영상은 다 만들었어요. 다음엔 조금 더 가까이서, 또는 더 높은 화질(4K)로 찍으시면 사람을 더 크게 잡을 수 있어요."
+        public static let subjectNotFound =
+            "영상은 다 만들었어요. 배경이 단순한 곳에서 찍으시면 사람을 더 잘 찾아서 화면을 더 잘 잡아요."
+        public static let subjectAlreadyCropped =
+            "영상은 다 만들었어요. 다음엔 몸 전체가 화면에 들어오게 찍으시면 화면을 더 잘 잡을 수 있어요."
+        /// 결과물 옆에 붙는 짧은 꼴 (`ResultRef.notice`).
+        public static let tipCloser = "다음엔 조금 더 가까이서 찍어 보세요"
+        public static let tipResolution = "더 높은 화질(4K)로 찍으면 더 크게 잡혀요"
+        public static let tipBackground = "배경이 단순하면 더 잘 잡혀요"
+        public static let tipWholeBody = "몸 전체가 들어오게 찍어 보세요"
+    }
+
+    /// 이 Mac 이 느릴 때 (Intel, `§17`). **솔직하게 알린다** — 조용히 느려지게 두지 않는다.
+    public enum Machine {
+        public static let slowMac = "이 Mac에서는 만드는 데 더 오래 걸려요"
+        public static let slowMacDetail = "결과물은 똑같이 나와요. 시간만 더 걸려요."
     }
 
     // MARK: - 상태 문구

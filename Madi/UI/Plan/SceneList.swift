@@ -18,8 +18,11 @@ struct SceneList: View {
     @Binding var selectedID: SceneCardItem.ID?
     /// 자막을 고치는 중인 줄. 한 번에 하나만.
     @Binding var editingID: SceneCardItem.ID?
-    /// 만드는 중에는 읽기만 한다. 흐리게 두고 손대지 못하게 막는다.
+    /// 만드는 중 · 멈춘 편집안은 읽기만 한다. 흐리게 두고 손대지 못하게 막는다.
     var isReadOnly = false
+    /// 읽기 전용일 때 제목 옆에 붙일 까닭. 만드는 중이면 "만드는 동안에는…", 멈췄으면 없음 —
+    /// 멈춘 이유는 위쪽에 이미 크게 서 있다.
+    var readOnlyNote: String?
 
     var onRemove: (SceneCardItem) -> Void = { _ in }
     var onExtend: (SceneCardItem) -> Void = { _ in }
@@ -27,6 +30,8 @@ struct SceneList: View {
     var onPlayFrom: (SceneCardItem) -> Void = { _ in }
     var onRestoreGap: (SceneCardItem) -> Void = { _ in }
     var onMove: (IndexSet, Int) -> Void = { _, _ in }
+    /// 자막을 고쳤다. 영문이 nil 이면 AI 가 본문에 맞춰 다시 만든다.
+    var onCommitCaption: (SceneCardItem, String, String?) -> Void = { _, _, _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -83,7 +88,7 @@ struct SceneList: View {
     }
 
     private var hint: String? {
-        if isReadOnly { return Copy.Plan.Making.readOnly }
+        if isReadOnly { return readOnlyNote }
         return plan.scenes.count > 1 ? Copy.Plan.Scenes.reorderHint : nil
     }
 
@@ -96,7 +101,10 @@ struct SceneList: View {
             onRemove: { onRemove(scene) },
             onExtend: { onExtend(scene) },
             onEditCaption: { editingID = scene.id },
-            onEndEditing: { editingID = nil }
+            onCommit: { text, secondary in
+                editingID = nil
+                onCommitCaption(scene, text, secondary)
+            }
         )
     }
 
@@ -129,9 +137,10 @@ struct SceneRow: View {
     var onRemove: () -> Void = {}
     var onExtend: () -> Void = {}
     var onEditCaption: () -> Void = {}
-    var onEndEditing: () -> Void = {}
+    /// 고친 자막을 내보낸다. 영문을 **손대지 않았으면 nil** — AI 가 본문에 맞춰 다시 만든다.
+    var onCommit: (String, String?) -> Void = { _, _ in }
 
-    /// 고치는 중에만 쓰는 임시 글자. 저장은 개발이 붙인다.
+    /// 고치는 중에만 쓰는 임시 글자.
     @State private var draft: String = ""
     @State private var secondaryDraft: String = ""
     @FocusState private var isFocused: Bool
@@ -177,7 +186,7 @@ struct SceneRow: View {
                     .font(.callout)
                     .lineLimit(1...3)
                     .focused($isFocused)
-                    .onSubmit(onEndEditing)
+                    .onSubmit(commit)
 
                 // 영문 보조도 직접 고칠 수 있다. 손대지 않으면 AI 가 본문에 맞춰 다시 만든다.
                 TextField(Copy.Plan.Scenes.secondaryPlaceholder, text: $secondaryDraft)
@@ -188,7 +197,7 @@ struct SceneRow: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 0)
-                    Button(Copy.Plan.Scenes.doneEditing, action: onEndEditing)
+                    Button(Copy.Plan.Scenes.doneEditing, action: commit)
                         .controlSize(.small)
                 }
             }
@@ -224,6 +233,14 @@ struct SceneRow: View {
                 }
             }
         }
+    }
+
+    /// 영문은 **사람이 고쳤을 때만** 보낸다. 그대로 두거나 비웠으면 nil — 본문이 바뀌었으니
+    /// 옛 영문을 그대로 두면 안 맞는다. AI 가 다시 맞춘다 (decisions.md 3단계 답 1).
+    private func commit() {
+        let english = secondaryDraft.trimmingCharacters(in: .whitespaces)
+        let touched = !english.isEmpty && english != (scene.secondary ?? "")
+        onCommit(draft, touched ? english : nil)
     }
 
     private var actions: some View {

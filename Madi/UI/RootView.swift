@@ -2,17 +2,21 @@ import SwiftUI
 
 /// 앱 창 하나. 사이드바 + 고른 칸의 화면.
 ///
-/// **로직이 없다.** 상태는 전부 밖에서 주입한 값이고, 버튼은 클로저로 나간다
-/// (design-ai 지침 8). 개발이 붙을 때 이 자리에 실제 저장소를 연결한다.
+/// **로직이 없다.** 상태는 전부 밖에서 주입한 값이고, 사람이 한 일은 **`onAction` 하나로**
+/// 밖에 나간다 (viewdata-map 3절 ⑦). 무엇을 할지는 바꾸는 층이 정한다.
+///
+/// 이 뷰가 스스로 하는 것은 **어느 칸을 보여 줄지(길 찾기)** 뿐이다 — 사이드바 칸, 편집안을 열었는지.
+/// 그것도 행동을 먼저 내보낸 **다음에** 바꾼다. 바꾸는 층은 받은 행동으로 필요한 값을 채운다:
+/// - `.gallery(.makeShort(id))` → 그 촬영본의 `plan` · `planMessages` 를 넣는다
+/// - 편집안을 닫게 하려면 `plan` 을 nil 로 — 편집안 화면은 `plan` 이 있을 때만 선다
 ///
 /// 창이 하나인 이유: 촬영본 → 편집안 → 결과물이 한 줄기라 창을 나누면 왔다 갔다 하게 된다.
-/// 편집안은 **같은 칸 안에서** 열린다 (`NavigationStack`).
 struct RootView: View {
     var studio: StudioStatus
     var gallery: GalleryState
-    var onOpenSettings: () -> Void = {}
 
-    /// 편집안 화면에 넣을 것. 없으면 갤러리에서 `숏폼 만들기` 를 눌러도 열 게 없다.
+    /// 편집안 화면에 넣을 것. **지금 열린 촬영본의 것**이다 (`.gallery(.makeShort)` 로 무엇을 열었는지 안다).
+    /// nil 이면 편집안 화면이 닫힌다.
     var plan: PlanState?
     var planMessages: [ChatMessage] = []
     var planChips: [String] = []
@@ -22,6 +26,9 @@ struct RootView: View {
     var exportTargets: [ExportTarget] = []
     var resultsNotice: ScreenNotice?
     var making: MakingState = .empty
+
+    /// 사람이 한 일. **화면에서 나가는 것은 이것 하나다.**
+    var onAction: (UIAction) -> Void = { _ in }
 
     /// 프리뷰 · 스크린샷용 초기 상태.
     var selectedShotID: ShotItem.ID?
@@ -45,7 +52,7 @@ struct RootView: View {
 
     var body: some View {
         NavigationSplitView {
-            SidebarView(studio: studio, selection: $selection, onOpenSettings: onOpenSettings)
+            SidebarView(studio: studio, selection: $selection) { send(.openSettings) }
         } detail: {
             if showsPlan, plan != nil {
                 planScreen
@@ -70,8 +77,7 @@ struct RootView: View {
         case .shots, nil:
             GalleryScreen(
                 state: gallery, studio: studio,
-                // 촬영본에서 나가는 길은 하나다. 누르면 편집안이 열리고 AI 가 초안을 짠다.
-                onMakeShort: { _ in showsPlan = true },
+                onAction: { send(.gallery($0)) },
                 initialSelection: selectedShotID,
                 notice: galleryNotice,
                 initialQuery: gallerySearch,
@@ -83,12 +89,13 @@ struct RootView: View {
                 detail: resultDetail,
                 exportTargets: exportTargets,
                 notice: resultsNotice,
+                onAction: { send(.results($0)) },
                 initialSelection: selectedResultID,
                 showsExportSheet: showsExportSheet,
                 showsTrashConfirm: showsTrashConfirm
             )
         case .making:
-            MakingScreen(state: making)
+            MakingScreen(state: making) { send(.making($0)) }
         }
     }
 
@@ -99,10 +106,31 @@ struct RootView: View {
                 state: plan,
                 messages: planMessages,
                 chips: planChips,
-                onBack: { showsPlan = false },
+                onAction: send,
                 initialSceneID: selectedSceneID,
                 initialEditingID: editingSceneID
             )
+        }
+    }
+
+    /// 행동을 **먼저 내보내고**, 그다음 이 창 안에서 갈 곳만 바꾼다.
+    private func send(_ action: UIAction) {
+        onAction(action)
+        switch action {
+        case .gallery(.makeShort):
+            showsPlan = true
+        case .plan(.close):
+            showsPlan = false
+        case .plan(.openResults), .chat(.openResult), .making(.openResult):
+            showsPlan = false
+            selection = .results
+        case .results(.openPlan):
+            selection = .shots
+            showsPlan = true
+        case .results(.showShots):
+            selection = .shots
+        default:
+            break
         }
     }
 }

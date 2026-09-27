@@ -175,3 +175,80 @@ onRetrySend · onOpenResult`, `SceneList.onRemove · onExtend · onShorten · on
 - 보관 기간 지난 **앱 사본** 지우기 · 앨범 거르기
 - CLI 설치 · 로그인 대행 (`§2` · `§1-9`)
 - `.dmg` · Sparkle · 서명 (계정 · 비용이 드는 것은 결정으로 가져간다)
+
+---
+
+## 5. 디자인 답 (2026-09-28)
+
+위 2 · 3절을 전부 처리했다. **ViewData 바꾼 것은 전부 기본값이 있는 추가다** — 바꾸는 층은
+고치지 않아도 빌드된다 (`MadiBridgeTests` 통과). 이름을 바꾼 문구 키만 **폐기 경고**가 난다 (아래 "단계 이름").
+
+### ⑦ 행동 입구 — `UIAction` (`Madi/UI/UIAction.swift`)
+
+`RootView(…, onAction: (UIAction) -> Void)` **하나**로 전부 나간다. 화면별로 묶었다:
+
+```swift
+switch action {
+case .gallery(.makeShort(let shotID)):   // 그 촬영본의 plan · planMessages 를 넣는다
+case .plan(.make) / .plan(.stop) / .plan(.pickVersion(id)) / .plan(.moveScenes(from:to:)) / .plan(.choice(c))
+case .scene(let id, .editCaption(let text, let secondary))   // secondary == nil → AI 가 영문을 다시 맞춘다
+case .scene(let id, .remove / .extend / .shorten / .restoreGap / .select / .playFromHere)
+case .chat(.send(s) / .chip(s) / .choice(c) / .retrySend(s) / .undo / .openResult(id))
+case .results(.export(id, target) / .trash(id) / .openPlan(id) / .noticeChoice(c))
+case .making(.stop(id) / .cancel(id) / .choice(id, c) / .openResult(id))
+case .openSettings
+}
+```
+
+- `RootView` 가 스스로 하는 것은 **길 찾기뿐**이다 (편집안을 열었는지, 사이드바 칸). 그것도 행동을 **먼저 내보낸 뒤**에 한다
+- **편집안을 닫게 하려면 `plan` 을 nil 로** 넣는다 — 편집안 화면은 `plan` 이 있을 때만 선다 (예: 멈춘 편집안의 "다른 촬영본 고르기")
+- 모든 값에 **무엇에 대한 일인지** id 가 들어 있다. 화면이 기억하는 선택에 기대지 않는다
+- 첫 실행 창 · 설정 창은 앱 창 밖이라 따로 받는다: `OnboardingWindow(onAction: (UIAction.Onboarding) -> Void)`,
+  `SettingsScreen(onAction: (UIAction.Settings) -> Void)`. 같은 타입의 가지라 한 곳에서 받아도 된다
+
+### 3절 요청
+
+| # | 답 | 어디 |
+|---|---|---|
+| ① 편집 준비 | `StudioStatus.preparing: EnginePrep?` — `.downloading(0...1)` · `.warming` · `.paused` · `.failed` · `.diskFull`. 끝나면 **nil** (아무 말도 안 한다) | 사이드바 아래 한 줄 (`gallery-preparing` · `gallery-prep-stopped`) |
+| ② 멈춘 편집안 | `PlanState.stopped(plan: PlanView?, reason:, actions:, isFinal: Bool = false)`. 편집안이 있으면 장면 목록은 그대로 두고 요약 자리에 이유를 세운다. **`isFinal` 은 두 번 다듬어도 안 된 경우(`reviewGaveUp`)에만** — 그때만 붉은 표시 | `plan-gave-up` · `plan-draft-failed` · `plan-analyze-failed` |
+| ③ 로그인만 안 됨 | `AIConnection.notLoggedIn(AIProduct)` · `AISetup.notLoggedIn(AIProduct)` · `PlanState.notLoggedIn(AIProduct)`. `AIProduct` = `claude` · `codex` | 사이드바 노란 점 + "Claude 로그인 필요", 편집안 `plan-logged-out`, 설정 `settings-slow-logged-out` |
+| ④ 받기 실패 | `ShotItem.problem: String?` (+ 새로 `fetchProgress: Double?` — 원본 받는 중, `importFetchingOriginal` 자리) | 갤러리 칸 · 정보 패널 (`gallery-import-states`). `숏폼 만들기` 가 잠기고 `다시 가져오기` 가 선다 |
+| ⑤ 원본 한계 안내 | `ResultRef.notice: String?` — **짧은 꼴** `Copy.Gate.tip…` 을 넣는다. 긴 설명(`Copy.Gate.subjectTooSmall` 등)은 채팅 한 줄 | 결과물 줄 · 비교 화면 (`results-notice`), 채팅 (`plan-gate-notice`) |
+| ⑥ `noisy` | 그대로 둔다. 기준이 생기기 전까지 `clear` · `silent` 만 나와도 화면은 문제없다 | — |
+
+### 2절 상태 — 어디에 그렸나
+
+| # | 상태 | 그린 곳 |
+|---|---|---|
+| 1 | 편집 준비 | 사이드바 아래 한 줄 (①). 영상이 먼저 들어오면 편집안 채팅에 `Copy.Prep.modelWaitingForVideo`, 준비 단계 목록 맨 앞에 `편집 준비` (`plan-first-run`) |
+| 2 | 다시 다듬는 중 | `MakingProgress.steps` 의 두 번째 단계 `살펴보고 다듬기` (아래 "단계 이름") |
+| 3 | 끝내 기준 미달 | `PlanState.stopped(…, isFinal: true)` (②) — **붉은색은 여기뿐** |
+| 4 | 아쉬운 점 남음 | 채팅 한 줄 `Copy.Review.reviewSoftNote(…)` (`plan-soft-note`) |
+| 5 | 원본 한계 | 결과물 줄 · 비교 화면에 전구 한 줄 (⑤) + 채팅. **판정 불가(`plan-unsure-reframe`)와 다른 상태**다 — 이건 다 쟀고 원본이 모자란 것 |
+| 6 | AI 턴 실패 | `PlanState.stopped` (②) + 채팅 `Copy.AI.aiDraftFailed` · 이유 한 줄 (`reasonLimit` · `reasonLoggedOut`) |
+| 7 | 로그인 안 됨 | ③ |
+| 8 | 원본 받기 실패 | ④ |
+| 9 | 분석 실패 | `PlanState.stopped` (②) + `Copy.AI.analyzeFailed` (새 키) |
+| 10 | 느린 Mac | 첫 실행 `준비됐어요` 에 한 줄 (`OnboardingState.isSlowMac`), 설정 일반 탭 맨 아래 (`SettingsValues.isSlowMac`) — `Copy.Machine.slowMac` |
+| 11 | 말 없는 촬영본 | 원래 그려져 있다 (`plan-stuck`) |
+
+### 단계 이름 — 엔진 순서에 맞췄다
+
+`PrepareStep` 은 **엔진이 실제로 도는 순서**로 쓴다. "쉬는 구간 찾기" · "화면 잡기" 는 짜는 단계에서 뺐다
+(쉬는 구간은 AI 가 장면을 고르며 같이 하고, 화면 잡기 · 자막은 렌더 한 번에 된다).
+
+| 언제 | 단계 (`Copy.Plan…`) |
+|---|---|
+| 편집안 짜는 중 (`.preparing`) | `Preparing.fetchOriginal` 영상 받기 *(iCloud 원본을 받아야 할 때만)* → `Preparing.prepare` 편집 준비 *(준비가 안 끝났을 때만)* → `Preparing.transcribe` 말 받아적기 → `Preparing.findPerson` 사람 찾기 → `Preparing.split` 장면 나누기 |
+| 만드는 중 (`.making`) | `Making.encode` 영상 만들기 → `Making.review` 살펴보고 다듬기 |
+
+`Preparing.findGaps` · `Preparing.reframe` · `Making.captions` · `Making.reframe` 는 **폐기 표시**만 해 두고 남겼다 —
+바꾸는 층(`ViewDataMapper.prepareSteps` · 채팅 수정 중 `.making`)이 새 이름으로 옮기면 지운다.
+옮길 때 `ViewDataMapperTests.planPreparing` 의 기대값(단계 4개)도 같이 바뀐다.
+
+### 1절 "뜻이 맞는지 디자인 확인 필요" — `removedGapAfter`
+
+**맞다.** 원본에서 바로 이어진 두 장면 사이의 틈 = AI 가 뺀 쉬는 구간이다. 순서를 바꾼 장면 사이는 비운다 —
+그건 "뺀 것" 이 아니라 "옮긴 것" 이라 되돌릴 대상이 아니다. 10초 넘는 틈을 거르는 것도 좋다
+(그건 쉬는 구간이 아니라 다른 부분을 통째로 안 쓴 것이다).

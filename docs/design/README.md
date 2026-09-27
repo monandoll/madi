@@ -10,8 +10,8 @@
 
 ## 화면 목록
 
-66장. 창 화면은 **1440×900 · 1100×700** 두 크기로 있고(파일명 끝), 첫 실행 창은 720×540,
-설정은 520×520, 내보내기 시트는 460×360 한 장씩이다.
+창 화면은 **1440×900 · 1100×700** 두 크기로 있고(파일명 끝), 첫 실행 창은 720×540,
+설정은 540×580, 내보내기 시트는 460×360 한 장씩이다.
 
 읽는 순서는 사람이 쓰는 순서와 같다 — 첫 실행 → 갤러리 → 편집안 → 결과물 → 만드는 중.
 
@@ -25,7 +25,8 @@
 | `onboarding-ai-waiting` | 브라우저에서 로그인하는 중 |
 | `onboarding-ai-connected` | 연결됨 · 계정 표시 |
 | `onboarding-studio` | 3/3 이름. 어디에 쓰이는지 바로 보여준다 |
-| `onboarding-ready` | 준비됐어요 |
+| `onboarding-ready` | 준비됐어요. **지금부터 찍는 영상이 들어온다**는 한 줄 |
+| `onboarding-ready-slow` | 같은 화면 + Intel Mac 이면 "만드는 데 더 오래 걸려요" (`§17`) |
 
 ### 갤러리
 
@@ -38,6 +39,9 @@
 | `gallery-no-access` | 사진 접근 없음. **오류가 아니다** — 다음 행동을 준다 |
 | `gallery-hidden` | 목록에서 숨긴 뒤 상태줄 알림 + 되돌리기 |
 | `gallery-no-results` | 찾는 게 없을 때. **왜 없는지**(거르개 때문인지)를 말하고 푸는 버튼을 준다 |
+| `gallery-import-states` | 원본 받는 중(진행률) · 받기 실패(흐린 칸 + 노란 표시, 정보 패널에 `다시 가져오기`) |
+| `gallery-preparing` | 첫 실행 직후 편집 준비 — 사이드바 아래 조용한 한 줄 + 진행 막대 |
+| `gallery-prep-stopped` | 편집 준비가 멈춤 (저장 공간). 노란 표시 + 이유 |
 
 ### 편집안 (이 제품의 본체)
 
@@ -54,6 +58,14 @@
 | `plan-single-scene` | 5초짜리라 장면이 하나뿐인 편집안. **막지 않는다** |
 | `plan-too-long` | 아직 못 다루는 길이 (롱폼은 `§16` 범위 밖). "아직" 이라고 말한다 |
 | `plan-no-ai` | AI 연결 안 됨. 한 줄만 |
+| `plan-logged-out` | 설치는 됐는데 로그인이 풀림 — "연결하기" 가 아니라 "로그인하기" |
+| `plan-first-run` | 첫 실행 직후 — 준비 단계 맨 앞에 `영상 받기` · `편집 준비`, 채팅에 "받아 뒀어요" |
+| `plan-draft-failed` | AI 가 초안을 못 짬 (구독 한도). 편집안 없이 멈춘 자리 + 다음 행동 |
+| `plan-analyze-failed` | 영상을 살펴보다 멈춤. 다시 해 보기 |
+| `plan-gave-up` | 두 번 다듬어도 기준 미달 — **붉은 표시는 여기뿐**. 장면 목록은 그대로 둔다 |
+| `plan-soft-note` | 올려도 되는데 한 가지 남음 — 채팅 한 줄 |
+| `plan-gate-notice` | 원본 한계 (인물이 작게 찍힘) — 결과는 나왔고 다음 촬영 요령 한 줄 |
+| `plan-ask-remember` | 채팅 수정 뒤 "앞으로도 이렇게 할까요?" 한 번 (`§10`) |
 | `plan-versions` | 편집안 고르기 (팝오버 내용만, 300×200) |
 
 ### 결과물
@@ -66,6 +78,7 @@
 | `results-export-failed` | 내보내다 막힘. 붉은색 없이 다음 행동 두 개 |
 | `results-trash` | 휴지통으로 옮길까요 + "사진 앱으로 내보낸 건 그대로 있어요" |
 | `results-many` | 결과물이 쌓였을 때 (31개 · 11개 묶음) |
+| `results-notice` | 원본 한계 안내가 붙은 결과물 — 줄과 비교 화면에 전구 한 줄 |
 | `results-empty` · `results-loading` | 빈 상태 · 불러오는 중 |
 
 ### 만드는 중
@@ -75,19 +88,36 @@
 | `making-busy` | 도는 것 · 기다리는 것 · 멈춘 것 · 오늘 다 만든 것 |
 | `making-empty` | 만드는 게 없을 때 |
 
-### 설정 (520×520)
+### 설정 (540×580, 탭 둘)
 
 | 그림 | 무엇 |
 |---|---|
-| `settings-connected` | AI 연결 · 스튜디오 · 촬영본 보관 |
+| `settings-connected` | 일반 탭 — AI 연결 · 스튜디오 · 촬영본 보관 |
 | `settings-disconnected` | AI 연결 안 됨 · 사진 접근 없음 |
+| `settings-slow-logged-out` | 로그인이 풀림 + Intel Mac 한 줄 |
 | `settings-loading` | 연결 확인 중 |
+| `settings-look` | **자막 모양 탭** (`§9`) — 미리보기 · 글꼴 · 굵기 · 기울임 · 색 견본. 크기 · 위치 칸은 없다 |
+| `settings-look-font-missing` | 쓰던 글꼴이 지워짐 — 조용히 바꾸지 않고 이유를 말한다 |
 
 ### 막힌 화면을 볼 때 보는 것
 
-`plan-stuck` · `plan-not-sent` · `results-export-failed` · `making-busy`(멈춘 것) 넷은
-같은 규칙으로 그렸다. **붉은색이 없고, 이유를 사람 말로 적고, 다음 행동 버튼이 같이 있다**
-(`AGENTS.md §1-6`). 붉은색은 진짜 실패에만 쓰는데 지금까지 나온 상황 중 해당되는 게 없다.
+`plan-stuck` · `plan-not-sent` · `plan-draft-failed` · `plan-analyze-failed` · `results-export-failed` ·
+`gallery-import-states` · `gallery-prep-stopped` · `making-busy`(멈춘 것)은 같은 규칙으로 그렸다.
+**이유를 사람 말로 적고, 다음 행동 버튼이 같이 있고, 노란 표시다** (`AGENTS.md §1-6`).
+붉은 표시는 **`plan-gave-up` 하나뿐**이다 — 두 번 다듬어도 보여 줄 결과가 없어서 다시 해도 안 되는 경우.
+
+## 앱 아이콘
+
+`docs/design/icon/app-icon-1024.png`. 세로(9:16) 영상 한 편이 길이가 다른 **마디 셋**으로 나뉜 모양 —
+이 앱이 하는 일(촬영본을 장면으로 나눠 숏폼을 만든다) 그대로다. 바탕은 앱 강조색 초록.
+다시 그리려면:
+
+```
+swiftc -O -o /tmp/make-icon docs/design/icon/make-icon.swift && /tmp/make-icon
+```
+
+`Madi/UI/Assets.xcassets/AppIcon.appiconset` 에 10장(16~1024)을 쓴다. 앱 타깃은
+`ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon` 으로 이걸 쓴다.
 
 
 ## 스크린샷 다시 뽑기
@@ -96,6 +126,14 @@
 xcodebuild -scheme MadiUIShots -configuration Debug build
 $(xcodebuild -scheme MadiUIShots -showBuildSettings | awk -F' = ' '/ BUILT_PRODUCTS_DIR/{print $2}' | head -1)/madi-ui-shots docs/design/screens
 ```
+
+한 화면만 다시 뜨려면 이름 앞부분을 준다 (전부 뜨면 수 분 걸린다):
+
+```
+MADI_SHOTS_ONLY=plan-gave-up madi-ui-shots docs/design/screens
+```
+
+줄마다 어느 길로 찍었는지(`← 실제 창` / `← 뷰 그리기`) 찍힌다. 도중에 죽어도 거기까지는 남는다.
 
 모든 화면을 **1440×900 과 1100×700** 두 크기로 찍는다. 1100×700 은 창 최소 크기다
 (Claude Design 시안은 이 크기를 한 번도 확인하지 않았다).
