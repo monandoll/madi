@@ -62,6 +62,7 @@ targets:
       - path: Madi/Templates
       - path: Madi/Store
       - path: Madi/Queue
+      - path: Madi/Import
       - path: Madi/Templates/Spec.json
         buildPhase: resources
       - path: Madi/Resources/Fonts
@@ -95,6 +96,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.madi.Madi
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        # 사진 보관함 권한 (§2). 문장은 디자인 쪽이 다듬는다 — docs/design/copy-keys.md `photoLibraryUsage`
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "아이폰으로 찍은 영상을 옮기지 않고 바로 편집하려고 사진 보관함을 읽어요. 영상은 이 Mac 을 떠나지 않아요."
         GENERATE_INFOPLIST_FILE: YES
         LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
 
