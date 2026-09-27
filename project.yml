@@ -67,6 +67,7 @@ targets:
       - path: Madi/Queue
       - path: Madi/Import
       - path: Madi/Downloads
+      - path: Madi/MCP
       - path: Madi/Resources/downloads.json
         buildPhase: resources
       - path: Madi/Templates/Spec.json
@@ -103,6 +104,12 @@ targets:
       # MadiKit 이 링크하는 동적 프레임워크는 **앱이** 넣어야 한다. 빠지면 켜지자마자 죽는다.
       - package: WhisperCpp
         product: WhisperCpp
+      # AI CLI 가 띄우는 MCP 서버 (docs/stage-4.spec.md 결정 ①). Contents/MacOS/madi-mcp —
+      # 앱과 같은 Frameworks 를 쓴다. build-universal.sh 가 번들 안 Mach-O 를 전부 합치므로 따로 할 일 없다.
+      - target: MadiMCP
+        embed: true
+        copy:
+          destination: executables
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.madi.Madi
@@ -126,6 +133,21 @@ targets:
       base:
         PRODUCT_NAME: madi-spike
         LD_RUNPATH_SEARCH_PATHS: "@executable_path"
+
+  # AI CLI(claude · codex)가 자식 프로세스로 띄우는 MCP stdio 서버. 도구 2개 (AGENTS.md §10).
+  # 앱 번들에서는 Contents/MacOS 에, 빌드 산출물 디렉토리에서는 MadiKit.framework 옆에 놓인다.
+  MadiMCP:
+    type: tool
+    platform: macOS
+    sources:
+      - path: MadiMCP
+    dependencies:
+      - target: MadiKit
+        embed: false
+    settings:
+      base:
+        PRODUCT_NAME: madi-mcp
+        LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks @executable_path"
 
   MadiTests:
     type: bundle.unit-test

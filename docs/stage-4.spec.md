@@ -17,7 +17,7 @@ Process 스폰 + MCP 2도구 + 프롬프트 조립.
 | # | 단위 | 들어가는 곳 | 끝났다는 증거 |
 |---|---|---|---|
 | 1 | **판정 도구 지우기** — `Stage3Harness` · `Pipeline` 연결부 · `§12-3` 언급 | `Madi/App/` | 빌드 · 테스트 녹색. `-stage3Slot` 이 코드에 없다 |
-| 2 | **MCP 서버** — stdio JSON-RPC, 도구 2개 (`§10`) | `Madi/MCP/` | 테스트: `initialize` · `tools/list` 가 2개만 · `read_digest` 가 텍스트 + 시트 이미지 · `write_composition` 이 검증 실패를 그대로 돌려준다 · 스타일 값 거절 |
+| 2 | **MCP 서버** — stdio JSON-RPC, 도구 2개 (`§10`) ✅ | `Madi/MCP/` · `MadiMCP/` | 테스트: `initialize` · `tools/list` 가 2개만 · `read_digest` 가 텍스트 + 시트 이미지 · `write_composition` 이 검증 실패를 그대로 돌려준다 · 스타일 값 거절 |
 | 3 | **AgentProvider** — Claude · Codex 스폰, 스트림 읽기, 연결 상태(설치 · 로그인) | `Madi/Agent/` | 두 CLI 로 각각 "도구 2개만 보인다" 확인 턴 1회 · 가짜 CLI 로 단위 테스트 |
 | 4 | **프롬프트 조립** — `§10` 순서: 제작 지침 → Spec.json → 게이트 요약 → 사용자 규칙 → digest → 대화 | `Madi/Agent/` | 테스트: 순서 · 빠진 칸 없음. 제작 지침 초안(`Madi/Agent/playbook.md`) — 근거는 `docs/findings/` |
 | 5 | **연결** — 분석 끝 → AI 1턴 → 편집안 저장 → (렌더) · `events` 에 요청 종류 · 소요 시간 · CLI · 모델 | `Madi/Queue/` · `Madi/App/` | 대용 영상 1편이 사람 손 없이 편집안까지 간다 |
@@ -41,10 +41,21 @@ Process 스폰 + MCP 2도구 + 프롬프트 조립.
 
 | # | 결정 | 닿는 단위 |
 |---|---|---|
-| ① | MCP 서버를 어디에 두나 — 앱 실행 파일의 `--mcp` 모드 / 앱 번들 안 별도 도구 | 2 |
+| ① | ~~MCP 서버를 어디에 두나~~ → **번들 안 별도 도구** (아래) | 2 |
 | ② | 모델을 고정하나 — CLI 기본값(구독이 주는 것) / 앱이 지정 | 3 |
 | ③ | 판정 때 렌더를 무엇이 거나 — 자동 렌더 금지(`§10`)와 "사람 손 없이" 사이 | 5 |
 | ④ | 판정 재료 — 촬영본이 없다. 대용 몇 편 · 두 CLI 각각 몇 번 | 6 |
+
+## 결정
+
+- **① MCP 서버 — 번들 안 별도 도구 `madi-mcp` (2026-09-27).** `Contents/MacOS/madi-mcp`, MadiKit 만 링크한다.
+  앱 실행 파일의 `--mcp` 모드도 있었지만, 그러면 `@main` 앞에서 갈라야 하고 잘못 가르면 사진 감시 · 큐 · 모델 받기가
+  AI CLI 의 자식 프로세스에서 돈다. 별도 도구는 그럴 길이 구조적으로 없다. `build-universal.sh` 는 번들 안 Mach-O 를
+  전부 합치므로 손대지 않았다.
+  서버 하나는 **영상 하나 · 편집안 id 하나**에 묶여 뜬다 (`--video` · `--composition` · `--revision-of` · `--db`) —
+  AI 는 다른 영상을 못 읽고, 앱은 턴이 끝난 뒤 볼 편집안 id 를 미리 안다. AI 가 여러 번 쓰면 같은 id 를 덮어쓴다.
+  `write_composition` 은 앱이 채우는 칸(`id` · `videoId` · `templateId` · `templateVersion` · `style` · `revisionOf` · `createdAt`)을
+  AI 가 적으면 거절하고, 원본 구간이 영상 길이를 넘는지도 본다 (`validate` 는 영상 길이를 모른다)
 
 ## 판정 (6번)
 

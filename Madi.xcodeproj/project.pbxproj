@@ -11,6 +11,7 @@
 		07BB07BDBDB740ADDDBB50F1 /* AnalyzeJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54DF3733E990FD9C622EED3A /* AnalyzeJob.swift */; };
 		093E6BC9D769CB996B9981D2 /* PhotoLibraryWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4FD50C4641EE604A509314A /* PhotoLibraryWatcher.swift */; };
 		0B6D2C26766F7C92DBC12F7B /* OverlayPayloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36634EACED983CF2596C4C3D /* OverlayPayloadTests.swift */; };
+		0BAE9C0BF4EB22A2A9356B37 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B960902DF371A1FE0B3178F /* main.swift */; };
 		0DAEDA57821856B2058C07DF /* Spec.json in Resources */ = {isa = PBXBuildFile; fileRef = 448203E1948EA675814B0793 /* Spec.json */; };
 		124F4209189DF02E619840F8 /* DigestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A688321A465B55932B0112B /* DigestTests.swift */; };
 		1C33500A52B9172F220E23E1 /* ModelPreparer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FCE5F549E1ED9C1381E8561 /* ModelPreparer.swift */; };
@@ -19,6 +20,7 @@
 		2BA892758BC7F49E8495F281 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006AFA79D5ADACA512DB698F /* main.swift */; };
 		2EE5D8289209DFCF1DC52EE2 /* PoseProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDC46588584CE5887303191 /* PoseProvider.swift */; };
 		2F438C7740AE320FCA33D469 /* StyleSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = F080369FE263622AB0237836 /* StyleSchema.swift */; };
+		32FF5EBB7EBB17363B2AC6A8 /* MadiKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; };
 		33EA60172AF9CB94DF000674 /* CaptionSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3ABAB60902BDDBB742C6804 /* CaptionSplitter.swift */; };
 		363EB979B9A40786AA646B7B /* Pipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F15A9316F358BEB41DF37AF /* Pipeline.swift */; };
 		378EE370CA5FEC3A4CC93863 /* Transcript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 056E706ADEB1090F9E4F18D2 /* Transcript.swift */; };
@@ -54,11 +56,13 @@
 		927E3BBA58DC739C64FC1904 /* MadiKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; };
 		95390CEA8EADBC25C664DE6E /* downloads.json in Resources */ = {isa = PBXBuildFile; fileRef = 719988E041BEB26E14C18EB8 /* downloads.json */; };
 		9B343A07D19964364F0F9AA1 /* DownloadsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 978FB42F1F6682D9B407C434 /* DownloadsTests.swift */; };
+		A25B987BA9A16C8B7CA2AD56 /* MadiMCP in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = EDC6923A172F347F8E793BA6 /* MadiMCP */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A65D0CF5B16825226E4DF59A /* RenderJobTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D511153C80E7884291A47C55 /* RenderJobTests.swift */; };
 		A6F36ADDD48689551312F81C /* SubjectDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75236889EB2CBFE994D392D2 /* SubjectDetector.swift */; };
 		A71CD837B55F05CD74CD62A5 /* CaptionLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71CD7162AEC4CB13D3A85753 /* CaptionLayer.swift */; };
 		B1E383D4BE3A50F11F59BDED /* FolderWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3DDAF1B5D7652CD476B8CA1 /* FolderWatcher.swift */; };
 		B84729514D4454755BF89583 /* Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBC6F4DD77E4B83E33D191D5 /* Layout.swift */; };
+		B8E2C45A9F9772D4EC3B758E /* MadiTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = A07E6A91699508EAACA3827E /* MadiTools.swift */; };
 		B9CD553D8635BC96BB452F38 /* GateNotice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 791C317B14C7AF92D43CDB3E /* GateNotice.swift */; };
 		BB8593E4885B0F74346EA5CB /* OverlayPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A4A6BC2BD771958ED938CD /* OverlayPayload.swift */; };
 		C19C038351F0A44E688981C7 /* MadiKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -66,6 +70,8 @@
 		CC86AF959B9705EC491D0637 /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F09B5CE975F12C72180877E /* JSONValue.swift */; };
 		D10203FAB9F6AF59412F2EB8 /* SubjectTrack.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACC2DA0E608DE6F2C2FD7C62 /* SubjectTrack.swift */; };
 		D17C7DB4308BAEEFBAEE8773 /* FontLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4681562F04878CEC2D88BB3 /* FontLibrary.swift */; };
+		D551C493AC40898375C6970C /* MCPTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3DE2F64D15C0B58E43CE28 /* MCPTests.swift */; };
+		D8806A081E22A3D3F9CE96A7 /* MCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F64F8850ADE1ADD304DAE17 /* MCPServer.swift */; };
 		DD6B5D3982C692F53D075B8E /* StillRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CF255FFFF4817C0CC024338 /* StillRenderer.swift */; };
 		DF49714AE26CCB238A41B42F /* FrameSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA6ADD859B1A49D3B7AED392 /* FrameSheet.swift */; };
 		E5DA8CCFDC46DB4FC2633071 /* Importer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA96EF54F56D70E495B80CF0 /* Importer.swift */; };
@@ -80,6 +86,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		02B6D40A9CD503B573CEC932 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F0A36624190F4EC8F8D4D9E5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 85B18FE450626144835DDB57;
+			remoteInfo = MadiMCP;
+		};
 		0D9055D5AA285AEC1A970C34 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F0A36624190F4EC8F8D4D9E5 /* Project object */;
@@ -101,6 +114,13 @@
 			remoteGlobalIDString = 15DF6E938EF009BBF466D811;
 			remoteInfo = MadiKit;
 		};
+		E4F59E19EBA6641DCB613B42 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F0A36624190F4EC8F8D4D9E5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 15DF6E938EF009BBF466D811;
+			remoteInfo = MadiKit;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -113,6 +133,17 @@
 				C19C038351F0A44E688981C7 /* MadiKit.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E6AA8DE1F03DB19A63BFAD55 /* Embed Dependencies */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				A25B987BA9A16C8B7CA2AD56 /* MadiMCP in Embed Dependencies */,
+			);
+			name = "Embed Dependencies";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -130,6 +161,7 @@
 		1DB646EB14B2FAA8FBB871F5 /* ExportCaptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportCaptionTests.swift; sourceTree = "<group>"; };
 		1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MadiApp.swift; sourceTree = "<group>"; };
 		2223B52C773741B4A0C9EA8F /* ReframeLimitsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReframeLimitsTests.swift; sourceTree = "<group>"; };
+		2B960902DF371A1FE0B3178F /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		2FCE5F549E1ED9C1381E8561 /* ModelPreparer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelPreparer.swift; sourceTree = "<group>"; };
 		327EDB3BB462F62CDC72AD2E /* AudioAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioAnalyzer.swift; sourceTree = "<group>"; };
 		36634EACED983CF2596C4C3D /* OverlayPayloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayPayloadTests.swift; sourceTree = "<group>"; };
@@ -163,6 +195,7 @@
 		7F15A9316F358BEB41DF37AF /* Pipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pipeline.swift; sourceTree = "<group>"; };
 		807D00B9149F72389F639F77 /* DigestBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigestBuilder.swift; sourceTree = "<group>"; };
 		8148334F0D1C4607F6103479 /* PretendardVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = PretendardVariable.ttf; sourceTree = "<group>"; };
+		8F64F8850ADE1ADD304DAE17 /* MCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServer.swift; sourceTree = "<group>"; };
 		8FF60384F64A9623137DFC0D /* WhisperCppProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperCppProvider.swift; sourceTree = "<group>"; };
 		9198795506821EE4D71C606A /* Font.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Font.swift; sourceTree = "<group>"; };
 		97883FA1954A88DF0996BBD4 /* ReframePlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReframePlannerTests.swift; sourceTree = "<group>"; };
@@ -171,17 +204,20 @@
 		9D14F74043F8EBA6673C7CE2 /* CaptionReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionReader.swift; sourceTree = "<group>"; };
 		9DCB790C1C12A6031F486509 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
 		9F09B5CE975F12C72180877E /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
+		A07E6A91699508EAACA3827E /* MadiTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MadiTools.swift; sourceTree = "<group>"; };
 		A3ABAB60902BDDBB742C6804 /* CaptionSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionSplitter.swift; sourceTree = "<group>"; };
 		A3DDAF1B5D7652CD476B8CA1 /* FolderWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderWatcher.swift; sourceTree = "<group>"; };
 		A4681562F04878CEC2D88BB3 /* FontLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontLibrary.swift; sourceTree = "<group>"; };
 		A6846090E3F100A140F296D0 /* Madi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Madi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACC2DA0E608DE6F2C2FD7C62 /* SubjectTrack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubjectTrack.swift; sourceTree = "<group>"; };
+		BD3DE2F64D15C0B58E43CE28 /* MCPTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPTests.swift; sourceTree = "<group>"; };
 		C3B2B8D01B0628FACEC7DDB1 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		CA96EF54F56D70E495B80CF0 /* Importer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Importer.swift; sourceTree = "<group>"; };
 		CFB46CE8965E4DE8BB246F32 /* WhisperKitProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperKitProvider.swift; sourceTree = "<group>"; };
 		D511153C80E7884291A47C55 /* RenderJobTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderJobTests.swift; sourceTree = "<group>"; };
 		DA6ADD859B1A49D3B7AED392 /* FrameSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameSheet.swift; sourceTree = "<group>"; };
 		EBC6F4DD77E4B83E33D191D5 /* Layout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Layout.swift; sourceTree = "<group>"; };
+		EDC6923A172F347F8E793BA6 /* MadiMCP */ = {isa = PBXFileReference; includeInIndex = 0; path = MadiMCP; sourceTree = BUILT_PRODUCTS_DIR; };
 		F080369FE263622AB0237836 /* StyleSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleSchema.swift; sourceTree = "<group>"; };
 		F441B6E8EB91AD06BD449DE9 /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
 		F4FD50C4641EE604A509314A /* PhotoLibraryWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryWatcher.swift; sourceTree = "<group>"; };
@@ -210,6 +246,14 @@
 			files = (
 				631C3B5825F86943E42C6697 /* MadiKit.framework in Frameworks */,
 				55A2F43B667CD2DAA90B60DB /* WhisperCpp in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7056FB187BFDE1F9CB9890D2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				32FF5EBB7EBB17363B2AC6A8 /* MadiKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -317,6 +361,7 @@
 				1DB646EB14B2FAA8FBB871F5 /* ExportCaptionTests.swift */,
 				672B9A9D8EB3302CDE9C3EB0 /* ImportTests.swift */,
 				4EE313119A97621F7104ADA4 /* JobQueueTests.swift */,
+				BD3DE2F64D15C0B58E43CE28 /* MCPTests.swift */,
 				36634EACED983CF2596C4C3D /* OverlayPayloadTests.swift */,
 				2223B52C773741B4A0C9EA8F /* ReframeLimitsTests.swift */,
 				97883FA1954A88DF0996BBD4 /* ReframePlannerTests.swift */,
@@ -338,6 +383,15 @@
 			path = Fonts;
 			sourceTree = "<group>";
 		};
+		624A06735FF7EB0DB9FB251A /* MCP */ = {
+			isa = PBXGroup;
+			children = (
+				A07E6A91699508EAACA3827E /* MadiTools.swift */,
+				8F64F8850ADE1ADD304DAE17 /* MCPServer.swift */,
+			);
+			path = MCP;
+			sourceTree = "<group>";
+		};
 		69140C61BB78CCA634ACA07A /* Madi */ = {
 			isa = PBXGroup;
 			children = (
@@ -345,6 +399,7 @@
 				27175C2EBCA3FF78E2BCD6E4 /* App */,
 				35FCB5E468B5F57E0B9AB2ED /* Downloads */,
 				C25D11DAD65B83D7B84929C6 /* Import */,
+				624A06735FF7EB0DB9FB251A /* MCP */,
 				B3373C326AF407F41143AEFF /* Model */,
 				43E9E5E7F6458D6F7798F3C7 /* Queue */,
 				3EAAB46E6972FB7A262FC8AD /* Render */,
@@ -361,6 +416,7 @@
 			children = (
 				A6846090E3F100A140F296D0 /* Madi.app */,
 				409E7371C9108F4322587DF0 /* MadiKit.framework */,
+				EDC6923A172F347F8E793BA6 /* MadiMCP */,
 				181BC5EB1AF428D241C43C78 /* MadiSpike */,
 				99FF29B03B61C75F0F2A1992 /* MadiTests.xctest */,
 			);
@@ -428,6 +484,14 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		E379F38CD663B0B989CBD661 /* MadiMCP */ = {
+			isa = PBXGroup;
+			children = (
+				2B960902DF371A1FE0B3178F /* main.swift */,
+			);
+			path = MadiMCP;
+			sourceTree = "<group>";
+		};
 		E43B38BE34ACF3DE05041893 /* Templates */ = {
 			isa = PBXGroup;
 			children = (
@@ -460,6 +524,7 @@
 			isa = PBXGroup;
 			children = (
 				69140C61BB78CCA634ACA07A /* Madi */,
+				E379F38CD663B0B989CBD661 /* MadiMCP */,
 				3F8ED61BED06F0E55CA23372 /* MadiSpike */,
 				4B3902BB9CBD36DCD6CF7B65 /* MadiTests */,
 				49B44EE2A2BBBBDE4C8EBAAC /* Packages */,
@@ -499,11 +564,13 @@
 				822324B2AF1DA4C0596B553E /* Sources */,
 				6F97D029489E793AF76DFF77 /* Frameworks */,
 				BF3A0AE0AFDEB21B8156F0CD /* Embed Frameworks */,
+				E6AA8DE1F03DB19A63BFAD55 /* Embed Dependencies */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				AF7DF740E652D73ACD8F62B5 /* PBXTargetDependency */,
+				ECE9928A91AB7873AA1BA28C /* PBXTargetDependency */,
 			);
 			name = Madi;
 			packageProductDependencies = (
@@ -512,6 +579,25 @@
 			productName = Madi;
 			productReference = A6846090E3F100A140F296D0 /* Madi.app */;
 			productType = "com.apple.product-type.application";
+		};
+		85B18FE450626144835DDB57 /* MadiMCP */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 750EFB93F8AC817B67C27798 /* Build configuration list for PBXNativeTarget "MadiMCP" */;
+			buildPhases = (
+				5C4846FEC93E3FDC2B0C7A27 /* Sources */,
+				7056FB187BFDE1F9CB9890D2 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6BC40D3415F0187109BB0993 /* PBXTargetDependency */,
+			);
+			name = MadiMCP;
+			packageProductDependencies = (
+			);
+			productName = MadiMCP;
+			productReference = EDC6923A172F347F8E793BA6 /* MadiMCP */;
+			productType = "com.apple.product-type.tool";
 		};
 		A015F0C7D597DD08B1F56D8C /* MadiTests */ = {
 			isa = PBXNativeTarget;
@@ -583,6 +669,7 @@
 			targets = (
 				3622BECF89ADC4A5A5BA0FF4 /* Madi */,
 				15DF6E938EF009BBF466D811 /* MadiKit */,
+				85B18FE450626144835DDB57 /* MadiMCP */,
 				BD1CEB1E1103DC9641508FBD /* MadiSpike */,
 				A015F0C7D597DD08B1F56D8C /* MadiTests */,
 			);
@@ -605,6 +692,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		5C4846FEC93E3FDC2B0C7A27 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0BAE9C0BF4EB22A2A9356B37 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5EBEB335831A5B43772BF017 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -633,6 +728,7 @@
 				4449F9FEBA3B62F283600D0B /* ExportCaptionTests.swift in Sources */,
 				C5E46CC98D84D78FD698ED0E /* ImportTests.swift in Sources */,
 				723CCEBEA826566D40F50F58 /* JobQueueTests.swift in Sources */,
+				D551C493AC40898375C6970C /* MCPTests.swift in Sources */,
 				0B6D2C26766F7C92DBC12F7B /* OverlayPayloadTests.swift in Sources */,
 				926AF78D2A2B10AF2BCEC20B /* ReframeLimitsTests.swift in Sources */,
 				3E315E26A91D7C56D78B7F20 /* ReframePlannerTests.swift in Sources */,
@@ -667,6 +763,8 @@
 				CC86AF959B9705EC491D0637 /* JSONValue.swift in Sources */,
 				65326EDB401736223324DC28 /* JobQueue.swift in Sources */,
 				B84729514D4454755BF89583 /* Layout.swift in Sources */,
+				D8806A081E22A3D3F9CE96A7 /* MCPServer.swift in Sources */,
+				B8E2C45A9F9772D4EC3B758E /* MadiTools.swift in Sources */,
 				1C33500A52B9172F220E23E1 /* ModelPreparer.swift in Sources */,
 				BB8593E4885B0F74346EA5CB /* OverlayPayload.swift in Sources */,
 				093E6BC9D769CB996B9981D2 /* PhotoLibraryWatcher.swift in Sources */,
@@ -698,6 +796,11 @@
 			target = 15DF6E938EF009BBF466D811 /* MadiKit */;
 			targetProxy = 0D9055D5AA285AEC1A970C34 /* PBXContainerItemProxy */;
 		};
+		6BC40D3415F0187109BB0993 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 15DF6E938EF009BBF466D811 /* MadiKit */;
+			targetProxy = E4F59E19EBA6641DCB613B42 /* PBXContainerItemProxy */;
+		};
 		AF7DF740E652D73ACD8F62B5 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 15DF6E938EF009BBF466D811 /* MadiKit */;
@@ -707,6 +810,11 @@
 			isa = PBXTargetDependency;
 			target = 15DF6E938EF009BBF466D811 /* MadiKit */;
 			targetProxy = C2AA01650A1EC80F0CD38C5F /* PBXContainerItemProxy */;
+		};
+		ECE9928A91AB7873AA1BA28C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 85B18FE450626144835DDB57 /* MadiMCP */;
+			targetProxy = 02B6D40A9CD503B573CEC932 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -759,6 +867,17 @@
 			};
 			name = Debug;
 		};
+		165F930B1AF4A493CCC51133 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks @executable_path";
+				PRODUCT_BUNDLE_IDENTIFIER = app.madi.MadiMCP;
+				PRODUCT_NAME = "madi-mcp";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
 		43C3364AA0015D1CD53148F9 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -779,6 +898,17 @@
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Debug;
+		};
+		53F6FCF7F08F94DFD406E243 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks @executable_path";
+				PRODUCT_BUNDLE_IDENTIFIER = app.madi.MadiMCP;
+				PRODUCT_NAME = "madi-mcp";
+				SDKROOT = macosx;
 			};
 			name = Debug;
 		};
@@ -996,6 +1126,15 @@
 			buildConfigurations = (
 				B4430E268DAC5B18C6969920 /* Debug */,
 				845E099AB64C381687AF6C3D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		750EFB93F8AC817B67C27798 /* Build configuration list for PBXNativeTarget "MadiMCP" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				53F6FCF7F08F94DFD406E243 /* Debug */,
+				165F930B1AF4A493CCC51133 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

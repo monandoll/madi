@@ -19,9 +19,14 @@ public struct AppDatabase: Sendable {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appending(path: "madi", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return try open(path: dir.appending(path: "madi.sqlite").path)
+    }
+
+    /// 파일 DB. 앱과 MCP 서버(`madi-mcp`, 다른 프로세스)가 같은 파일을 같은 설정으로 연다 — WAL 이라 동시에 열어도 된다.
+    public static func open(path: String) throws -> AppDatabase {
         var config = Configuration()
         config.foreignKeysEnabled = true
-        return try AppDatabase(DatabasePool(path: dir.appending(path: "madi.sqlite").path, configuration: config))
+        return try AppDatabase(DatabasePool(path: path, configuration: config))
     }
 
     /// 테스트 · 스파이크용.
