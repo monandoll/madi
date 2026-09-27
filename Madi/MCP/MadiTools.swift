@@ -12,8 +12,9 @@ public struct MadiTools: Sendable {
     public let videoID: String
     public let compositionID: String
     public let revisionOf: String?
-    /// 새 편집안에 찍을 스타일. AI 가 아니라 앱이 찍는다 (§5). 테스트에서 바꿔 끼운다.
-    public let style: @Sendable () throws -> StyleRef
+    /// 새 편집안에 찍을 스타일(가장 최근 버전). AI 가 아니라 앱이 찍는다 (§5). 자막 분절 값도 여기서 온다.
+    /// 테스트에서 바꿔 끼운다.
+    public let style: @Sendable () throws -> Style
 
     public static let templateID = "short"
     public static let templateVersion = 1
@@ -23,7 +24,7 @@ public struct MadiTools: Sendable {
 
     public init(
         db: AppDatabase, videoID: String, compositionID: String, revisionOf: String? = nil,
-        style: @escaping @Sendable () throws -> StyleRef = { try StyleStore.latest() }
+        style: @escaping @Sendable () throws -> Style = { try StyleStore.load(try StyleStore.latest()) }
     ) {
         self.db = db; self.videoID = videoID; self.compositionID = compositionID
         self.revisionOf = revisionOf; self.style = style
@@ -50,10 +51,24 @@ public struct MadiTools: Sendable {
         ],
         [
             "name": "write_composition",
-            "description": "편집안(Composition)을 검증하고 저장한다. 틀리면 무엇이 틀렸는지 돌려주니 고쳐서 다시 부른다. 렌더는 앱이 한다. 스타일 값(글꼴 · 색 · 크기 · 좌표)은 쓸 수 없다. id · videoId · templateId · templateVersion · style · revisionOf · createdAt 은 앱이 채우니 적지 않는다.",
+            "description": "편집안(Composition)을 검증하고 저장한다. 틀리면 무엇이 틀렸는지 돌려주니 고쳐서 다시 부른다. 렌더는 앱이 한다. 스타일 값(글꼴 · 색 · 크기 · 좌표)은 쓸 수 없다. id · videoId · templateId · templateVersion · style · revisionOf · createdAt 은 앱이 채우니 적지 않는다. 자막(scenes[].captions)도 앱이 전사에서 채우니 적지 않는다 — 장면의 원본 구간만 고른다. 영문 보조 문구는 secondary 에 문장마다 한 줄씩 쓴다.",
             "inputSchema": [
                 "type": "object",
-                "properties": ["composition": ["type": "object", "description": "meta · captionSlot · scenes · audio"]],
+                "properties": [
+                    "composition": ["type": "object", "description": "meta · captionSlot · scenes · audio"],
+                    "secondary": [
+                        "type": "array",
+                        "description": "영문 보조 문구. 다이제스트 TRANSCRIPT 의 문장마다 한 줄. 앱이 그 문장의 자막 덩어리들에 나눠 붙인다. 없으면 영문 없이 만든다.",
+                        "items": [
+                            "type": "object",
+                            "properties": [
+                                "sentenceStart": ["type": "number", "description": "TRANSCRIPT [시작-끝] 의 시작 초 그대로"],
+                                "text": ["type": "string", "description": "그 문장의 영어 번역 한 줄"],
+                            ],
+                            "required": ["sentenceStart", "text"],
+                        ],
+                    ],
+                ],
                 "required": ["composition"],
             ],
         ],
@@ -116,8 +131,24 @@ public struct MadiTools: Sendable {
             return reject(["앱이 채우는 칸이다 — 빼고 다시 보낸다: " + filled.joined(separator: ", ")])
         }
 
-        let styleRef: StyleRef
-        do { styleRef = try style() } catch { return .text("스타일을 읽지 못했다 (앱 문제): \(error)", error: true) }
+        // 자막은 앱이 채운다 — AI 가 적어 보내면 거절한다 (분절은 템플릿 값, §9).
+        let scenesWithCaptions = (body["scenes"] as? [[String: Any]] ?? []).enumerated()
+            .filter { ($0.element["captions"] as? [Any])?.isEmpty == false }.map { "scenes[\($0.offset)].captions" }
+        if !scenesWithCaptions.isEmpty {
+            return reject(["자막은 앱이 전사에서 채운다 — 빼고 다시 보낸다: " + scenesWithCaptions.joined(separator: ", ")])
+        }
+        var translations: [CaptionFiller.Translation] = []
+        for (i, item) in (args["secondary"] as? [Any] ?? []).enumerated() {
+            guard let d = item as? [String: Any], let at = (d["sentenceStart"] as? NSNumber)?.doubleValue,
+                  let text = d["text"] as? String else {
+                return reject(["secondary[\(i)] 는 {sentenceStart: 숫자, text: 문자열} 이어야 한다"])
+            }
+            translations.append(.init(sentenceStart: at, text: text))
+        }
+
+        let styleValue: Style
+        do { styleValue = try style() } catch { return .text("스타일을 읽지 못했다 (앱 문제): \(error)", error: true) }
+        let styleRef = StyleRef(id: styleValue.id, version: styleValue.version)
         body["id"] = compositionID
         body["videoId"] = videoID
         body["templateId"] = Self.templateID
@@ -125,7 +156,7 @@ public struct MadiTools: Sendable {
         body["style"] = ["id": styleRef.id, "version": styleRef.version]
         if let revisionOf { body["revisionOf"] = revisionOf }
 
-        let comp: Composition
+        var comp: Composition
         do {
             let data = try JSONSerialization.data(withJSONObject: body)
             comp = try parseComposition(data)
@@ -149,6 +180,18 @@ public struct MadiTools: Sendable {
         }
         if !problems.isEmpty { return reject(problems) }
 
+        let words: [Word]
+        do {
+            guard let digest = try db.writer.read({ try DigestRecord.fetchOne($0, key: videoID) }) else {
+                return .text("영상 \(videoID) 의 다이제스트가 없어 자막을 채우지 못했다.", error: true)
+            }
+            words = digest.transcript.words
+        } catch {
+            return .text("전사를 읽지 못했다 (앱 문제): \(error)", error: true)
+        }
+        problems = CaptionFiller.fill(&comp, words: words, style: styleValue.values.caption, translations: translations)
+        if !problems.isEmpty { return reject(problems) }
+
         do {
             try db.saveComposition(comp)
             try? db.log("agent.composition.saved", subject: comp.id,
@@ -156,7 +199,10 @@ public struct MadiTools: Sendable {
         } catch {
             return reject(["저장하지 못했다: \(error)"])
         }
-        return .text("저장했다 — 장면 \(comp.scenes.count)개 · 길이 \(String(format: "%.1f", comp.duration))초. 렌더는 앱이 한다.")
+        let captions = comp.scenes.flatMap(\.captions)
+        let withSecondary = captions.filter { $0.secondary != nil }.count
+        return .text("저장했다 — 장면 \(comp.scenes.count)개 · 길이 \(String(format: "%.1f", comp.duration))초 · "
+                     + "자막 \(captions.count)덩어리(영문 \(withSecondary)). 렌더는 앱이 한다.")
     }
 
     private func reject(_ problems: [String]) -> Output {

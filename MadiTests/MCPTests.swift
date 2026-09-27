@@ -23,14 +23,14 @@ struct MCPTests {
         try Data([0x89, 0x50, 0x4E, 0x47]).write(to: sheet)
         let digest = DigestRecord(
             videoId: videoID, version: 1, sourceFingerprint: "fp", text: "# VIDEO \(videoID)\n## TRANSCRIPT",
-            sheetPaths: [sheet.path], transcript: Transcript(videoID: videoID, words: []),
+            sheetPaths: [sheet.path], transcript: Transcript(videoID: videoID, words: Self.words),
             subject: SubjectTrack(source: SourceInfo(videoID: videoID, width: 1920, height: 1080, durationSec: duration, fps: 30),
                                   stepSec: 0.5, samples: []),
             createdAt: Date()
         )
         try db.writer.write { try digest.insert($0) }
         let tools = MadiTools(db: db, videoID: videoID, compositionID: "c_ai",
-                              style: { StyleRef(id: "short.v1", version: 3) })
+                              style: { var s = try StyleStore.load(); s.version = 3; return s })
         return Fixture(db: db, server: MCPServer(tools: tools), sheet: sheet)
     }
 
@@ -46,12 +46,20 @@ struct MCPTests {
         return (content.first?["text"] as? String ?? "", r["isError"] as? Bool ?? false, content)
     }
 
+    /// 문장 둘: [0.10-2.30] · [3.00-5.20] (DigestBuilder.sentences — 끝 문장부호에서 끊는다)
+    static let words: [Word] = [
+        Word(text: "오늘은", start: 0.1, end: 0.5), Word(text: "골반", start: 0.5, end: 0.9),
+        Word(text: "스트레칭을", start: 0.9, end: 1.5), Word(text: "알려드릴게요.", start: 1.5, end: 2.3),
+        Word(text: "양쪽", start: 3.0, end: 3.3), Word(text: "다리를", start: 3.3, end: 3.7),
+        Word(text: "펴고", start: 3.7, end: 4.0), Word(text: "천천히", start: 4.0, end: 4.5),
+        Word(text: "숙여주세요.", start: 4.5, end: 5.2),
+    ]
+
     private let draft: [String: Any] = [
         "meta": ["title": "골반", "targetDurationSec": 8],
         "captionSlot": "fullBody",
         "scenes": [[
-            "id": "s1", "role": "hook", "source": ["videoId": "v1", "in": 0, "out": 8],
-            "captions": [["id": "c1", "start": 0, "end": 1.2, "text": "골반이 아프면", "slot": "main"]],
+            "id": "s1", "role": "hook", "source": ["videoId": "v1", "in": 0.1, "out": 8],
         ]],
     ]
 
@@ -96,9 +104,56 @@ struct MCPTests {
         let rec = try #require(try f.db.writer.read { try CompositionRecord.fetchOne($0, key: "c_ai") })
         let comp = try rec.composition()
         #expect(comp.style == StyleRef(id: "short.v1", version: 3))
+        #expect(!comp.scenes[0].captions.isEmpty)
         #expect(comp.videoID == "v1")
         #expect(comp.templateID == "short")
         #expect(comp.captionSlot == .fullBody)
+    }
+
+    @Test("자막은 앱이 전사에서 채운다 — 장면 로컬 시각, 첫 자막은 0초")
+    func fillsCaptions() throws {
+        let f = try fixture()
+        #expect(!(try tool(f.server, "write_composition", ["composition": draft]).isError))
+        let comp = try #require(try f.db.writer.read { try CompositionRecord.fetchOne($0, key: "c_ai") }).composition()
+        let caps = comp.scenes[0].captions
+        #expect(!caps.isEmpty)
+        #expect(abs(caps[0].start) < 0.001)
+        #expect(caps.map(\.text).joined(separator: " ") == Self.words.map(\.text).joined(separator: " "))
+        #expect(caps.allSatisfy { $0.secondary == nil })
+    }
+
+    @Test("AI 가 자막을 적으면 거절한다")
+    func rejectsCaptions() throws {
+        let f = try fixture()
+        var bad = draft
+        var scene = (bad["scenes"] as! [[String: Any]])[0]
+        scene["captions"] = [["id": "c1", "start": 0, "end": 1.2, "text": "골반이 아프면", "slot": "main"]]
+        bad["scenes"] = [scene]
+        let out = try tool(f.server, "write_composition", ["composition": bad])
+        #expect(out.isError)
+        #expect(out.text.contains("scenes[0].captions"))
+    }
+
+    @Test("영문은 문장마다 받아 그 문장의 덩어리들에 나눠 붙인다")
+    func distributesSecondary() throws {
+        let f = try fixture()
+        let secondary: [[String: Any]] = [
+            ["sentenceStart": 0.10, "text": "Today I'll show you a hip stretch."],
+            ["sentenceStart": 3.00, "text": "Straighten both legs and slowly bend forward."],
+        ]
+        let out = try tool(f.server, "write_composition", ["composition": draft, "secondary": secondary])
+        #expect(!out.isError, "\(out.text)")
+        let caps = try #require(try f.db.writer.read { try CompositionRecord.fetchOne($0, key: "c_ai") }).composition().scenes[0].captions
+        let english = caps.compactMap(\.secondary).joined(separator: " ")
+        #expect(english == "Today I'll show you a hip stretch. Straighten both legs and slowly bend forward.")
+    }
+
+    @Test("다이제스트에 없는 문장 시작을 짚으면 거절한다")
+    func rejectsUnknownSentence() throws {
+        let f = try fixture()
+        let out = try tool(f.server, "write_composition", ["composition": draft, "secondary": [["sentenceStart": 1.0, "text": "x"]]])
+        #expect(out.isError)
+        #expect(out.text.contains("1.00"))
     }
 
     @Test("JSON 문자열로 보내도 받는다")
