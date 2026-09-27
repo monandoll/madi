@@ -157,8 +157,13 @@ public struct Renderer {
                 start: CMTime(seconds: scene.source.start, preferredTimescale: timescale),
                 end: CMTime(seconds: min(scene.source.end, duration), preferredTimescale: timescale)
             )
-            let outputDuration = CMTime(
-                seconds: scene.duration, preferredTimescale: timescale
+            // ★ 결과 길이는 **실제로 넣은 구간**에서 계산한다. `scene.duration` 을 따로 반올림하면
+            //   시각에 부동소수 찌꺼기(48.20000076…)가 있을 때 넣은 구간과 1틱씩 어긋나고, 장면마다 쌓여
+            //   합성 지시가 트랙과 안 맞아 내보내기가 "Operation Stopped" 로 실패한다
+            //   (4단계 판정 — AI 초안 12편 중 11편, docs/stage-4.spec.md).
+            let outputDuration = scene.speed == 1 ? sourceRange.duration : CMTime(
+                value: CMTimeValue((Double(sourceRange.duration.value) / scene.speed).rounded()),
+                timescale: sourceRange.duration.timescale
             )
 
             plans.append(ScenePlan(

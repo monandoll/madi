@@ -63,6 +63,7 @@ public struct RenderJob: Sendable {
 
         // 화면 잡기 — auto 장면의 키프레임을 채워 편집안에 되쓴다 (§7-1 재현 가능성).
         var report: [String: JSONValue] = [:]
+        var reframed = false
         if comp.scenes.contains(where: { $0.reframe.mode == .auto }) {
             let tracks = try Dictionary(uniqueKeysWithValues: Set(comp.scenes.map(\.source.videoID)).map { id in
                 guard let d = digests[id] else { throw Failure.noDigest(id) }
@@ -70,7 +71,7 @@ public struct RenderJob: Sendable {
             })
             let plan = ReframePlanner.apply(to: comp, tracks: tracks, style: style)
             comp = plan.composition
-            try db.saveComposition(comp, createdAt: record.createdAt)
+            reframed = true
             report["G1"] = .string(Self.label(plan.g1))
             report["G2"] = .string(Self.label(plan.g2))
             report["G3"] = .string(Self.label(plan.g3))
@@ -96,6 +97,9 @@ public struct RenderJob: Sendable {
         }
         report["renderSeconds"] = .number(seconds)
 
+        // 채운 키프레임은 **렌더가 성공한 뒤에** 편집안에 되쓴다 (§7-1 재현 가능성).
+        // 먼저 쓰면 렌더가 실패했을 때 편집안이 이미 keyframes 모드라, 다시 렌더할 때 화면 잡기와 G1~G3 를 건너뛴다.
+        if reframed { try db.saveComposition(comp, createdAt: record.createdAt) }
         let reportJSON = String(decoding: try JSONEncoder().encode(report), as: UTF8.self)
         let output = OutputRecord(id: UUID().uuidString, compositionId: comp.id, path: out.path,
                                   reviewReport: reportJSON, arch: MachineArch.current, createdAt: Date())

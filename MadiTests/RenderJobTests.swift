@@ -39,4 +39,57 @@ struct RenderJobTests {
         // 같은 편집안은 다시 그리지 않는다.
         #expect(try await job.run(compositionId: "c1").id == output.id)
     }
+
+    @Test("시각에 부동소수 찌꺼기가 있는 여러 장면도 내보낸다 — 넣은 구간과 결과 길이가 어긋나지 않는다")
+    func rendersNoisyMultiScene() async throws {
+        // 4단계 판정: AI 초안 12편 중 11편이 "Operation Stopped" 로 실패했다. 낱말 경계로 옮긴 시각이
+        // Float 에서 와 48.20000076… 같은 찌꺼기를 달고, 결과 길이를 따로 반올림해 장면마다 1틱씩 어긋났다.
+        let dir = FileManager.default.temporaryDirectory.appending(path: "madi-render-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let source = dir.appending(path: "v.mp4")
+        try await TestVideo.makeTwoTone(at: source, seconds: 4, switchAt: 2, size: CGSize(width: 360, height: 640))
+
+        let db = try AppDatabase.inMemory()
+        try await db.writer.write { try VideoRecord(id: "v1", source: .folder, sourceRef: source.path, localPath: source.path, status: .ready).insert($0) }
+        try await AnalyzeJob(db: db, transcriber: DigestTests.FakeTranscriber(), root: dir.appending(path: "a")).run(videoId: "v1")
+
+        let noisy: [(Double, Double)] = [(2.200000047683716, 2.9600000381469727), (0.30000001192092896, 1.2000000476837158),
+                                         (1.2000000476837158, 1.9199999570846558), (3.0999999046325684, 3.8399999141693115)]
+        let comp = Composition(
+            id: "c1", videoID: "v1", templateID: "short", style: StyleRef(id: "short.v1", version: 1),
+            meta: Composition.Meta(targetDurationSec: 3), captionSlot: .fullBody,
+            scenes: noisy.enumerated().map { i, r in
+                Scene(id: "s\(i)", role: i == 0 ? .hook : .demo, source: Scene.Source(videoID: "v1", start: r.0, end: r.1))
+            }
+        )
+        try db.saveComposition(comp)
+        let output = try await RenderJob(db: db, outputs: dir.appending(path: "out")).run(compositionId: "c1")
+        #expect(FileManager.default.fileExists(atPath: output.path))
+    }
+
+    @Test("렌더가 실패하면 편집안을 되쓰지 않는다 — 다시 렌더할 때 화면 잡기와 G1~G3 를 다시 한다")
+    func keepsAutoWhenRenderFails() async throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "madi-render-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let source = dir.appending(path: "v.mp4")
+        try await TestVideo.makeTwoTone(at: source, seconds: 2, switchAt: 1, size: CGSize(width: 360, height: 640))
+
+        let db = try AppDatabase.inMemory()
+        try await db.writer.write { try VideoRecord(id: "v1", source: .folder, sourceRef: source.path, localPath: source.path, status: .ready).insert($0) }
+        try await AnalyzeJob(db: db, transcriber: DigestTests.FakeTranscriber(), root: dir.appending(path: "a")).run(videoId: "v1")
+        let comp = Composition(
+            id: "c1", videoID: "v1", templateID: "short", style: StyleRef(id: "short.v1", version: 1),
+            meta: Composition.Meta(targetDurationSec: 1.8), captionSlot: .upperBody,
+            scenes: [Scene(id: "s1", role: .hook, source: Scene.Source(videoID: "v1", start: 0, end: 1.8))]
+        )
+        try db.saveComposition(comp)
+        // 내보낼 곳을 파일로 막아 렌더를 실패시킨다.
+        let blocked = dir.appending(path: "blocked")
+        try Data().write(to: blocked)
+        await #expect(throws: (any Error).self) { try await RenderJob(db: db, outputs: blocked).run(compositionId: "c1") }
+        let saved = try #require(try await db.writer.read { try CompositionRecord.fetchOne($0, key: "c1") }).composition()
+        #expect(saved.scenes[0].reframe.mode == .auto)
+    }
 }
