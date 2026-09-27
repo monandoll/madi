@@ -49,9 +49,12 @@ final class MadiPipeline {
                 throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: "Contents/MacOS/madi-mcp"])
             }
             let queueBox = QueueBox()
-            let agent = AgentJob(db: db, mcpExecutable: mcp, onDraft: { id in
-                try await queueBox.queue?.enqueue(.render, targetId: id)
-            })
+            let agent = AgentJob(
+                db: db, mcpExecutable: mcp,
+                // 사용자 규칙 (§10 컨텍스트 4번) — "앞으로도 이렇게 할까요?" 에 예라고 한 것
+                userRules: { (try? db.userRules()) ?? [] },
+                onDraft: { id in try await queueBox.queue?.enqueue(.render, targetId: id) }
+            )
             let review = ReviewLoop(db: db) { id in try await queueBox.queue?.enqueue(.selfEval, targetId: id) }
             let analyzeThenDraft: JobQueue.Handler = { job in
                 try await analyze.handler(job)
@@ -63,6 +66,7 @@ final class MadiPipeline {
             let queue = JobQueue(db: db, handlers: [
                 .analyze: analyzeThenDraft, .agent: agent.handler,
                 .render: renderThenReview, .selfEval: agent.selfEvalHandler,
+                .chat: agent.chatHandler,
             ])
             queueBox.queue = queue
             try await queue.start()

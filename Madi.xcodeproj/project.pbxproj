@@ -27,6 +27,7 @@
 		20F79FEC3C95C79948001FFA /* WhisperKitProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB46CE8965E4DE8BB246F32 /* WhisperKitProvider.swift */; };
 		21DFBCFCDA2E27211AF8BA14 /* SceneCutDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E4A203004BE72EA1BF6F0EA /* SceneCutDetector.swift */; };
 		24BDF6178A3683305B2E0DCC /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23EFEE0990BF78AF95B29CE /* RootView.swift */; };
+		295A0B356B832CF414128D6C /* Chat.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEDBE33431940B7D09682A1C /* Chat.swift */; };
 		2BA892758BC7F49E8495F281 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006AFA79D5ADACA512DB698F /* main.swift */; };
 		2EE5D8289209DFCF1DC52EE2 /* PoseProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDC46588584CE5887303191 /* PoseProvider.swift */; };
 		2F438C7740AE320FCA33D469 /* StyleSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = F080369FE263622AB0237836 /* StyleSchema.swift */; };
@@ -44,6 +45,7 @@
 		41AD13869F240A2A4230BA82 /* TestVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001C72A8FC192CF7A3945894 /* TestVideo.swift */; };
 		41D529605EC5629F9025E152 /* MadiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */; };
 		4449F9FEBA3B62F283600D0B /* ExportCaptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB646EB14B2FAA8FBB871F5 /* ExportCaptionTests.swift */; };
+		497A37838619C9F2F6355452 /* ChatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9081079FE5F71F486BCE652A /* ChatTests.swift */; };
 		498A29E3EF2E75257EADC4AD /* Font.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9198795506821EE4D71C606A /* Font.swift */; };
 		4AEB2757234CE48448E5B709 /* Downloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D2B9F93252AB75D78F41A92 /* Downloads.swift */; };
 		4E19E4AAB0BB06DB67347743 /* OnboardingWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A81EF9CEC412D0497F06714 /* OnboardingWindow.swift */; };
@@ -291,6 +293,7 @@
 		8174C4882F6A4FE14235FC8F /* PromptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTests.swift; sourceTree = "<group>"; };
 		8F64F8850ADE1ADD304DAE17 /* MCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServer.swift; sourceTree = "<group>"; };
 		8FF60384F64A9623137DFC0D /* WhisperCppProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperCppProvider.swift; sourceTree = "<group>"; };
+		9081079FE5F71F486BCE652A /* ChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatTests.swift; sourceTree = "<group>"; };
 		9198795506821EE4D71C606A /* Font.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Font.swift; sourceTree = "<group>"; };
 		97883FA1954A88DF0996BBD4 /* ReframePlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReframePlannerTests.swift; sourceTree = "<group>"; };
 		978FB42F1F6682D9B407C434 /* DownloadsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsTests.swift; sourceTree = "<group>"; };
@@ -320,6 +323,7 @@
 		CA06076D2C37AFB52A054685 /* ThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailView.swift; sourceTree = "<group>"; };
 		CA96EF54F56D70E495B80CF0 /* Importer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Importer.swift; sourceTree = "<group>"; };
 		CC5CEACFDAA018FFD9179741 /* ClaudeAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeAgent.swift; sourceTree = "<group>"; };
+		CEDBE33431940B7D09682A1C /* Chat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chat.swift; sourceTree = "<group>"; };
 		CFB46CE8965E4DE8BB246F32 /* WhisperKitProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperKitProvider.swift; sourceTree = "<group>"; };
 		D23EFEE0990BF78AF95B29CE /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		D511153C80E7884291A47C55 /* RenderJobTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderJobTests.swift; sourceTree = "<group>"; };
@@ -518,6 +522,7 @@
 				76604ED8D37963A2E28DF6C4 /* AgentTests.swift */,
 				B84516A32EC9A9582A4C6CF3 /* CaptionFillerTests.swift */,
 				4181A1F305068579BF9A5C22 /* CaptionGateTests.swift */,
+				9081079FE5F71F486BCE652A /* ChatTests.swift */,
 				3E21F644B2F761A97C070BE8 /* CompositionTests.swift */,
 				4A688321A465B55932B0112B /* DigestTests.swift */,
 				978FB42F1F6682D9B407C434 /* DownloadsTests.swift */,
@@ -740,6 +745,7 @@
 				E4B171C4C08E200310DC4CAF /* AgentJob.swift */,
 				E7D58D758D7E260AECE74EE5 /* AgentProvider.swift */,
 				57238E9396123FB6046C5696 /* AgentRunner.swift */,
+				CEDBE33431940B7D09682A1C /* Chat.swift */,
 				CC5CEACFDAA018FFD9179741 /* ClaudeAgent.swift */,
 				2CE4AE6B3B5EEED7B9828936 /* CLILocator.swift */,
 				E8424E076F97A5CD29223887 /* CodexAgent.swift */,
@@ -1022,6 +1028,7 @@
 				0CA1FDF0CE2208FD1D90E5F6 /* AgentTests.swift in Sources */,
 				F69D98B4ADB5BA43F1F93077 /* CaptionFillerTests.swift in Sources */,
 				7CB49E7614D6007C3C11FAAE /* CaptionGateTests.swift in Sources */,
+				497A37838619C9F2F6355452 /* ChatTests.swift in Sources */,
 				F76C7F574A45D391BC82F937 /* CompositionTests.swift in Sources */,
 				124F4209189DF02E619840F8 /* DigestTests.swift in Sources */,
 				9B343A07D19964364F0F9AA1 /* DownloadsTests.swift in Sources */,
@@ -1091,6 +1098,7 @@
 				A71CD837B55F05CD74CD62A5 /* CaptionLayer.swift in Sources */,
 				F422E7EF80A79FA742B09A48 /* CaptionReader.swift in Sources */,
 				33EA60172AF9CB94DF000674 /* CaptionSplitter.swift in Sources */,
+				295A0B356B832CF414128D6C /* Chat.swift in Sources */,
 				B867F20FAB1630B3FA3433EF /* ClaudeAgent.swift in Sources */,
 				954F4865A3666AD3505C4EED /* CodexAgent.swift in Sources */,
 				07776DF9B2BE228B2EFA4566 /* Composition.swift in Sources */,

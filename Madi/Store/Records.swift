@@ -92,8 +92,8 @@ public struct OutputRecord: Codable, Hashable, Sendable, FetchableRecord, Persis
 
 public struct JobRecord: Codable, Hashable, Sendable, FetchableRecord, MutablePersistableRecord {
     public static let databaseTableName = "job"
-    /// analyze · agent → video.id, render · selfEval → composition.id
-    public enum Kind: String, Codable, Sendable, CaseIterable { case analyze, render, agent, selfEval }
+    /// analyze · agent → video.id, render · selfEval → composition.id, chat → chat.id
+    public enum Kind: String, Codable, Sendable, CaseIterable { case analyze, render, agent, selfEval, chat }
     public enum State: String, Codable, Sendable { case queued, running, done, failed }
 
     public var id: Int64?
@@ -126,6 +126,56 @@ public struct EventRecord: Codable, Hashable, Sendable, FetchableRecord, Mutable
     public mutating func didInsert(_ inserted: InsertionSuccess) { id = inserted.rowID }
 }
 
+/// 채팅 한 줄 (§10 · ViewData `ChatMessage`). 앱이 붙이는 줄은 문구 **키**만 들고 있다.
+public struct ChatRecord: Codable, Hashable, Sendable, FetchableRecord, PersistableRecord {
+    public static let databaseTableName = "chat"
+    public enum Kind: String, Codable, Sendable {
+        /// 크리에이터가 보낸 말
+        case creator
+        /// 보내지 못한 말 — 지우지 않는다 (ViewData `userNotSent`)
+        case creatorNotSent
+        /// AI 가 크리에이터에게 한 말 (되먹임 턴의 말은 들어오지 않는다, §10)
+        case assistant
+        /// 다음 행동 버튼. payload `{"ask": 키, …}`
+        case choices
+        /// 앱이 붙이는 한 줄. payload `{"key": 문구 키, "detail": …}`
+        case notice
+    }
+    public var id: String
+    public var videoId: String
+    public var kind: Kind
+    public var text: String?
+    public var payload: String?
+    public var compositionId: String?
+    public var createdAt: Date
+
+    public init(id: String = UUID().uuidString, videoId: String, kind: Kind, text: String? = nil,
+                payload: [String: JSONValue]? = nil, compositionId: String? = nil, createdAt: Date = Date()) {
+        self.id = id; self.videoId = videoId; self.kind = kind; self.text = text
+        self.payload = payload.flatMap { try? String(decoding: JSONEncoder().encode($0), as: UTF8.self) }
+        self.compositionId = compositionId; self.createdAt = createdAt
+    }
+
+    public var payloadValues: [String: JSONValue] {
+        payload.flatMap { try? JSONDecoder().decode([String: JSONValue].self, from: Data($0.utf8)) } ?? [:]
+    }
+}
+
+/// 사용자 규칙 (§10 컨텍스트 4번 — 세기가 가장 세다).
+public struct RuleRecord: Codable, Hashable, Sendable, FetchableRecord, MutablePersistableRecord {
+    public static let databaseTableName = "rule"
+    public var id: Int64?
+    public var text: String
+    public var sourceChatId: String?
+    public var createdAt: Date
+
+    public init(text: String, sourceChatId: String?, createdAt: Date = Date()) {
+        self.text = text; self.sourceChatId = sourceChatId; self.createdAt = createdAt
+    }
+
+    public mutating func didInsert(_ inserted: InsertionSuccess) { id = inserted.rowID }
+}
+
 // MARK: - 쓰기
 
 extension AppDatabase {
@@ -148,6 +198,11 @@ extension AppDatabase {
         )
         try writer.write { db in try record.save(db) }
         return record
+    }
+
+    /// 사용자 규칙 — 프롬프트 4번 칸에 들어간다.
+    public func userRules() throws -> [String] {
+        try writer.read { try RuleRecord.order(Column("createdAt")).fetchAll($0).map(\.text) }
     }
 
     /// 사용 이벤트. 외부로 보내지 않는다 (§14).

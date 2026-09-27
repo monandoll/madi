@@ -195,6 +195,52 @@ public struct AppDatabase: Sendable {
                 WHERE state IN ('queued','running')
                 """)
         }
+        // 6단계 — 채팅 수정 (docs/stage-6.spec.md 5번, AGENTS.md §10).
+        // - chat: 영상별 대화. 사람이 읽는 문장은 AI 가 한 말과 크리에이터가 쓴 말뿐이다.
+        //   앱이 붙이는 줄(선택지 · 알림)은 **문구 키**만 저장한다 — 문장은 Copy.swift(디자인 소유) 한 곳에 있다
+        // - rule: 사용자 규칙 (§10 컨텍스트 4번). "앞으로도 이렇게 할까요?" 에 예일 때만 적는다
+        // - job.kind: chat (targetId → chat.id)
+        m.registerMigration("v4-chat") { db in
+            try db.create(table: "chat") { t in
+                t.primaryKey("id", .text)
+                t.column("videoId", .text).notNull().references("video", onDelete: .cascade)
+                t.column("kind", .text).notNull()
+                    .check(sql: "kind IN ('creator','creatorNotSent','assistant','choices','notice')")
+                t.column("text", .text)
+                // choices · notice 의 문구 키와 값. creator 줄은 보고 있던 편집안.
+                t.column("payload", .jsonText)
+                // 이 줄로 생긴 편집안 (assistant 줄)
+                t.column("compositionId", .text)
+                t.column("createdAt", .datetime).notNull()
+            }
+            try db.create(index: "chat_by_video", on: "chat", columns: ["videoId", "createdAt"])
+            try db.create(table: "rule") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("text", .text).notNull()
+                t.column("sourceChatId", .text)
+                t.column("createdAt", .datetime).notNull()
+            }
+            try db.create(table: "job_new") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("kind", .text).notNull().check(sql: "kind IN ('analyze','render','agent','selfEval','chat')")
+                // analyze · agent → video.id, render · selfEval → composition.id, chat → chat.id
+                t.column("targetId", .text).notNull()
+                t.column("state", .text).notNull()
+                    .check(sql: "state IN ('queued','running','done','failed')")
+                t.column("attempts", .integer).notNull().defaults(to: 0)
+                t.column("error", .text)
+                t.column("createdAt", .datetime).notNull()
+                t.column("startedAt", .datetime)
+                t.column("finishedAt", .datetime)
+            }
+            try db.execute(sql: "INSERT INTO job_new SELECT id, kind, targetId, state, attempts, error, createdAt, startedAt, finishedAt FROM job")
+            try db.drop(table: "job")
+            try db.rename(table: "job_new", to: "job")
+            try db.execute(sql: """
+                CREATE UNIQUE INDEX job_one_live_per_target ON job(kind, targetId)
+                WHERE state IN ('queued','running')
+                """)
+        }
         return m
     }
 }

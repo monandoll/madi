@@ -132,10 +132,12 @@ public struct AgentJob: Sendable {
         { job in try await self.selfEval(compositionID: job.targetId) }
     }
 
-    /// 한 턴을 돌리고 편집안이 실제로 저장됐는지 확인한다. 첫 초안 · 되먹임이 같이 쓴다.
-    private func turnAndCheck(
+    /// 한 턴을 돌리고 편집안이 실제로 저장됐는지 확인한다. 첫 초안 · 되먹임 · 채팅 수정이 같이 쓴다.
+    /// AI 가 크리에이터에게 한 마지막 말을 돌려준다.
+    @discardableResult
+    func turnAndCheck(
         _ choice: Choice, _ request: AgentRequest, videoID: String, compositionID: String, kind: String
-    ) async throws {
+    ) async throws -> String {
         let workDir = request.workDir
         let base: [String: JSONValue] = [
             "request": .string(kind), "cli": .string(choice.kind.rawValue),
@@ -176,5 +178,6 @@ public struct AgentJob: Sendable {
         try? FileManager.default.removeItem(at: workDir)
         // 검사한 결과만 보여 준다 — 초안이든 되먹임이든 저장되면 바로 렌더에 건다 (5단계 결정 ①).
         try await onDraft(compositionID)
+        return said.last?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 }
