@@ -30,7 +30,9 @@ struct RenderJobTests {
 
         #expect(FileManager.default.fileExists(atPath: output.path))
         let report = try #require(output.reviewReport)
-        for key in ["G1", "G2", "G3", "G4.upperBody", "G5", "G6"] { #expect(report.contains("\"\(key)\""), "\(key) 없음") }
+        for key in ["G1", "G2", "G3", "G4.upperBody", "G5", "G6", "G8", "G9", "G10", "G11", "selfEval"] {
+            #expect(report.contains("\"\(key)\""), "\(key) 없음")
+        }
         // 합성 영상에는 사람이 없다 — G1 은 통과가 아니라 판정 불가여야 한다 (§8).
         #expect(report.contains("cannotJudge"))
         // auto 장면의 키프레임이 편집안에 되써졌다 (§7-1).

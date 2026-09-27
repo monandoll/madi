@@ -97,6 +97,24 @@ public struct RenderJob: Sendable {
         }
         report["renderSeconds"] = .number(seconds)
 
+        // 소프트 (5단계 결정 ②). G8 · G10 · G11 은 편집안, G9 는 내보낸 파일에서 잰다.
+        let (g8, firstCaption) = SoftGates.g8(comp)
+        report["G8"] = .string(Self.label(g8))
+        if let firstCaption { report["G8.firstCaptionSec"] = .number(firstCaption) }
+        let (g10, medianSec) = SoftGates.g10(comp)
+        report["G10"] = .string(Self.label(g10))
+        report["G10.medianSec"] = .number(medianSec)
+        let (g11, ratio) = SoftGates.g11(comp)
+        report["G11"] = .string(Self.label(g11))
+        report["G11.ratio"] = .number(ratio)
+        let audio = try await AudioAnalyzer.analyze(out)
+        let motion = try await SceneCutDetector.detect(out)
+        let staticSec = SoftGates.longestStatic(silences: audio.silences, diffs: motion.diffs,
+                                                stepSec: motion.stepSec, stillDiff: SoftGates.stillDiff)
+        report["G9"] = .string(Self.label(SoftGates.g9(longestStaticSec: staticSec)))
+        report["G9.longestStaticSec"] = .number(staticSec)
+        report["selfEval"] = .array(Self.selfEvalItems(report).map { .string($0) })
+
         // 채운 키프레임은 **렌더가 성공한 뒤에** 편집안에 되쓴다 (§7-1 재현 가능성).
         // 먼저 쓰면 렌더가 실패했을 때 편집안이 이미 keyframes 모드라, 다시 렌더할 때 화면 잡기와 G1~G3 를 건너뛴다.
         if reframed { try db.saveComposition(comp, createdAt: record.createdAt) }
@@ -106,6 +124,21 @@ public struct RenderJob: Sendable {
         try await db.writer.write { try output.insert($0) }
         try db.log("render.done", subject: comp.id, payload: report)
         return output
+    }
+
+    /// 되먹임을 부르는 항목 (5단계 결정 ②): 하드 G1 · G4 · G6 의 `fail` 과 소프트 G8 · G9 · G11 의 `fail`.
+    /// `원본 한계` · `판정 불가` 는 부르지 않는다 (§8). G10 은 근거 없는 숫자라 부르지 않는다.
+    public static let selfEvalGates = ["G1", "G4", "G6", "G8", "G9", "G11"]
+
+    /// 보여 주기를 막는 것 — 하드 `fail` 뿐 (§8).
+    public static let hardGates = ["G1", "G4", "G6"]
+
+    static func selfEvalItems(_ report: [String: JSONValue]) -> [String] {
+        report.compactMap { key, value -> String? in
+            guard case .string("fail") = value else { return nil }
+            let gate = key.split(separator: ".").first.map(String.init) ?? key
+            return selfEvalGates.contains(gate) ? key : nil
+        }.sorted()
     }
 
     static func label(_ r: GateResult) -> String {

@@ -1695,6 +1695,29 @@ case "agent":
         }
     } catch { fail("\(error)") }
 
+case "softgates":
+    // 5단계 결정 ② — 소프트 기준을 공개본에 먼저 대 본다. 공개본이 떨어지면 기준이 틀린 것이다.
+    // G10: 컷 검출로 나눈 장면 길이의 중앙값. G9: 무음 ∩ 저움직임이 이어진 가장 긴 구간 (기준값 여럿).
+    let stills = [0.002, 0.004, 0.006, 0.01, 0.02]
+    print("영상 | 길이 | 컷 | 장면중앙 | G10 | 무음합 | " + stills.map { "정적최장@\($0)" }.joined(separator: " | "))
+    for file in args.dropFirst() where !file.hasPrefix("--") {
+        let url = URL(fileURLWithPath: file)
+        do {
+            let info = try await FrameSheet.info(of: url)
+            let scenes = try await SceneCutDetector.detect(url)
+            let audio = try await AudioAnalyzer.analyze(url)
+            let bounds = [0.0] + scenes.cuts + [info.duration]
+            let lengths = zip(bounds, bounds.dropFirst()).map { $1 - $0 }
+            let med = SoftGates.median(lengths)
+            let silentTotal = audio.silences.reduce(0) { $0 + ($1.upperBound - $1.lowerBound) }
+            let runs = stills.map { SoftGates.longestStatic(silences: audio.silences, diffs: scenes.diffs, stepSec: scenes.stepSec, stillDiff: $0) }
+            print([url.deletingPathExtension().lastPathComponent, String(format: "%.1f", info.duration), "\(scenes.cuts.count)",
+                   String(format: "%.2f", med), SoftGates.sceneMedianRange.contains(med) ? "pass" : "FAIL",
+                   String(format: "%.1f", silentTotal)] .joined(separator: " | ")
+                  + " | " + runs.map { String(format: "%.1f", $0) }.joined(separator: " | "))
+        } catch { print("\(file) | 실패: \(error)") }
+    }
+
 case "stage4":
     // 4단계 판정 (docs/stage-4.spec.md 6번 · 결정 ④). **판정 전용 DB** 에 영상을 들이고 앱과 같은 부품
     // (AnalyzeJob → AgentJob → RenderJob)을 CLI 마다 돌려 게이트를 읽는다. 사람은 편집안을 한 글자도 고치지 않는다.
