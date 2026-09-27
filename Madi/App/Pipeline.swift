@@ -43,11 +43,7 @@ final class MadiPipeline {
             let preparer = try ModelPreparer(catalog: catalog)
             let analyze = AnalyzeJob(db: db, transcriber: PreparedTranscriber(preparer: preparer, db: db))
             let render = RenderJob(db: db)
-            // 3단계 판정 도구 — `-stage3Slot` 옵션이 있을 때만 (4단계에서 지운다).
-            let queueBox = QueueBox()
-            let analyzeHandler = Stage3Harness.wrap(analyze.handler, db: db) { queueBox.queue }
-            let queue = JobQueue(db: db, handlers: [.analyze: analyzeHandler, .render: render.handler])
-            queueBox.queue = queue
+            let queue = JobQueue(db: db, handlers: [.analyze: analyze.handler, .render: render.handler])
             try await queue.start()
 
             let importer = Importer(db: db, queue: queue)
@@ -84,9 +80,4 @@ final class MadiPipeline {
             Self.log.fault("파이프라인을 시작하지 못했다: \(String(describing: error), privacy: .public)")
         }
     }
-}
-
-/// 판정 도구가 큐를 늦게 참조하려고 쓰는 상자 (큐를 만들기 전에 처리기를 넘겨야 해서).
-private final class QueueBox: @unchecked Sendable {
-    var queue: JobQueue?
 }
