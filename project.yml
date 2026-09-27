@@ -50,6 +50,10 @@ packages:
   GRDB:
     url: https://github.com/groue/GRDB.swift
     exactVersion: 7.11.1
+  # 자동 업데이트 (AGENTS.md §2 배포 · docs/stage-6.spec.md 4번). 판 고정.
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.0
   # Intel 전사 — whisper.cpp 공식 xcframework. 주소 · 체크섬은 Packages/WhisperCpp/Package.swift 에.
   WhisperCpp:
     path: Packages/WhisperCpp
@@ -104,6 +108,17 @@ targets:
   Madi:
     type: application
     platform: macOS
+    # Sparkle 이 읽는 칸 (INFOPLIST_KEY_ 로 못 넣는 키). 생성되는 Info.plist 와 합쳐진다.
+    info:
+      path: Madi/App/Info.plist
+      properties:
+        # 새 판 목록 — GitHub Releases 의 최신 릴리스 (레포가 공개다, docs/stage-6.spec.md 결정)
+        SUFeedURL: https://github.com/monandoll/madi/releases/latest/download/appcast.xml
+        # 업데이트 서명 검증 키 (EdDSA). 비밀 키는 만든 Mac 의 키체인(계정 madi)에만 있다
+        SUPublicEDKey: pwBJBDEFPFnk/T8UQRiv+6QDgaqrfc+nvKlv4AOaqhQ=
+        # 하루 한 번 알아서 확인한다 — 크리에이터는 "업데이트 있음" 알림과 버튼만 본다 (§2)
+        SUEnableAutomaticChecks: true
+        SUScheduledCheckInterval: 86400
     sources:
       - path: Madi/App
       # 디자인 AI 가 만드는 화면 (docs/prompts/design-ai.md). 아직 앱 창에 붙지 않았고
@@ -124,6 +139,8 @@ targets:
         embed: true
         copy:
           destination: executables
+      - package: Sparkle
+        product: Sparkle
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.madi.Madi

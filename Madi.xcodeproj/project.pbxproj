@@ -40,6 +40,7 @@
 		3D96CBC20ABB8B57A21684A8 /* ReviewLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39075F869D328FB882A8BE7E /* ReviewLoop.swift */; };
 		3DE4D52C2AFD1167224CAB3E /* AgentJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B171C4C08E200310DC4CAF /* AgentJob.swift */; };
 		3E315E26A91D7C56D78B7F20 /* ReframePlannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97883FA1954A88DF0996BBD4 /* ReframePlannerTests.swift */; };
+		3F0CE94E3501D1F449BE65EF /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 9B44AB9EE2D0BC198F895F2F /* Sparkle */; };
 		41AD13869F240A2A4230BA82 /* TestVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001C72A8FC192CF7A3945894 /* TestVideo.swift */; };
 		41D529605EC5629F9025E152 /* MadiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */; };
 		4449F9FEBA3B62F283600D0B /* ExportCaptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB646EB14B2FAA8FBB871F5 /* ExportCaptionTests.swift */; };
@@ -224,6 +225,7 @@
 		034A7ED45B0CF4B22BAC1E53 /* ExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportSheet.swift; sourceTree = "<group>"; };
 		056E706ADEB1090F9E4F18D2 /* Transcript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transcript.swift; sourceTree = "<group>"; };
 		0CF255FFFF4817C0CC024338 /* StillRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StillRenderer.swift; sourceTree = "<group>"; };
+		10B4FB1D210A593AA3E0223D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		14B2355EFFC3613EC4CA904B /* NoticeBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoticeBar.swift; sourceTree = "<group>"; };
 		14D1202525FD03955FBC6906 /* WhisperCpp */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WhisperCpp; path = Packages/WhisperCpp; sourceTree = SOURCE_ROOT; };
 		15E03A9C5DB13FC7EE29947B /* ReviewLoopTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewLoopTests.swift; sourceTree = "<group>"; };
@@ -360,6 +362,7 @@
 			files = (
 				631C3B5825F86943E42C6697 /* MadiKit.framework in Frameworks */,
 				55A2F43B667CD2DAA90B60DB /* WhisperCpp in Frameworks */,
+				3F0CE94E3501D1F449BE65EF /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -398,6 +401,7 @@
 		27175C2EBCA3FF78E2BCD6E4 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				10B4FB1D210A593AA3E0223D /* Info.plist */,
 				C16C3D47D05461E4318E33B0 /* Madi.entitlements */,
 				1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */,
 				7F15A9316F358BEB41DF37AF /* Pipeline.swift */,
@@ -823,6 +827,7 @@
 			name = Madi;
 			packageProductDependencies = (
 				28058D99D46C2544338CB34B /* WhisperCpp */,
+				9B44AB9EE2D0BC198F895F2F /* Sparkle */,
 			);
 			productName = Madi;
 			productReference = A6846090E3F100A140F296D0 /* Madi.app */;
@@ -924,6 +929,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				3248BFDF15EBE26EC543D693 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+				96D655CE9DB5AF6FF9F1B4F4 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				B5771C3E0A68DAA5E1DC7063 /* XCRemoteSwiftPackageReference "WhisperKit" */,
 				04C43407954B366C53928F36 /* XCLocalSwiftPackageReference "Packages/WhisperCpp" */,
 			);
@@ -1201,6 +1207,7 @@
 				CODE_SIGN_ENTITLEMENTS = Madi/App/Madi.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Madi/App/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "아이폰으로 찍은 영상을 옮기지 않고 바로 편집하려고 사진 보관함을 읽어요. 영상은 이 Mac 을 떠나지 않아요.";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
@@ -1375,6 +1382,7 @@
 				CODE_SIGN_ENTITLEMENTS = Madi/App/Madi.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Madi/App/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "아이폰으로 찍은 영상을 옮기지 않고 바로 편집하려고 사진 보관함을 읽어요. 영상은 이 Mac 을 떠나지 않아요.";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
@@ -1552,6 +1560,14 @@
 				version = 7.11.1;
 			};
 		};
+		96D655CE9DB5AF6FF9F1B4F4 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.10.0;
+			};
+		};
 		B5771C3E0A68DAA5E1DC7063 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/argmaxinc/WhisperKit";
@@ -1575,6 +1591,11 @@
 		71A3CB2B1DCAAD296B6DD7B2 /* WhisperCpp */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = WhisperCpp;
+		};
+		9B44AB9EE2D0BC198F895F2F /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 96D655CE9DB5AF6FF9F1B4F4 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 		9BC92477796650B48B88A3DC /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;

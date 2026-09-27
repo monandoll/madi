@@ -1,5 +1,6 @@
 import SwiftUI
 import MadiKit
+import Sparkle
 
 /// 0단계의 프리뷰 창 하나. **본 UI 가 아니다** (docs/stage-0.spec.md 범위 밖).
 ///
@@ -9,6 +10,9 @@ import MadiKit
 struct MadiApp: App {
     /// 3단계 — 켜지면 가져오기 · 분석 · 렌더가 돈다. 화면은 아직 이 미리보기 창뿐이다.
     @State private var pipeline = MadiPipeline()
+    /// 자동 업데이트 (§2 배포). 켜지면 하루 한 번 새 판을 확인한다 — 설정은 Info.plist (project.yml).
+    /// 메뉴의 "업데이트 확인…" 은 문구 키(`checkForUpdates`)를 디자인이 채운 뒤 붙인다.
+    private let updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
     // `Scene` 은 SwiftUI 와 `Madi/Model` 양쪽에 있다. 모델 쪽 이름은 AGENTS.md §5 가 정한 것이라
     // 바꾸지 않고, UI 코드에서 SwiftUI 쪽을 명시한다.
