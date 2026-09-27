@@ -146,6 +146,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.madi.Madi
+        # 앱 아이콘 — Madi/UI/Assets.xcassets (디자인 쪽. 다시 그리려면 docs/design/icon/make-icon.swift)
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         # 사진 보관함 권한 (§2). 문장은 디자인 쪽이 다듬는다 — docs/design/copy-keys.md `photoLibraryUsage`
         # Hardened Runtime 에서 사진 보관함을 읽는 권한 (docs/stage-6.spec.md 3번).
@@ -191,7 +193,10 @@ targets:
     type: tool
     platform: macOS
     sources:
+      # 아이콘 카탈로그는 앱 것이다. 명령줄 도구는 번들이 없어 카탈로그를 담을 곳이 없다.
       - path: Madi/UI
+        excludes:
+          - "Assets.xcassets"
     settings:
       base:
         PRODUCT_NAME: madi-ui-shots

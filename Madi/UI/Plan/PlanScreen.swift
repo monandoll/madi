@@ -7,16 +7,15 @@ import SwiftUI
 /// 카드를 보고 틀린 곳을 짚은 다음 바로 말로 고치는 게 이 화면의 전부다.
 ///
 /// `만들기` 는 여기에만 있다. 갤러리에서 바로 영상이 나오는 길은 없다 (`§1-3`, `§10`).
+///
+/// 사람이 한 일은 **전부 `onAction` 하나로** 나간다 — 채팅 · 장면 손질 · 편집안 고르기 · 만들기까지.
+/// 이 화면은 무엇을 할지 정하지 않는다 (viewdata-map 3절 ⑦).
 struct PlanScreen: View {
     var state: PlanState
     var messages: [ChatMessage]
     var chips: [String]
 
-    var onBack: () -> Void = {}
-    var onMake: () -> Void = {}
-    var onStop: () -> Void = {}
-    var onOpenResults: () -> Void = {}
-    var onConnectAI: () -> Void = {}
+    var onAction: (UIAction) -> Void = { _ in }
 
     /// 프리뷰 · 스크린샷용 초기 상태.
     var initialSceneID: SceneCardItem.ID?
@@ -33,16 +32,29 @@ struct PlanScreen: View {
             .navigationSubtitle(subtitle)
             .toolbar { toolbar }
             .inspector(isPresented: $showsChat) {
-                ChatPanel(messages: messages, chips: chips, isBusy: isBusy)
-                    .inspectorColumnWidth(
-                        min: Tokens.Size.chatMin,
-                        ideal: Tokens.Size.chatIdeal,
-                        max: 420
-                    )
+                ChatPanel(
+                    messages: messages, chips: chips, isBusy: isBusy,
+                    onSend: { onAction(.chat(.send($0))) },
+                    onChip: { onAction(.chat(.chip($0))) },
+                    onChoice: { onAction(.chat(.choice($0))) },
+                    onPlayFromStart: { onAction(.chat(.playFromStart)) },
+                    onUndo: { onAction(.chat(.undo)) },
+                    onOpenResult: { onAction(.chat(.openResult($0.id))) },
+                    onRetrySend: { onAction(.chat(.retrySend($0))) }
+                )
+                .inspectorColumnWidth(
+                    min: Tokens.Size.chatMin,
+                    ideal: Tokens.Size.chatIdeal,
+                    max: 420
+                )
             }
             .onAppear {
                 if selectedID == nil { selectedID = initialSceneID }
                 if editingID == nil { editingID = initialEditingID }
+            }
+            .onChange(of: selectedID) { _, new in
+                // 고른 장면을 알린다 — 재생 막대가 그 장면으로 가야 한다.
+                if let new { onAction(.scene(new, .select)) }
             }
     }
 
@@ -55,9 +67,35 @@ struct PlanScreen: View {
             ready(plan)
         case .making(let plan, let progress):
             // 화면을 떠나지 않는다. 미리보기 자리에 진행이 들어가고 목록은 읽기 전용이 된다.
-            ready(plan, progress: progress)
+            ready(plan, top: .making(progress))
+        case .stopped(let plan?, let reason, let actions, let isFinal):
+            // 편집안이 있으면 장면 목록은 그대로 두고 요약 자리에 멈춘 이유를 세운다.
+            ready(plan, top: .stopped(reason: reason, actions: actions, isFinal: isFinal))
+        case .stopped(nil, let reason, let actions, let isFinal):
+            // 편집안이 아직 없다 — 가운데에 이유와 다음 행동만.
+            // 직접 짠 패널을 여기 두면 글 줄바꿈 높이와 분할 창 최소 크기가 서로를 다시 계산하다
+            // AppKit 이 죽었다 (제약 갱신 무한 반복). 시스템 빈 화면 틀은 그 계산을 안전하게 한다.
+            ContentUnavailableView {
+                Label {
+                    Text(Copy.Plan.Stopped.title)
+                } icon: {
+                    Image(systemName: isFinal ? "xmark.circle" : "pause.circle")
+                        .foregroundStyle(isFinal ? Tokens.Palette.failure : Tokens.Palette.attention)
+                }
+            } description: {
+                Text(reason)
+            } actions: {
+                ForEach(actions) { action in
+                    if action.isPrimary {
+                        Button(action.title) { onAction(.plan(.choice(action))) }
+                            .buttonStyle(.borderedProminent)
+                    } else {
+                        Button(action.title) { onAction(.plan(.choice(action))) }
+                    }
+                }
+            }
         case .preparing(let steps):
-            PlanPreparingView(steps: steps, onStop: onStop)
+            PlanPreparingView(steps: steps) { onAction(.plan(.stop)) }
         case .notYet(_, let reason):
             // 실패가 아니라 "아직" 이다. 왜 못 하는지 말하고 다른 길을 준다.
             ContentUnavailableView {
@@ -65,7 +103,7 @@ struct PlanScreen: View {
             } description: {
                 Text(reason)
             } actions: {
-                Button(Copy.Plan.NotYet.pickAnother, action: onBack)
+                Button(Copy.Plan.NotYet.pickAnother) { onAction(.plan(.close)) }
                     .buttonStyle(.borderedProminent)
             }
         case .noAI:
@@ -75,15 +113,42 @@ struct PlanScreen: View {
             } description: {
                 EmptyView()
             } actions: {
-                Button(Copy.Plan.NoAI.action, action: onConnectAI)
+                Button(Copy.Plan.NoAI.action) { onAction(.plan(.connectAI)) }
+                    .buttonStyle(.borderedProminent)
+            }
+        case .notLoggedIn(let product):
+            // 설치는 돼 있다. "연결하기" 가 아니라 "로그인하기" 다 — 다음 행동이 다르다.
+            ContentUnavailableView {
+                Label(Copy.Plan.NotLoggedIn.title(product.name), systemImage: "person.crop.circle.badge.exclamationmark")
+            } description: {
+                Text(Copy.Plan.NotLoggedIn.message)
+            } actions: {
+                Button(Copy.Plan.NotLoggedIn.action) { onAction(.plan(.login(product))) }
                     .buttonStyle(.borderedProminent)
             }
         }
     }
 
-    private func ready(_ plan: PlanView, progress: MakingProgress? = nil) -> some View {
+    /// 위쪽 오른편에 무엇이 서는가 — 평소엔 편집안 요약, 만드는 중엔 진행, 멈췄으면 이유.
+    private enum Top {
+        case summary
+        case making(MakingProgress)
+        case stopped(reason: String, actions: [ChatChoice], isFinal: Bool)
+
+        var isReadOnly: Bool {
+            if case .summary = self { return false }
+            return true
+        }
+
+        var readOnlyNote: String? {
+            if case .making = self { return Copy.Plan.Making.readOnly }
+            return nil
+        }
+    }
+
+    private func ready(_ plan: PlanView, top: Top = .summary) -> some View {
         GeometryReader { proxy in
-            readyBody(plan, progress: progress, topHeight: topHeight(for: proxy.size.height))
+            readyBody(plan, top: top, topHeight: topHeight(for: proxy.size.height))
         }
     }
 
@@ -93,9 +158,7 @@ struct PlanScreen: View {
         min(290, max(216, height * 0.34))
     }
 
-    private func readyBody(
-        _ plan: PlanView, progress: MakingProgress?, topHeight: CGFloat
-    ) -> some View {
+    private func readyBody(_ plan: PlanView, top: Top, topHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             // 위: 지금 어떻게 생겼나. 아래: 무엇으로 이뤄졌나.
             // 위쪽 높이를 고정한다 — 창이 낮아질 때 줄어들어야 하는 건 장면 목록이 아니다.
@@ -103,15 +166,21 @@ struct PlanScreen: View {
                 PlanPlayer(
                     thumbnail: currentScene(plan).thumbnail,
                     position: position(in: plan),
-                    total: plan.targetDuration
+                    total: plan.targetDuration,
+                    onPlay: { onAction(.plan(.play)) }
                 )
                 .frame(width: 158)
 
                 Group {
-                    if let progress {
-                        MakingPanel(progress: progress, onStop: onStop)
-                    } else {
+                    switch top {
+                    case .summary:
                         PlanInfoCard(plan: plan)
+                    case .making(let progress):
+                        MakingPanel(progress: progress) { onAction(.plan(.stop)) }
+                    case .stopped(let reason, let actions, let isFinal):
+                        StoppedPanel(reason: reason, actions: actions, isFinal: isFinal) {
+                            onAction(.plan(.choice($0)))
+                        }
                     }
                 }
                 // 넓은 창에서 카드가 끝까지 늘어나면 한 줄에 글자 몇 개만 남고 오른쪽이 휑해진다.
@@ -130,7 +199,17 @@ struct PlanScreen: View {
                 plan: plan,
                 selectedID: $selectedID,
                 editingID: $editingID,
-                isReadOnly: progress != nil
+                isReadOnly: top.isReadOnly,
+                readOnlyNote: top.readOnlyNote,
+                onRemove: { onAction(.scene($0.id, .remove)) },
+                onExtend: { onAction(.scene($0.id, .extend)) },
+                onShorten: { onAction(.scene($0.id, .shorten)) },
+                onPlayFrom: { onAction(.scene($0.id, .playFromHere)) },
+                onRestoreGap: { onAction(.scene($0.id, .restoreGap)) },
+                onMove: { onAction(.plan(.moveScenes(from: $0, to: $1))) },
+                onCommitCaption: { scene, text, secondary in
+                    onAction(.scene(scene.id, .editCaption(text: text, secondary: secondary)))
+                }
             )
         }
     }
@@ -154,8 +233,9 @@ struct PlanScreen: View {
     private var title: String {
         switch state {
         case .ready(let plan), .making(let plan, _): plan.shotTitle
+        case .stopped(let plan, _, _, _): plan?.shotTitle ?? SampleTitlePlaceholder.title
         case .notYet(let title, _): title
-        case .preparing, .noAI: SampleTitlePlaceholder.title
+        case .preparing, .noAI, .notLoggedIn: SampleTitlePlaceholder.title
         }
     }
 
@@ -167,7 +247,9 @@ struct PlanScreen: View {
             Copy.Plan.Making.title
         case .preparing:
             Copy.Plan.Preparing.title
-        case .noAI, .notYet:
+        case .stopped:
+            Copy.Plan.Stopped.title
+        case .noAI, .notYet, .notLoggedIn:
             ""
         }
     }
@@ -183,7 +265,9 @@ struct PlanScreen: View {
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
-            Button(action: onBack) {
+            Button {
+                onAction(.plan(.close))
+            } label: {
                 Label(Copy.Plan.backToGallery, systemImage: "chevron.backward")
             }
             .help(Copy.Plan.backToGallery)
@@ -201,12 +285,17 @@ struct PlanScreen: View {
                         .labelStyle(.titleAndIcon)
                 }
                 .popover(isPresented: $showsVersions, arrowEdge: .bottom) {
-                    PlanVersionList(versions: plan.versions)
+                    PlanVersionList(versions: plan.versions) { version in
+                        showsVersions = false
+                        onAction(.plan(.pickVersion(version.id)))
+                    }
                 }
             }
             if plan.resultCount > 0 {
                 ToolbarItem {
-                    Button(action: onOpenResults) {
+                    Button {
+                        onAction(.plan(.openResults))
+                    } label: {
                         Label(
                             Copy.results(plan.resultCount),
                             systemImage: "square.and.arrow.up.on.square"
@@ -228,9 +317,9 @@ struct PlanScreen: View {
 
         ToolbarItem {
             if isBusy {
-                Button(Copy.Plan.Preparing.stop, action: onStop)
+                Button(Copy.Plan.Preparing.stop) { onAction(.plan(.stop)) }
             } else {
-                Button(Copy.Action.make, action: onMake)
+                Button(Copy.Action.make) { onAction(.plan(.make)) }
                     .buttonStyle(.borderedProminent)
                     .disabled(!isReady)
             }
@@ -240,6 +329,56 @@ struct PlanScreen: View {
     private var isReady: Bool {
         if case .ready = state { return true }
         return false
+    }
+}
+
+/// 멈춘 편집안. 이유를 사람 말로 적고 다음 행동을 준다 (`§1-6`).
+///
+/// **붉은색은 `isFinal` 일 때만** — 두 번 다듬어도 기준에 못 미쳐 보여 줄 결과가 없을 때.
+/// AI 가 한 번 실패했거나 분석이 멈춘 건 다시 하면 되는 일이라 노란 일시정지다.
+/// 만드는 중 화면의 멈춘 작업(`MakingJobCard`)과 같은 문법이다.
+struct StoppedPanel: View {
+    var reason: String
+    var actions: [ChatChoice]
+    var isFinal: Bool
+    var onChoice: (ChatChoice) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.between) {
+            HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.inner) {
+                Image(systemName: isFinal ? "xmark.circle" : "pause.circle")
+                    .foregroundStyle(isFinal ? Tokens.Palette.failure : Tokens.Palette.attention)
+                Text(Copy.Plan.Stopped.title)
+                    .font(.headline)
+            }
+
+            Text(reason)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: Tokens.Space.tight + 2) {
+                ForEach(actions) { action in
+                    HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.inner) {
+                        if action.isPrimary {
+                            Button(action.title) { onChoice(action) }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+                        } else {
+                            Button(action.title) { onChoice(action) }
+                                .controlSize(.small)
+                        }
+                        if let detail = action.detail {
+                            Text(detail)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Tokens.Space.between)
+        .background(.quaternary.opacity(0.4), in: .rect(cornerRadius: Tokens.Radius.card))
     }
 }
 

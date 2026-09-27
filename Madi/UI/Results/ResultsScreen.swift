@@ -14,12 +14,8 @@ struct ResultsScreen: View {
     /// 이 화면에는 채팅이 없어서 말할 자리가 필요하다.
     var notice: ScreenNotice?
 
-    var onOpenPlan: () -> Void = {}
-    var onExport: (ExportTarget) -> Void = { _ in }
-    var onShowShots: () -> Void = {}
-    var onTrash: (ResultRef) -> Void = { _ in }
-    var onNoticeAction: (ChatChoice) -> Void = { _ in }
-    var onDismissNotice: () -> Void = {}
+    /// 사람이 한 일. 어느 결과물인지 id 가 같이 나간다 (viewdata-map 3절 ⑦).
+    var onAction: (UIAction.Results) -> Void = { _ in }
 
     /// 프리뷰 · 스크린샷용.
     var initialSelection: ResultRef.ID?
@@ -34,7 +30,11 @@ struct ResultsScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             if let notice {
-                NoticeBar(notice: notice, onAction: onNoticeAction, onDismiss: onDismissNotice)
+                NoticeBar(
+                    notice: notice,
+                    onAction: { onAction(.noticeChoice($0)) },
+                    onDismiss: { onAction(.dismissNotice) }
+                )
                 Divider()
             }
             content
@@ -45,7 +45,7 @@ struct ResultsScreen: View {
             .sheet(isPresented: $isExporting) {
                 ExportSheet(targets: exportTargets) { target in
                     isExporting = false
-                    onExport(target)
+                    if let id = selectedID { onAction(.export(id, target)) }
                 } onCancel: {
                     isExporting = false
                 }
@@ -56,7 +56,7 @@ struct ResultsScreen: View {
                 presenting: trashing
             ) { result in
                 Button(Copy.Results.Trash.action) {
-                    onTrash(result)
+                    onAction(.trash(result.id))
                     trashing = nil
                 }
                 Button(Copy.Action.cancel, role: .cancel) { trashing = nil }
@@ -83,7 +83,7 @@ struct ResultsScreen: View {
             } description: {
                 Text(Copy.Results.Empty.message)
             } actions: {
-                Button(Copy.Results.Empty.action, action: onShowShots)
+                Button(Copy.Results.Empty.action) { onAction(.showShots) }
             }
         case .loaded(let groups):
             HStack(spacing: 0) {
@@ -154,7 +154,9 @@ struct ResultsScreen: View {
         }
         if detail != nil {
             ToolbarItem {
-                Button(Copy.Action.openPlanFromResult, action: onOpenPlan)
+                Button(Copy.Action.openPlanFromResult) {
+                    if let id = selectedID { onAction(.openPlan(id)) }
+                }
             }
             ToolbarItem {
                 Button(Copy.Results.Export.action) { isExporting = true }
@@ -201,6 +203,13 @@ private struct ResultRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 // 내보낸 것은 줄에 그대로 남긴다. "이거 올렸었나" 를 묻지 않게.
+                if let tip = result.notice {
+                    // 결과는 괜찮다. 다음 촬영 요령 한 줄 — 목록에서는 짧은 꼴만.
+                    Label(tip, systemImage: "lightbulb")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
                 if let note = result.exportedNote {
                     Label(note, systemImage: "checkmark.circle")
                         .font(.caption2)

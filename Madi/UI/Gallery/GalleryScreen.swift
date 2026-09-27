@@ -11,13 +11,9 @@ struct GalleryScreen: View {
     var state: GalleryState
     var studio: StudioStatus
 
-    /// 촬영본에서 나가는 길은 이것 하나다. 편집안이 열리고 AI 가 초안을 짠다.
-    var onMakeShort: (ShotItem) -> Void = { _ in }
-    var onPlay: (ShotItem) -> Void = { _ in }
-    var onRevealInPhotos: (ShotItem) -> Void = { _ in }
-    var onHide: (ShotItem) -> Void = { _ in }
-    var onAddFromMac: () -> Void = {}
-    var onOpenSystemSettings: () -> Void = {}
+    /// 사람이 한 일은 전부 여기로 나간다 (viewdata-map 3절 ⑦).
+    /// 촬영본에서 나가는 길은 `.makeShort` 하나다 — 편집안이 열리고 AI 가 초안을 짠다.
+    var onAction: (UIAction.Gallery) -> Void = { _ in }
     /// 화면을 열 때 이미 고를 촬영본. 프리뷰 · 스크린샷에서 정보 패널이 채워진 모습을 보려고 둔다.
     var initialSelection: ShotItem.ID?
     /// 방금 한 일을 상태줄에 한 줄로 알린다 (숨김 등). 알림창을 띄우지 않는다.
@@ -40,7 +36,11 @@ struct GalleryScreen: View {
             .toolbar { toolbar }
             .searchable(text: $query, placement: .toolbar, prompt: Copy.Action.search)
             .inspector(isPresented: $showsInspector) {
-                ShotInspector(shot: selectedShot, onMakeShort: onMakeShort)
+                ShotInspector(
+                    shot: selectedShot,
+                    onMakeShort: { onAction(.makeShort($0.id)) },
+                    onRetryImport: { onAction(.retryImport($0.id)) }
+                )
                 .inspectorColumnWidth(
                     min: Tokens.Size.inspectorMin,
                     ideal: Tokens.Size.inspectorIdeal,
@@ -65,9 +65,13 @@ struct GalleryScreen: View {
             ContentUnavailableView {
                 Label(Copy.Gallery.Empty.title, systemImage: "iphone.gen3")
             } description: {
-                Text(Copy.Gallery.Empty.message)
+                VStack(spacing: Tokens.Space.tight) {
+                    Text(Copy.Gallery.Empty.message)
+                    // 예전 영상은 들이지 않는다 — 비어 있는 게 고장이 아니라는 걸 여기서 말한다.
+                    Text(Copy.Photos.importFromPhotosSince)
+                }
             } actions: {
-                Button(Copy.Gallery.Empty.addFromMac, action: onAddFromMac)
+                Button(Copy.Gallery.Empty.addFromMac) { onAction(.addFromMac) }
             }
         case .noPhotoAccess:
             ContentUnavailableView {
@@ -75,9 +79,9 @@ struct GalleryScreen: View {
             } description: {
                 Text(Copy.Gallery.NoAccess.message)
             } actions: {
-                Button(Copy.Gallery.Empty.addFromMac, action: onAddFromMac)
+                Button(Copy.Gallery.Empty.addFromMac) { onAction(.addFromMac) }
                     .buttonStyle(.borderedProminent)
-                Button(Copy.Gallery.NoAccess.openSystemSettings, action: onOpenSystemSettings)
+                Button(Copy.Gallery.NoAccess.openSystemSettings) { onAction(.openSystemSettings) }
             }
         case .importing(_, _, let groups), .loaded(let groups):
             grid(groups)
@@ -127,6 +131,8 @@ struct GalleryScreen: View {
                     Button(Copy.Gallery.NoResults.showAll) { filter = .all }
                 }
             }
+            // GeometryReader 안이라 그냥 두면 왼쪽 위에 붙는다. 칸을 다 채워 정 가운데로.
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             grid(shown, columns: count)
         }
@@ -162,17 +168,18 @@ struct GalleryScreen: View {
     private func cell(_ shot: ShotItem) -> some View {
         ShotCell(shot: shot, isSelected: shot.id == selectedID)
             .onTapGesture { selectedID = shot.id }
-            .simultaneousGesture(TapGesture(count: 2).onEnded { onMakeShort(shot) })
+            .simultaneousGesture(TapGesture(count: 2).onEnded { onAction(.makeShort(shot.id)) })
             .contextMenu {
-                Button(Copy.Action.makeShort) { onMakeShort(shot) }
+                Button(Copy.Action.makeShort) { onAction(.makeShort(shot.id)) }
+                    .disabled(shot.problem != nil)
                     .keyboardShortcut("o")
                 Divider()
-                Button(Copy.Action.play) { onPlay(shot) }
+                Button(Copy.Action.play) { onAction(.play(shot.id)) }
                     .keyboardShortcut(.space, modifiers: [])
-                Button(Copy.Action.openInPhotos) { onRevealInPhotos(shot) }
+                Button(Copy.Action.openInPhotos) { onAction(.revealInPhotos(shot.id)) }
                 Divider()
                 // 지우는 게 아니다. 사진 앱 원본은 그대로 남는다 — 누른 뒤 상태줄이 그렇게 말한다.
-                Button(Copy.Action.hideFromList) { onHide(shot) }
+                Button(Copy.Action.hideFromList) { onAction(.hide(shot.id)) }
             } preview: {
                 // 우클릭 미리보기. 세로 그림 한 장이면 충분하다.
                 ThumbnailView(thumbnail: shot.thumbnail, cornerRadius: 0)
@@ -196,7 +203,9 @@ struct GalleryScreen: View {
             .fixedSize()
         }
         ToolbarItem {
-            Button(action: onAddFromMac) {
+            Button {
+                onAction(.addFromMac)
+            } label: {
                 Label(Copy.Gallery.Empty.addFromMac, systemImage: "plus")
             }
             .help(Copy.Gallery.Empty.addFromMac)
@@ -227,7 +236,7 @@ struct GalleryScreen: View {
                     Text(Copy.Gallery.Loading.title)
                 } else if let notice {
                     Text(notice)
-                    Button(Copy.Action.undo) {}
+                    Button(Copy.Action.undo) { onAction(.undoHide) }
                         .buttonStyle(.link)
                         .font(.caption)
                 } else {

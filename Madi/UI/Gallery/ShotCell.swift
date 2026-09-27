@@ -16,12 +16,20 @@ struct ShotCell: View {
                     DurationBadge(seconds: shot.duration)
                 }
                 .overlay(alignment: .bottomLeading) {
-                    if shot.isMaking {
+                    if let fetch = shot.fetchProgress {
+                        // 원본을 받는 중 — 얼마나 왔는지 보여 준다. 오래 걸릴 수 있다.
+                        ProgressView(value: fetch)
+                            .progressViewStyle(.circular)
+                            .controlSize(.small)
+                            .padding(Tokens.Space.tight + 1)
+                    } else if shot.isMaking {
                         ProgressView()
                             .controlSize(.small)
                             .padding(Tokens.Space.tight + 1)
                     }
                 }
+                // 받지 못한 원본은 그림을 흐리게 둔다. 붉은 표시는 없다 — 다시 가져오면 된다.
+                .opacity(shot.problem == nil ? 1 : 0.45)
                 .overlay {
                     RoundedRectangle(cornerRadius: Tokens.Radius.thumbnail)
                         .strokeBorder(
@@ -51,8 +59,25 @@ struct ShotCell: View {
 
     private var meta: some View {
         HStack(spacing: Tokens.Space.tight) {
-            Text(Copy.shotStamp(shot.shotAt))
-            if shot.isMaking {
+            if shot.problem != nil {
+                Label(Copy.Photos.importFailedShort, systemImage: "exclamationmark.triangle")
+                    .labelStyle(.titleAndIcon)
+                    .foregroundStyle(Tokens.Palette.attention)
+            } else if let fetch = shot.fetchProgress {
+                Text(Copy.Photos.importFetchingOriginal(fetch))
+            } else {
+                stamp
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+    }
+
+    @ViewBuilder
+    private var stamp: some View {
+        Text(Copy.shotStamp(shot.shotAt))
+        if shot.isMaking {
                 Text("·")
                 Text(Copy.Gallery.Cell.making)
             } else if shot.hasResult {
@@ -64,10 +89,6 @@ struct ShotCell: View {
                 .labelStyle(.titleAndIcon)
                 .imageScale(.small)
             }
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
     }
 }
 

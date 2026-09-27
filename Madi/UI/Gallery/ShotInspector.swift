@@ -10,6 +10,8 @@ struct ShotInspector: View {
     /// 촬영본에서 나가는 길은 하나다 — 누르면 편집안이 열리고 AI 가 초안을 짜기 시작한다.
     /// 실제로 영상을 만드는 것은 장면 카드를 본 뒤 편집안 안에서 한다.
     var onMakeShort: (ShotItem) -> Void = { _ in }
+    /// 원본을 못 받은 촬영본을 다시 가져온다.
+    var onRetryImport: (ShotItem) -> Void = { _ in }
 
     var body: some View {
         Group {
@@ -43,6 +45,8 @@ struct ShotInspector: View {
                         .font(.headline)
                         .textSelection(.enabled)
 
+                    status(shot)
+
                     facts(shot)
 
                     if !shot.results.isEmpty {
@@ -55,6 +59,35 @@ struct ShotInspector: View {
 
             Divider()
             actions(shot)
+        }
+    }
+
+    /// 원본을 받는 중이거나 못 받았을 때. **붉은색이 아니다** — 기다리거나 다시 가져오면 된다.
+    @ViewBuilder
+    private func status(_ shot: ShotItem) -> some View {
+        if let problem = shot.problem {
+            VStack(alignment: .leading, spacing: Tokens.Space.inner) {
+                Label(problem, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(Tokens.Palette.attention)
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(Copy.Photos.retryImport) { onRetryImport(shot) }
+                    .controlSize(.small)
+            }
+            .padding(Tokens.Space.between)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Tokens.Palette.attention.opacity(0.10), in: .rect(cornerRadius: Tokens.Radius.card))
+        } else if let fetch = shot.fetchProgress {
+            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                Text(Copy.Photos.importFetchingOriginal(fetch))
+                    .font(.callout)
+                ProgressView(value: fetch)
+                    .progressViewStyle(.linear)
+                Text(Copy.Photos.importFetchingOriginalDetail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -114,6 +147,8 @@ struct ShotInspector: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
+        // 원본이 없으면 만들 수 없다. 받는 중이면 받는 대로 편집안을 짜니 누를 수 있다.
+        .disabled(shot.problem != nil)
         .padding(Tokens.Space.between)
     }
 }

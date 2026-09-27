@@ -29,8 +29,26 @@ struct SidebarView: View {
         studio.count(for: section)
     }
 
+    /// 연결됨 초록, 로그인만 하면 되는 상태는 노랑(사람이 손대면 된다), 없음은 회색.
+    /// 붉은색은 쓰지 않는다 — 어느 것도 실패가 아니다.
+    private var dotColor: Color {
+        switch studio.ai {
+        case .claude, .codex: Tokens.Palette.ok
+        case .notLoggedIn: Tokens.Palette.attention
+        case .none: Color.secondary
+        }
+    }
+
     private var footer: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // 편집 준비 — 첫 실행 직후 수 분. 기다리게 하는 화면이 아니라 **조용한 한 줄**이다 (§1-6).
+            // 끝나면 사라진다. 아무 말도 하지 않는 게 "다 됐다" 는 뜻이다.
+            if let prep = studio.preparing {
+                Divider()
+                PrepLine(prep: prep)
+                    .padding(.horizontal, Tokens.Space.between)
+                    .padding(.vertical, Tokens.Space.inner)
+            }
             Divider()
             Button(action: onOpenSettings) {
                 HStack(spacing: Tokens.Space.inner) {
@@ -40,7 +58,7 @@ struct SidebarView: View {
                             .lineLimit(1)
                         HStack(spacing: Tokens.Space.tight + 1) {
                             Circle()
-                                .fill(studio.ai.isConnected ? Tokens.Palette.ok : Color.secondary)
+                                .fill(dotColor)
                                 .frame(width: 6, height: 6)
                             Text(studio.ai.label)
                                 .font(.caption)
@@ -83,4 +101,54 @@ struct SidebarView: View {
         Color.clear
     }
     .frame(width: 560, height: 420)
+}
+
+/// 편집 준비 한 줄. 받는 중이면 진행 막대, 멈췄으면 노란 표시와 이유.
+private struct PrepLine: View {
+    var prep: EnginePrep
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+            switch prep {
+            case .downloading(let fraction):
+                Text(Copy.Prep.modelDownloading(fraction))
+                    .font(.caption)
+                ProgressView(value: fraction)
+                    .progressViewStyle(.linear)
+                    .controlSize(.mini)
+                Text(Copy.Prep.modelDownloadingDetail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            case .warming:
+                HStack(spacing: Tokens.Space.tight + 1) {
+                    ProgressView().controlSize(.mini)
+                    Text(Copy.Prep.modelWarming)
+                        .font(.caption)
+                }
+            case .paused:
+                // 실패가 아니다. 인터넷이 되면 이어서 받는다.
+                Label(Copy.Prep.modelDownloadPaused, systemImage: "pause.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            case .failed:
+                stopped(Copy.Prep.sidebarNeedsInternet)
+            case .diskFull:
+                stopped(Copy.Prep.sidebarNeedsSpace)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func stopped(_ detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Label(Copy.Prep.sidebarStopped, systemImage: "exclamationmark.triangle")
+                .foregroundStyle(Tokens.Palette.attention)
+                .font(.caption)
+            Text(detail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
 }

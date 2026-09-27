@@ -10,24 +10,15 @@ import SwiftUI
 struct OnboardingWindow: View {
     var state: OnboardingState
 
-    var onAllowPhotos: () -> Void = {}
-    var onOpenSystemSettings: () -> Void = {}
-    var onPick: (AIConnection) -> Void = { _ in }
-    var onLogin: () -> Void = {}
-    var onCancelLogin: () -> Void = {}
-    var onOtherAccount: () -> Void = {}
-    var onStudioName: (String) -> Void = { _ in }
-    var onNext: () -> Void = {}
-    var onBack: () -> Void = {}
-    var onSkip: () -> Void = {}
-    var onStart: () -> Void = {}
+    /// 사람이 한 일. 첫 실행 창도 앱 창과 같은 모양으로 내보낸다 (viewdata-map 3절 ⑦).
+    var onAction: (UIAction.Onboarding) -> Void = { _ in }
 
     @State private var draftName: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
             if state.step == .ready {
-                ReadyStep(onStart: onStart)
+                ReadyStep(isSlowMac: state.isSlowMac) { onAction(.start) }
             } else {
                 header
                 Divider().opacity(0)
@@ -68,10 +59,10 @@ struct OnboardingWindow: View {
     private var footer: some View {
         HStack {
             if state.step == .photos {
-                Button(Copy.Onboarding.skip, action: onSkip)
+                Button(Copy.Onboarding.skip) { onAction(.skip) }
                     .buttonStyle(.link)
             } else {
-                Button(Copy.Onboarding.back, action: onBack)
+                Button(Copy.Onboarding.back) { onAction(.back) }
             }
             if state.step == .studio {
                 Text(Copy.Onboarding.Studio.skipHint)
@@ -79,7 +70,7 @@ struct OnboardingWindow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button(nextTitle, action: onNext)
+            Button(nextTitle) { onAction(.next) }
                 .buttonStyle(.borderedProminent)
                 .disabled(!canContinue)
         }
@@ -108,19 +99,19 @@ struct OnboardingWindow: View {
         case .photos:
             PhotosStep(
                 access: state.photos,
-                onAllow: onAllowPhotos,
-                onOpenSystemSettings: onOpenSystemSettings
+                onAllow: { onAction(.allowPhotos) },
+                onOpenSystemSettings: { onAction(.openSystemSettings) }
             )
         case .ai:
             AIStep(
                 setup: state.ai,
-                onPick: onPick,
-                onLogin: onLogin,
-                onCancel: onCancelLogin,
-                onOtherAccount: onOtherAccount
+                onPick: { onAction(.pickAI($0)) },
+                onLogin: { onAction(.login) },
+                onCancel: { onAction(.cancelLogin) },
+                onOtherAccount: { onAction(.otherAccount) }
             )
         case .studio:
-            StudioStep(name: $draftName, onChange: onStudioName)
+            StudioStep(name: $draftName) { onAction(.studioName($0)) }
         case .ready:
             EmptyView()
         }
@@ -238,13 +229,10 @@ private struct AIStep: View {
             case .notPicked:
                 EmptyView()
             case .picked(let ai):
-                HStack(spacing: Tokens.Space.between) {
-                    Button(Copy.Onboarding.AI.login(name(ai)), action: onLogin)
-                        .buttonStyle(.borderedProminent)
-                    Text(Copy.Onboarding.AI.loginHint)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                loginRow(ai)
+            case .notLoggedIn(let product):
+                // 전에 로그인했던 적이 있고 풀렸다. 버튼은 같다 — 로그인하기.
+                loginRow(product == .claude ? .claude : .codex)
             case .waiting:
                 HStack(spacing: Tokens.Space.between) {
                     ProgressView().controlSize(.small)
@@ -282,6 +270,16 @@ private struct AIStep: View {
 
     private func name(_ ai: AIConnection) -> String {
         ai == .codex ? Copy.Onboarding.AI.codex : Copy.Onboarding.AI.claude
+    }
+
+    private func loginRow(_ ai: AIConnection) -> some View {
+        HStack(spacing: Tokens.Space.between) {
+            Button(Copy.Onboarding.AI.login(name(ai)), action: onLogin)
+                .buttonStyle(.borderedProminent)
+            Text(Copy.Onboarding.AI.loginHint)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private func card(_ ai: AIConnection, _ title: String, _ detail: String) -> some View {
@@ -357,6 +355,8 @@ private struct StudioStep: View {
 // MARK: - 준비됐어요
 
 private struct ReadyStep: View {
+    /// Intel Mac 이면 한 줄 더. 조용히 느려지게 두지 않는다 (`§17`).
+    var isSlowMac: Bool = false
     var onStart: () -> Void
 
     var body: some View {
@@ -370,6 +370,28 @@ private struct ReadyStep: View {
             Text(Copy.Onboarding.Ready.message)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
+            // 예전 영상은 안 들어온다. 첫 화면이 비어 있을 때 "왜 없지" 가 되지 않게 먼저 말한다.
+            Text(Copy.Photos.importFromPhotosSince)
+                .font(.callout)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            if isSlowMac {
+                // 솔직하게. 결과물은 같고 시간만 더 걸린다 (§17).
+                Label {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(Copy.Machine.slowMac)
+                        Text(Copy.Machine.slowMacDetail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "tortoise")
+                }
+                .font(.callout)
+                .padding(Tokens.Space.between)
+                .background(.quaternary.opacity(0.4), in: .rect(cornerRadius: Tokens.Radius.card))
+                .padding(.top, Tokens.Space.inner)
+            }
             Spacer()
             Button(Copy.Onboarding.Ready.start, action: onStart)
                 .buttonStyle(.borderedProminent)

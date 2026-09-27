@@ -47,6 +47,15 @@ struct ResultCompare: View {
                          isCurrent: true, height: paneHeight)
                 }
 
+                // 원본 한계 — 결과는 올려도 된다. 다음 촬영 때 도움이 될 한 줄만 (viewdata-map 2절 5).
+                // 판정 불가(`plan-unsure-reframe`)와 다른 상태다: 이건 **다 쟀고, 원본이 모자란 것**이다.
+                if let notice = detail.current.notice {
+                    Label(notice, systemImage: "lightbulb")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Button(showsPrevious ? Copy.Results.Compare.playBoth : Copy.Results.Compare.play,
                        systemImage: "play.fill",
                        action: onPlay)

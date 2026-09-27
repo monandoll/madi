@@ -8,10 +8,8 @@ import SwiftUI
 struct MakingScreen: View {
     var state: MakingState
 
-    var onStop: (MakingJob) -> Void = { _ in }
-    var onCancel: (MakingJob) -> Void = { _ in }
-    var onChoice: (MakingJob, ChatChoice) -> Void = { _, _ in }
-    var onOpenResult: (DoneItem) -> Void = { _ in }
+    /// 사람이 한 일. 어느 작업인지 id 가 같이 나간다 (viewdata-map 3절 ⑦).
+    var onAction: (UIAction.Making) -> Void = { _ in }
 
     var body: some View {
         content
@@ -56,9 +54,9 @@ struct MakingScreen: View {
                 ForEach(jobs) { job in
                     MakingJobCard(
                         job: job,
-                        onStop: { onStop(job) },
-                        onCancel: { onCancel(job) },
-                        onChoice: { onChoice(job, $0) }
+                        onStop: { onAction(.stop(job.id)) },
+                        onCancel: { onAction(.cancel(job.id)) },
+                        onChoice: { onAction(.choice(job.id, $0)) }
                     )
                 }
             }
@@ -88,7 +86,7 @@ struct MakingScreen: View {
                         Text(item.when)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Button(Copy.MakingScreen.openResult) { onOpenResult(item) }
+                        Button(Copy.MakingScreen.openResult) { onAction(.openResult(item.id)) }
                             .controlSize(.small)
                     }
                 }
