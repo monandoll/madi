@@ -20,6 +20,7 @@
 		2EE5D8289209DFCF1DC52EE2 /* PoseProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDC46588584CE5887303191 /* PoseProvider.swift */; };
 		2F438C7740AE320FCA33D469 /* StyleSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = F080369FE263622AB0237836 /* StyleSchema.swift */; };
 		33EA60172AF9CB94DF000674 /* CaptionSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3ABAB60902BDDBB742C6804 /* CaptionSplitter.swift */; };
+		363EB979B9A40786AA646B7B /* Pipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F15A9316F358BEB41DF37AF /* Pipeline.swift */; };
 		378EE370CA5FEC3A4CC93863 /* Transcript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 056E706ADEB1090F9E4F18D2 /* Transcript.swift */; };
 		3E315E26A91D7C56D78B7F20 /* ReframePlannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97883FA1954A88DF0996BBD4 /* ReframePlannerTests.swift */; };
 		41AD13869F240A2A4230BA82 /* TestVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001C72A8FC192CF7A3945894 /* TestVideo.swift */; };
@@ -155,6 +156,7 @@
 		72D94087F95A27AD4220EBA1 /* PoseOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseOverlay.swift; sourceTree = "<group>"; };
 		75236889EB2CBFE994D392D2 /* SubjectDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubjectDetector.swift; sourceTree = "<group>"; };
 		791C317B14C7AF92D43CDB3E /* GateNotice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GateNotice.swift; sourceTree = "<group>"; };
+		7F15A9316F358BEB41DF37AF /* Pipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pipeline.swift; sourceTree = "<group>"; };
 		807D00B9149F72389F639F77 /* DigestBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigestBuilder.swift; sourceTree = "<group>"; };
 		8148334F0D1C4607F6103479 /* PretendardVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = PretendardVariable.ttf; sourceTree = "<group>"; };
 		9198795506821EE4D71C606A /* Font.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Font.swift; sourceTree = "<group>"; };
@@ -230,6 +232,7 @@
 			isa = PBXGroup;
 			children = (
 				1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */,
+				7F15A9316F358BEB41DF37AF /* Pipeline.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -595,6 +598,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				41D529605EC5629F9025E152 /* MadiApp.swift in Sources */,
+				363EB979B9A40786AA646B7B /* Pipeline.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -7,11 +7,15 @@ import MadiKit
 /// 갤러리 · 편집안 · 장면 카드 · 채팅은 6단계다. 여기에 기능을 붙이지 않는다.
 @main
 struct MadiApp: App {
+    /// 3단계 — 켜지면 가져오기 · 분석 · 렌더가 돈다. 화면은 아직 이 미리보기 창뿐이다.
+    @State private var pipeline = MadiPipeline()
+
     // `Scene` 은 SwiftUI 와 `Madi/Model` 양쪽에 있다. 모델 쪽 이름은 AGENTS.md §5 가 정한 것이라
     // 바꾸지 않고, UI 코드에서 SwiftUI 쪽을 명시한다.
     var body: some SwiftUI.Scene {
         Window("마디 — 자막 확인", id: "spike") {
             CaptionPreview()
+                .task { await pipeline.start() }
         }
         .windowResizability(.contentSize)
     }
