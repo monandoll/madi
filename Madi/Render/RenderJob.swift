@@ -13,9 +13,14 @@ import GRDB
 public struct RenderJob: Sendable {
     public let db: AppDatabase
     public let outputs: URL
+    /// 만드는 중 진행률을 올릴 곳 (메모리). 없으면 안 올린다.
+    public let progress: RenderProgressBoard?
+    /// 결과물 · 장면 카드 그림 (캐시). 없으면 안 만든다.
+    public let thumbnails: Thumbnails?
 
-    public init(db: AppDatabase, outputs: URL = RenderJob.defaultOutputs) {
-        self.db = db; self.outputs = outputs
+    public init(db: AppDatabase, outputs: URL = RenderJob.defaultOutputs,
+                progress: RenderProgressBoard? = nil, thumbnails: Thumbnails? = nil) {
+        self.db = db; self.outputs = outputs; self.progress = progress; self.thumbnails = thumbnails
     }
 
     public static var defaultOutputs: URL {
@@ -82,7 +87,12 @@ public struct RenderJob: Sendable {
         try FileManager.default.createDirectory(at: outputs, withIntermediateDirectories: true)
         let out = outputs.appending(path: "\(comp.id).mp4")
         let started = Date()
-        try await Renderer().render(comp, sources: sources, style: style, to: out)
+        let board = progress
+        let compID = comp.id
+        defer { if let board { Task { await board.clear(compID) } } }
+        try await Renderer().render(comp, sources: sources, style: style, to: out) { fraction in
+            if let board { Task { await board.set(compID, fraction) } }
+        }
         let seconds = Date().timeIntervalSince(started)
 
         let size = comp.size.cgSize
@@ -125,6 +135,11 @@ public struct RenderJob: Sendable {
                                   verdict: .hidden)
         try await db.writer.write { try output.insert($0) }
         try db.log("render.done", subject: comp.id, payload: report)
+        // 그림은 캐시다 — 못 만들어도 결과물은 그대로다.
+        if let thumbnails {
+            try? await thumbnails.makeOutput(output.id, from: out)
+            try? await thumbnails.makeScenes(comp, sources: sources)
+        }
         return output
     }
 

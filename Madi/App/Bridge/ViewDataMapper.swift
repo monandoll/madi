@@ -9,6 +9,11 @@ import MadiKit
 /// - 칸마다의 규칙은 `viewdata-map.md` 1절과 같다
 enum ViewDataMapper {
 
+    /// 그림 자리. 파일이 있으면 그 경로, 없으면 자리표시.
+    static func thumb(_ url: URL, _ s: LibrarySnapshot) -> Thumbnail {
+        s.thumbnails.contains(url.path) ? Thumbnail(fileURL: url) : .none
+    }
+
     // MARK: - 사이드바
 
     static func studio(_ s: LibrarySnapshot, studioName: String, ai: AIConnection) -> StudioStatus {
@@ -73,7 +78,7 @@ enum ViewDataMapper {
             // 소리 측정이 "말이 있다 · 없다" 뿐이다 — noisy 는 가를 기준이 없어 내지 않는다 (viewdata-map 요청 ⑥)
             speech: s.wordCounts[v.id] == 0 ? .silent : .clear,
             isMaking: !s.liveJobs(of: v.id).isEmpty,
-            thumbnail: .none,
+            thumbnail: thumb(s.thumbnailStore.video(v.id), s),
             results: results(of: v.id, s)
         )
     }
@@ -99,7 +104,7 @@ enum ViewDataMapper {
         return ResultRef(
             id: o.id, platform: platform(comp.meta.platform), planLabel: Copy.Plan.version(number),
             when: Copy.shotStamp(o.createdAt, now: s.now), duration: comp.duration, sceneCount: comp.scenes.count,
-            isNew: false, exportedNote: nil, thumbnail: .none
+            isNew: false, exportedNote: nil, thumbnail: thumb(s.thumbnailStore.output(o.id), s)
         )
     }
 
@@ -151,7 +156,7 @@ enum ViewDataMapper {
                 PrepareStep(title: Copy.Plan.Making.reframe, state: .running),
                 PrepareStep(title: Copy.Plan.Making.encode, state: .waiting),
             ]
-            return .making(view, MakingProgress(fraction: 0, steps: steps))
+            return .making(view, MakingProgress(fraction: s.progress[newest.id] ?? 0, steps: steps))
         }
         return .ready(view)
     }
@@ -183,7 +188,7 @@ enum ViewDataMapper {
             versionLabel: Copy.Plan.version(number), versionCount: versions.count,
             sourceDuration: video.durationSec ?? 0, targetDuration: comp?.meta.targetDurationSec ?? 0,
             captionSlot: captionSlot(comp?.captionSlot ?? .fullBody),
-            scenes: comp.map { sceneCards($0) } ?? [],
+            scenes: comp.map { sceneCards($0, s) } ?? [],
             resultCount: results(of: video.id, s).count,
             versions: versions.enumerated().map { i, v in
                 let c = try? v.composition()
@@ -216,7 +221,7 @@ enum ViewDataMapper {
 
     /// 장면 카드. "뺀 쉬는 구간" 은 엔진에 없는 개념이라, 원본에서 바로 이어진 두 장면 사이의 틈으로 계산한다
     /// (viewdata-map 1절 — 뜻이 맞는지 디자인 확인 필요).
-    static func sceneCards(_ comp: Composition) -> [SceneCardItem] {
+    static func sceneCards(_ comp: Composition, _ s: LibrarySnapshot) -> [SceneCardItem] {
         comp.scenes.enumerated().map { i, scene in
             let next = i + 1 < comp.scenes.count ? comp.scenes[i + 1] : nil
             var gap: Double?
@@ -229,7 +234,7 @@ enum ViewDataMapper {
                 caption: scene.captions.first?.text ?? "",
                 secondary: scene.captions.first?.secondary,
                 moreCaptions: scene.captions.dropFirst().map(\.text),
-                duration: scene.duration, thumbnail: .none, removedGapAfter: gap
+                duration: scene.duration, thumbnail: thumb(s.thumbnailStore.scene(comp.id, scene.id), s), removedGapAfter: gap
             )
         }
     }
@@ -271,7 +276,7 @@ enum ViewDataMapper {
                   let video = s.videos.first(where: { $0.id == rec.videoId }) else { return nil }
             let number = s.versionRoot(of: rec.id).flatMap { versionNumber($0.id, s) } ?? 1
             let state: MakingJob.State = job.state == .running
-                ? .running(MakingProgress(fraction: 0, steps: []))
+                ? .running(MakingProgress(fraction: s.progress[rec.id] ?? 0, steps: []))
                 : .queued(note: Copy.MakingScreen.queuedNote(shotTitle(video, s)))
             return MakingJob(id: String(job.id ?? 0), shotTitle: shotTitle(video, s), platform: platform(comp.meta.platform),
                              planLabel: Copy.Plan.version(number), duration: comp.duration, state: state)

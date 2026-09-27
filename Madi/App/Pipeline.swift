@@ -17,6 +17,8 @@ final class MadiPipeline {
     private(set) var db: AppDatabase?
     private(set) var queue: JobQueue?
     private(set) var preparer: ModelPreparer?
+    /// 만드는 중 진행률 — 바꾸는 층이 읽는다 (메모리).
+    let progress = RenderProgressBoard()
     private var photos: PhotoLibraryWatcher?
     private var folder: FolderWatcher?
 
@@ -42,7 +44,8 @@ final class MadiPipeline {
 
             let preparer = try ModelPreparer(catalog: catalog)
             let analyze = AnalyzeJob(db: db, transcriber: PreparedTranscriber(preparer: preparer, db: db))
-            let render = RenderJob(db: db)
+            let thumbnails = Thumbnails()
+            let render = RenderJob(db: db, progress: progress, thumbnails: thumbnails)
             // 분석 → AI 초안 → 렌더 → 검사 → (되먹임 → 렌더 → 검사)… → 검사한 결과만 보여 준다
             // (§10 · §7-6 · §8, 5단계 결정 ①).
             guard let mcp = Bundle.main.url(forAuxiliaryExecutable: "madi-mcp") else {
@@ -58,6 +61,10 @@ final class MadiPipeline {
             let review = ReviewLoop(db: db) { id in try await queueBox.queue?.enqueue(.selfEval, targetId: id) }
             let analyzeThenDraft: JobQueue.Handler = { job in
                 try await analyze.handler(job)
+                // 갤러리 칸 그림 (캐시 — 못 만들어도 진행한다)
+                if let path = try? await db.writer.read({ try VideoRecord.fetchOne($0, key: job.targetId)?.localPath }) ?? nil {
+                    try? await thumbnails.makeVideo(job.targetId, from: URL(fileURLWithPath: path))
+                }
                 try await queueBox.queue?.enqueue(.agent, targetId: job.targetId)
             }
             let renderThenReview: JobQueue.Handler = { job in

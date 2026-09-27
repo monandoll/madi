@@ -15,11 +15,28 @@ public struct LibrarySnapshot: Sendable {
     /// 영상마다 전사 낱말 수. 다이제스트가 없으면 없다.
     public var wordCounts: [String: Int]
     public var now: Date
+    /// 만드는 중 진행률 (편집안 id → 0…1). 메모리 게시판에서 온다 — DB 가 아니다.
+    public var progress: [String: Double] = [:]
+    /// 있는 그림 파일 경로. 없는 그림은 화면이 회색 자리표시로 그린다.
+    public var thumbnails: Set<String> = []
+    /// 그림 자리를 정하는 곳 (경로 규칙).
+    public var thumbnailStore = Thumbnails()
 
     public init(videos: [VideoRecord] = [], compositions: [CompositionRecord] = [], outputs: [OutputRecord] = [],
                 jobs: [JobRecord] = [], chats: [ChatRecord] = [], wordCounts: [String: Int] = [:], now: Date = Date()) {
         self.videos = videos; self.compositions = compositions; self.outputs = outputs
         self.jobs = jobs; self.chats = chats; self.wordCounts = wordCounts; self.now = now
+    }
+
+    /// 있는 그림만 골라 둔다 (파일을 한 번씩 본다).
+    public mutating func attach(thumbnails store: Thumbnails, progress: [String: Double]) {
+        self.progress = progress
+        thumbnailStore = store
+        var paths: [URL] = videos.map { store.video($0.id) } + outputs.map { store.output($0.id) }
+        for c in compositions {
+            if let comp = try? c.composition() { paths += comp.scenes.map { store.scene(c.id, $0.id) } }
+        }
+        thumbnails = Set(paths.map(\.path).filter { FileManager.default.fileExists(atPath: $0) })
     }
 
     public static func read(_ db: Database, now: Date = Date()) throws -> LibrarySnapshot {

@@ -145,4 +145,22 @@ struct ViewDataMapperTests {
         guard case .queued = jobs.last?.state else { Issue.record(""); return }
         #expect(done.map(\.id) == ["o"])
     }
+
+    @Test("그림 · 진행률 — 있는 그림만 넘기고, 도는 렌더에 진행률을 붙인다")
+    func thumbsAndProgress() throws {
+        var s = LibrarySnapshot(
+            videos: [video("v", at: now)], compositions: [try comp("a", at: now - 60)],
+            jobs: [job(.render, "a", .running)], now: now
+        )
+        let dir = FileManager.default.temporaryDirectory.appending(path: "thumbs-\(UUID().uuidString)")
+        let store = Thumbnails(root: dir)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data([0xFF]).write(to: store.video("v"))
+        s.attach(thumbnails: store, progress: ["a": 0.4])
+        let shot = ViewDataMapper.shot(s.videos[0], s)
+        #expect(shot.thumbnail.fileURL == store.video("v"))
+        guard case .loaded(let jobs, _) = ViewDataMapper.making(s), case .running(let p) = jobs.first?.state else { Issue.record(""); return }
+        #expect(p.fraction == 0.4)
+        try? FileManager.default.removeItem(at: dir)
+    }
 }

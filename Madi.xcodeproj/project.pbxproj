@@ -102,6 +102,7 @@
 		95390CEA8EADBC25C664DE6E /* downloads.json in Resources */ = {isa = PBXBuildFile; fileRef = 719988E041BEB26E14C18EB8 /* downloads.json */; };
 		954F4865A3666AD3505C4EED /* CodexAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8424E076F97A5CD29223887 /* CodexAgent.swift */; };
 		99242DF2EA8DCD65F4EA7C7C /* PlanVersionList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5170EB1C03FE043B10815DE1 /* PlanVersionList.swift */; };
+		999249D5D0A506C6105C1519 /* Thumbnails.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03648F8D39394B225AE48D12 /* Thumbnails.swift */; };
 		9B343A07D19964364F0F9AA1 /* DownloadsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 978FB42F1F6682D9B407C434 /* DownloadsTests.swift */; };
 		9E9EE4E9653FAD55F33393EA /* ViewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B501D4D78085E4494C9267E0 /* ViewData.swift */; };
 		A0312AE4491C1E3124A66BBC /* OnboardingWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A81EF9CEC412D0497F06714 /* OnboardingWindow.swift */; };
@@ -134,6 +135,7 @@
 		D0EEACB252B6F1F127A60173 /* PlanScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAABD8A5FF82020B90D7687A /* PlanScreen.swift */; };
 		D10203FAB9F6AF59412F2EB8 /* SubjectTrack.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACC2DA0E608DE6F2C2FD7C62 /* SubjectTrack.swift */; };
 		D17C7DB4308BAEEFBAEE8773 /* FontLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4681562F04878CEC2D88BB3 /* FontLibrary.swift */; };
+		D3DE1FBA1874E3F8CAE5605A /* RenderProgressBoard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10053543A76B1004657D680E /* RenderProgressBoard.swift */; };
 		D4BB35D08277068BB7D7BAA3 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */; };
 		D551C493AC40898375C6970C /* MCPTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3DE2F64D15C0B58E43CE28 /* MCPTests.swift */; };
 		D6DCB67FABABAB81AB49849B /* playbook.md in Resources */ = {isa = PBXBuildFile; fileRef = 56043B60D8D7F65420927E55 /* playbook.md */; };
@@ -242,8 +244,10 @@
 		02DE86554CE56C56FE4CD25A /* ResultsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultsScreen.swift; sourceTree = "<group>"; };
 		0317C0EB1C8B1BB9CC15D14A /* SilentSourceRenderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilentSourceRenderTests.swift; sourceTree = "<group>"; };
 		034A7ED45B0CF4B22BAC1E53 /* ExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportSheet.swift; sourceTree = "<group>"; };
+		03648F8D39394B225AE48D12 /* Thumbnails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Thumbnails.swift; sourceTree = "<group>"; };
 		056E706ADEB1090F9E4F18D2 /* Transcript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transcript.swift; sourceTree = "<group>"; };
 		0CF255FFFF4817C0CC024338 /* StillRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StillRenderer.swift; sourceTree = "<group>"; };
+		10053543A76B1004657D680E /* RenderProgressBoard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderProgressBoard.swift; sourceTree = "<group>"; };
 		10B4FB1D210A593AA3E0223D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		14B2355EFFC3613EC4CA904B /* NoticeBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoticeBar.swift; sourceTree = "<group>"; };
 		14D1202525FD03955FBC6906 /* WhisperCpp */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WhisperCpp; path = Packages/WhisperCpp; sourceTree = SOURCE_ROOT; };
@@ -519,7 +523,9 @@
 				71179A0F34B7DEC6B15915CC /* ReframePlanner.swift */,
 				C3B2B8D01B0628FACEC7DDB1 /* Renderer.swift */,
 				561BB4F10E5D25D2D79B6FAC /* RenderJob.swift */,
+				10053543A76B1004657D680E /* RenderProgressBoard.swift */,
 				0CF255FFFF4817C0CC024338 /* StillRenderer.swift */,
+				03648F8D39394B225AE48D12 /* Thumbnails.swift */,
 			);
 			path = Render;
 			sourceTree = "<group>";
@@ -1214,6 +1220,7 @@
 				55FD3BF48398663B3B8E1A62 /* Records.swift in Sources */,
 				7C21E63AC2A566BA5D401B0D /* ReframePlanner.swift in Sources */,
 				F9DC06A3CE9CE4965712E42D /* RenderJob.swift in Sources */,
+				D3DE1FBA1874E3F8CAE5605A /* RenderProgressBoard.swift in Sources */,
 				FC3555D591D888294B8CF13A /* Renderer.swift in Sources */,
 				3D96CBC20ABB8B57A21684A8 /* ReviewLoop.swift in Sources */,
 				21DFBCFCDA2E27211AF8BA14 /* SceneCutDetector.swift in Sources */,
@@ -1225,6 +1232,7 @@
 				7EC27D66EB8FA2EB23EF7B40 /* StyleStore.swift in Sources */,
 				A6F36ADDD48689551312F81C /* SubjectDetector.swift in Sources */,
 				D10203FAB9F6AF59412F2EB8 /* SubjectTrack.swift in Sources */,
+				999249D5D0A506C6105C1519 /* Thumbnails.swift in Sources */,
 				378EE370CA5FEC3A4CC93863 /* Transcript.swift in Sources */,
 				E98DDAE9458F83A89577DFF5 /* TranscriptionProvider.swift in Sources */,
 				535C7A341303F28F0FBC7E9B /* WhisperCppProvider.swift in Sources */,

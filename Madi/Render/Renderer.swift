@@ -98,10 +98,17 @@ public struct Renderer {
         export.outputFileType = .mp4
         export.shouldOptimizeForNetworkUse = true
 
-        // 진행률은 0 과 1 만 알린다. `AVAssetExportSession.progress` 를 폴링하려면
-        // 별도 Task 가 필요한데 `AVAssetExportSession` 이 Sendable 이 아니라 넘길 수 없다.
-        // 스파이크에 진행 막대는 필요 없고, 3단계 큐에서 제대로 붙인다.
+        // 진행률 — 0.5초마다 `progress` 를 읽는다 (만드는 중 화면, 6단계 7번).
+        // `AVAssetExportSession` 은 Sendable 이 아니지만 폴러는 **읽기만** 하고 내보내기가 끝나면 멈춘다.
+        nonisolated(unsafe) let session = export
+        let poller = Task {
+            while !Task.isCancelled {
+                progress?(Double(session.progress))
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+        }
         await export.export()
+        poller.cancel()
 
         switch export.status {
         case .completed:

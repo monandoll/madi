@@ -25,10 +25,14 @@ struct RenderJobTests {
                            captions: [Caption(id: "c", start: 0.1, end: 0.6, text: "안녕하세요.")])]
         )
         try db.saveComposition(comp)
-        let job = RenderJob(db: db, outputs: dir.appending(path: "out"))
+        let thumbs = Thumbnails(root: dir.appending(path: "thumbs"))
+        let job = RenderJob(db: db, outputs: dir.appending(path: "out"), thumbnails: thumbs)
         let output = try await job.run(compositionId: "c1")
 
         #expect(FileManager.default.fileExists(atPath: output.path))
+        // 결과물 · 장면 카드 그림 (6단계 7번)
+        #expect(FileManager.default.fileExists(atPath: thumbs.output(output.id).path))
+        #expect(FileManager.default.fileExists(atPath: thumbs.scene("c1", "s1").path))
         let report = try #require(output.reviewReport)
         for key in ["G1", "G2", "G3", "G4.upperBody", "G5", "G6", "G8", "G9", "G10", "G11", "selfEval"] {
             #expect(report.contains("\"\(key)\""), "\(key) 없음")
