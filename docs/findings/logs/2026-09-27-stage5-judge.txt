@@ -1,0 +1,23 @@
+CLI | 영상 | 주입 | 첫 판 항목 | 되먹임 | 1회 뒤 항목 | 최종 보이기 | 훅 확인 | 사례
+claude | 6U6Qp35FQaM | g8 | G8 | 1회 | 없음 | 판 1 | 원래 훅 | ✅
+claude | 6U6Qp35FQaM | g11 | G11 | 1회 | 없음 | 판 1 | - | ✅
+claude | fuTjB-F6-DE | g8 | G8 | 1회 | 없음 | 판 1 | 원래 훅 | ✅
+claude | fuTjB-F6-DE | g11 | G11 | 1회 | 없음 | 판 1 | - | ✅
+claude | uw1aUHnMfo8 | g8 | G8 | 1회 | 없음 | 판 1 | 원래 훅 | ✅
+claude | uw1aUHnMfo8 | g11 | G11 | 1회 | 없음 | 판 1 | - | ✅
+claude | VtFNkL7oAWM | g8 | G8 | 1회 | 없음 | 판 1 | 원래 훅 | ✅
+claude | VtFNkL7oAWM | g11 | G11 | 1회 | 없음 | 판 1 | - | ✅
+claude | zV4hh3M5eGI | g8 | G8 | 1회 | 없음 | 판 1 | 원래 훅 | ✅
+claude | zV4hh3M5eGI | g11 | G11 | 1회 | 없음 | 판 1 | - | ✅
+== claude: 10/10
+codex | 6U6Qp35FQaM | g8 | G8 | 1회 | 없음 | 판 1 | 원래 훅 | ✅
+codex | 6U6Qp35FQaM | g11 | G11 | 1회 | 없음 | 판 1 | - | ✅
+codex | fuTjB-F6-DE | g8 | G8 | 1회 | 없음 | 판 1 | 원래 훅 | ✅
+codex | fuTjB-F6-DE | g11 | G11 | 1회 | 없음 | 판 1 | - | ✅
+codex | uw1aUHnMfo8 | g8 | G8 | 1회 | 없음 | 판 1 | 원래 훅 | ✅
+codex | uw1aUHnMfo8 | g11 | G11 | 1회 | 없음 | 판 1 | - | ✅
+codex | VtFNkL7oAWM | g8 | G8 | 1회 | 없음 | 판 1 | 원래 훅 | ✅
+codex | VtFNkL7oAWM | g11 | G11 | 1회 | 없음 | 판 1 | - | ✅
+codex | zV4hh3M5eGI | g8 | G8 | 1회 | 없음 | 판 1 | 원래 훅 | ✅
+codex | zV4hh3M5eGI | g11 | G11 | 1회 | 없음 | 판 1 | - | ✅
+== codex: 10/10
