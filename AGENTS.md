@@ -118,8 +118,9 @@ madi.app  (Swift · SwiftUI · macOS 14+)
 ### 배포
 
 - 공증된 `.dmg`. 드래그해서 설치한다.
-- **Apple Developer Program($99/년)은 판매 시작 시점에 낸다.** 그 전에는 지인 1명 대상이므로
-  첫 실행만 우클릭 → 열기로 넘긴다. 서명 파이프라인을 0단계 전에 만들지 않는다.
+- **Developer ID 로 서명 · 공증한다 (2026-09-27 결정).** 옛 규칙은 "Apple Developer Program 은 판매 시점에,
+  그전엔 첫 실행만 우클릭 → 열기" 였다. **macOS 15 부터 우클릭 → 열기가 막혀** 시스템 설정 > 개인정보 보호에서
+  따로 허용해야 하고, 이미 유효한 Developer ID 가 있어서 지금 서명 · 공증한다 (`docs/stage-6.spec.md`).
 - 자동 업데이트는 Sparkle. 사용자는 "업데이트 있음" 알림과 버튼만 본다.
 - App Sandbox 끔, Hardened Runtime 켬 + `com.apple.security.cs.allow-unsigned-executable-memory`
   등 AI CLI 스폰에 필요한 엔타이틀먼트. `§12-6` 에서 정리한다.
@@ -793,6 +794,8 @@ PhotoKit 가져오기 → 다이제스트 → 큐 → 렌더 → 갤러리. AI �
 - 엔타이틀먼트, `.dmg`, Sparkle
 - 통과: 크리에이터가 혼자 3편을 만들고 **각 편 10분 이내**.
   깨끗한 Mac 에서 `.dmg` 드래그 → 아이콘 클릭 → 사용까지 터미널 0회
+- 경계: 화면은 디자인(`Madi/UI/ViewData.swift` 가 약속), 개발은 UI 밖의 바꾸는 층. 작업 단위 · 결정은 `docs/stage-6.spec.md`,
+  대응표 · 디자인에 넘길 목록은 `docs/design/viewdata-map.md`
 
 **7. 롱폼**
 챕터 분리, 숏폼 자동 추출, 롱폼 구성 채팅.
