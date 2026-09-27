@@ -1,0 +1,13 @@
+영상 | CLI | AI초 | 모델 | 장면 | 길이/목표 | 장면중앙 | 첫자막 | G1 | G4 | G6 | 하드 | G2 | G3 | G5
+6U6Qp35FQaM | claude | 37.4 | claude-opus-5-5 | 7 | 16.8/17 | 2.00 | 0.10 | pass | pass | pass | ✅ | cannotJudge:subjectAlreadyCropped | pass | pass
+6U6Qp35FQaM | codex | 75.3 | (안 알려 줌) | 8 | 12.4/13 | 1.50 | 0.04 | pass | pass | pass | ✅ | cannotJudge:subjectAlreadyCropped | pass | pass
+fuTjB-F6-DE | claude | 23.3 | claude-opus-5-5 | 9 | 25.3/25 | 2.58 | 0.12 | sourceLimited:subjectTooSmallLowResolution | pass | pass | ✅ | pass | pass | pass
+fuTjB-F6-DE | codex | 39.4 | (안 알려 줌) | 8 | 20.4/21 | 2.26 | 0.00 | sourceLimited:subjectTooSmallLowResolution | pass | pass | ✅ | pass | pass | pass
+NOCXAZE8XdQ | claude | 46.6 | claude-opus-5-5 | 10 | 26.1/25 | 2.29 | 0.00 | sourceLimited:subjectTooSmallLowResolution | pass | pass | ✅ | pass | pass | pass
+NOCXAZE8XdQ | codex | 43.4 | (안 알려 줌) | 6 | 8.7/13 | 1.58 | 0.00 | sourceLimited:subjectTooSmallLowResolution | pass | pass | ✅ | pass | pass | pass
+uw1aUHnMfo8 | claude | 30.6 | claude-opus-5-5 | 6 | 19.4/20 | 3.27 | 0.11 | pass | pass | pass | ✅ | pass | pass | pass
+uw1aUHnMfo8 | codex | 36.4 | (안 알려 줌) | 7 | 18.8/19 | 2.70 | 0.00 | pass | pass | pass | ✅ | pass | pass | pass
+VtFNkL7oAWM | claude | 22.5 | claude-opus-5-5 | 5 | 14.9/15 | 3.30 | 0.06 | pass | pass | pass | ✅ | pass | pass | pass
+VtFNkL7oAWM | codex | 33.0 | (안 알려 줌) | 5 | 14.4/14 | 3.26 | 0.00 | pass | pass | pass | ✅ | pass | pass | pass
+zV4hh3M5eGI | claude | 25.7 | claude-opus-5-5 | 8 | 21.3/21 | 2.30 | 0.10 | pass | pass | pass | ✅ | pass | pass | pass
+zV4hh3M5eGI | codex | 32.0 | (안 알려 줌) | 7 | 22.7/23 | 3.03 | 0.44 | pass | pass | pass | ✅ | pass | pass | pass
