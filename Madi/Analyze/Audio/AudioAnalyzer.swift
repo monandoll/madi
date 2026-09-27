@@ -72,6 +72,32 @@ public enum AudioAnalyzer {
         return Result(windowSec: windowSec, rmsDB: rms, silences: silences(in: rms), noAudioTrack: false)
     }
 
+    /// 16kHz 모노 float 샘플 전부. whisper.cpp 입력 형식이다 (`WhisperCppProvider`).
+    /// 오디오 트랙이 없으면 빈 배열.
+    public static func mono16k(_ url: URL) async throws -> [Float] {
+        let asset = AVURLAsset(url: url)
+        guard let track = try await asset.loadTracks(withMediaType: .audio).first else { return [] }
+        let reader = try AVAssetReader(asset: asset)
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
+            AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 16_000.0, AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 32, AVLinearPCMIsFloatKey: true, AVLinearPCMIsNonInterleaved: false,
+        ])
+        reader.add(output)
+        guard reader.startReading() else { throw reader.error ?? CocoaError(.fileReadCorruptFile) }
+        var out: [Float] = []
+        while let buffer = output.copyNextSampleBuffer() {
+            guard let block = CMSampleBufferGetDataBuffer(buffer) else { continue }
+            var length = 0
+            var pointer: UnsafeMutablePointer<CChar>?
+            CMBlockBufferGetDataPointer(block, atOffset: 0, lengthAtOffsetOut: nil, totalLengthOut: &length, dataPointerOut: &pointer)
+            guard let pointer else { continue }
+            let n = length / MemoryLayout<Float>.size
+            pointer.withMemoryRebound(to: Float.self, capacity: n) { out.append(contentsOf: UnsafeBufferPointer(start: $0, count: n)) }
+        }
+        if reader.status == .failed { throw reader.error ?? CocoaError(.fileReadCorruptFile) }
+        return out
+    }
+
     /// 무음 구간. 창 단위 RMS 에서 기준 아래가 `minSilenceSec` 이상 이어진 곳.
     public static func silences(
         in rms: [Double], windowSec: Double = windowSec,

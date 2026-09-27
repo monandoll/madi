@@ -90,7 +90,8 @@ madi.app  (Swift · SwiftUI · macOS 14+)
   사용자가 고른 무료 글꼴(OFL). 둘 다 공식 배포처 · 커밋 고정 · SHA-256 확인 (`Resources/downloads.json`).
   **첫 실행 준비 화면은 없다** — 기다리게 하지 않고 조용히 받는다. 첫 영상이 먼저 오면 준비가 끝나는 대로 본다
   (`docs/stage-3.spec.md`).
-  **Intel Mac 에서만** 전사 폴백으로 whisper.cpp 를 받는다 (`§17`). 그때는 quarantine 해제가 필요하다.
+  **Intel Mac 은** 전사를 whisper.cpp 로 한다 (`§17`). whisper.cpp 는 **앱 안에 들어 있다**(공식 xcframework, SwiftPM 이
+  체크섬으로 받아 빌드에 넣는다) — 받는 바이너리가 아니므로 quarantine 해제도 없다. Intel 은 모델만 GGML 형식으로 받는다.
 - **HTTP 서버가 없다.** 화면이 같은 프로세스 안이라 함수 호출로 끝난다.
   포트 · CORS · WebSocket · mixed content · 페어링 토큰이 전부 소멸한다.
 - **영상이 기기를 떠나지 않는다.** 수강생·회원이 찍힌 촬영본이 섞일 수 있어
@@ -146,7 +147,7 @@ madi.app  (Swift · SwiftUI · macOS 14+)
 | DB | **GRDB.swift** (SQLite) | 마이그레이션 · 관측 쿼리. SwiftData 쓰지 않는다 |
 | 큐 | Swift actor + SQLite `jobs` | 렌더 1 · 분석 1 동시 |
 | 가져오기 | **PhotoKit** + 폴더 감시(보조) | 업로드 없음 |
-| 전사 | **WhisperKit** (CoreML, Apple Silicon) / **whisper.cpp** (Intel 폴백) | `TranscriptionProvider` 프로토콜 뒤에 숨긴다. word timestamps 필수 |
+| 전사 | **WhisperKit** (CoreML, Apple Silicon) / **whisper.cpp** (Intel, 공식 xcframework v1.9.2) | `TranscriptionProvider` 뒤에 숨기고 `TranscriptionEngine.forThisMachine` 한 곳에서 고른다. word timestamps 필수 |
 | 사람 감지 | **Vision** `VNDetectHumanBodyPoseRequest` | bbox + 19관절, 0.5s 간격. `PoseProvider` 프로토콜. Intel 에서도 동작(3~5배 느림) |
 | 컷·배속 | **AVMutableComposition** | |
 | 합성 | **AVVideoCompositionCoreAnimationTool** + CALayer | 자막 · 오버레이 · 줌 |
@@ -157,7 +158,7 @@ madi.app  (Swift · SwiftUI · macOS 14+)
 | 배포 | 공증 `.dmg` + Sparkle | **Universal 2** (`ARCHS = arm64 x86_64`). App Store 안 함 (샌드박스 불가) |
 | 폰트 | UI: **시스템 글꼴(SF)** / 영상 자막: **사용자가 고른 설치 글꼴**, 기본값 **Pretendard Variable** (OFL, 번들) | 둘을 섞지 않는다. 자막 글꼴은 `§9` 자막 모양 |
 
-Python 없음. 네트워크 요청은 AI CLI · 전사 모델 · 무료 글꼴 받기 · (Intel 전용) whisper.cpp 다운로드 외에 없다.
+Python 없음. 네트워크 요청은 AI CLI · 전사 모델(Apple Silicon 은 CoreML, Intel 은 GGML) · 무료 글꼴 받기 외에 없다.
 받는 것은 전부 `Resources/downloads.json` 에 **커밋 고정 주소와 SHA-256** 으로 적혀 있다. 영상은 어디로도 보내지 않는다.
 저장은 `~/Library/Application Support/madi/` 한 곳 (DB · 원본 사본 · 다이제스트 · 받은 파일). `~/Documents` 는 쓰지 않는다.
 
@@ -821,7 +822,7 @@ node tools/measure.mjs <png> [<png> ...]      # 자막 지표 측정
   아이폰은 촬영만 하고, 결과 확인은 사진 앱으로 내보내 본다
 - **웹 UI · HTTP 서버 · 서버 배포** — 영상이 기기를 떠나면 안 된다
 - Electron · Node 제품 코드 (Node 는 `tools/` 측정 도구에만)
-- Remotion · ffmpeg · whisper.cpp · onnxruntime — 애플 프레임워크로 대체
+- Remotion · ffmpeg · onnxruntime — 애플 프레임워크로 대체 (whisper.cpp 는 Intel 전사에만 쓴다 — `§17`)
 - App Store 배포 (샌드박스에서 AI CLI 스폰 불가)
 - 코드 사이닝 · 공증 · Apple Developer 계정 (판매 시점까지 미룬다)
 - 다크 모드
@@ -846,10 +847,10 @@ node tools/measure.mjs <png> [<png> ...]      # 자막 지표 측정
 | 동작 | ✅ | ✅ |
 | **편집 10분 목표 (`§14`)** | ✅ 보장 대상 | ❌ 목표를 적용하지 않는다 |
 | 품질 게이트 G1~G12 | ✅ | ✅ **동일하게 적용** |
-| 전사 | WhisperKit (ANE) | whisper.cpp 폴백 (Metal/CPU) |
+| 전사 | WhisperKit (ANE) | whisper.cpp (Metal/CPU) — 앱에 들어 있음 |
 | 사람 감지 | Vision (ANE) | Vision (CPU/GPU, 3~5배 느림) |
 | 인코딩 | VideoToolbox | VideoToolbox (Quick Sync) |
-| 외부 바이너리 | 없음 | whisper.cpp 1개 (다운로드 + quarantine 해제) |
+| 외부 바이너리 | 없음 | 없음 (받는 건 GGML 모델 488MB 뿐) |
 
 - **Tier 2 에서 느린 것은 버그가 아니다.** `events` 에 아키텍처를 같이 기록하고
   성능 회귀 판정은 Tier 1 수치로만 한다 (`§14`).
@@ -857,11 +858,15 @@ node tools/measure.mjs <png> [<png> ...]      # 자막 지표 측정
   조용히 느려지게 두지 않는다.
 - Tier 2 는 **실제 Intel Mac 에서 최소 1회 검증**한다. Rosetta 로 x86_64 빌드를 돌리는 것은
   동작 확인까지만 유효하고 성능 특성은 다르다. 그걸로 Tier 2 를 검증했다고 적지 않는다.
-- WhisperKit 이 x86_64 빌드조차 안 되면 Tier 2 에서는 아예 제외하고 whisper.cpp 만 쓴다.
-  1단계 전에 확인한다.
+- ~~WhisperKit 이 x86_64 빌드조차 안 되면 Tier 2 에서는 아예 제외하고 whisper.cpp 만 쓴다.~~
+  → **x86_64 로 빌드는 되지만 전사 중 죽는다** (`TextDecoding.prepareDecoderInputs` EXC_BAD_ACCESS, Rosetta 실측).
+  그래서 Intel 은 whisper.cpp 만 쓴다 (docs/stage-3.spec.md 결정 ④ B). 앱은 쌤뿐 아니라 다른 크리에이터도 쓰므로
+  Intel 을 미루지 않는다
 
 **현재 상태 (2026-09-27)**
 - **Universal 2 빌드는 된다** — `scripts/build-universal.sh`. 한 번에 `ARCHS="arm64 x86_64"` 로 가면 WhisperKit 이
   깨지므로 아키텍처마다 따로 빌드해 `lipo` 로 합친다. `.dmg` 는 하나다. x86_64 슬라이스에도 WhisperKit 이 들어 있다
-- **Intel 은 빌드까지만 확인했다. 성능 · 동작은 실기 확인 못 함** — 쓸 수 있는 Intel Mac 이 없다.
-  Rosetta 로 돌린 것은 Tier 2 검증으로 치지 않는다 (위). Tier 2 를 "된다" 고 적지 않는다
+- **Intel 은 실기 확인 못 함** — 쓸 수 있는 Intel Mac 이 없다. 확인한 것은 **Rosetta 동작 확인까지**다:
+  x86_64 도구로 GGML 모델 488MB 받기 · 해시 확인 · 전사 한 편(`8DF9jrxQM4U`, 낱말 41개, 앞부분이 WhisperKit 결과와 같음),
+  Universal 앱 x86_64 슬라이스가 켜져 10초간 죽지 않음. **성능 수치는 없다** — Rosetta 는 Tier 2 성능으로 치지 않는다 (위).
+  whisper.cpp 낱말 시각(토큰 시각을 묶은 것)이 WhisperKit 보다 거친지도 아직 안 쟀다

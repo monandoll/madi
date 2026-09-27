@@ -30,6 +30,8 @@
 		498A29E3EF2E75257EADC4AD /* Font.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9198795506821EE4D71C606A /* Font.swift */; };
 		4AEB2757234CE48448E5B709 /* Downloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D2B9F93252AB75D78F41A92 /* Downloads.swift */; };
 		4F503468CEA9386910EDBD9A /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 64370709853D3ADF23396E36 /* WhisperKit */; };
+		535C7A341303F28F0FBC7E9B /* WhisperCppProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FF60384F64A9623137DFC0D /* WhisperCppProvider.swift */; };
+		55A2F43B667CD2DAA90B60DB /* WhisperCpp in Frameworks */ = {isa = PBXBuildFile; productRef = 28058D99D46C2544338CB34B /* WhisperCpp */; };
 		55BFC2D227DCDDFD63F04E38 /* StyleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407CF4C64A45F212D6AA28FA /* StyleTests.swift */; };
 		55FD3BF48398663B3B8E1A62 /* Records.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF4FA327FAC7C7435A14479 /* Records.swift */; };
 		592A3D58F7705E5A035A311C /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 9BC92477796650B48B88A3DC /* GRDB */; };
@@ -45,6 +47,7 @@
 		7C21E63AC2A566BA5D401B0D /* ReframePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71179A0F34B7DEC6B15915CC /* ReframePlanner.swift */; };
 		7C9E11D054D39BC490258492 /* PretendardVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8148334F0D1C4607F6103479 /* PretendardVariable.ttf */; };
 		7CB49E7614D6007C3C11FAAE /* CaptionGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4181A1F305068579BF9A5C22 /* CaptionGateTests.swift */; };
+		7E7B92624B001FBA942B6F05 /* WhisperCpp in Frameworks */ = {isa = PBXBuildFile; productRef = 71A3CB2B1DCAAD296B6DD7B2 /* WhisperCpp */; };
 		7EC27D66EB8FA2EB23EF7B40 /* StyleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17ABE83D90BA6977FB20DD73 /* StyleStore.swift */; };
 		8D14896445466BABE07F2DCE /* StoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 447D4CB078F15F112C14D69A /* StoreTests.swift */; };
 		8F8D3E23A77E148BCC89AFA8 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = F441B6E8EB91AD06BD449DE9 /* OFL.txt */; };
@@ -121,6 +124,7 @@
 		0317C0EB1C8B1BB9CC15D14A /* SilentSourceRenderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilentSourceRenderTests.swift; sourceTree = "<group>"; };
 		056E706ADEB1090F9E4F18D2 /* Transcript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transcript.swift; sourceTree = "<group>"; };
 		0CF255FFFF4817C0CC024338 /* StillRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StillRenderer.swift; sourceTree = "<group>"; };
+		14D1202525FD03955FBC6906 /* WhisperCpp */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WhisperCpp; path = Packages/WhisperCpp; sourceTree = SOURCE_ROOT; };
 		17A4A6BC2BD771958ED938CD /* OverlayPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayPayload.swift; sourceTree = "<group>"; };
 		17ABE83D90BA6977FB20DD73 /* StyleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleStore.swift; sourceTree = "<group>"; };
 		181BC5EB1AF428D241C43C78 /* MadiSpike */ = {isa = PBXFileReference; includeInIndex = 0; path = MadiSpike; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -160,6 +164,7 @@
 		7F15A9316F358BEB41DF37AF /* Pipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pipeline.swift; sourceTree = "<group>"; };
 		807D00B9149F72389F639F77 /* DigestBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigestBuilder.swift; sourceTree = "<group>"; };
 		8148334F0D1C4607F6103479 /* PretendardVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = PretendardVariable.ttf; sourceTree = "<group>"; };
+		8FF60384F64A9623137DFC0D /* WhisperCppProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperCppProvider.swift; sourceTree = "<group>"; };
 		9198795506821EE4D71C606A /* Font.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Font.swift; sourceTree = "<group>"; };
 		97883FA1954A88DF0996BBD4 /* ReframePlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReframePlannerTests.swift; sourceTree = "<group>"; };
 		978FB42F1F6682D9B407C434 /* DownloadsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsTests.swift; sourceTree = "<group>"; };
@@ -206,6 +211,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				631C3B5825F86943E42C6697 /* MadiKit.framework in Frameworks */,
+				55A2F43B667CD2DAA90B60DB /* WhisperCpp in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -215,6 +221,7 @@
 			files = (
 				4F503468CEA9386910EDBD9A /* WhisperKit in Frameworks */,
 				592A3D58F7705E5A035A311C /* GRDB in Frameworks */,
+				7E7B92624B001FBA942B6F05 /* WhisperCpp in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -295,6 +302,14 @@
 			path = Queue;
 			sourceTree = "<group>";
 		};
+		49B44EE2A2BBBBDE4C8EBAAC /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				14D1202525FD03955FBC6906 /* WhisperCpp */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
 		4B3902BB9CBD36DCD6CF7B65 /* MadiTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -359,6 +374,7 @@
 			isa = PBXGroup;
 			children = (
 				3E9CA9018D54ABF34880504E /* TranscriptionProvider.swift */,
+				8FF60384F64A9623137DFC0D /* WhisperCppProvider.swift */,
 				CFB46CE8965E4DE8BB246F32 /* WhisperKitProvider.swift */,
 			);
 			path = Transcription;
@@ -449,6 +465,7 @@
 				69140C61BB78CCA634ACA07A /* Madi */,
 				3F8ED61BED06F0E55CA23372 /* MadiSpike */,
 				4B3902BB9CBD36DCD6CF7B65 /* MadiTests */,
+				49B44EE2A2BBBBDE4C8EBAAC /* Packages */,
 				6EAE7334989D9AD3752E550F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -472,6 +489,7 @@
 			packageProductDependencies = (
 				64370709853D3ADF23396E36 /* WhisperKit */,
 				9BC92477796650B48B88A3DC /* GRDB */,
+				71A3CB2B1DCAAD296B6DD7B2 /* WhisperCpp */,
 			);
 			productName = MadiKit;
 			productReference = 409E7371C9108F4322587DF0 /* MadiKit.framework */;
@@ -492,6 +510,7 @@
 			);
 			name = Madi;
 			packageProductDependencies = (
+				28058D99D46C2544338CB34B /* WhisperCpp */,
 			);
 			productName = Madi;
 			productReference = A6846090E3F100A140F296D0 /* Madi.app */;
@@ -558,6 +577,7 @@
 			packageReferences = (
 				3248BFDF15EBE26EC543D693 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 				B5771C3E0A68DAA5E1DC7063 /* XCRemoteSwiftPackageReference "WhisperKit" */,
+				04C43407954B366C53928F36 /* XCLocalSwiftPackageReference "Packages/WhisperCpp" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6EAE7334989D9AD3752E550F /* Products */;
@@ -669,6 +689,7 @@
 				D10203FAB9F6AF59412F2EB8 /* SubjectTrack.swift in Sources */,
 				378EE370CA5FEC3A4CC93863 /* Transcript.swift in Sources */,
 				E98DDAE9458F83A89577DFF5 /* TranscriptionProvider.swift in Sources */,
+				535C7A341303F28F0FBC7E9B /* WhisperCppProvider.swift in Sources */,
 				20F79FEC3C95C79948001FFA /* WhisperKitProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -994,6 +1015,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		04C43407954B366C53928F36 /* XCLocalSwiftPackageReference "Packages/WhisperCpp" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/WhisperCpp;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		3248BFDF15EBE26EC543D693 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -1014,10 +1042,18 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		28058D99D46C2544338CB34B /* WhisperCpp */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WhisperCpp;
+		};
 		64370709853D3ADF23396E36 /* WhisperKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B5771C3E0A68DAA5E1DC7063 /* XCRemoteSwiftPackageReference "WhisperKit" */;
 			productName = WhisperKit;
+		};
+		71A3CB2B1DCAAD296B6DD7B2 /* WhisperCpp */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WhisperCpp;
 		};
 		9BC92477796650B48B88A3DC /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;

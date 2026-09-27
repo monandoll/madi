@@ -4,7 +4,8 @@
   "whisperkit-coreml": "0f63a7800b00dd0226abd051b906c246e1907482",
   "openai/whisper-small": "973afd24965f72e36ca33b3055d56a652f456b4d",
   "google/fonts": "23e54b51ddffbc7713c583748e3bd86f62b1fa4a",
-  "sun-typeface/SUIT": "55118d981336d8fce005eb62888c12c0568ef7b0 (v2.0.5)"
+  "sun-typeface/SUIT": "55118d981336d8fce005eb62888c12c0568ef7b0 (v2.0.5)",
+  "ggerganov/whisper.cpp": "5359861c739e955e79d9a303bcbc70fb988958b1"
  },
  "packs": [
   {
@@ -143,6 +144,20 @@
      "path": "tokenizers/models/openai/whisper-small/tokenizer_config.json",
      "size": 282683,
      "sha256": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce"
+    }
+   ]
+  },
+  {
+   "id": "model.whisper-small-ggml",
+   "kind": "model",
+   "license": "MIT",
+   "_": "Intel(x86_64) 전용 — whisper.cpp 형식. Apple Silicon 은 받지 않는다",
+   "files": [
+    {
+     "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-small.bin",
+     "path": "whispercpp/ggml-small.bin",
+     "size": 487601967,
+     "sha256": "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b"
     }
    ]
   },

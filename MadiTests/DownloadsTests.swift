@@ -31,7 +31,7 @@ struct DownloadsTests {
                 #expect(f.size > 0)
             }
         }
-        let model = try #require(c.pack(ModelPreparer.packID))
+        let model = try #require(c.pack(TranscriptionEngine.whisperKit.packID))
         #expect(model.files.contains { $0.path.hasSuffix("TextDecoder.mlmodelc/weights/weight.bin") })
         #expect(model.files.contains { $0.path == "tokenizers/models/openai/whisper-small/tokenizer.json" })
         #expect(abs(Double(model.totalSize) / 1e6 - 489) < 5)
@@ -93,10 +93,10 @@ struct DownloadsTests {
         let src = try tempDir(), root = try tempDir()
         defer { try? FileManager.default.removeItem(at: src); try? FileManager.default.removeItem(at: root) }
         // 진짜 모델이 아닌 파일 — 받기는 되지만 데우기(WhisperKit 로드)에서 실패해야 한다.
-        let pack = DownloadCatalog.Pack(id: ModelPreparer.packID, kind: .model, family: nil, license: "MIT", files: [
+        let pack = DownloadCatalog.Pack(id: TranscriptionEngine.whisperKit.packID, kind: .model, family: nil, license: "MIT", files: [
             try file(src, "c", "{}", path: "whisperkit/openai_whisper-small/config.json"),
         ])
-        let preparer = try ModelPreparer(catalog: DownloadCatalog(packs: [pack]), root: root)
+        let preparer = try ModelPreparer(catalog: DownloadCatalog(packs: [pack]), root: root, engine: .whisperKit)
         var seen: [ModelPreparer.State] = []
         let stream = await preparer.states()
         let watcher = Task { for await s in stream { seen.append(s); if case .failed = s { break } } ; return seen }
@@ -105,5 +105,27 @@ struct DownloadsTests {
         #expect(states.contains(.warming))
         guard case .failed = await preparer.state else { Issue.record("실패 상태가 아니다: \(await preparer.state)"); return }
         await #expect(throws: TranscriptionFailure.self) { _ = try await preparer.readyProvider() }
+    }
+
+    @Test("Intel 모델 팩도 커밋에 고정돼 있고, 이 Mac 엔진은 아키텍처로 고른다")
+    func engineAndGgmlPack() throws {
+        let c = try DownloadCatalog.bundled()
+        let ggml = try #require(c.pack(TranscriptionEngine.whisperCpp.packID))
+        #expect(ggml.files.count == 1 && ggml.files[0].path == "whispercpp/ggml-small.bin")
+        #expect(ggml.totalSize == 487_601_967)
+        #expect(TranscriptionEngine.forThisMachine == (MachineArch.current == "arm64" ? .whisperKit : .whisperCpp))
+    }
+
+    @Test("whisper.cpp 토큰 → 낱말: 공백에서 끊고, 쪼개진 한글 바이트를 합친다")
+    func whisperCppWords() {
+        let 골 = Array("골".utf8)   // 3바이트 — 토큰 둘로 쪼개질 수 있다
+        let tokens: [WhisperCppProvider.Token] = [
+            .init(bytes: Array(" ".utf8) + Array(골[0..<2]), start: 0.5, end: 0.6),
+            .init(bytes: Array(골[2...]) + Array("반".utf8), start: 0.6, end: 0.9),
+            .init(bytes: Array(" 교정".utf8), start: 1.0, end: 1.4),
+        ]
+        let words = WhisperCppProvider.words(from: tokens)
+        #expect(words.map(\.text) == ["골반", "교정"])
+        #expect(words[0].start == 0.5 && words[0].end == 0.9)
     }
 }

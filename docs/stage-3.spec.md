@@ -17,13 +17,19 @@ Intel 폴백(WhisperCppProvider)도 붙이고 동작만 확인한다. 시간은 
 | 3 | **다이제스트** — `§6` transcript · subject · audio · scene · frames, 캐시 | `Madi/Analyze/Digest*` | 공개본 1편 다이제스트 텍스트 + 프레임 시트 |
 | 4 | **가져오기** — PhotoKit 새 영상 감시 · 원본 요청(iCloud) · 로컬 사본 · 폴더 감시(보조) | `Madi/Import/` | 아이폰에서 찍은 영상이 저절로 DB 에 들어온다 |
 | 5 | **연결** — 가져오기 → 분석 작업 → (수동 편집안) → 렌더 작업 → 결과물 · 게이트 리포트 · `events` | `Madi/App/` 연결부 | 3분 판정 (아래) — ✅ **134.7초** (`findings/2026-09-27-stage3-pipeline.md`) |
-| 6 | **Intel 폴백** — `WhisperCppProvider` 동작만 | `Madi/Analyze/Transcription/` | x86_64 에서 전사 1편 — Intel Mac 이 없어 **빌드까지만** (§17) |
+| 6 | **Intel 폴백** — `WhisperCppProvider` 동작만 | `Madi/Analyze/Transcription/` | ✅ Rosetta 로 x86_64 전사 1편 (모델 받기 · 해시 · 전사). 실기 · 성능은 확인 못 함 (§17) |
 
 미뤄 둔 결정 넷(모델 받기 · 글꼴 목록 / Universal 빌드 / 모델 저장 위치 / Intel 폴백)은
 **닿는 단위에서 하나씩** 안과 권장을 가져간다 — 3번(다이제스트)에서 모델 받기 · 저장 위치,
 6번에서 Universal · Intel.
 
 ## 정해 둔 것
+
+- **Intel 전사 — whisper.cpp (2026-09-27 결정 ④ B).** WhisperKit 은 x86_64 로 빌드는 되지만 **전사 중 죽는다**
+  (Rosetta 실측, `TextDecoding.prepareDecoderInputs` EXC_BAD_ACCESS). 처음엔 "쌤 Mac 기종 답을 기다린다" 를 권했는데
+  **틀렸다** — 앱은 다른 크리에이터도 쓴다. whisper.cpp 공식 xcframework v1.9.2 (MIT) 를 SwiftPM `binaryTarget`
+  (릴리스 주소 · 체크섬)으로 넣었다 — 레포에 바이너리 없음, 받는 실행 파일 없음. GGML 모델(488MB)은 Intel 에서만 받는다.
+  엔진은 `TranscriptionEngine.forThisMachine` 한 곳에서 고른다
 
 - **Universal 빌드 — 따로 빌드해 합친다 (2026-09-27 결정 ③ A).** `scripts/build-universal.sh`.
   arm64 · x86_64 를 각각 Release 로 빌드하고 앱 안의 Mach-O(실행 파일 · `MadiKit.framework`)를 `lipo` 로 합친 뒤 임시 서명.

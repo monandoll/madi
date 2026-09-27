@@ -30,6 +30,10 @@ while IFS= read -r -d '' f; do
   rel="${f#$A/}"
   if file -b "$f" | grep -q "Mach-O"; then
     [ -f "$X/$rel" ] || { echo "x86_64 빌드에 없다: $rel" >&2; exit 1; }
+    archs=$(lipo -archs "$f")
+    if [[ "$archs" == *arm64* && "$archs" == *x86_64* ]]; then
+      continue   # 이미 두 아키텍처 (whisper.framework — 공식 xcframework 가 universal 이다)
+    fi
     lipo -create "$f" "$X/$rel" -output "$U/$rel"
     merged=$((merged + 1))
   fi

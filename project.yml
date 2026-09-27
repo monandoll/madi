@@ -46,6 +46,9 @@ packages:
   GRDB:
     url: https://github.com/groue/GRDB.swift
     exactVersion: 7.11.1
+  # Intel 전사 — whisper.cpp 공식 xcframework. 주소 · 체크섬은 Packages/WhisperCpp/Package.swift 에.
+  WhisperCpp:
+    path: Packages/WhisperCpp
 
 targets:
   # 코어. 모델 · 템플릿 · 렌더가 전부 여기 있다.
@@ -78,6 +81,8 @@ targets:
         product: WhisperKit
       - package: GRDB
         product: GRDB
+      - package: WhisperCpp
+        product: WhisperCpp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.madi.kit
@@ -94,6 +99,9 @@ targets:
     dependencies:
       - target: MadiKit
         embed: true
+      # MadiKit 이 링크하는 동적 프레임워크는 **앱이** 넣어야 한다. 빠지면 켜지자마자 죽는다.
+      - package: WhisperCpp
+        product: WhisperCpp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.madi.Madi

@@ -20,25 +20,26 @@ public actor ModelPreparer {
     }
 
     private static let log = Logger(subsystem: "app.madi", category: "model")
-    public static let packID = "model.whisper-small"
 
     public private(set) var state: State = .notStarted
     private let pack: DownloadCatalog.Pack
     private let root: URL
-    private let provider: WhisperKitProvider
+    public let engine: TranscriptionEngine
+    private let provider: any TranscriptionProvider
     private var readyWaiters: [CheckedContinuation<Void, Error>] = []
     private var observers: [UUID: AsyncStream<State>.Continuation] = [:]
     private var running = false
 
-    public init(catalog: DownloadCatalog, root: URL = Downloads.defaultRoot) throws {
-        guard let pack = catalog.pack(Self.packID) else { throw CocoaError(.fileNoSuchFile) }
+    /// - Parameter engine: 이 Mac 의 전사 엔진. Apple Silicon 은 WhisperKit 모델만, Intel 은 GGML 모델만 받는다.
+    public init(
+        catalog: DownloadCatalog, root: URL = Downloads.defaultRoot,
+        engine: TranscriptionEngine = .forThisMachine
+    ) throws {
+        guard let pack = catalog.pack(engine.packID) else { throw CocoaError(.fileNoSuchFile) }
         self.pack = pack
         self.root = root
-        self.provider = WhisperKitProvider(
-            model: "small",
-            modelFolder: root.appending(path: "whisperkit/openai_whisper-small"),
-            tokenizerFolder: root.appending(path: "tokenizers")
-        )
+        self.engine = engine
+        self.provider = engine.makeProvider(root: root)
     }
 
     /// 상태가 바뀔 때마다. 화면(디자인 쪽)이 구독한다.
@@ -110,7 +111,7 @@ public actor ModelPreparer {
     }
 
     /// 준비된 전사기. 준비가 안 끝났으면 끝날 때까지 기다린다.
-    public func readyProvider() async throws -> WhisperKitProvider {
+    public func readyProvider() async throws -> any TranscriptionProvider {
         if state == .ready { return provider }
         if case .failed(let reason) = state { throw TranscriptionFailure.modelUnavailable(reason) }
         try await withCheckedThrowingContinuation { readyWaiters.append($0) }
