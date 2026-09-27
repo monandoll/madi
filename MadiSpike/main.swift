@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 import CoreText
 import AVFoundation
+import Vision
 import MadiKit
 
 /// 0단계 측정 루프용 도구. **제품 기능이 아니다.**
@@ -1213,6 +1214,53 @@ case "emphasis":
         print(String(format: "  %-14@ 자막 프레임 %3d · 유색 8%% 넘는 프레임 %d  %@",
                      dir.lastPathComponent as NSString, withCaption, emphasized.count,
                      emphasized.prefix(6).joined(separator: " ") as NSString))
+    } catch { fail("\(error)") }
+
+case "digest":
+    // §6 다이제스트 한 편. 텍스트를 찍고 프레임 시트 경로를 알려 준다.
+    guard args.count > 1 else { fail("사용법: madi-spike digest <영상> [--model small]") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let id = video.deletingPathExtension().lastPathComponent
+        let started = Date()
+        let digest = try await DigestBuilder.build(
+            videoID: id, url: video, transcriber: WhisperKitProvider(model: option("model") ?? "small"),
+            workDir: URL(fileURLWithPath: "out/digest").appending(path: id)
+        )
+        print(digest.text)
+        print(digest.timings.sorted { $0.value > $1.value }
+            .map { String(format: "%@ %.1f초", $0.key, $0.value) }.joined(separator: " · "))
+        print(String(format: "(%.1f초 걸림 · 지문 %@)", Date().timeIntervalSince(started),
+                     try DigestBuilder.fingerprint(of: video) as NSString))
+    } catch { fail("\(error)") }
+
+case "subjprof":
+    // 사람 추적이 어디서 느린가 — 프레임 뽑기 · PNG 읽기 · 분할을 따로 잰다.
+    guard args.count > 1 else { fail("사용법: madi-spike subjprof <영상>") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let info = try await FrameSheet.info(of: video)
+        let times = stride(from: 0.0, to: info.duration - 0.05, by: 0.5).map { $0 }
+        var t0 = Date()
+        let frames = try await FrameSheet.extract(from: video, at: times, into: URL(fileURLWithPath: "out/subjprof"), prefix: "")
+        let extract = Date().timeIntervalSince(t0); t0 = Date()
+        let images = try frames.map { try StillRenderer.loadImage($0) }
+        let load = Date().timeIntervalSince(t0); t0 = Date()
+        for img in images { _ = try SubjectDetector.maskComponents(img, minCoverage: SubjectTrackBuilder.defaultMinCoverage) }
+        let segment = Date().timeIntervalSince(t0)
+        print(String(format: "  %d프레임 · 뽑기+PNG쓰기 %.1f초 · PNG읽기 %.1f초 · 분할 %.1f초", frames.count, extract, load, segment))
+        for (name, q) in [("accurate", VNGeneratePersonSegmentationRequest.QualityLevel.accurate), ("balanced", .balanced), ("fast", .fast)] {
+            t0 = Date()
+            var size = CGSize.zero
+            for img in images {
+                let r = VNGeneratePersonSegmentationRequest()
+                r.qualityLevel = q
+                r.outputPixelFormat = kCVPixelFormatType_OneComponent8
+                try VNImageRequestHandler(cgImage: img, options: [:]).perform([r])
+                if let pb = r.results?.first?.pixelBuffer { size = CGSize(width: CVPixelBufferGetWidth(pb), height: CVPixelBufferGetHeight(pb)) }
+            }
+            print(String(format: "  Vision %@ 만 %.1f초 · 마스크 %dx%d", name as NSString, Date().timeIntervalSince(t0), Int(size.width), Int(size.height)))
+        }
     } catch { fail("\(error)") }
 
 case "captionband":

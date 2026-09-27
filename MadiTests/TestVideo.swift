@@ -9,6 +9,20 @@ enum TestVideo {
     static func makeSolid(
         at url: URL, seconds: Double = 0.5, size: CGSize = CGSize(width: 128, height: 128)
     ) async throws {
+        try await make(at: url, seconds: seconds, size: size) { _ in 90 }
+    }
+
+    /// 밝기가 `switchAt` 초에 90 → 220 으로 바뀌는 영상. 장면 전환 검출용.
+    static func makeTwoTone(
+        at url: URL, seconds: Double = 2, switchAt: Double = 1,
+        size: CGSize = CGSize(width: 128, height: 128)
+    ) async throws {
+        try await make(at: url, seconds: seconds, size: size) { t in t < switchAt ? 90 : 220 }
+    }
+
+    private static func make(
+        at url: URL, seconds: Double, size: CGSize, brightness: (Double) -> UInt8
+    ) async throws {
         try? FileManager.default.removeItem(at: url)
         let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
@@ -26,20 +40,20 @@ enum TestVideo {
         writer.startWriting()
         writer.startSession(atSourceTime: .zero)
 
-        var pixelBuffer: CVPixelBuffer?
-        CVPixelBufferCreate(
-            kCFAllocatorDefault, Int(size.width), Int(size.height),
-            kCVPixelFormatType_32BGRA, nil, &pixelBuffer
-        )
-        let buffer = try #require(pixelBuffer)
-        CVPixelBufferLockBaseAddress(buffer, [])
-        if let base = CVPixelBufferGetBaseAddress(buffer) {
-            memset(base, 90, CVPixelBufferGetBytesPerRow(buffer) * Int(size.height))
-        }
-        CVPixelBufferUnlockBaseAddress(buffer, [])
-
         let fps = 30
         for frame in 0..<Int(seconds * Double(fps)) {
+            var pixelBuffer: CVPixelBuffer?
+            CVPixelBufferCreate(
+                kCFAllocatorDefault, Int(size.width), Int(size.height),
+                kCVPixelFormatType_32BGRA, nil, &pixelBuffer
+            )
+            let buffer = try #require(pixelBuffer)
+            CVPixelBufferLockBaseAddress(buffer, [])
+            if let base = CVPixelBufferGetBaseAddress(buffer) {
+                memset(base, Int32(brightness(Double(frame) / Double(fps))),
+                       CVPixelBufferGetBytesPerRow(buffer) * Int(size.height))
+            }
+            CVPixelBufferUnlockBaseAddress(buffer, [])
             while !input.isReadyForMoreMediaData { try await Task.sleep(nanoseconds: 2_000_000) }
             adaptor.append(
                 buffer, withPresentationTime: CMTime(value: CMTimeValue(frame), timescale: 30)

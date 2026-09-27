@@ -37,7 +37,7 @@ public struct VideoRecord: Codable, Hashable, Sendable, FetchableRecord, Persist
     }
 }
 
-public struct DigestRecord: Codable, Hashable, Sendable, FetchableRecord, PersistableRecord {
+public struct DigestRecord: Codable, Sendable, FetchableRecord, PersistableRecord {
     public static let databaseTableName = "digest"
     public var videoId: String
     /// 다이제스트 형식 버전. 형식이 바뀌면 올리고, 옛 버전은 다시 만든다.
@@ -46,6 +46,8 @@ public struct DigestRecord: Codable, Hashable, Sendable, FetchableRecord, Persis
     public var sourceFingerprint: String
     public var text: String
     public var sheetPaths: [String]
+    public var transcript: Transcript
+    public var subject: SubjectTrack
     public var createdAt: Date
 }
 

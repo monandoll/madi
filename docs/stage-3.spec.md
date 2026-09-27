@@ -35,6 +35,15 @@ Intel 폴백(WhisperCppProvider)도 붙이고 동작만 확인한다. 시간은 
 - 저장 위치 — `~/Library/Application Support/madi/` (DB · 원본 사본 · 결과물),
   중간 산출물은 `~/Library/Caches/madi/<compositionID>/` (`§7`)
 
+## 성능은 Release 빌드로만 잰다
+
+Debug 빌드는 Swift 루프 최적화가 꺼져 있어 **착시가 크다.** 사람 추적(분할 마스크를 묶는 루프)이
+17.5초 영상에서 Debug 46.8초 → Release 8.9초였다. Vision 호출 자체는 35프레임에 2.0초뿐이었다.
+3분 판정 · `events` 성능 기록은 Release 빌드 기준이다.
+
+다이제스트 한 편 (`8DF9jrxQM4U`, 17.5초, Release, 모델 데운 뒤): 전사 3.4 · 사람 9.0 · 컷 4.5 · 시트 1.3 · 소리 0.1 = **18.3초**.
+모델이 차가울 때(이 바이너리로 처음) 전사가 **약 50초** 더 든다 — CoreML 컴파일. 새 빌드마다 한 번.
+
 ## 3분 판정 (5번)
 
 ```

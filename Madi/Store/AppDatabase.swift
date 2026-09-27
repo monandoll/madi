@@ -60,6 +60,9 @@ public struct AppDatabase: Sendable {
                 t.column("sourceFingerprint", .text).notNull()
                 t.column("text", .text).notNull()
                 t.column("sheetPaths", .jsonText).notNull()
+                // 뒤 단계가 다시 쓰는 원자료 — 자막 분절 · G6 는 낱말, 화면 잡기 · G1 은 피사체 트랙.
+                t.column("transcript", .jsonText).notNull()
+                t.column("subject", .jsonText).notNull()
                 t.column("createdAt", .datetime).notNull()
             }
 
