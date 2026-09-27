@@ -34,9 +34,12 @@ archive/remotion-spike/node_modules/
 archive/remotion-spike/out/
 archive/node-packages/*/node_modules/
 
-# xcodegen 이 만드는 것 (project.yml 이 원본)
-Madi.xcodeproj/project.xcworkspace/
-Madi.xcodeproj/xcshareddata/
+# xcodegen 이 만드는 것 중 **사람마다 다른 것**만 뺀다 (project.yml 이 원본).
+# 공유 스킴(xcshareddata/xcschemes)과 Package.resolved 는 커밋한다 — 빼면 xcodegen 없이는
+# 테스트가 안 돌고(CI 가 "Scheme Madi is not currently configured for the test action" 으로 실패했다)
+# 의존성의 의존성 버전이 떠다닌다.
+Madi.xcodeproj/xcuserdata/
+Madi.xcodeproj/project.xcworkspace/xcuserdata/
 
 # 세션 기록. 레포에 둘 이유가 없다
 .claude/prompt-log/
