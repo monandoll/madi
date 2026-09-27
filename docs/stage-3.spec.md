@@ -17,13 +17,17 @@ Intel 폴백(WhisperCppProvider)도 붙이고 동작만 확인한다. 시간은 
 | 3 | **다이제스트** — `§6` transcript · subject · audio · scene · frames, 캐시 | `Madi/Analyze/Digest*` | 공개본 1편 다이제스트 텍스트 + 프레임 시트 |
 | 4 | **가져오기** — PhotoKit 새 영상 감시 · 원본 요청(iCloud) · 로컬 사본 · 폴더 감시(보조) | `Madi/Import/` | 아이폰에서 찍은 영상이 저절로 DB 에 들어온다 |
 | 5 | **연결** — 가져오기 → 분석 작업 → (수동 편집안) → 렌더 작업 → 결과물 · 게이트 리포트 · `events` | `Madi/App/` 연결부 | 3분 판정 (아래) — ✅ **134.7초** (`findings/2026-09-27-stage3-pipeline.md`) |
-| 6 | **Intel 폴백** — `WhisperCppProvider` 동작만 | `Madi/Analyze/Transcription/` | x86_64 에서 전사 1편 |
+| 6 | **Intel 폴백** — `WhisperCppProvider` 동작만 | `Madi/Analyze/Transcription/` | x86_64 에서 전사 1편 — Intel Mac 이 없어 **빌드까지만** (§17) |
 
 미뤄 둔 결정 넷(모델 받기 · 글꼴 목록 / Universal 빌드 / 모델 저장 위치 / Intel 폴백)은
 **닿는 단위에서 하나씩** 안과 권장을 가져간다 — 3번(다이제스트)에서 모델 받기 · 저장 위치,
 6번에서 Universal · Intel.
 
 ## 정해 둔 것
+
+- **Universal 빌드 — 따로 빌드해 합친다 (2026-09-27 결정 ③ A).** `scripts/build-universal.sh`.
+  arm64 · x86_64 를 각각 Release 로 빌드하고 앱 안의 Mach-O(실행 파일 · `MadiKit.framework`)를 `lipo` 로 합친 뒤 임시 서명.
+  결과 24MB · 서명 검증 통과 · 두 Mach-O 모두 `x86_64 arm64`. Intel Mac 이 없어 **빌드까지만** 확인했다
 
 - **전사 모델 — 받아서 쓴다 (2026-09-27 결정 A).** 앱에 넣지 않는다 (넣으면 업데이트마다 484MB).
   **첫 실행이 끝나자마자 백그라운드로 받기 시작한다** — 크리에이터의 첫 영상이 다운로드를 기다리지 않게.

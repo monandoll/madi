@@ -859,3 +859,9 @@ node tools/measure.mjs <png> [<png> ...]      # 자막 지표 측정
   동작 확인까지만 유효하고 성능 특성은 다르다. 그걸로 Tier 2 를 검증했다고 적지 않는다.
 - WhisperKit 이 x86_64 빌드조차 안 되면 Tier 2 에서는 아예 제외하고 whisper.cpp 만 쓴다.
   1단계 전에 확인한다.
+
+**현재 상태 (2026-09-27)**
+- **Universal 2 빌드는 된다** — `scripts/build-universal.sh`. 한 번에 `ARCHS="arm64 x86_64"` 로 가면 WhisperKit 이
+  깨지므로 아키텍처마다 따로 빌드해 `lipo` 로 합친다. `.dmg` 는 하나다. x86_64 슬라이스에도 WhisperKit 이 들어 있다
+- **Intel 은 빌드까지만 확인했다. 성능 · 동작은 실기 확인 못 함** — 쓸 수 있는 Intel Mac 이 없다.
+  Rosetta 로 돌린 것은 Tier 2 검증으로 치지 않는다 (위). Tier 2 를 "된다" 고 적지 않는다
