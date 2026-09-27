@@ -36,7 +36,13 @@ struct ChatTests {
                     let a = request.mcp.arguments
                     let id = a[a.firstIndex(of: "--composition")! + 1]
                     let rev = a[a.firstIndex(of: "--revision-of")! + 1]
-                    do { try db.saveComposition(self.comp(id, target: 5, revisionOf: rev), origin: .chat) } catch { c.finish(throwing: error); return }
+                    do {
+                        try db.saveComposition(self.comp(id, target: 5, revisionOf: rev), origin: .chat)
+                        // madi-mcp 가 하는 일 — 일반 규칙 제안을 이벤트로 (프롬프트에 "[이번만]" 이 있으면 제안하지 않는다)
+                        if !request.prompt.contains("[이번만]") {
+                            try db.log("agent.rule.proposed", subject: id, payload: ["rule": .string("영상은 15초 안팎으로")])
+                        }
+                    } catch { c.finish(throwing: error); return }
                     c.yield(.text("30초로 줄였어요."))
                     c.yield(.finished(AgentOutcome(isError: false)))
                     c.finish()
@@ -68,7 +74,7 @@ struct ChatTests {
         #expect(rows[2].payloadValues["ask"] == .string(Chat.Key.askRemember))
     }
 
-    @Test("'앞으로도?' 에 예면 규칙이 되고, 다음 턴 프롬프트 4번 칸에 들어간다. 아니오면 적지 않는다")
+    @Test("'앞으로도?' 에 예면 AI 가 다듬은 일반 문장이 규칙이 되고, 다음 턴 프롬프트 4번 칸에 들어간다. 아니오면 적지 않는다")
     func remembers() async throws {
         let db = try setup()
         let box = Box()
@@ -77,16 +83,25 @@ struct ChatTests {
         try await job.chat(messageID: first.id)
         let ask = try #require(try await db.writer.read { try ChatRecord.filter(Column("kind") == "choices").fetchOne($0) })
         try await Chat.answerRemember(db: db, choicesID: ask.id, yes: true)
-        #expect(try db.userRules() == ["자막은 짧게"])
+        #expect(try db.userRules() == ["영상은 15초 안팎으로"])     // 크리에이터 말이 아니라 AI 가 다듬은 일반 문장
 
         let second = try await Chat.send(db: db, videoID: "v1", text: "훅을 바꿔 줘", viewing: nil) { _ in }
         try await job.chat(messageID: second.id)
-        #expect(box.prompts[1].contains("- 자막은 짧게"))
+        #expect(box.prompts[1].contains("- 영상은 15초 안팎으로"))
         #expect(box.prompts[1].contains("크리에이터: 자막은 짧게\n너: 30초로 줄였어요."))   // 대화 이력
 
         let ask2 = try #require(try await db.writer.read { try ChatRecord.filter(Column("kind") == "choices").order(Column("createdAt").desc).fetchOne($0) })
         try await Chat.answerRemember(db: db, choicesID: ask2.id, yes: false)
-        #expect(try db.userRules() == ["자막은 짧게"])
+        #expect(try db.userRules() == ["영상은 15초 안팎으로"])
+    }
+
+    @Test("일반화할 게 없으면 묻지 않는다 (AI 가 rule 을 비움)")
+    func noAskWithoutRule() async throws {
+        let db = try setup()
+        let sent = try await Chat.send(db: db, videoID: "v1", text: "[이번만] 3번 장면 빼 줘", viewing: "d") { _ in }
+        try await agent(db, Box()).chat(messageID: sent.id)
+        let kinds = try await db.writer.read { try ChatRecord.fetchAll($0).map(\.kind) }
+        #expect(kinds == [.creator, .assistant])
     }
 
     @Test("수정 턴이 실패하면 알림 줄(문구 키)을 남기고 작업은 실패한다")

@@ -62,6 +62,10 @@ public struct MadiTools: Sendable {
                 "type": "object",
                 "properties": [
                     "composition": ["type": "object", "description": "meta · captionSlot · scenes · audio"],
+                    "rule": [
+                        "type": "string",
+                        "description": "채팅으로 고친 경우에만. 이번 요청을 다음 영상에도 적용할 **일반 규칙 한 문장**으로 (예: \"영상은 15초 안팎으로\"). 이 영상에만 해당하는 요청이면 비운다.",
+                    ],
                     "secondary": [
                         "type": "array",
                         "description": "영문 보조 문구. 다이제스트 TRANSCRIPT 의 문장마다 한 줄. 앱이 그 문장의 자막 덩어리들에 나눠 붙인다. 없으면 영문 없이 만든다.",
@@ -225,8 +229,14 @@ public struct MadiTools: Sendable {
         problems = CaptionFiller.fill(&comp, words: words, style: styleValue.values.caption, translations: translations)
         if !problems.isEmpty { return reject(problems) }
 
+        // 채팅 수정 턴이 제안한 일반 규칙 — 크리에이터에게 "앞으로도?" 를 물을 문장 (§10, 6단계 결정 ③).
+        // madi-mcp 는 다른 프로세스라 이벤트로 남기고 앱이 턴 뒤에 읽는다. 비었으면 묻지 않는다.
+        let proposedRule = (args["rule"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         do {
             try db.saveComposition(comp, origin: origin)
+            if origin == .chat, !proposedRule.isEmpty {
+                try? db.log("agent.rule.proposed", subject: comp.id, payload: ["rule": .string(proposedRule)])
+            }
             try? db.log("agent.composition.saved", subject: comp.id,
                         payload: ["scenes": .number(Double(comp.scenes.count)), "duration": .number(comp.duration)])
         } catch {
