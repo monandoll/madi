@@ -25,6 +25,8 @@
 		199876224754E62B0491DBC4 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */; };
 		1AF9BF4107E90EF1C7C9571D /* ResultsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DE86554CE56C56FE4CD25A /* ResultsScreen.swift */; };
 		1C33500A52B9172F220E23E1 /* ModelPreparer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FCE5F549E1ED9C1381E8561 /* ModelPreparer.swift */; };
+		1CB3F49938E57D92DD04E882 /* CLIInstallerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54ACB01B6ADD5165DA45D259 /* CLIInstallerTests.swift */; };
+		1D4808EE5DEB653F672C0456 /* CLIInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 951D1AFD131FA16F05B58E95 /* CLIInstaller.swift */; };
 		1E8C3A30B8DC95F05BC9719A /* SelfEvalRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B194ACA3DE903D8E5ED55D4 /* SelfEvalRequest.swift */; };
 		2093C320099FF2C35A38877A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23EFEE0990BF78AF95B29CE /* RootView.swift */; };
 		20F79FEC3C95C79948001FFA /* WhisperKitProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB46CE8965E4DE8BB246F32 /* WhisperKitProvider.swift */; };
@@ -284,6 +286,7 @@
 		5170EB1C03FE043B10815DE1 /* PlanVersionList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanVersionList.swift; sourceTree = "<group>"; };
 		51E6B50BFE4E0F63A6994F30 /* styles */ = {isa = PBXFileReference; lastKnownFileType = folder; name = styles; path = Madi/Resources/styles; sourceTree = SOURCE_ROOT; };
 		530E68C62BA0792D05E49AD5 /* SoftGates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftGates.swift; sourceTree = "<group>"; };
+		54ACB01B6ADD5165DA45D259 /* CLIInstallerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIInstallerTests.swift; sourceTree = "<group>"; };
 		54DF3733E990FD9C622EED3A /* AnalyzeJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzeJob.swift; sourceTree = "<group>"; };
 		56043B60D8D7F65420927E55 /* playbook.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = playbook.md; sourceTree = "<group>"; };
 		561BB4F10E5D25D2D79B6FAC /* RenderJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderJob.swift; sourceTree = "<group>"; };
@@ -311,6 +314,7 @@
 		9081079FE5F71F486BCE652A /* ChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatTests.swift; sourceTree = "<group>"; };
 		9198795506821EE4D71C606A /* Font.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Font.swift; sourceTree = "<group>"; };
 		928CA4ECB422E63AFE86F321 /* LibrarySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySnapshot.swift; sourceTree = "<group>"; };
+		951D1AFD131FA16F05B58E95 /* CLIInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIInstaller.swift; sourceTree = "<group>"; };
 		97883FA1954A88DF0996BBD4 /* ReframePlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReframePlannerTests.swift; sourceTree = "<group>"; };
 		978FB42F1F6682D9B407C434 /* DownloadsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsTests.swift; sourceTree = "<group>"; };
 		99FF29B03B61C75F0F2A1992 /* MadiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MadiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -552,6 +556,7 @@
 				B84516A32EC9A9582A4C6CF3 /* CaptionFillerTests.swift */,
 				4181A1F305068579BF9A5C22 /* CaptionGateTests.swift */,
 				9081079FE5F71F486BCE652A /* ChatTests.swift */,
+				54ACB01B6ADD5165DA45D259 /* CLIInstallerTests.swift */,
 				3E21F644B2F761A97C070BE8 /* CompositionTests.swift */,
 				4A688321A465B55932B0112B /* DigestTests.swift */,
 				978FB42F1F6682D9B407C434 /* DownloadsTests.swift */,
@@ -793,6 +798,7 @@
 				57238E9396123FB6046C5696 /* AgentRunner.swift */,
 				CEDBE33431940B7D09682A1C /* Chat.swift */,
 				CC5CEACFDAA018FFD9179741 /* ClaudeAgent.swift */,
+				951D1AFD131FA16F05B58E95 /* CLIInstaller.swift */,
 				2CE4AE6B3B5EEED7B9828936 /* CLILocator.swift */,
 				E8424E076F97A5CD29223887 /* CodexAgent.swift */,
 				56043B60D8D7F65420927E55 /* playbook.md */,
@@ -1106,6 +1112,7 @@
 			files = (
 				BAE5D4500020FEDD0DFAFA49 /* AgentJobTests.swift in Sources */,
 				0CA1FDF0CE2208FD1D90E5F6 /* AgentTests.swift in Sources */,
+				1CB3F49938E57D92DD04E882 /* CLIInstallerTests.swift in Sources */,
 				F69D98B4ADB5BA43F1F93077 /* CaptionFillerTests.swift in Sources */,
 				7CB49E7614D6007C3C11FAAE /* CaptionGateTests.swift in Sources */,
 				497A37838619C9F2F6355452 /* ChatTests.swift in Sources */,
@@ -1173,6 +1180,7 @@
 				07BB07BDBDB740ADDDBB50F1 /* AnalyzeJob.swift in Sources */,
 				F072B94DA79AA4FFC95C31C4 /* AppDatabase.swift in Sources */,
 				62D152EF64753AD5D82BADA4 /* AudioAnalyzer.swift in Sources */,
+				1D4808EE5DEB653F672C0456 /* CLIInstaller.swift in Sources */,
 				F5833B89439B3BDEB228AC4D /* CLILocator.swift in Sources */,
 				BD5C66DBDDA3C777CE4F7F7C /* CaptionFiller.swift in Sources */,
 				A71CD837B55F05CD74CD62A5 /* CaptionLayer.swift in Sources */,

@@ -1782,6 +1782,20 @@ case "chat":
         print(String(format: "(%.1f초)", Date().timeIntervalSince(t0)))
     } catch { fail("\(error)") }
 
+case "cli-install":
+    // 6단계 결정 ② — 공식 설치를 앱과 같은 코드(CLIInstaller)로. 이 Mac 의 기존 설치를 안 건드리게 --home 에 임시 폴더를 준다.
+    guard args.count > 1, let kind = AgentKind(rawValue: args[1]), let home = option("home") else {
+        fail("사용법: madi-spike cli-install <claude|codex> --home <임시 폴더>")
+    }
+    do {
+        let homeURL = URL(fileURLWithPath: home, isDirectory: true)
+        try FileManager.default.createDirectory(at: homeURL, withIntermediateDirectories: true)
+        let t0 = Date()
+        let exe = try await CLIInstaller.install(kind, home: homeURL, codexHome: homeURL.appending(path: "codex", directoryHint: .isDirectory))
+        let version = try? await ProcessCapture.run(exe, ["--version"], timeout: .seconds(30)).stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        print(String(format: "%@ · %@ · 서명 팀 %@ · %.1f초", exe.path, version ?? "?", CLIInstaller.signingTeam(exe.resolvingSymlinksInPath()) ?? "없음", Date().timeIntervalSince(t0)))
+    } catch { fail("\(error)") }
+
 case "stage5":
     // 5단계 판정 (docs/stage-5.spec.md 6번 · 결정 ③). 각 CLI 의 4단계 초안(j_<cli>_<영상>)에 결함을 하나 넣고
     // 같은 CLI 가 되먹임으로 고치는지 본다. 사례 통과 = 1회 되먹임 뒤 판에 하드 실패가 없고 주입한 항목이 통과.

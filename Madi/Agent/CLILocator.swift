@@ -22,6 +22,8 @@ public enum CLILocator {
             home.appending(path: ".npm-global/bin"),
             home.appending(path: ".bun/bin"),
             home.appending(path: ".volta/bin"),
+            // 앱이 대신 설치한 Codex (CLIInstaller — 공식 GitHub 릴리스)
+            CLIInstaller.codexHome.appending(path: "bin"),
         ]
     }
 
@@ -64,14 +66,14 @@ public enum CLILocator {
 }
 
 /// 짧은 명령 하나를 돌려 출력을 모은다 (버전 · 로그인 확인용). 긴 턴은 `AgentRunner`.
-enum ProcessCapture {
-    struct Result: Sendable { var status: Int32; var stdout: String; var stderr: String }
+public enum ProcessCapture {
+    public struct Result: Sendable { public var status: Int32; public var stdout: String; public var stderr: String }
 
-    static func run(_ exe: URL, _ args: [String], timeout: Duration) async throws -> Result {
+    public static func run(_ exe: URL, _ args: [String], timeout: Duration, environment: [String: String]? = nil) async throws -> Result {
         let p = Process()
         p.executableURL = exe
         p.arguments = args
-        p.environment = AgentRunner.environment(for: exe)
+        p.environment = environment ?? AgentRunner.environment(for: exe)
         p.standardInput = FileHandle.nullDevice
         let out = Pipe(), err = Pipe()
         p.standardOutput = out
