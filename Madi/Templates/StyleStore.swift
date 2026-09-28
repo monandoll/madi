@@ -27,6 +27,7 @@ public struct Style: Codable, Hashable, Sendable {
 
 public enum StyleStore {
     private static let log = Logger(subsystem: "app.madi", category: "style")
+    nonisolated(unsafe) private static var warnedUnmeasured: Set<String> = []
 
     public enum Failure: Error, CustomStringConvertible {
         case notFound(String, [String])
@@ -61,7 +62,8 @@ public enum StyleStore {
             let decoder = JSONDecoder()
             let style = try decoder.decode(Style.self, from: Data(contentsOf: url))
             try validate(style.values)
-            if !style.measured {
+            // 스타일마다 한 번만 남긴다 — 화면 값을 다시 계산할 때마다 읽으면 로그가 넘친다 (6단계, 실제 앱 로그)
+            if !style.measured, warnedUnmeasured.insert(style.id).inserted {
                 log.warning("""
                 스타일 \(style.id, privacy: .public) 은 아직 확정값이 아닙니다. \
                 공개본 5편으로 다시 재고 measured 를 true 로 바꾸세요 (docs/style-authoring.md §1).

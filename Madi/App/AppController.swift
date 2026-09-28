@@ -130,7 +130,7 @@ final class AppController {
         settings = SettingsValues(
             ai: setup(for: ai), activeAI: ai, studioName: appSettings.studioName, keepDays: appSettings.keepDays,
             albumName: UserDefaults.standard.string(forKey: PhotoLibraryWatcher.albumNameKey),
-            photos: photos, look: look, isSlowMac: isSlowMac
+            photos: photos, look: cachedLook(), isSlowMac: isSlowMac
         )
         onboarding.photos = photos
         onboarding.isSlowMac = isSlowMac
@@ -554,11 +554,28 @@ final class AppController {
         Dictionary((SampleData.swatchesMain + SampleData.swatchesSecondary).map { ($0.id, $0.label) }, uniquingKeysWith: { a, _ in a })
     }
 
-    /// 설정 화면의 자막 모양 — 가장 최근 스타일 판에서.
-    private var look: CaptionLook? {
-        guard let style = try? StyleStore.load(StyleStore.latest()) else { return nil }
-        return LookMapper.look(style.values.look, fonts: MadiFont.hangulFamilies(), labels: swatchLabels,
-                               preview: lookPreview(style))
+    /// 설정 화면의 자막 모양 — 가장 최근 스타일 판에서. **판이 바뀔 때만** 다시 만든다.
+    /// 전에는 화면 값을 다시 계산할 때마다(분석 중 약 2초마다) 스타일 파일을 읽고 설치된 글꼴을 전부 훑었다 —
+    /// 메인 스레드라 화면이 버벅였다 (6단계 실제 앱 로그: CPU 97%, 스타일 경고 2분에 54번).
+    @ObservationIgnored private var lookCache: (ref: StyleRef, look: CaptionLook)?
+    /// 설치된 한글 글꼴 — 한 번 읽는다. 글꼴을 새로 깔았으면 `refreshFonts()`.
+    @ObservationIgnored private var fontsCache: [String]?
+
+    private func cachedLook() -> CaptionLook? {
+        guard let ref = try? StyleStore.latest() else { return nil }
+        if let c = lookCache, c.ref == ref { return c.look }
+        guard let style = try? StyleStore.load(ref) else { return nil }
+        let fonts = fontsCache ?? MadiFont.hangulFamilies()
+        fontsCache = fonts
+        let look = LookMapper.look(style.values.look, fonts: fonts, labels: swatchLabels, preview: lookPreview(style))
+        lookCache = (ref, look)
+        return look
+    }
+
+    func refreshFonts() {
+        fontsCache = MadiFont.hangulFamilies()
+        lookCache = nil
+        recompute()
     }
 
     /// 지금 모양으로 그린 자막 한 장 (본문 + 영문). 스타일 판마다 한 번 그린다 (캐시).
