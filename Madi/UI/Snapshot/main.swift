@@ -31,6 +31,21 @@ struct Shot {
     }
 }
 
+let shotVideo = URL(fileURLWithPath: ProcessInfo.processInfo.environment["MADI_SHOTS_VIDEO"] ?? "/nonexistent.mp4")
+
+func withVideo(_ plan: PlanView) -> PlanView {
+    var p = plan
+    p.previewURL = shotVideo
+    return p
+}
+
+func withVideo(_ detail: ResultDetail) -> ResultDetail {
+    var d = detail
+    d.current.fileURL = shotVideo
+    d.previous?.fileURL = shotVideo
+    return d
+}
+
 let defaultSizes = [Tokens.Size.windowIdeal, Tokens.Size.windowMin]
 /// 설정 창 크기. 탭이 들어가 예전(520×520)보다 조금 크다.
 /// ⚠ `shots` 보다 **위에** 있어야 한다. main.swift 의 전역은 적힌 순서대로 만들어져서,
@@ -200,6 +215,30 @@ let shots: [Shot] = [
             gallery: .loaded(SampleData.groups),
             results: .loaded(SampleData.resultGroups),
             resultDetail: SampleData.resultDetail,
+            exportTargets: SampleData.exportTargets,
+            selectedResultID: SampleData.results[0].id,
+            section: .results
+        )
+    },
+    // 앱 안 재생 (viewdata-map ⑩). 진짜 mp4 가 있어야 재생기가 뜬다 — `MADI_SHOTS_VIDEO=<mp4>` 로 준다.
+    // 없으면 샘플 주소(없는 파일)라 재생기 자리만 보인다.
+    Shot("plan-video") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: .ready(withVideo(SampleData.plan)),
+            planMessages: SampleData.chatMade,
+            planChips: SampleData.chatChips,
+            opensPlan: true,
+            selectedSceneID: "s4"
+        )
+    },
+    Shot("results-video") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            results: .loaded(SampleData.resultGroups),
+            resultDetail: withVideo(SampleData.resultDetail),
             exportTargets: SampleData.exportTargets,
             selectedResultID: SampleData.results[0].id,
             section: .results

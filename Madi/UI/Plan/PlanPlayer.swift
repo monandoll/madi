@@ -22,10 +22,8 @@ struct PlanPlayer: View {
 
     var body: some View {
         if let url {
+            // 영상 + 같은 꼴의 재생 막대 (MediaPlayerView.swift)
             PlanVideo(url: url)
-                .aspectRatio(Tokens.Ratio.vertical, contentMode: .fit)
-                .clipShape(.rect(cornerRadius: Tokens.Radius.card))
-                .frame(maxHeight: .infinity)
         } else {
             VStack(spacing: Tokens.Space.inner) {
                 ThumbnailView(thumbnail: thumbnail, cornerRadius: Tokens.Radius.card)

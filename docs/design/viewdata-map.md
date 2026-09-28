@@ -302,6 +302,13 @@ case .openSettings
 - `ResultCompare`: 결과물마다 영상, "둘 다 처음부터 재생" 은 같이 처음부터 튼다
 - 편집안 "처음부터 보기" · 장면 "여기서 재생" 은 바꾸는 층이 알림으로 플레이어를 그 위치(장면 시작)로 옮겨 튼다
 - 아직 안 만든 판(사람이 고친 판)은 영상이 없어 썸네일이다 — `§7` 레이어 트리 미리보기는 따로 만든다
+- (2026-09-28 두 번째) 재생 막대를 `AVPlayerView` 것에서 **PlanPlayer 자리표시 막대와 같은 꼴**(`PlayerTransport` — 위치 막대 ·
+  처음으로 · 재생/멈춤 · 시간)로 바꿨다. `AVPlayerView` 막대는 158pt 칸에서 겹쳤다. 결과물 칸도 같은 막대(`ResultVideo`).
+  그림을 누르면 재생 · 멈춤
+- 앱을 **라이트로 고정**했다 (`MadiApp.init`, §16) — 다크 모드 Mac 에서 사이드바 · 배경이 검게 나와 화면이 깨졌다.
+  스크린샷 도구가 이미 하던 것을 앱에도 했다. 강조색 `AccentColor` 를 `Tokens.Palette.accent` 로 넣었다
+  (사이드바 고른 칸은 사용자가 시스템 설정에서 고른 강조색을 따른다 — macOS 규칙)
+- 스크린샷 `plan-video` · `results-video` 를 더했다. `MADI_SHOTS_VIDEO=<mp4>` 로 실제 영상을 넣어 뜬다
 
 제안 (디자인이 정한다):
 - `ResultRef.fileURL: URL?` · `PlanView.previewURL: URL?`(그 판의 보여 준 결과물) 를 ViewData 에 두고, 플레이어 자리에서

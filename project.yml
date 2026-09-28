@@ -148,6 +148,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.madi.Madi
         # 앱 아이콘 — Madi/UI/Assets.xcassets (디자인 쪽. 다시 그리려면 docs/design/icon/make-icon.swift)
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # 강조색 = Tokens.Palette.accent (#2D6A55). 없으면 사이드바 아이콘 · 고른 칸이 시스템 강조색(사람마다 다름)을 따른다.
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         # 사진 보관함 권한 (§2). 문장은 디자인 쪽이 다듬는다 — docs/design/copy-keys.md `photoLibraryUsage`
         # Hardened Runtime 에서 사진 보관함을 읽는 권한 (docs/stage-6.spec.md 3번).

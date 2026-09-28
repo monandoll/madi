@@ -22,6 +22,8 @@ struct ResultCompare: View {
 
     /// 제목 · 라벨 · 길이줄 · 재생 버튼 · 달라진 점 카드가 쓰는 높이.
     private let chrome: CGFloat = 276
+    /// 결과물 영상 밑 재생 막대가 쓰는 높이.
+    private static let transportHeight: CGFloat = 44
 
     private func paneHeight(in size: CGSize) -> CGFloat {
         let columns = CGFloat(showsPrevious ? 2 : 1)
@@ -84,16 +86,14 @@ struct ResultCompare: View {
                     .foregroundStyle(.secondary)
             }
 
-            Group {
-                if let url = result.fileURL {
-                    MediaPlayerView(player: players.player(for: url))
-                        .clipShape(.rect(cornerRadius: Tokens.Radius.card))
-                } else {
-                    ThumbnailView(thumbnail: result.thumbnail, cornerRadius: Tokens.Radius.card)
-                }
+            if let url = result.fileURL {
+                // 영상 + 재생 막대. 막대 높이만큼 그림을 줄여 전체 높이를 지킨다.
+                ResultVideo(player: players.player(for: url), height: max(120, height - Self.transportHeight))
+            } else {
+                ThumbnailView(thumbnail: result.thumbnail, cornerRadius: Tokens.Radius.card)
+                    .aspectRatio(Tokens.Ratio.vertical, contentMode: .fit)
+                    .frame(height: height)
             }
-            .aspectRatio(Tokens.Ratio.vertical, contentMode: .fit)
-            .frame(height: height)
 
             Text("\(Copy.duration(result.duration)) · \(Copy.scenes(result.sceneCount))")
                 .font(.caption)

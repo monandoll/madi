@@ -13,6 +13,12 @@ struct MadiApp: App {
     /// 자동 업데이트 (§2 배포). 켜지면 하루 한 번 새 판을 확인한다 — 설정은 Info.plist (project.yml).
     private let updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
+    init() {
+        // 라이트 모드만 만든다 (AGENTS.md §16). 창마다 걸면 사이드바 · 인스펙터 재질이 시스템을 따라 검게 나온다 —
+        // 스크린샷 도구(madi-ui-shots)와 같이 **앱째로** 고정한다. 다크 모드 Mac 에서 화면이 깨지던 것.
+        NSApplication.shared.appearance = NSAppearance(named: .aqua)
+    }
+
     // `Scene` 은 SwiftUI 와 `Madi/Model` 양쪽에 있다. 모델 쪽 이름은 AGENTS.md §5 가 정한 것이라
     // 바꾸지 않고, UI 코드에서 SwiftUI 쪽을 명시한다.
     var body: some SwiftUI.Scene {
