@@ -410,6 +410,58 @@ case "transcribe":
         }
     } catch { fail("\(error)") }
 
+case "scancompare":
+    // 영상 한 번 읽기(VideoScan)가 예전 방식(건너뛰며 읽기 · PNG)과 같은 사람 추적 · 컷을 내는지 (2026-09-29 분석 속도).
+    guard args.count > 1 else { fail("사용법: madi-spike scancompare <영상>") }
+    do {
+        setvbuf(stdout, nil, _IOLBF, 0)
+        let url = URL(fileURLWithPath: args[1])
+        let info = try await FrameSheet.info(of: url)
+        let work = FileManager.default.temporaryDirectory.appending(path: "madi-sc-\(UUID().uuidString)")
+        var t0 = Date()
+        let old = try await SubjectTrackBuilder.build(videoID: "x", url: url, workDir: work)
+        let oldSubject = Date().timeIntervalSince(t0); t0 = Date()
+        let oldCuts = try await SceneCutDetector.detect(url)
+        let oldScenes = Date().timeIntervalSince(t0); t0 = Date()
+
+        let times = stride(from: 0.0, to: max(info.duration - 0.05, 0.5), by: 0.5).map { $0 }
+        var follower = SubjectFollower()
+        let scan = try await VideoScan.run(url: url, subjectTimes: times, cutFPS: SceneCutDetector.sampleFPS, onSubject: { t, image in
+            follower.add(t: t, parts: try SubjectDetector.maskComponents(image, minCoverage: SubjectTrackBuilder.defaultMinCoverage))
+        })
+        let newCuts = SceneCutDetector.result(thumbs: scan.thumbs, stepSec: scan.cutStep)
+        let newTime = Date().timeIntervalSince(t0)
+
+        let a = old.samples, b = follower.samples
+        var missMismatch = 0, hDiffs: [Double] = [], yDiffs: [Double] = [], xDiffs: [Double] = []
+        for (x, y) in zip(a, b) {
+            switch (x.box, y.box) {
+            case let (p?, q?):
+                hDiffs.append(abs(p.h - q.h)); yDiffs.append(abs(p.y - q.y)); xDiffs.append(abs((p.x + p.w / 2) - (q.x + q.w / 2)))
+            case (nil, nil): break
+            default: missMismatch += 1
+            }
+        }
+        func stat(_ v: [Double]) -> String {
+            let s = v.sorted(); guard !s.isEmpty else { return "-" }
+            return String(format: "중앙 %.4f · 95%% %.4f · 최대 %.4f", s[s.count / 2], s[min(s.count - 1, s.count * 95 / 100)], s.last!)
+        }
+        print("표본 예전 \(a.count) · 새 \(b.count) · 사람 있음/없음이 갈린 표본 \(missMismatch)")
+        print("사람 높이 차 \(stat(hDiffs))")
+        print("사람 아래끝 차 \(stat(yDiffs))")
+        print("사람 가로 중심 차 \(stat(xDiffs))")
+        print("컷 예전 \(oldCuts.cuts.map { String(format: "%.1f", $0) }) ")
+        print("컷 새   \(newCuts.cuts.map { String(format: "%.1f", $0) }) ")
+        print("차분 표본 예전 \(oldCuts.diffs.count) · 새 \(newCuts.diffs.count)")
+        for c in oldCuts.cuts + newCuts.cuts {
+            let i = Int((c / oldCuts.stepSec).rounded()) - 1
+            let r = max(0, i - 2)...min(oldCuts.diffs.count - 1, i + 2)
+            print(String(format: "  %.1f초 근처  예전 ", c) + r.map { String(format: "%.3f", oldCuts.diffs[$0]) }.joined(separator: " ")
+                  + "  |  새 " + r.map { String(format: "%.3f", newCuts.diffs[$0]) }.joined(separator: " "))
+        }
+        print(String(format: "시간 예전 사람 %.1f초 + 컷 %.1f초 = %.1f초 · 새(한 번 읽기) %.1f초", oldSubject, oldScenes, oldSubject + oldScenes, newTime))
+    } catch { fail("\(error)") }
+
 case "digestprogress":
     // 분석 진행률이 실제로 움직이는지 본다 (편집안 준비 화면 퍼센트, viewdata-map ⑮). 앱이 받아 둔 모델을 쓴다.
     guard args.count > 1 else { fail("사용법: madi-spike digestprogress <영상>") }

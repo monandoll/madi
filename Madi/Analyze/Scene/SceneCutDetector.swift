@@ -48,6 +48,13 @@ public enum SceneCutDetector {
         return Result(cuts: cuts(in: diffs, stepSec: step), diffs: diffs, stepSec: step)
     }
 
+    /// 이미 뽑은 썸네일로 (`VideoScan` — 영상을 한 번만 읽는다). 계산은 `detect` 와 같다.
+    public static func result(thumbs: [[UInt8]], stepSec: Double) -> Result {
+        var diffs: [Double] = []
+        for i in 1..<max(thumbs.count, 1) { diffs.append(meanAbsDiff(thumbs[i - 1], thumbs[i])) }
+        return Result(cuts: cuts(in: diffs, stepSec: stepSec), diffs: diffs, stepSec: stepSec)
+    }
+
     /// 차분 배열에서 컷 시각. diffs[i] 는 표본 i 와 i+1 사이 — 컷은 표본 i+1 의 시각.
     public static func cuts(in diffs: [Double], stepSec: Double, threshold: Double = threshold) -> [Double] {
         var out: [Double] = []

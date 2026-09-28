@@ -108,31 +108,13 @@ public enum SubjectTrackBuilder {
         )
         progress?(0.6)
 
-        var samples: [SubjectSample] = []
-        var previous: NormRect?
+        var follower = SubjectFollower()
         for (i, frame) in frames.enumerated() {
             if i % 4 == 0 { progress?(0.6 + 0.4 * Double(i) / Double(max(frames.count, 1))) }
             let image = try StillRenderer.loadImage(frame)
-            let parts = try SubjectDetector.maskComponents(image, minCoverage: minCoverage)
-            // 직전에 따라가던 덩어리와 가장 많이 겹치는 것을 이어서 따라간다.
-            // IMG_6022 에서 배율 변동 감소 효과는 **0** 이었다
-              // (`docs/findings/2026-09-25-zoom-design.md §4`) — 그래도 규칙은 남긴다.
-            guard let part = SubjectDetector.follow(parts, previous: previous) else {
-                samples.append(SubjectSample(
-                    t: times[i], box: nil, massCenterX: nil, massCenterY: nil, coverage: 0
-                ))
-                previous = nil
-                continue
-            }
-            previous = part.box
-            samples.append(SubjectSample(
-                t: times[i], box: part.box,
-                massCenterX: part.massCenter.x, massCenterY: part.massCenter.y,
-                coverage: part.coverage,
-                touchesTop: part.touchesTop, touchesBottom: part.touchesBottom,
-                pixelHeight: part.pixelHeight
-            ))
+            follower.add(t: times[i], parts: try SubjectDetector.maskComponents(image, minCoverage: minCoverage))
         }
+        let samples = follower.samples
 
         let track = SubjectTrack(source: source, stepSec: stepSec, samples: samples)
         log.info("""
@@ -140,5 +122,32 @@ public enum SubjectTrackBuilder {
         입력 없음 \(Int(track.missingRatio * 100))%
         """)
         return track
+    }
+}
+
+/// 프레임마다 사람 덩어리를 **이어서 따라간다** — 직전에 따라가던 덩어리와 가장 많이 겹치는 것.
+/// 프레임을 어떻게 얻었든(파일 · `VideoScan`) 같은 규칙을 쓰려고 한 곳에 둔다.
+public struct SubjectFollower {
+    public private(set) var samples: [SubjectSample] = []
+    private var previous: NormRect?
+
+    public init() {}
+
+    public mutating func add(t: Double, parts: [SubjectDetector.Component]) {
+        // IMG_6022 에서 배율 변동 감소 효과는 **0** 이었다
+        // (`docs/findings/2026-09-25-zoom-design.md §4`) — 그래도 규칙은 남긴다.
+        guard let part = SubjectDetector.follow(parts, previous: previous) else {
+            samples.append(SubjectSample(t: t, box: nil, massCenterX: nil, massCenterY: nil, coverage: 0))
+            previous = nil
+            return
+        }
+        previous = part.box
+        samples.append(SubjectSample(
+            t: t, box: part.box,
+            massCenterX: part.massCenter.x, massCenterY: part.massCenter.y,
+            coverage: part.coverage,
+            touchesTop: part.touchesTop, touchesBottom: part.touchesBottom,
+            pixelHeight: part.pixelHeight
+        ))
     }
 }

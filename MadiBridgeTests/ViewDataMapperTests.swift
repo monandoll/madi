@@ -108,16 +108,16 @@ struct ViewDataMapperTests {
 
         let analyzing = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], now: now)
         guard case .preparing(let a) = try #require(ViewDataMapper.plan(analyzing, videoID: "v", ai: .claude)) else { Issue.record(""); return }
-        // 분석은 하나씩 돈다 — 진행률이 없으면 받아적기만 도는 중
-        #expect(a.map(\.state) == [.running, .waiting, .waiting])
-        // 진행률이 있으면 도는 단계에 퍼센트
+        // 받아적기 · 사람 찾기는 같이 돈다
+        #expect(a.map(\.state) == [.running, .running, .waiting])
+        // 진행률이 있으면 도는 단계마다 퍼센트
         var withProgress = analyzing
-        withProgress.analysisProgress["v"] = AnalysisProgress(step: .transcribe, fraction: 0.42)
+        withProgress.analysisProgress["v"] = AnalysisProgress(transcribe: 0.42, findPerson: 0.1)
         guard case .preparing(let p1) = try #require(ViewDataMapper.plan(withProgress, videoID: "v", ai: .claude)) else { Issue.record(""); return }
-        #expect(p1[0].progress == 0.42 && p1[1].progress == nil)
-        withProgress.analysisProgress["v"] = AnalysisProgress(step: .findPerson, fraction: 0.5)
+        #expect(p1[0].progress == 0.42 && p1[1].progress == 0.1)
+        withProgress.analysisProgress["v"] = AnalysisProgress(transcribe: 1, findPerson: 0.5)
         guard case .preparing(let p2) = try #require(ViewDataMapper.plan(withProgress, videoID: "v", ai: .claude)) else { Issue.record(""); return }
-        #expect(p2.map(\.state) == [.done, .running, .waiting] && p2[1].progress == 0.35)   // 사람 찾기가 이 줄의 7할
+        #expect(p2.map(\.state) == [.done, .running, .waiting] && p2[1].progress == 0.5)
         #expect(Copy.Plan.Preparing.percent(0.427) == "42%")
         // AI 가 장면을 나누는 중 — 퍼센트 대신 지난 시간
         var agentJob = job(.agent, "v", .running); agentJob.startedAt = now - 32
@@ -183,12 +183,12 @@ struct ViewDataMapperTests {
     @Test("만드는 중 — 숏폼 만들기를 누른 순간(분석 · AI 초안)부터 촬영본이 목록에 뜬다. 분석 진행률이 전체 퍼센트에 들어간다")
     func makingFromTheStart() throws {
         var s = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], now: now)
-        s.analysisProgress["v"] = AnalysisProgress(step: .findPerson, fraction: 0.5)
+        s.analysisProgress["v"] = AnalysisProgress(transcribe: 1, findPerson: 0.5)
         guard case .loaded(let jobs, _) = ViewDataMapper.making(s), case .running(let p) = jobs.first?.state else {
             Issue.record("분석 중인 촬영본이 목록에 없다"); return
         }
         #expect(jobs[0].planLabel == Copy.Plan.Preparing.title)
-        #expect(abs(p.fraction - (0.05 + 0.45 * 0.35)) < 1e-9)
+        #expect(abs(p.fraction - 0.5 * (0.1 + 0.9 * 0.5)) < 1e-9)
         #expect(p.steps.map(\.state) == [.done, .running, .waiting, .waiting])   // 받아적기 · 사람 찾기 · 장면 나누기 · 만들기
         // AI 초안 중 — 반쯤
         let drafting = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.agent, "v", .running)], now: now)

@@ -48,25 +48,36 @@ public enum DigestBuilder {
         var clock = Date()
         func lap(_ name: String) { timings[name] = Date().timeIntervalSince(clock); clock = Date() }
 
-        // 말이 아닌 것(괄호로 싼 소리 설명 · 영상 길이를 넘는 낱말)은 여기서 걷는다 — 두 전사 엔진이 다 지나는 한 곳.
+        // 셋을 **동시에** 돌린다 — 받아적기(음성 칩) · 소리 분석(CPU) · 영상 한 번 읽기(해독기 + 사람 분할).
+        // 전에는 하나씩 돌았고, 사람 찾기와 컷 찾기가 영상을 각자 건너뛰며 읽었다 (1분 영상 52초 중 49초).
         progress?(.transcribe, 0)
-        let transcript = try await transcriber.transcribe(url, languageCode: "ko", progress: { progress?(.transcribe, $0) })
-            .droppingNonSpeech(duration: info.duration)
-        lap("transcript")
         progress?(.findPerson, 0)
-        let subject = try await SubjectTrackBuilder.build(
-            videoID: videoID, url: url, workDir: scratch.appending(path: "subject"),
-            progress: { progress?(.findPerson, $0) }
+        async let transcribed = transcriber.transcribe(url, languageCode: "ko", progress: { progress?(.transcribe, $0) })
+        async let audioResult = AudioAnalyzer.analyze(url)
+
+        let stepSec = 0.5
+        let end = info.duration - 0.05
+        let subjectTimes = stride(from: 0.0, to: max(end, stepSec), by: stepSec).map { $0 }
+        var follower = SubjectFollower()
+        let scan = try await VideoScan.run(
+            url: url, subjectTimes: subjectTimes, cutFPS: SceneCutDetector.sampleFPS,
+            onSubject: { t, image in
+                follower.add(t: t, parts: try SubjectDetector.maskComponents(image, minCoverage: SubjectTrackBuilder.defaultMinCoverage))
+            },
+            progress: { progress?(.findPerson, 0.95 * $0) }
         )
-        progress?(.rest, 0)
-        lap("subject")
-        let audio = try await AudioAnalyzer.analyze(url)
-        lap("audio")
-        progress?(.rest, 0.1)
-        // 소리 1할 · 컷 찾기 8할 · 그림 1할 (1분 영상 실측: 이 단계 18초의 대부분이 컷 찾기)
-        let scenes = try await SceneCutDetector.detect(url, progress: { progress?(.rest, 0.1 + 0.8 * $0) })
-        progress?(.rest, 0.9)
-        lap("scenes")
+        let subject = SubjectTrack(
+            source: SourceInfo(videoID: videoID, width: Int(info.size.width.rounded()), height: Int(info.size.height.rounded()),
+                               durationSec: info.duration, fps: Double(info.fps)),
+            stepSec: stepSec, samples: follower.samples
+        )
+        let scenes = SceneCutDetector.result(thumbs: scan.thumbs, stepSec: scan.cutStep)
+        lap("scan")
+        let audio = try await audioResult
+        // 말이 아닌 것(괄호로 싼 소리 설명 · 영상 길이를 넘는 낱말)은 여기서 걷는다 — 두 전사 엔진이 다 지나는 한 곳.
+        let transcript = try await transcribed.droppingNonSpeech(duration: info.duration)
+        progress?(.transcribe, 1)
+        lap("transcriptWait")
 
         // 시작 + 컷 직후(0.3초 뒤 — 전환 효과를 피한다). 1초 안에 몰린 건 하나로. 최대 8장.
         var times = [0.0]

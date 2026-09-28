@@ -336,7 +336,7 @@ enum ViewDataMapper {
     /// 영상 받기(iCloud 원본을 받아야 할 때만) → 편집 준비(준비가 안 끝났을 때만) → 말 받아적기 → 사람 찾기 → 장면 나누기.
     /// 검사 전 렌더 · 되먹임은 "장면 나누기" 가 끝난 뒤 — 사람에게는 아직 짜는 중이다 (결정 ① 검사한 결과만 보여 준다).
     /// 준비 단계 줄. 도는 단계는 잴 수 있으면 퍼센트(받기 · 받아적기 · 사람 찾기), 못 재면 지난 시간(AI 장면 나누기).
-    /// 분석은 받아적기 → 사람 찾기 → 소리 · 컷 순서로 **하나씩** 돈다 — 둘을 같이 "도는 중" 으로 그리지 않는다.
+    /// 받아적기와 사람 찾기는 **동시에** 돈다 (`DigestBuilder`) — 둘 다 "도는 중" 이면 둘 다 퍼센트가 오른다.
     static func prepareSteps(_ live: [JobRecord], fetchingOriginal: Bool = false, modelReady: Bool = true,
                              fetchProgress: Double? = nil, analysis: AnalysisProgress? = nil,
                              now: Date = Date()) -> [PrepareStep] {
@@ -344,14 +344,7 @@ enum ViewDataMapper {
         let rendering = kinds.contains(.render) || kinds.contains(.selfEval)
         let agent = live.first { $0.kind == .agent }
         // 몇 번째 단계인가 (0 받아적기 · 1 사람 찾기 · 2 장면 나누기 · 3 끝)
-        let stage: Int = {
-            if rendering { return 3 }
-            if agent != nil { return 2 }
-            switch analysis?.step {
-            case .findPerson?, .rest?: return 1
-            default: return 0
-            }
-        }()
+        let stage = rendering ? 3 : agent != nil ? 2 : 0
         var steps: [PrepareStep] = []
         if fetchingOriginal {
             steps.append(PrepareStep(title: Copy.Plan.Preparing.fetchOriginal, state: .running, progress: fetchProgress))
@@ -361,21 +354,17 @@ enum ViewDataMapper {
         let titles = [Copy.Plan.Preparing.transcribe, Copy.Plan.Preparing.findPerson, Copy.Plan.Preparing.split]
         for (i, t) in titles.enumerated() {
             if blocked { steps.append(PrepareStep(title: t, state: .waiting)); continue }
-            if i < stage { steps.append(PrepareStep(title: t, state: .done)); continue }
-            if i > stage { steps.append(PrepareStep(title: t, state: .waiting)); continue }
-            var step = PrepareStep(title: t, state: .running)
-            switch i {
-            case 0: step.progress = analysis?.step == .transcribe ? analysis?.fraction : (analysis == nil ? nil : 1)
-            // "사람 찾기" 줄이 뒤의 소리 · 컷 찾기까지 맡는다 (7할 · 3할) — 100% 에 멈춰 있지 않게
-            case 1:
-                switch analysis?.step {
-                case .findPerson?: step.progress = 0.7 * (analysis?.fraction ?? 0)
-                case .rest?: step.progress = 0.7 + 0.3 * (analysis?.fraction ?? 0)
-                default: break
-                }
-            default:
-                if let started = agent?.startedAt { step.elapsed = Copy.Plan.Preparing.elapsed(max(0, Int(now.timeIntervalSince(started)))) }
+            if stage == 0 && i < 2 {
+                // 분석 중 — 받아적기 · 사람 찾기가 같이 돈다. 끝난 쪽은 끝
+                let f = i == 0 ? analysis?.transcribe : analysis?.findPerson
+                steps.append(f.map { $0 >= 1 } == true ? PrepareStep(title: t, state: .done)
+                             : PrepareStep(title: t, state: .running, progress: f))
+                continue
             }
+            if i < stage { steps.append(PrepareStep(title: t, state: .done)); continue }
+            if i > stage || (stage == 0 && i == 2) { steps.append(PrepareStep(title: t, state: .waiting)); continue }
+            var step = PrepareStep(title: t, state: .running)
+            if let started = agent?.startedAt { step.elapsed = Copy.Plan.Preparing.elapsed(max(0, Int(now.timeIntervalSince(started)))) }
             steps.append(step)
         }
         return steps
@@ -545,17 +534,13 @@ enum ViewDataMapper {
                 steps.append(PrepareStep(title: Copy.Plan.Making.encode,
                                          state: lead.kind == .selfEval ? .done : lead.kind == .render ? .running : .waiting,
                                          progress: lead.kind == .render ? renderFraction : nil))
-                // 전체 진행률 — 단계 무게(1분 영상 실측 비율 어림): 받아적기 5 · 사람 찾기 45 · AI 15 · 만들기 25 · 검사 10.
+                // 전체 진행률 — 단계 무게(어림): 분석 50(받아적기 · 사람 찾기 동시) · AI 15 · 만들기 25 · 검사 10.
                 // AI 단계는 잴 수 없어 그동안 막대가 멈춘다 (지난 시간은 단계 줄에 보인다)
                 let fraction: Double
                 switch lead.kind {
                 case .analyze:
-                    switch analysis?.step {
-                    case .transcribe?: fraction = 0.05 * (analysis?.fraction ?? 0)
-                    case .findPerson?: fraction = 0.05 + 0.45 * 0.7 * (analysis?.fraction ?? 0)
-                    case .rest?: fraction = 0.05 + 0.45 * (0.7 + 0.3 * (analysis?.fraction ?? 0))
-                    case nil: fraction = 0
-                    }
+                    // 받아적기 · 사람 찾기가 같이 돈다 — 오래 걸리는 사람 찾기가 분석의 9할
+                    fraction = 0.5 * (0.1 * (analysis?.transcribe ?? 0) + 0.9 * (analysis?.findPerson ?? 0))
                 case .agent, .chat: fraction = 0.5
                 case .render: fraction = 0.65 + 0.25 * renderFraction
                 case .selfEval: fraction = 0.9

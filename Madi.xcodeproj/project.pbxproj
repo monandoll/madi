@@ -120,6 +120,7 @@
 		A71CD837B55F05CD74CD62A5 /* CaptionLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71CD7162AEC4CB13D3A85753 /* CaptionLayer.swift */; };
 		A7E7D322F78F8299E96C1152 /* PlanInfoCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0014A94310F6EDA5CA03169 /* PlanInfoCards.swift */; };
 		ABF914478FF98DCF6C76508B /* UIAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84767F18FB96C212B8D9538C /* UIAction.swift */; };
+		AE971BDA7C4CEEB727F664C7 /* VideoScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A8E130FD32500EB13A3252 /* VideoScan.swift */; };
 		B05340E356C21B5CD68C3A42 /* ResultCompare.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F0225FF2EC69AD184E4175 /* ResultCompare.swift */; };
 		B189D7CF06FB2D72E3141C94 /* ImportProgressBoard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74BC230BC3EAEB1FD01D6910 /* ImportProgressBoard.swift */; };
 		B1E383D4BE3A50F11F59BDED /* FolderWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3DDAF1B5D7652CD476B8CA1 /* FolderWatcher.swift */; };
@@ -342,6 +343,7 @@
 		8148334F0D1C4607F6103479 /* PretendardVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = PretendardVariable.ttf; sourceTree = "<group>"; };
 		8174C4882F6A4FE14235FC8F /* PromptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTests.swift; sourceTree = "<group>"; };
 		84767F18FB96C212B8D9538C /* UIAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIAction.swift; sourceTree = "<group>"; };
+		89A8E130FD32500EB13A3252 /* VideoScan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoScan.swift; sourceTree = "<group>"; };
 		8F64F8850ADE1ADD304DAE17 /* MCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServer.swift; sourceTree = "<group>"; };
 		8FF60384F64A9623137DFC0D /* WhisperCppProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperCppProvider.swift; sourceTree = "<group>"; };
 		9081079FE5F71F486BCE652A /* ChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatTests.swift; sourceTree = "<group>"; };
@@ -689,6 +691,14 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		6C35EE1E0F3201A8678227D0 /* Scan */ = {
+			isa = PBXGroup;
+			children = (
+				89A8E130FD32500EB13A3252 /* VideoScan.swift */,
+			);
+			path = Scan;
+			sourceTree = "<group>";
+		};
 		6EAE7334989D9AD3752E550F /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -887,6 +897,7 @@
 			children = (
 				321300B77A33069E09F1AF1D /* Audio */,
 				C6F37E4EB5C24272DA26F904 /* Pose */,
+				6C35EE1E0F3201A8678227D0 /* Scan */,
 				CC215D59E61FF94935504594 /* Scene */,
 				77BCE935BCA0A43798175BC3 /* Transcription */,
 				9CB6A3CE446CC9D5A773B0C2 /* AnalysisProgressBoard.swift */,
@@ -1325,6 +1336,7 @@
 				999249D5D0A506C6105C1519 /* Thumbnails.swift in Sources */,
 				378EE370CA5FEC3A4CC93863 /* Transcript.swift in Sources */,
 				E98DDAE9458F83A89577DFF5 /* TranscriptionProvider.swift in Sources */,
+				AE971BDA7C4CEEB727F664C7 /* VideoScan.swift in Sources */,
 				535C7A341303F28F0FBC7E9B /* WhisperCppProvider.swift in Sources */,
 				20F79FEC3C95C79948001FFA /* WhisperKitProvider.swift in Sources */,
 			);

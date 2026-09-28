@@ -1,3 +1,4 @@
+import CoreImage
 import Foundation
 import Vision
 import CoreGraphics
@@ -163,7 +164,19 @@ public enum SubjectDetector {
     public static func maskComponents(
         _ image: CGImage, minCoverage: Double = 0.005
     ) throws -> [Component] {
-        let handler = VNImageRequestHandler(cgImage: image, options: [:])
+        try maskComponents(VNImageRequestHandler(cgImage: image, options: [:]), minCoverage: minCoverage)
+    }
+
+    /// 영상에서 바로 읽은 프레임 (`VideoScan`) — PNG 로 썼다 다시 읽지 않는다. 계산은 위와 같다.
+    public static func maskComponents(
+        _ image: CIImage, minCoverage: Double = 0.005
+    ) throws -> [Component] {
+        try maskComponents(VNImageRequestHandler(ciImage: image, options: [:]), minCoverage: minCoverage)
+    }
+
+    private static func maskComponents(
+        _ handler: VNImageRequestHandler, minCoverage: Double
+    ) throws -> [Component] {
         let segment = VNGeneratePersonSegmentationRequest()
         segment.qualityLevel = .accurate
         segment.outputPixelFormat = kCVPixelFormatType_OneComponent8
