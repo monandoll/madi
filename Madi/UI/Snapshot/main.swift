@@ -123,6 +123,16 @@ let shots: [Shot] = [
             opensPlan: true
         )
     },
+    Shot("plan-analyzing") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: .preparing(SampleData.prepareStepsAnalyzing),
+            planMessages: SampleData.chatPreparing,
+            planChips: SampleData.chatChips,
+            opensPlan: true
+        )
+    },
     Shot("plan-stuck") {
         RootView(
             studio: SampleData.studio,

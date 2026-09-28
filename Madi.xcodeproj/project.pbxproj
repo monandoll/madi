@@ -33,6 +33,7 @@
 		2093C320099FF2C35A38877A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23EFEE0990BF78AF95B29CE /* RootView.swift */; };
 		20F79FEC3C95C79948001FFA /* WhisperKitProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB46CE8965E4DE8BB246F32 /* WhisperKitProvider.swift */; };
 		21DFBCFCDA2E27211AF8BA14 /* SceneCutDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E4A203004BE72EA1BF6F0EA /* SceneCutDetector.swift */; };
+		2205E27E9F3F53D78707EA63 /* AnalysisProgressBoard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CB6A3CE446CC9D5A773B0C2 /* AnalysisProgressBoard.swift */; };
 		236CE4D5C70465B160BC2C44 /* Tokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C43B0035E8655B359C0E3B47 /* Tokens.swift */; };
 		24BDF6178A3683305B2E0DCC /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23EFEE0990BF78AF95B29CE /* RootView.swift */; };
 		24F06D5D9C70536D5F0EB257 /* MadiKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; };
@@ -351,6 +352,7 @@
 		97883FA1954A88DF0996BBD4 /* ReframePlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReframePlannerTests.swift; sourceTree = "<group>"; };
 		978FB42F1F6682D9B407C434 /* DownloadsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsTests.swift; sourceTree = "<group>"; };
 		99FF29B03B61C75F0F2A1992 /* MadiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MadiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9CB6A3CE446CC9D5A773B0C2 /* AnalysisProgressBoard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisProgressBoard.swift; sourceTree = "<group>"; };
 		9D14F74043F8EBA6673C7CE2 /* CaptionReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionReader.swift; sourceTree = "<group>"; };
 		9DCB790C1C12A6031F486509 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
 		9F09B5CE975F12C72180877E /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
@@ -887,6 +889,7 @@
 				C6F37E4EB5C24272DA26F904 /* Pose */,
 				CC215D59E61FF94935504594 /* Scene */,
 				77BCE935BCA0A43798175BC3 /* Transcription */,
+				9CB6A3CE446CC9D5A773B0C2 /* AnalysisProgressBoard.swift */,
 				54DF3733E990FD9C622EED3A /* AnalyzeJob.swift */,
 				9D14F74043F8EBA6673C7CE2 /* CaptionReader.swift */,
 				807D00B9149F72389F639F77 /* DigestBuilder.swift */,
@@ -1265,6 +1268,7 @@
 				3DE4D52C2AFD1167224CAB3E /* AgentJob.swift in Sources */,
 				08607F4AFD29587956A414C5 /* AgentProvider.swift in Sources */,
 				F2FEBF69E7D05892B9713A87 /* AgentRunner.swift in Sources */,
+				2205E27E9F3F53D78707EA63 /* AnalysisProgressBoard.swift in Sources */,
 				07BB07BDBDB740ADDDBB50F1 /* AnalyzeJob.swift in Sources */,
 				F072B94DA79AA4FFC95C31C4 /* AppDatabase.swift in Sources */,
 				C30334DE52E4EED78B861660 /* AppSettings.swift in Sources */,

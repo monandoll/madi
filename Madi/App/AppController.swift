@@ -79,8 +79,34 @@ final class AppController {
         var s = snap
         s.attach(thumbnails: thumbnails, progress: await pipeline.progress.snapshot(),
                  importProgress: await pipeline.importProgress.snapshot())
+        s.analysisProgress = await pipeline.analysisProgress.snapshot()
         snapshot = s
         recompute()
+        startProgressTicker()
+    }
+
+    /// 진행률은 DB 가 아니라 메모리 게시판에 있어서, DB 가 안 바뀌면 화면이 따라오지 않는다 (퍼센트가 멈춰 보였다).
+    /// 작업이 도는 동안만 0.5초마다 게시판을 다시 읽는다. 작업이 끝나면 멈춘다.
+    @ObservationIgnored private var progressTicker: Task<Void, Never>?
+
+    private func startProgressTicker() {
+        guard progressTicker == nil, let s = snapshot,
+              s.jobs.contains(where: { $0.state == .queued || $0.state == .running }) || !s.importProgress.isEmpty
+        else { return }
+        progressTicker = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard let self, var s = self.snapshot else { return }
+                let busy = s.jobs.contains { $0.state == .queued || $0.state == .running }
+                s.setProgress(render: await self.pipeline.progress.snapshot(),
+                              import: await self.pipeline.importProgress.snapshot(),
+                              analysis: await self.pipeline.analysisProgress.snapshot())
+                s.now = Date()
+                self.snapshot = s
+                self.recompute()
+                if !busy && s.importProgress.isEmpty { self.progressTicker = nil; return }
+            }
+        }
     }
 
     private func apply(_ state: ModelPreparer.State) {

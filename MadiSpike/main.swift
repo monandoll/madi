@@ -410,6 +410,24 @@ case "transcribe":
         }
     } catch { fail("\(error)") }
 
+case "digestprogress":
+    // 분석 진행률이 실제로 움직이는지 본다 (편집안 준비 화면 퍼센트, viewdata-map ⑮). 앱이 받아 둔 모델을 쓴다.
+    guard args.count > 1 else { fail("사용법: madi-spike digestprogress <영상>") }
+    do {
+        let video = URL(fileURLWithPath: args[1])
+        let provider = TranscriptionEngine.forThisMachine.makeProvider(root: Downloads.defaultRoot)
+        try await provider.warmUp()   // 앱은 모델을 미리 데운다 — 같은 조건으로 잰다
+        let started = Date()
+        final class Last: @unchecked Sendable { var line = "" }
+        let last = Last()
+        let work = FileManager.default.temporaryDirectory.appending(path: "madi-dp-\(UUID().uuidString)")
+        _ = try await DigestBuilder.build(videoID: "dp", url: video, transcriber: provider, workDir: work) { step, f in
+            let line = String(format: "%5.1f초  %@ %3d%%", Date().timeIntervalSince(started), "\(step)", Int(f * 100))
+            if line.suffix(14) != last.line.suffix(14) { print(line); last.line = line }
+        }
+        print(String(format: "끝 %.1f초", Date().timeIntervalSince(started)))
+    } catch { fail("\(error)") }
+
 case "splittest":
     // **분절 실측.** 우리 CaptionSplitter 가 쌤 분절과 얼마나 맞는가.
     //

@@ -286,7 +286,10 @@ enum ViewDataMapper {
         if let newest = versions.last, live.isEmpty, gaveUp(newest.id, s) {
             return gaveUpState(newest.id, view: planView(newest, video: video, versions: versions, s), s)
         }
-        return .preparing(prepareSteps(live, fetchingOriginal: video.status == .importing, modelReady: modelReady))
+        return .preparing(prepareSteps(live, fetchingOriginal: video.status == .importing, modelReady: modelReady,
+                                       fetchProgress: s.importProgress[video.id],
+                                       analysis: live.contains { $0.kind == .analyze } ? s.analysisProgress[video.id] : nil,
+                                       now: s.now))
     }
 
     static var stoppedActions: [ChatChoice] {
@@ -322,27 +325,48 @@ enum ViewDataMapper {
     /// 짜는 중 단계 — **엔진이 실제로 도는 순서** (디자인 답 2026-09-28, viewdata-map 5절):
     /// 영상 받기(iCloud 원본을 받아야 할 때만) → 편집 준비(준비가 안 끝났을 때만) → 말 받아적기 → 사람 찾기 → 장면 나누기.
     /// 검사 전 렌더 · 되먹임은 "장면 나누기" 가 끝난 뒤 — 사람에게는 아직 짜는 중이다 (결정 ① 검사한 결과만 보여 준다).
-    static func prepareSteps(_ live: [JobRecord], fetchingOriginal: Bool = false, modelReady: Bool = true) -> [PrepareStep] {
+    /// 준비 단계 줄. 도는 단계는 잴 수 있으면 퍼센트(받기 · 받아적기 · 사람 찾기), 못 재면 지난 시간(AI 장면 나누기).
+    /// 분석은 받아적기 → 사람 찾기 → 소리 · 컷 순서로 **하나씩** 돈다 — 둘을 같이 "도는 중" 으로 그리지 않는다.
+    static func prepareSteps(_ live: [JobRecord], fetchingOriginal: Bool = false, modelReady: Bool = true,
+                             fetchProgress: Double? = nil, analysis: AnalysisProgress? = nil,
+                             now: Date = Date()) -> [PrepareStep] {
         let kinds = Set(live.map(\.kind))
         let rendering = kinds.contains(.render) || kinds.contains(.selfEval)
-        let drafting = kinds.contains(.agent)
-        let analyzing = kinds.contains(.analyze)
-        // 몇 번째 단계까지 왔나 (0 받아적기 · 1 사람 찾기 · 2 장면 나누기 · 3 끝)
-        let stage = rendering ? 3 : drafting ? 2 : analyzing ? 0 : 0
+        let agent = live.first { $0.kind == .agent }
+        // 몇 번째 단계인가 (0 받아적기 · 1 사람 찾기 · 2 장면 나누기 · 3 끝)
+        let stage: Int = {
+            if rendering { return 3 }
+            if agent != nil { return 2 }
+            switch analysis?.step {
+            case .findPerson?, .rest?: return 1
+            default: return 0
+            }
+        }()
         var steps: [PrepareStep] = []
-        if fetchingOriginal { steps.append(PrepareStep(title: Copy.Plan.Preparing.fetchOriginal, state: .running)) }
+        if fetchingOriginal {
+            steps.append(PrepareStep(title: Copy.Plan.Preparing.fetchOriginal, state: .running, progress: fetchProgress))
+        }
         if !modelReady { steps.append(PrepareStep(title: Copy.Plan.Preparing.prepare, state: fetchingOriginal ? .waiting : .running)) }
         let blocked = fetchingOriginal || !modelReady
-        // 분석(다이제스트)은 받아적기 · 사람 찾기를 한 작업으로 돈다 — 둘 다 "도는 중" 으로 보인다
         let titles = [Copy.Plan.Preparing.transcribe, Copy.Plan.Preparing.findPerson, Copy.Plan.Preparing.split]
         for (i, t) in titles.enumerated() {
-            let state: PrepareStep.State
-            if blocked { state = .waiting }
-            else if stage == 3 || i < stage && !(stage == 0) { state = .done }
-            else if stage == 0 && i < 2 { state = .running }
-            else if stage == 2 && i == 2 { state = .running }
-            else { state = i < stage ? .done : .waiting }
-            steps.append(PrepareStep(title: t, state: state))
+            if blocked { steps.append(PrepareStep(title: t, state: .waiting)); continue }
+            if i < stage { steps.append(PrepareStep(title: t, state: .done)); continue }
+            if i > stage { steps.append(PrepareStep(title: t, state: .waiting)); continue }
+            var step = PrepareStep(title: t, state: .running)
+            switch i {
+            case 0: step.progress = analysis?.step == .transcribe ? analysis?.fraction : (analysis == nil ? nil : 1)
+            // "사람 찾기" 줄이 뒤의 소리 · 컷 찾기까지 맡는다 (7할 · 3할) — 100% 에 멈춰 있지 않게
+            case 1:
+                switch analysis?.step {
+                case .findPerson?: step.progress = 0.7 * (analysis?.fraction ?? 0)
+                case .rest?: step.progress = 0.7 + 0.3 * (analysis?.fraction ?? 0)
+                default: break
+                }
+            default:
+                if let started = agent?.startedAt { step.elapsed = Copy.Plan.Preparing.elapsed(max(0, Int(now.timeIntervalSince(started)))) }
+            }
+            steps.append(step)
         }
         return steps
     }

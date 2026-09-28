@@ -88,7 +88,8 @@ public enum SubjectTrackBuilder {
         stepSec: Double = 0.5,
         until: Double? = nil,
         minCoverage: Double = defaultMinCoverage,
-        workDir: URL
+        workDir: URL,
+        progress: (@Sendable (Double) -> Void)? = nil
     ) async throws -> SubjectTrack {
         let info = try await FrameSheet.info(of: url)
         let source = SourceInfo(
@@ -100,13 +101,17 @@ public enum SubjectTrackBuilder {
         )
         let end = min(until ?? info.duration, info.duration - 0.05)
         let times = stride(from: 0.0, to: max(end, stepSec), by: stepSec).map { $0 }
+        // 프레임 뽑기가 6할, 사람 찾기가 4할 (1분 영상 실측: 뽑기 19초 · 찾기 11초)
+        progress?(0)
         let frames = try await FrameSheet.extract(
-            from: url, at: times, into: workDir, prefix: ""
+            from: url, at: times, into: workDir, prefix: "", progress: { progress?(0.6 * $0) }
         )
+        progress?(0.6)
 
         var samples: [SubjectSample] = []
         var previous: NormRect?
         for (i, frame) in frames.enumerated() {
+            if i % 4 == 0 { progress?(0.6 + 0.4 * Double(i) / Double(max(frames.count, 1))) }
             let image = try StillRenderer.loadImage(frame)
             let parts = try SubjectDetector.maskComponents(image, minCoverage: minCoverage)
             // 직전에 따라가던 덩어리와 가장 많이 겹치는 것을 이어서 따라간다.

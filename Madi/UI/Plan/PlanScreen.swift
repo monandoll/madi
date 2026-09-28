@@ -476,9 +476,25 @@ private struct PlanPreparingView: View {
                             Text(Copy.Plan.Preparing.done)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                        } else if let p = step.progress, step.state == .running {
+                            // 얼마나 됐는지 — 막대 + 퍼센트 (개발이 넣음, viewdata-map ⑮)
+                            ProgressView(value: p)
+                                .progressViewStyle(.linear)
+                                .controlSize(.small)
+                                .frame(width: 80)
+                            Text(Copy.Plan.Preparing.percent(p))
+                                .font(.caption)
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                                .frame(minWidth: 32, alignment: .trailing)
                         } else if let remaining = step.remaining {
                             Text(Copy.Plan.Preparing.remaining(remaining))
                                 .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else if let elapsed = step.elapsed, step.state == .running {
+                            Text(elapsed)
+                                .font(.caption)
+                                .monospacedDigit()
                                 .foregroundStyle(.secondary)
                         }
                     }

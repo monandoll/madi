@@ -21,6 +21,7 @@ final class MadiPipeline {
     let progress = RenderProgressBoard()
     /// iCloud 원본 받는 중 진행률 (메모리).
     let importProgress = ImportProgressBoard()
+    let analysisProgress = AnalysisProgressBoard()
 
     /// "다시 가져오기" — 받기에 실패한 영상을 다시 받게 한 번 더 훑는다.
     func rescan() {
@@ -58,7 +59,8 @@ final class MadiPipeline {
             FontLibrary.registerDownloaded(catalog: catalog)
 
             let preparer = try ModelPreparer(catalog: catalog)
-            let analyze = AnalyzeJob(db: db, transcriber: PreparedTranscriber(preparer: preparer, db: db))
+            let analyze = AnalyzeJob(db: db, transcriber: PreparedTranscriber(preparer: preparer, db: db),
+                                     progressBoard: analysisProgress)
             let thumbnails = Thumbnails()
             let render = RenderJob(db: db, progress: progress, thumbnails: thumbnails)
             // 분석 → AI 초안 → 렌더 → 검사 → (되먹임 → 렌더 → 검사)… → 검사한 결과만 보여 준다

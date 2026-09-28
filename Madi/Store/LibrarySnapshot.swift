@@ -20,6 +20,8 @@ public struct LibrarySnapshot: Sendable {
     public var progress: [String: Double] = [:]
     /// iCloud 원본 받는 중 진행률 (영상 id → 0…1). 메모리 게시판에서 온다.
     public var importProgress: [String: Double] = [:]
+    /// 분석 단계 · 진행률 (영상 id →). 메모리 게시판에서 온다.
+    public var analysisProgress: [String: AnalysisProgress] = [:]
     /// 있는 그림 파일 경로. 없는 그림은 화면이 회색 자리표시로 그린다.
     public var thumbnails: Set<String> = []
     /// 그림 자리를 정하는 곳 (경로 규칙).
@@ -32,6 +34,12 @@ public struct LibrarySnapshot: Sendable {
         // 휴지통으로 옮긴 결과물은 어디에도 안 나온다 — 여기서 한 번 거른다
         self.outputs = outputs.filter { $0.trashedAt == nil }
         self.jobs = jobs; self.chats = chats; self.wordCounts = wordCounts; self.now = now; self.exports = exports
+    }
+
+    /// 진행률 게시판만 새로 붙인다 — 작업이 도는 동안 0.5초마다 (그림 파일은 다시 보지 않는다).
+    public mutating func setProgress(render: [String: Double], import imports: [String: Double],
+                                     analysis: [String: AnalysisProgress]) {
+        progress = render; importProgress = imports; analysisProgress = analysis
     }
 
     /// 있는 그림만 골라 둔다 (파일을 한 번씩 본다).

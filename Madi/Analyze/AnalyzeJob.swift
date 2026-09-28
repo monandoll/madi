@@ -9,9 +9,12 @@ public struct AnalyzeJob: Sendable {
     public let transcriber: any TranscriptionProvider
     /// 다이제스트 시트를 남기는 곳. 기본 `~/Library/Application Support/madi/analysis/`.
     public let root: URL
+    /// 단계 · 진행률 게시판 (편집안 준비 화면 퍼센트).
+    public let progressBoard: AnalysisProgressBoard?
 
-    public init(db: AppDatabase, transcriber: any TranscriptionProvider, root: URL = AnalyzeJob.defaultRoot) {
-        self.db = db; self.transcriber = transcriber; self.root = root
+    public init(db: AppDatabase, transcriber: any TranscriptionProvider, root: URL = AnalyzeJob.defaultRoot,
+                progressBoard: AnalysisProgressBoard? = nil) {
+        self.db = db; self.transcriber = transcriber; self.root = root; self.progressBoard = progressBoard
     }
 
     public static var defaultRoot: URL {
@@ -50,8 +53,11 @@ public struct AnalyzeJob: Sendable {
             return false
         }
 
+        let board = progressBoard
+        defer { if let board { Task { await board.clear(videoId) } } }
         let digest = try await DigestBuilder.build(
-            videoID: videoId, url: url, transcriber: transcriber, workDir: root.appending(path: videoId)
+            videoID: videoId, url: url, transcriber: transcriber, workDir: root.appending(path: videoId),
+            progress: { step, f in if let board { Task { await board.set(videoId, step, f) } } }
         )
         let record = DigestRecord(
             videoId: videoId, version: DigestBuilder.version, sourceFingerprint: fingerprint,

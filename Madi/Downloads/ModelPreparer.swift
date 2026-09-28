@@ -141,4 +141,12 @@ public struct PreparedTranscriber: TranscriptionProvider {
         }
         return try await preparer.readyProvider().transcribe(url, languageCode: languageCode)
     }
+
+    public func transcribe(_ url: URL, languageCode: String,
+                           progress: (@Sendable (Double) -> Void)?) async throws -> Transcript {
+        if await preparer.state != .ready {
+            try? db?.log("model.waiting", subject: url.deletingPathExtension().lastPathComponent)
+        }
+        return try await preparer.readyProvider().transcribe(url, languageCode: languageCode, progress: progress)
+    }
 }

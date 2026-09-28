@@ -256,6 +256,11 @@ public enum Copy {
             public static let reframe = "화면 잡기"
             public static let done = "끝"
             public static func remaining(_ text: String) -> String { "\(text) 남음" }
+            /// 잴 수 없는 단계 — 지난 시간. "32초째" · "1분 12초째"
+            public static func elapsed(_ seconds: Int) -> String {
+                seconds < 60 ? "\(seconds)초째" : "\(seconds / 60)분 \(seconds % 60)초째"
+            }
+            public static func percent(_ fraction: Double) -> String { "\(Int((fraction * 100).rounded(.down)))%" }
             public static let stop = "멈추기"
             public static let scenesComing = "나누는 중…"
         }

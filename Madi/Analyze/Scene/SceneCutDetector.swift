@@ -22,7 +22,8 @@ public enum SceneCutDetector {
         public var stepSec: Double
     }
 
-    public static func detect(_ url: URL, fps: Double = sampleFPS) async throws -> Result {
+    public static func detect(_ url: URL, fps: Double = sampleFPS,
+                              progress: (@Sendable (Double) -> Void)? = nil) async throws -> Result {
         let asset = AVURLAsset(url: url)
         let duration = try await asset.load(.duration).seconds
         let gen = AVAssetImageGenerator(asset: asset)
@@ -39,6 +40,7 @@ public enum SceneCutDetector {
         while t < duration - 0.01 {
             let image = try await gen.image(at: CMTime(seconds: t, preferredTimescale: 600)).image
             thumbs.append(gray(image))
+            if thumbs.count % 10 == 0 { progress?(t / max(duration, 0.01)) }
             t += step
         }
         var diffs: [Double] = []

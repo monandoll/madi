@@ -9,12 +9,21 @@ public protocol TranscriptionProvider: Sendable {
     /// G6(싱크 0.15초)을 맞출 수도 없다.
     func transcribe(_ url: URL, languageCode: String) async throws -> Transcript
 
+    /// 진행률(0…1)을 알려 주며 전사한다. 알릴 수 없는 엔진은 기본 구현(알리지 않음)을 쓴다.
+    func transcribe(_ url: URL, languageCode: String,
+                    progress: (@Sendable (Double) -> Void)?) async throws -> Transcript
+
     /// 모델을 올리고 한 번 데운다. 첫 영상이 이 비용을 치르지 않게 미리 부른다.
     func warmUp() async throws
 }
 
 public extension TranscriptionProvider {
     func warmUp() async throws {}
+
+    func transcribe(_ url: URL, languageCode: String,
+                    progress: (@Sendable (Double) -> Void)?) async throws -> Transcript {
+        try await transcribe(url, languageCode: languageCode)
+    }
 
     func transcribe(_ url: URL) async throws -> Transcript {
         try await transcribe(url, languageCode: "ko")

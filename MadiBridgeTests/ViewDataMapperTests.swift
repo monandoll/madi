@@ -108,7 +108,21 @@ struct ViewDataMapperTests {
 
         let analyzing = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], now: now)
         guard case .preparing(let a) = try #require(ViewDataMapper.plan(analyzing, videoID: "v", ai: .claude)) else { Issue.record(""); return }
-        #expect(a.map(\.state) == [.running, .running, .waiting])
+        // 분석은 하나씩 돈다 — 진행률이 없으면 받아적기만 도는 중
+        #expect(a.map(\.state) == [.running, .waiting, .waiting])
+        // 진행률이 있으면 도는 단계에 퍼센트
+        var withProgress = analyzing
+        withProgress.analysisProgress["v"] = AnalysisProgress(step: .transcribe, fraction: 0.42)
+        guard case .preparing(let p1) = try #require(ViewDataMapper.plan(withProgress, videoID: "v", ai: .claude)) else { Issue.record(""); return }
+        #expect(p1[0].progress == 0.42 && p1[1].progress == nil)
+        withProgress.analysisProgress["v"] = AnalysisProgress(step: .findPerson, fraction: 0.5)
+        guard case .preparing(let p2) = try #require(ViewDataMapper.plan(withProgress, videoID: "v", ai: .claude)) else { Issue.record(""); return }
+        #expect(p2.map(\.state) == [.done, .running, .waiting] && p2[1].progress == 0.35)   // 사람 찾기가 이 줄의 7할
+        #expect(Copy.Plan.Preparing.percent(0.427) == "42%")
+        // AI 가 장면을 나누는 중 — 퍼센트 대신 지난 시간
+        var agentJob = job(.agent, "v", .running); agentJob.startedAt = now - 32
+        let ai = ViewDataMapper.prepareSteps([agentJob], now: now)
+        #expect(ai[2].state == .running && ai[2].elapsed == "32초째" && ai[2].progress == nil)
         // 편집 준비가 안 끝났으면 맨 앞에 "편집 준비", 나머지는 기다린다
         let first = ViewDataMapper.prepareSteps([job(.analyze, "v", .running)], modelReady: false)
         #expect(first.first?.title == Copy.Plan.Preparing.prepare && first.dropFirst().allSatisfy { $0.state == .waiting })

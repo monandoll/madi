@@ -348,6 +348,13 @@ extension SampleData {
         PrepareStep(title: Copy.Plan.Preparing.split, state: .running, remaining: "20초쯤"),
     ]
 
+    /// 분석 중 — 도는 단계에 퍼센트 (viewdata-map ⑮).
+    public static let prepareStepsAnalyzing: [PrepareStep] = [
+        PrepareStep(title: Copy.Plan.Preparing.transcribe, state: .done),
+        PrepareStep(title: Copy.Plan.Preparing.findPerson, state: .running, progress: 0.42),
+        PrepareStep(title: Copy.Plan.Preparing.split, state: .waiting),
+    ]
+
     /// iCloud 원본을 받아야 하고, 첫 실행 직후라 편집 준비도 안 끝난 경우 — 앞에 둘이 더 붙는다.
     public static let prepareStepsFirstRun: [PrepareStep] = [
         PrepareStep(title: Copy.Plan.Preparing.fetchOriginal, state: .done),

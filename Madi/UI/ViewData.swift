@@ -419,9 +419,14 @@ public struct PrepareStep: Identifiable, Hashable, Sendable {
     public var state: State
     /// `20초쯤 남음`. 없으면 안 보여준다 — 틀린 숫자를 보여주느니 없는 게 낫다.
     public var remaining: String?
+    /// 도는 단계의 진행률 0…1 — 잴 수 있을 때만 (받기 · 받아적기 · 사람 찾기). "42%" 로 보인다 (개발이 넣음, viewdata-map ⑮).
+    public var progress: Double?
+    /// 잴 수 없는 단계(AI 가 장면을 나누는 중)는 지난 시간만 — "32초째". 남은 시간을 지어내지 않는다.
+    public var elapsed: String?
 
-    public init(title: String, state: State, remaining: String? = nil) {
+    public init(title: String, state: State, remaining: String? = nil, progress: Double? = nil, elapsed: String? = nil) {
         self.title = title; self.state = state; self.remaining = remaining
+        self.progress = progress; self.elapsed = elapsed
     }
 }
 

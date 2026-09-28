@@ -32,8 +32,12 @@ public enum DigestBuilder {
 
     /// - Parameter workDir: 프레임 시트를 남기는 곳 (다이제스트가 가리킨다 — 지우면 안 된다).
     ///   사람 추적용 전체 해상도 프레임은 임시 폴더에서 쓰고 지운다 (1분 영상이면 수백 MB).
+    /// 분석 단계 — 화면의 "말 받아적기 · 사람 찾기" 줄과 같다. 소리 · 컷 · 그림은 짧아서 `.rest` 하나로 둔다.
+    public enum Step: Int, Sendable { case transcribe = 0, findPerson = 1, rest = 2 }
+
     public static func build(
-        videoID: String, url: URL, transcriber: any TranscriptionProvider, workDir: URL
+        videoID: String, url: URL, transcriber: any TranscriptionProvider, workDir: URL,
+        progress: (@Sendable (Step, Double) -> Void)? = nil
     ) async throws -> Digest {
         try FileManager.default.createDirectory(at: workDir, withIntermediateDirectories: true)
         let scratch = FileManager.default.temporaryDirectory.appending(path: "madi-digest-\(UUID().uuidString)")
@@ -45,15 +49,23 @@ public enum DigestBuilder {
         func lap(_ name: String) { timings[name] = Date().timeIntervalSince(clock); clock = Date() }
 
         // 말이 아닌 것(괄호로 싼 소리 설명 · 영상 길이를 넘는 낱말)은 여기서 걷는다 — 두 전사 엔진이 다 지나는 한 곳.
-        let transcript = try await transcriber.transcribe(url).droppingNonSpeech(duration: info.duration)
+        progress?(.transcribe, 0)
+        let transcript = try await transcriber.transcribe(url, languageCode: "ko", progress: { progress?(.transcribe, $0) })
+            .droppingNonSpeech(duration: info.duration)
         lap("transcript")
+        progress?(.findPerson, 0)
         let subject = try await SubjectTrackBuilder.build(
-            videoID: videoID, url: url, workDir: scratch.appending(path: "subject")
+            videoID: videoID, url: url, workDir: scratch.appending(path: "subject"),
+            progress: { progress?(.findPerson, $0) }
         )
+        progress?(.rest, 0)
         lap("subject")
         let audio = try await AudioAnalyzer.analyze(url)
         lap("audio")
-        let scenes = try await SceneCutDetector.detect(url)
+        progress?(.rest, 0.1)
+        // 소리 1할 · 컷 찾기 8할 · 그림 1할 (1분 영상 실측: 이 단계 18초의 대부분이 컷 찾기)
+        let scenes = try await SceneCutDetector.detect(url, progress: { progress?(.rest, 0.1 + 0.8 * $0) })
+        progress?(.rest, 0.9)
         lap("scenes")
 
         // 시작 + 컷 직후(0.3초 뒤 — 전환 효과를 피한다). 1초 안에 몰린 건 하나로. 최대 8장.

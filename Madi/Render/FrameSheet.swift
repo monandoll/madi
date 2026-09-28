@@ -57,7 +57,8 @@ public enum FrameSheet {
     ///   (`docs/findings/2026-09-23-layout-survey.md` 와 같은 간격).
     @discardableResult
     public static func extract(
-        from url: URL, at times: [Double], into directory: URL, prefix: String = ""
+        from url: URL, at times: [Double], into directory: URL, prefix: String = "",
+        progress: (@Sendable (Double) -> Void)? = nil
     ) async throws -> [URL] {
         let asset = AVURLAsset(url: url)
         let duration = try await asset.load(.duration).seconds
@@ -74,7 +75,8 @@ public enum FrameSheet {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
         var written: [URL] = []
-        for t in wanted {
+        for (i, t) in wanted.enumerated() {
+            if i % 4 == 0 { progress?(Double(i) / Double(max(wanted.count, 1))) }
             let time = CMTime(seconds: t, preferredTimescale: 600)
             let (image, _) = try await generator.image(at: time)
             let name = String(format: "%@%06.2fs.png", prefix, t).replacingOccurrences(of: " ", with: "0")

@@ -67,7 +67,24 @@ public final class WhisperKitProvider: TranscriptionProvider, @unchecked Sendabl
     }
 
     public func transcribe(_ url: URL, languageCode: String) async throws -> Transcript {
+        try await transcribe(url, languageCode: languageCode, progress: nil)
+    }
+
+    public func transcribe(_ url: URL, languageCode: String,
+                           progress report: (@Sendable (Double) -> Void)?) async throws -> Transcript {
         let pipe = try await pipeline()
+        // 진행률 — WhisperKit 의 `progress`(창마다 자식, 창 안에서는 찾아 들어간 만큼)를 0.5초마다 읽는다.
+        // `Progress` 는 스레드 안전하다. 끝나면 WhisperKit 이 새것으로 바꾸므로 시작 전에 잡아 둔다.
+        nonisolated(unsafe) let watched = pipe.progress
+        let poller = report.map { report in
+            Task {
+                while !Task.isCancelled {
+                    report(min(max(watched.fractionCompleted, 0), 1))
+                    try? await Task.sleep(for: .milliseconds(500))
+                }
+            }
+        }
+        defer { poller?.cancel() }
         let options = DecodingOptions(
             language: languageCode,
             // ★ 이게 켜져 있지 않으면 낱말 시각이 안 나온다. 켜는 걸 잊으면
