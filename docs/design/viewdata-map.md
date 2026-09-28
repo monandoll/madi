@@ -345,3 +345,12 @@ case .openSettings
 - 색: 견본 3개(자주 쓰는 색 바로가기) + **컬러 피커**(`ColorPicker`, 불투명). 견본에 없는 색이면
   `CaptionLook.customID` · 이름 "직접 고른 색", 피커 둘레에 고른 표시. `CaptionLook.fillColor` · `secondaryFillColor` 가 실제 색
 - 피커를 끄는 동안은 미리보기만 바뀌고, 손을 멈춘 뒤(0.7초) 새 스타일 판으로 한 번 저장한다
+
+## ⑭ 색 고르기 — iOS 처럼 말풍선 · 자주 쓰는 3색은 사람이 바꾼다 (2026-09-29, 사용자 요청 · 개발이 넣음)
+
+- `ColorPicker`(macOS 색상 패널이 따로 창으로 뜸)를 걷고 `ColorGridPicker` — 무지개 테두리 동그라미를 누르면
+  **버튼 밑 말풍선**으로 iOS 와 같은 격자(회색 12 + 색상 12 × 9)가 뜬다. `Common/ColorGridPicker.swift`
+- 견본 3개는 고정이 아니라 **자주 쓰는 색 3칸**(`fav0…2`). 말풍선 아래 3칸을 누르거나 견본을 우클릭 "지금 색으로 바꾸기"
+  → 그 칸이 지금 색으로 바뀐다. 본문 · 영문 줄이 따로 기억한다 (앱 설정, 스타일 판이 아니다)
+- `UIAction.Settings.Look.setFavorite(Row, index:)` · `Row { main, secondary }`. 문구 `Copy.Look.favorites` · `setFavorite` · `setFavoriteHint`
+- 스크린샷 `color-grid-panel` (말풍선은 창 밖이라 안쪽만)

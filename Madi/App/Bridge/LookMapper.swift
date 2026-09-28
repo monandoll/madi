@@ -32,15 +32,31 @@ enum LookMapper {
         }
     }
 
-    /// 딱 맞는 견본 — 없으면 `CaptionLook.customID` (컬러 피커로 고른 색). 8비트로 저장되니 반 칸 안이면 같다.
+    /// 8비트로 저장되니 반 칸 안이면 같은 색이다.
+    static func same(_ a: RGBA, _ b: RGBA) -> Bool { dist(a, b) < 3 * pow(0.5 / 255 + 1e-6, 2) }
+
+    /// 이름 있는 기본 색(흰색 · 노란색 · 하늘색) 가운데 딱 맞는 것 — 없으면 `CaptionLook.customID`.
     static func matching(_ c: HexColor) -> String {
-        swatchColors.first { dist($0.rgba, c.rgba) < 3 * pow(0.5 / 255, 2) }?.id ?? CaptionLook.customID
+        swatchColors.first { same($0.rgba, c.rgba) }?.id ?? CaptionLook.customID
     }
 
-    static func swatch(_ c: HexColor, labels: [String: String]) -> CaptionLook.Swatch {
-        let id = matching(c)
-        return CaptionLook.Swatch(id: id, label: labels[id] ?? Copy.Look.customColor,
+    /// 자주 쓰는 색 기본값 (사람이 바꾸기 전). 본문은 흰색부터, 영문 줄은 노란색(실측)부터.
+    static let defaultFavorites: [HexColor] = ["white", "yellow", "sky"].map { id in HexColor(swatchColors.first { $0.id == id }!.rgba) }
+    static let defaultSecondaryFavorites: [HexColor] = ["yellow", "white", "sky"].map { id in HexColor(swatchColors.first { $0.id == id }!.rgba) }
+
+    /// 자주 쓰는 색 칸 id — `fav0` · `fav1` · `fav2`.
+    static func favoriteID(_ i: Int) -> String { "fav\(i)" }
+    static func favoriteIndex(_ id: String) -> Int? { id.hasPrefix("fav") ? Int(id.dropFirst(3)) : nil }
+
+    static func swatch(_ c: HexColor, id: String, labels: [String: String]) -> CaptionLook.Swatch {
+        let named = matching(c)
+        return CaptionLook.Swatch(id: id, label: labels[named] ?? Copy.Look.customColor,
                                   red: Double(c.rgba.r), green: Double(c.rgba.g), blue: Double(c.rgba.b))
+    }
+
+    /// 지금 색이 자주 쓰는 색 몇 번째 칸인지 — 없으면 직접 고른 색.
+    static func slot(_ c: HexColor, in favorites: [HexColor]) -> String {
+        favorites.firstIndex { same($0.rgba, c.rgba) }.map(favoriteID) ?? CaptionLook.customID
     }
 
     static func dist(_ a: RGBA, _ b: RGBA) -> CGFloat {
@@ -49,17 +65,21 @@ enum LookMapper {
 
     static func look(_ l: StyleValues.LookValues, fonts: [String], labels: [String: String], preview: Thumbnail,
                      previewText: String = Copy.Look.previewMain,
-                     previewSecondaryText: String = Copy.Look.previewSecondary) -> CaptionLook {
+                     previewSecondaryText: String = Copy.Look.previewSecondary,
+                     favorites: [HexColor] = defaultFavorites,
+                     secondaryFavorites: [HexColor] = defaultSecondaryFavorites) -> CaptionLook {
         CaptionLook(
             fonts: fonts, font: l.caption.fontFamily, weight: weight(l.caption.weight), italic: l.caption.italic,
-            fills: swatches(order: ["white", "yellow", "sky"], labels: labels), fill: matching(l.caption.fill),
-            secondaryFills: swatches(order: ["yellow", "white", "sky"], labels: labels), secondaryFill: matching(l.secondary.fill),
+            fills: favorites.enumerated().map { swatch($1, id: favoriteID($0), labels: labels) },
+            fill: slot(l.caption.fill, in: favorites),
+            secondaryFills: secondaryFavorites.enumerated().map { swatch($1, id: favoriteID($0), labels: labels) },
+            secondaryFill: slot(l.secondary.fill, in: secondaryFavorites),
             secondarySameAsMain: l.secondary.fontFamily == l.caption.fontFamily && l.secondary.italic == l.caption.italic,
             preview: preview,
             // 저장된 글꼴이 이 Mac 에 없다 — 조용히 대체하지 않는다 (§9)
             fontMissing: l.caption.fontFamily.map { !fonts.contains($0) } ?? false,
-            fillColor: swatch(l.caption.fill, labels: labels),
-            secondaryFillColor: swatch(l.secondary.fill, labels: labels),
+            fillColor: swatch(l.caption.fill, id: slot(l.caption.fill, in: favorites), labels: labels),
+            secondaryFillColor: swatch(l.secondary.fill, id: slot(l.secondary.fill, in: secondaryFavorites), labels: labels),
             previewText: previewText, previewSecondaryText: previewSecondaryText
         )
     }
@@ -86,8 +106,8 @@ enum LookMapper {
             l.caption.fill = HexColor(RGBA(CGFloat(r), CGFloat(g), CGFloat(b), 1))
         case .secondaryFillColor(let r, let g, let b):
             l.secondary.fill = HexColor(RGBA(CGFloat(r), CGFloat(g), CGFloat(b), 1))
-        case .previewText, .previewSecondaryText:
-            break   // 미리보기 문장 — 모양이 아니다
+        case .previewText, .previewSecondaryText, .setFavorite:
+            break   // 미리보기 문장 · 자주 쓰는 색 — 모양이 아니다 (앱 설정)
         case .secondarySameAsMain(let on):
             if on {
                 l.secondary.fontFamily = l.caption.fontFamily

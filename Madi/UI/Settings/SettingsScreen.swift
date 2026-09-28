@@ -255,11 +255,13 @@ private struct LookSettings: View {
             Section {
                 swatchRow(Copy.Look.fill, swatches: look.fills, selected: look.fill, current: look.fillColor,
                           onPick: { onAction(.fill($0)) },
-                          onCustom: { onAction(.fillColor(red: $0, green: $1, blue: $2)) })
+                          onCustom: { onAction(.fillColor(red: $0, green: $1, blue: $2)) },
+                          onSetFavorite: { onAction(.setFavorite(.main, index: $0)) })
                 swatchRow(Copy.Look.secondaryFill, swatches: look.secondaryFills,
                           selected: look.secondaryFill, current: look.secondaryFillColor,
                           onPick: { onAction(.secondaryFill($0)) },
-                          onCustom: { onAction(.secondaryFillColor(red: $0, green: $1, blue: $2)) })
+                          onCustom: { onAction(.secondaryFillColor(red: $0, green: $1, blue: $2)) },
+                          onSetFavorite: { onAction(.setFavorite(.secondary, index: $0)) })
                 Toggle(Copy.Look.lookSecondarySameAsMain, isOn: Binding(
                     get: { look.secondarySameAsMain }, set: { onAction(.secondarySameAsMain($0)) }
                 ))
@@ -314,7 +316,8 @@ private struct LookSettings: View {
         _ title: String, swatches: [CaptionLook.Swatch], selected: CaptionLook.Swatch.ID,
         current: CaptionLook.Swatch,
         onPick: @escaping (CaptionLook.Swatch.ID) -> Void,
-        onCustom: @escaping (Double, Double, Double) -> Void
+        onCustom: @escaping (Double, Double, Double) -> Void,
+        onSetFavorite: @escaping (Int) -> Void
     ) -> some View {
         LabeledContent(title) {
             HStack(spacing: Tokens.Space.inner) {
@@ -334,27 +337,23 @@ private struct LookSettings: View {
                             }
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        // 이 칸을 지금 색으로 — 자주 쓰는 3색은 사람이 바꾼다
+                        if let i = swatches.firstIndex(of: swatch) {
+                            Button(Copy.Look.setFavorite) { onSetFavorite(i) }
+                        }
+                    }
                     .help(swatch.label)
                     .accessibilityLabel(swatch.label)
                     .accessibilityAddTraits(swatch.id == selected ? .isSelected : [])
                 }
-                // 아무 색 — 견본에 없는 색을 고르면 이 칸이 골라진 상태가 된다
-                ColorPicker(Copy.Look.pickColor, selection: Binding(
-                    get: { current.color },
-                    set: { color in
-                        guard let c = NSColor(color).usingColorSpace(.sRGB) else { return }
-                        onCustom(Double(c.redComponent), Double(c.greenComponent), Double(c.blueComponent))
-                    }
-                ), supportsOpacity: false)
-                .labelsHidden()
-                .help(Copy.Look.pickColor)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(Tokens.Palette.accent, lineWidth: 2)
-                        .padding(-3)
-                        .opacity(selected == CaptionLook.customID ? 1 : 0)
-                        .allowsHitTesting(false)
-                }
+                // 아무 색 — 버튼 밑 말풍선 격자 (iOS 처럼). 말풍선 아래에서 자주 쓰는 3칸을 바꾼다
+                ColorGridPicker(
+                    current: PickedColor(current), favorites: swatches.map(PickedColor.init),
+                    isCustom: selected == CaptionLook.customID,
+                    onPick: { onCustom($0.red, $0.green, $0.blue) },
+                    onSetFavorite: onSetFavorite
+                )
                 Text(swatches.first(where: { $0.id == selected })?.label ?? Copy.Look.customColor)
                     .font(.caption)
                     .foregroundStyle(.secondary)

@@ -707,6 +707,10 @@ public enum Copy {
         /// 컬러 피커로 고른 색의 이름.
         public static let customColor = "직접 고른 색"
         public static let pickColor = "다른 색 고르기"
+        /// 색 말풍선 아래 — 사람이 자기 3색을 만든다.
+        public static let favorites = "자주 쓰는 색"
+        public static let setFavorite = "지금 색으로 바꾸기"
+        public static let setFavoriteHint = "칸을 누르면 지금 색으로 바뀌어요."
     }
 
     /// 품질 안내 (`Madi/Review/GateNotice.swift`). 결과는 나왔고 **다음 촬영 때 도움이 될 한 줄**이다.

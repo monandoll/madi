@@ -605,6 +605,22 @@ final class AppController {
         var look: StyleValues.LookValues
         var text: String
         var secondary: String
+        var favorites: [HexColor]
+        var secondaryFavorites: [HexColor]
+    }
+
+    /// 자주 쓰는 색 3칸 — 사람이 바꾼다. 모양(스타일 판)이 아니라 앱 설정이다.
+    private static let favoritesKey = "madi.look.favorites.main"
+    private static let secondaryFavoritesKey = "madi.look.favorites.secondary"
+    private func favorites(_ row: UIAction.Settings.Look.Row) -> [HexColor] {
+        let key = row == .main ? Self.favoritesKey : Self.secondaryFavoritesKey
+        if let data = UserDefaults.standard.data(forKey: key),
+           let saved = try? JSONDecoder().decode([HexColor].self, from: data), saved.count == 3 { return saved }
+        return row == .main ? LookMapper.defaultFavorites : LookMapper.defaultSecondaryFavorites
+    }
+    private func setFavorites(_ colors: [HexColor], _ row: UIAction.Settings.Look.Row) {
+        let key = row == .main ? Self.favoritesKey : Self.secondaryFavoritesKey
+        if let data = try? JSONEncoder().encode(colors) { UserDefaults.standard.set(data, forKey: key) }
     }
 
     private static let previewTextKey = "madi.look.previewMain"
@@ -620,12 +636,14 @@ final class AppController {
         guard let ref = try? StyleStore.latest(), let style = try? StyleStore.load(ref) else { return nil }
         var values = style.values
         if let lookDraft { values.look = lookDraft }
-        let key = LookKey(ref: ref, look: values.look, text: previewText, secondary: previewSecondaryText)
+        let key = LookKey(ref: ref, look: values.look, text: previewText, secondary: previewSecondaryText,
+                          favorites: favorites(.main), secondaryFavorites: favorites(.secondary))
         if let c = lookCache, c.key == key { return c.look }
         let fonts = fontsCache ?? MadiFont.hangulFamilies()
         fontsCache = fonts
         let look = LookMapper.look(values.look, fonts: fonts, labels: swatchLabels, preview: lookPreview(values, key),
-                                   previewText: key.text, previewSecondaryText: key.secondary)
+                                   previewText: key.text, previewSecondaryText: key.secondary,
+                                   favorites: key.favorites, secondaryFavorites: key.secondaryFavorites)
         lookCache = (key, look)
         return look
     }
@@ -666,6 +684,24 @@ final class AppController {
             UserDefaults.standard.set(t, forKey: Self.previewTextKey)
         case .previewSecondaryText(let t):
             UserDefaults.standard.set(t, forKey: Self.previewSecondaryKey)
+        case .setFavorite(let row, let index):
+            // 그 줄의 지금 색(끄는 중이면 그 색)을 자주 쓰는 색 칸에 넣는다
+            guard let look = lookDraft ?? (try? StyleStore.load(StyleStore.latest()).values.look) else { return }
+            var favs = favorites(row)
+            guard favs.indices.contains(index) else { return }
+            favs[index] = row == .main ? look.caption.fill : look.secondary.fill
+            setFavorites(favs, row)
+        case .fill(let id) where LookMapper.favoriteIndex(id) != nil,
+             .secondaryFill(let id) where LookMapper.favoriteIndex(id) != nil:
+            // 자주 쓰는 색 칸을 눌렀다 — 그 칸의 색을 쓴다
+            let row: UIAction.Settings.Look.Row = { if case .fill = change { .main } else { .secondary } }()
+            let favs = favorites(row)
+            guard let i = LookMapper.favoriteIndex(id), favs.indices.contains(i) else { return }
+            let c = favs[i].rgba
+            commitLookDraft()
+            saveLook(row == .main
+                     ? .fillColor(red: Double(c.r), green: Double(c.g), blue: Double(c.b))
+                     : .secondaryFillColor(red: Double(c.r), green: Double(c.g), blue: Double(c.b)))
         case .fillColor, .secondaryFillColor:
             guard let base = lookDraft ?? (try? StyleStore.load(StyleStore.latest()).values.look) else { return }
             lookDraft = LookMapper.apply(change, to: base)

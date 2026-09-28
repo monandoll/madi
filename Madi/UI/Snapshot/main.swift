@@ -396,6 +396,14 @@ let shots: [Shot] = [
     Shot("settings-slow-logged-out", sizes: [settingsSize]) {
         SettingsScreen(values: SampleData.settingsSlowLoggedOut)
     },
+    // 색 말풍선 안 (viewdata-map ⑭). 말풍선은 창 밖이라 안쪽만 뜬다
+    Shot("color-grid-panel", sizes: [CGSize(width: 280, height: 330)]) {
+        ColorGridPanel(
+            current: PickedColor(red: 1, green: 0.89, blue: 0.45),
+            favorites: [PickedColor(white: 1), PickedColor(red: 1, green: 0.89, blue: 0.45), PickedColor(red: 0.55, green: 0.82, blue: 1)],
+            onPick: { _ in }, onSetFavorite: { _ in }
+        )
+    },
     Shot("settings-look", sizes: [settingsSize]) {
         SettingsScreen(values: SampleData.settingsWithLook, initialTab: .look)
     },

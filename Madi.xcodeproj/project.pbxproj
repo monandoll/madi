@@ -131,6 +131,7 @@
 		B95FD6137063423CD9DB2989 /* Tokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C43B0035E8655B359C0E3B47 /* Tokens.swift */; };
 		B9CD553D8635BC96BB452F38 /* GateNotice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 791C317B14C7AF92D43CDB3E /* GateNotice.swift */; };
 		BAE5D4500020FEDD0DFAFA49 /* AgentJobTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 460759C148526B8AAAC3520E /* AgentJobTests.swift */; };
+		BB17F0C9E7B703BC3AD4CB6B /* ColorGridPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 104E7EF0BE09E27D398F3904 /* ColorGridPicker.swift */; };
 		BB8593E4885B0F74346EA5CB /* OverlayPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A4A6BC2BD771958ED938CD /* OverlayPayload.swift */; };
 		BD5C66DBDDA3C777CE4F7F7C /* CaptionFiller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3144D423223C0A40C380D161 /* CaptionFiller.swift */; };
 		BF865E23BF7C814E71417DE1 /* LookMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 924EA856FED937501FD1C4D7 /* LookMapper.swift */; };
@@ -175,6 +176,7 @@
 		F69D98B4ADB5BA43F1F93077 /* CaptionFillerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B84516A32EC9A9582A4C6CF3 /* CaptionFillerTests.swift */; };
 		F76C7F574A45D391BC82F937 /* CompositionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E21F644B2F761A97C070BE8 /* CompositionTests.swift */; };
 		F84979C2054B94B620C78841 /* SceneList.swift in Sources */ = {isa = PBXBuildFile; fileRef = C211B53F5E2651BFF8637F28 /* SceneList.swift */; };
+		F882C62E375BE5489A1247A0 /* ColorGridPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 104E7EF0BE09E27D398F3904 /* ColorGridPicker.swift */; };
 		F949B92E3B8AC97F765F9967 /* GalleryScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66478482D65AA2F3A550DE6 /* GalleryScreen.swift */; };
 		F9DC06A3CE9CE4965712E42D /* RenderJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 561BB4F10E5D25D2D79B6FAC /* RenderJob.swift */; };
 		FC3555D591D888294B8CF13A /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B2B8D01B0628FACEC7DDB1 /* Renderer.swift */; };
@@ -266,6 +268,7 @@
 		056E706ADEB1090F9E4F18D2 /* Transcript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transcript.swift; sourceTree = "<group>"; };
 		0CF255FFFF4817C0CC024338 /* StillRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StillRenderer.swift; sourceTree = "<group>"; };
 		10053543A76B1004657D680E /* RenderProgressBoard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderProgressBoard.swift; sourceTree = "<group>"; };
+		104E7EF0BE09E27D398F3904 /* ColorGridPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorGridPicker.swift; sourceTree = "<group>"; };
 		10B4FB1D210A593AA3E0223D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		14B2355EFFC3613EC4CA904B /* NoticeBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoticeBar.swift; sourceTree = "<group>"; };
 		14D1202525FD03955FBC6906 /* WhisperCpp */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WhisperCpp; path = Packages/WhisperCpp; sourceTree = SOURCE_ROOT; };
@@ -755,6 +758,7 @@
 		C3776461BBD34CCBE8C9AA84 /* Common */ = {
 			isa = PBXGroup;
 			children = (
+				104E7EF0BE09E27D398F3904 /* ColorGridPicker.swift */,
 				497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */,
 				250A794115ACE186E485FB2A /* MediaPlayerView.swift */,
 				14B2355EFFC3613EC4CA904B /* NoticeBar.swift */,
@@ -1149,6 +1153,7 @@
 			files = (
 				A4EB4CBCDDB8095655DE5D7C /* AppController.swift in Sources */,
 				DEC2AF7261A0B3A387374A6F /* ChatPanel.swift in Sources */,
+				F882C62E375BE5489A1247A0 /* ColorGridPicker.swift in Sources */,
 				FDAD3F002F69F8295199DB0C /* Copy.swift in Sources */,
 				8EF2064B6501E6A6A705096E /* ExportSheet.swift in Sources */,
 				D4BB35D08277068BB7D7BAA3 /* FlowLayout.swift in Sources */,
@@ -1223,6 +1228,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B49FF146A330D15B603648D7 /* ChatPanel.swift in Sources */,
+				BB17F0C9E7B703BC3AD4CB6B /* ColorGridPicker.swift in Sources */,
 				7E40D672E298A150152E6A77 /* Copy.swift in Sources */,
 				8D1F02B9DA0396383C797357 /* ExportSheet.swift in Sources */,
 				199876224754E62B0491DBC4 /* FlowLayout.swift in Sources */,

@@ -259,7 +259,7 @@ struct ViewDataMapperTests {
     func look() throws {
         var l = try StyleStore.load().values.look
         let cl = LookMapper.look(l, fonts: ["나눔고딕"], labels: ["white": "흰색"], preview: .none)
-        #expect(cl.weight == .medium && cl.fill == "white" && cl.secondaryFill == "yellow" && cl.secondarySameAsMain)
+        #expect(cl.weight == .medium && cl.fill == "fav0" && cl.secondaryFill == "fav0" && cl.secondarySameAsMain)   // 흰색 · 노란색 칸
         l = LookMapper.apply(.font("나눔고딕"), to: l)
         #expect(l.caption.fontFamily == "나눔고딕" && l.secondary.fontFamily == "나눔고딕")   // 같이 쓰는 중이라 영문도
         l = LookMapper.apply(.weight(.heavy), to: l)
@@ -279,8 +279,21 @@ struct ViewDataMapperTests {
         #expect(abs(cl.fillColor.green - 0.3) < 0.01 && abs(cl.secondaryFillColor.green - 0.8) < 0.01)
         l = LookMapper.apply(.fillColor(red: 1, green: 1, blue: 1), to: l)
         #expect(LookMapper.matching(l.caption.fill) == "white")
-        // 미리보기 문장은 모양이 아니다
+        // 미리보기 문장 · 자주 쓰는 색은 모양이 아니다
         #expect(LookMapper.apply(.previewText("아무 말"), to: l) == l)
+        #expect(LookMapper.apply(.setFavorite(.main, index: 1), to: l) == l)
+    }
+
+    @Test("자주 쓰는 색 3칸은 사람이 바꾼 색으로 나오고, 지금 색이 그 칸이면 그 칸이 골라진다")
+    func favorites() throws {
+        var l = try StyleStore.load().values.look
+        let pink = HexColor(RGBA(1, 0.2, 0.6, 1))
+        l.caption.fill = pink
+        let favs = [LookMapper.defaultFavorites[0], pink, LookMapper.defaultFavorites[2]]
+        let cl = LookMapper.look(l, fonts: [], labels: [:], preview: .none, favorites: favs)
+        #expect(cl.fills.map(\.id) == ["fav0", "fav1", "fav2"])
+        #expect(abs(cl.fills[1].blue - 0.6) < 0.01)
+        #expect(cl.fill == "fav1")
     }
 
     @Test("⑧ 고른 결과물 — 바로 앞에 보여 준 결과물과 나란히, 달라진 점(AI 말 · 길이 · 장면 수). ⑨ 판의 가장 최근 결과물 id")

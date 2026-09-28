@@ -136,9 +136,13 @@ public enum UIAction: Hashable, Sendable {
             /// 컬러 피커로 고른 색 (0...1 sRGB). 견본 3개는 자주 쓰는 색 바로가기다.
             case fillColor(red: Double, green: Double, blue: Double)
             case secondaryFillColor(red: Double, green: Double, blue: Double)
+            /// 자주 쓰는 색 칸(0...2)을 그 줄의 지금 색으로 바꾼다. 앱 설정에 기억한다 (모양이 아니다).
+            case setFavorite(Row, index: Int)
             /// 미리보기 문장 — 저장되는 모양이 아니다. 미리보기에만 쓴다.
             case previewText(String)
             case previewSecondaryText(String)
+
+            public enum Row: Hashable, Sendable { case main, secondary }
             case secondarySameAsMain(Bool)
         }
     }
