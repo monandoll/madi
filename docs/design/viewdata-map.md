@@ -264,6 +264,21 @@ case .openSettings
 | ⑧ | **결과물 고르기가 밖으로 안 나온다** | `ResultsScreen` 이 고른 결과물을 안에서만 기억한다 — `resultDetail`(이전 판과 나란히)을 채울 수 없다. 지금은 비어 있다 | `UIAction.Results.select(ResultRef.ID)` |
 | ⑨ | 편집안 칸에서 **결과물을 연 것**이 안 나온다 | `plan(.openResults)` 는 어느 결과물인지 모른다 — "봤다" 를 적을 수 없다 | `openResults` 에 id, 또는 결과물 화면에서 ⑧ |
 
+### 디자인 답 (2026-09-28)
+
+**⑨ 넣었다.** `UIAction.Plan.openResults` → `openResults(ResultRef.ID?)`.
+- id 는 `PlanView.latestResultID`(새 칸, 기본값 nil) — 이 편집안의 **가장 최근 결과물**. 매퍼가 채운다
+- `RootView` 는 그 id 를 결과물 칸의 처음 고를 것으로 넘긴다. 채팅 `openResult(id)` · 만드는 중 `openResult(id)` 도 같은 길로 그 결과물을 골라 연다
+- 개발 코드는 **고치지 않아도 컴파일된다** — `case .openResults, .play:` 는 딸린 값을 안 적어도 맞는다. "봤다" 를 적으려면 `case .openResults(let id?): Exporter.markSeen(id)` 로 나누면 된다
+
+**⑧ 보류 — 개발 한 줄이 먼저 필요하다.** 제안대로 `UIAction.Results.select(ResultRef.ID?)` 를 넣으면
+`AppController.results(_:)` 의 `switch` 가 exhaustive 라 빌드가 깨진다. `Madi/App` 은 디자인이 못 만진다.
+화면 쪽은 준비돼 있다 (넣을 것 두 줄):
+- `ResultsScreen`: `.onChange(of: selectedID) { _, id in onAction(.select(id)) }` + 처음 열 때 고른 게 없으면 `select(nil)` 한 번
+- 개발: `case .select(let id):` 에서 고른 id 를 들고 `resultDetail` 을 채운다
+
+순서: 개발이 `case .select: break` 한 줄을 먼저 넣어 주거나, 디자인이 넣은 뒤 같은 머지에서 개발이 받는다 — 정해 주면 바로 넣는다.
+
 개발 쪽에 남은 것 (디자인 일 아님):
 - 목록에서 숨기기(`gallery(.hide)`) — 엔진에 칸이 없다
 - 자막 모양 저장(`settings(.look)`) · 앨범 거르기(`settings(.pickAlbum)`)

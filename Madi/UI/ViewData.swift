@@ -368,6 +368,8 @@ public struct PlanView: Identifiable, Hashable, Sendable {
     public var captionSlot: CaptionSlot
     public var scenes: [SceneCardItem]
     public var resultCount: Int
+    /// 이 편집안의 가장 최근 결과물. 툴바 "결과물 n개" 를 누르면 결과물 칸이 이걸 골라 연다 (⑨).
+    public var latestResultID: ResultRef.ID?
     /// 이 촬영본의 편집안 전부. 툴바에서 고른다.
     public var versions: [PlanVersion]
 
@@ -377,7 +379,8 @@ public struct PlanView: Identifiable, Hashable, Sendable {
         sourceDuration: Double, targetDuration: Double,
         captionSlot: CaptionSlot,
         scenes: [SceneCardItem], resultCount: Int,
-        versions: [PlanVersion] = []
+        versions: [PlanVersion] = [],
+        latestResultID: ResultRef.ID? = nil
     ) {
         self.id = id; self.shotID = shotID; self.shotTitle = shotTitle
         self.platform = platform; self.versionLabel = versionLabel
@@ -386,6 +389,7 @@ public struct PlanView: Identifiable, Hashable, Sendable {
         self.captionSlot = captionSlot
         self.scenes = scenes; self.resultCount = resultCount
         self.versions = versions
+        self.latestResultID = latestResultID
     }
 
     public var removedGapCount: Int { scenes.filter { $0.removedGapAfter != nil }.count }

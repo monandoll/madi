@@ -305,7 +305,8 @@ extension SampleData {
         // 앉아서 말하는 상반신 영상이다 (측정에서 A 무리, 아래끝 0.235).
         captionSlot: .upperBody,
         scenes: planScenes, resultCount: 3,
-        versions: planVersions
+        versions: planVersions,
+        latestResultID: "o_02"
     )
 
     /// 자막을 위로 올린 편집안. 바닥에서 동작하는 영상은 자막이 동작을 가린다.

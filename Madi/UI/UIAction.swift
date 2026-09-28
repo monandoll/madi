@@ -42,7 +42,9 @@ public enum UIAction: Hashable, Sendable {
         case make
         /// 짜는 중 · 만드는 중을 멈춘다.
         case stop
-        case openResults
+        /// 결과물 칸으로 간다. id 는 **이 편집안의 가장 최근 결과물**(`PlanView.latestResultID`) —
+        /// 결과물 칸이 그걸 골라 연다 (viewdata-map ⑨). 모르면 nil.
+        case openResults(ResultRef.ID?)
         case connectAI
         /// 로그인이 풀린 AI 에 다시 로그인한다.
         case login(AIProduct)

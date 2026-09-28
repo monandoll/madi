@@ -49,6 +49,8 @@ struct RootView: View {
     /// **둘**이 되기 때문이다 — 시스템이 하나(화살표만) 놓고, 우리가 "촬영본" 이라고
     /// 적힌 것을 하나 더 놓게 된다. 창이 하나이고 갈 곳도 하나라 상태 하나로 충분하다.
     @State private var showsPlan = false
+    /// 다른 칸에서 결과물 칸으로 넘어올 때 골라서 열 결과물 (편집안 툴바 · 채팅 · 만드는 중에서 연 것).
+    @State private var openingResultID: ResultRef.ID?
 
     var body: some View {
         NavigationSplitView {
@@ -90,7 +92,7 @@ struct RootView: View {
                 exportTargets: exportTargets,
                 notice: resultsNotice,
                 onAction: { send(.results($0)) },
-                initialSelection: selectedResultID,
+                initialSelection: openingResultID ?? selectedResultID,
                 showsExportSheet: showsExportSheet,
                 showsTrashConfirm: showsTrashConfirm
             )
@@ -121,7 +123,12 @@ struct RootView: View {
             showsPlan = true
         case .plan(.close):
             showsPlan = false
-        case .plan(.openResults), .chat(.openResult), .making(.openResult):
+        case .plan(.openResults(let id)):
+            openingResultID = id
+            showsPlan = false
+            selection = .results
+        case .chat(.openResult(let id)), .making(.openResult(let id)):
+            openingResultID = id
             showsPlan = false
             selection = .results
         case .results(.openPlan):
