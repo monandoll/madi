@@ -190,7 +190,7 @@ struct GalleryScreen: View {
                     .disabled(shot.problem != nil)
                     .keyboardShortcut("o")
                 Divider()
-                Button(Copy.Action.play) { onAction(.play(shot.id)) }
+                Button(Copy.Action.play) { selectedID = shot.id; onAction(.play(shot.id)) }
                     .keyboardShortcut(.space, modifiers: [])
                 Button(Copy.Action.openInPhotos) { onAction(.revealInPhotos(shot.id)) }
                 Divider()

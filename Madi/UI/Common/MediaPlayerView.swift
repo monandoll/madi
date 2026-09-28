@@ -63,6 +63,8 @@ final class PlayerClock: ObservableObject {
     private var bag: Set<AnyCancellable> = []
 
     @Published var isMuted = false
+    /// 영상의 가로 ÷ 세로 (회전 반영). 모르면 nil — 칸은 세로(9:16)로 둔다.
+    @Published var aspect: CGFloat?
 
     func attach(_ player: AVPlayer) {
         guard self.player !== player else { return }
@@ -80,11 +82,15 @@ final class PlayerClock: ObservableObject {
                 if let d = player?.currentItem?.duration.seconds, d.isFinite { self.total = d }
             }
         }
-        // 길이는 재생 전에도 보여 준다 (0:00 / 0:00 으로 두지 않는다).
+        // 길이 · 비율은 재생 전에도 안다 (0:00 / 0:00 으로 두지 않는다).
         if let asset = player.currentItem?.asset {
             Task { [weak self] in
-                guard let d = try? await asset.load(.duration).seconds, d.isFinite else { return }
-                self?.total = d
+                if let d = try? await asset.load(.duration).seconds, d.isFinite { self?.total = d }
+                if let track = try? await asset.loadTracks(withMediaType: .video).first,
+                   let (size, t) = try? await track.load(.naturalSize, .preferredTransform) {
+                    let r = CGRect(origin: .zero, size: size).applying(t)
+                    if r.height > 0 { self?.aspect = abs(r.width) / abs(r.height) }
+                }
             }
         }
         player.publisher(for: \.timeControlStatus)
@@ -179,10 +185,47 @@ struct PlayerTransport: View {
     }
 }
 
+/// 누르면 그 자리에서 재생되는 영상 — 멈춰 있으면 ▶ 를 얹는다. 촬영본 정보 칸 (viewdata-map ⑫).
+struct InlineVideo: View {
+    let url: URL
+    /// 이 촬영본을 틀라는 알림(`.madiShotPlay`)을 알아볼 id.
+    var id: String
+    @StateObject private var players = MediaPlayers()
+    @StateObject private var clock = PlayerClock()
+
+    var body: some View {
+        let player = players.player(for: url)
+        VStack(spacing: Tokens.Space.inner) {
+            MediaPlayerView(player: player)
+                .background(.black)
+                .clipShape(.rect(cornerRadius: Tokens.Radius.card))
+                // 칸은 영상 비율대로 — 가로 원본을 세로 칸에 넣으면 위아래가 검게 빈다
+                .aspectRatio(clock.aspect ?? Tokens.Ratio.vertical, contentMode: .fit)
+                .overlay {
+                    if !clock.isPlaying {
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 34))
+                            .foregroundStyle(.white, .black.opacity(0.35))
+                    }
+                }
+                .contentShape(.rect)
+                .onTapGesture { clock.toggle() }
+            PlayerTransport(clock: clock)
+        }
+        .onAppear { clock.attach(player) }
+        .onDisappear { clock.detach() }
+        .onReceive(NotificationCenter.default.publisher(for: .madiShotPlay)) { note in
+            if note.userInfo?["id"] as? String == id { clock.toggle() }
+        }
+    }
+}
+
 extension Notification.Name {
     /// 편집안 플레이어를 이 위치(초)로 옮겨 재생한다 — "처음부터 보기" · 장면 "여기서 재생".
     /// userInfo `seconds: Double`. 바꾸는 층(개발)이 보낸다.
     static let madiPlayerSeek = Notification.Name("madi.player.seek")
+    /// 갤러리 "재생" (우클릭 · 스페이스) — 정보 칸의 그 촬영본을 틀거나 멈춘다. userInfo `id: String`.
+    static let madiShotPlay = Notification.Name("madi.shot.play")
 }
 
 /// 편집안 자리의 영상 + 재생 막대 — 위치 옮기기 알림을 받는다.

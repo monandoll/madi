@@ -233,6 +233,17 @@ let shots: [Shot] = [
             selectedSceneID: "s4"
         )
     },
+    Shot("gallery-video") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups.map { g in
+                var g = g
+                g.shots = g.shots.map { var s = $0; s.videoURL = shotVideo; return s }
+                return g
+            }),
+            selectedShotID: SampleData.shotsToday[0].id
+        )
+    },
     Shot("results-video") {
         RootView(
             studio: SampleData.studio,

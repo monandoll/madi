@@ -194,7 +194,10 @@ final class AppController {
             openShotID = id
             viewingVersionID = nil
             try await ensureDraft(videoID: id, db, queue)
-        case .play(let id), .revealInPhotos(let id):
+        case .play(let id):
+            // 정보 칸에서 그 자리에서 튼다 (QuickTime 을 열지 않는다)
+            NotificationCenter.default.post(name: .madiShotPlay, object: nil, userInfo: ["id": id])
+        case .revealInPhotos(let id):
             if let path = snapshot?.videos.first(where: { $0.id == id })?.localPath {
                 NSWorkspace.shared.open(URL(fileURLWithPath: path))
             } else {

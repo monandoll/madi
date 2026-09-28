@@ -86,7 +86,9 @@ enum ViewDataMapper {
             results: results(of: v.id, s),
             // iCloud 원본 받는 중 — 받는 동안만 (§2 "저장 공간 최적화")
             fetchProgress: v.status == .importing ? s.importProgress[v.id] : nil,
-            problem: v.status == .failed ? Copy.Photos.importFailedShort : nil
+            problem: v.status == .failed ? Copy.Photos.importFailedShort : nil,
+            // 정보 칸에서 그 자리에서 튼다 — 다 받은 앱 사본만
+            videoURL: v.status == .ready ? v.localPath.map { URL(fileURLWithPath: $0) } : nil
         )
     }
 

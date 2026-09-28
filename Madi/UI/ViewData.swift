@@ -102,13 +102,16 @@ public struct ShotItem: Identifiable, Hashable, Sendable {
     public var fetchProgress: Double?
     /// 원본을 못 받았다. 사람 말 이유 한 줄 (viewdata-map 3절 ④). **붉은색이 아니다.**
     public var problem: String?
+    /// 원본 영상 (앱 사본). 있으면 정보 칸에서 **그 자리에서 재생**한다 (개발이 넣음, viewdata-map ⑫).
+    public var videoURL: URL?
 
     public init(
         id: String, title: String, shotAt: Date, duration: Double,
         speech: SpeechLevel = .clear, isMaking: Bool = false,
         thumbnail: Thumbnail = .none, results: [ResultRef] = [],
-        fetchProgress: Double? = nil, problem: String? = nil
+        fetchProgress: Double? = nil, problem: String? = nil, videoURL: URL? = nil
     ) {
+        self.videoURL = videoURL
         self.id = id; self.title = title; self.shotAt = shotAt; self.duration = duration
         self.speech = speech; self.isMaking = isMaking
         self.thumbnail = thumbnail; self.results = results
