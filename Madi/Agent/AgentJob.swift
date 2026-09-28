@@ -141,7 +141,8 @@ public struct AgentJob: Sendable {
     /// AI 가 크리에이터에게 한 마지막 말을 돌려준다.
     @discardableResult
     func turnAndCheck(
-        _ choice: Choice, _ request: AgentRequest, videoID: String, compositionID: String, kind: String
+        _ choice: Choice, _ request: AgentRequest, videoID: String, compositionID: String, kind: String,
+        answerOnly: Bool = false
     ) async throws -> String {
         let workDir = request.workDir
         let base: [String: JSONValue] = [
@@ -173,6 +174,13 @@ public struct AgentJob: Sendable {
         if let message = outcome?.message, outcome?.isError == true { payload["error"] = .string(message) }
         try? db.log("agent.turn.finished", subject: videoID, payload: payload)
 
+        // 채팅 질문: 편집안 없이 답만 했으면 그 답을 돌려준다 (answerOnly).
+        let answered = answerOnly && !saved && outcome?.isError == false
+            && !(said.last?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        if answered {
+            try? FileManager.default.removeItem(at: workDir)
+            return said.last!.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         guard saved, outcome?.isError == false else {
             // 실패 원인을 보려고 작업 폴더는 남긴다 (§7 중간 산출물 규칙과 같다).
             throw Failure(description: outcome?.isError == true

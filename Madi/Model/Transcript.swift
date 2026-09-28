@@ -23,6 +23,33 @@ public struct Transcript: Codable, Hashable, Sendable {
         self.videoID = videoID; self.words = words
     }
 
+    /// 말이 아닌 것을 걷어 낸다. Whisper 는 음악 · 소음만 있는 구간에 말을 **지어낸다** —
+    /// `[두 번째 도전!]` · `(음악)` · `♪` 처럼 괄호로 싼 소리 설명이 오고, 시각이 영상 길이를 넘기도 한다
+    /// (헬스장 촬영본 실측: 47초 영상에 `[035.88-059.32] [두 번째 주인공]`). 그게 자막 · 제목으로 들어가면 안 된다.
+    /// - 괄호(`[]` · `()`)로 열고 닫는 구간은 낱말 여러 개에 걸쳐도 통째로 뺀다
+    /// - `♪` · `*` 가 든 낱말을 뺀다
+    /// - 시작이 영상 길이 이후인 낱말을 뺀다
+    public func droppingNonSpeech(duration: Double) -> Transcript {
+        var kept: [Word] = []
+        var closer: Character?
+        for w in words {
+            let t = w.text.trimmingCharacters(in: .whitespaces)
+            if let c = closer {
+                if t.contains(c) { closer = nil }
+                continue
+            }
+            if let first = t.first, first == "[" || first == "(" {
+                let c: Character = first == "[" ? "]" : ")"
+                if !t.dropFirst().contains(c) { closer = c }
+                continue
+            }
+            if t.contains("♪") || t.contains("*") { continue }
+            if w.start >= duration { continue }
+            kept.append(w)
+        }
+        return Transcript(videoID: videoID, words: kept)
+    }
+
     public func words(in range: ClosedRange<Double>) -> [Word] {
         words.filter { $0.start >= range.lowerBound - 1e-9 && $0.start <= range.upperBound + 1e-9 }
     }

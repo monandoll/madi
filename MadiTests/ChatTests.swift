@@ -33,6 +33,11 @@ struct ChatTests {
                     box.prompts.append(request.prompt)
                     box.args.append(request.mcp.arguments)
                     if fail { c.yield(.finished(AgentOutcome(isError: true, message: "한도"))); c.finish(); return }
+                    // 질문 — 편집안 없이 답만 (playbook · Chat.request)
+                    if request.prompt.contains("크리에이터: [질문]") {
+                        c.yield(.text("헬스장에서 찍은 스쿼트 영상이에요."))
+                        c.yield(.finished(AgentOutcome(isError: false))); c.finish(); return
+                    }
                     let a = request.mcp.arguments
                     let id = a[a.firstIndex(of: "--composition")! + 1]
                     let rev = a[a.firstIndex(of: "--revision-of")! + 1]
@@ -93,6 +98,21 @@ struct ChatTests {
         let ask2 = try #require(try await db.writer.read { try ChatRecord.filter(Column("kind") == "choices").order(Column("createdAt").desc).fetchOne($0) })
         try await Chat.answerRemember(db: db, choicesID: ask2.id, yes: false)
         #expect(try db.userRules() == ["영상은 15초 안팎으로"])
+    }
+
+    @Test("질문에는 답만 한다 — 새 편집안 · 렌더 · '앞으로도?' 없이 AI 말 한 줄")
+    func answersQuestion() async throws {
+        let db = try setup()
+        let box = Box()
+        let sent = try await Chat.send(db: db, videoID: "v1", text: "[질문] 무슨 영상이야?", viewing: "d") { _ in }
+        try await agent(db, box).chat(messageID: sent.id)
+        let (comps, rows) = try await db.writer.read { db in
+            (try CompositionRecord.filter(Column("origin") == "chat").fetchCount(db),
+             try ChatRecord.order(Column("createdAt")).fetchAll(db))
+        }
+        #expect(comps == 0 && box.renders.isEmpty)
+        #expect(rows.map(\.kind) == [.creator, .assistant])
+        #expect(rows[1].text == "헬스장에서 찍은 스쿼트 영상이에요." && rows[1].compositionId == nil)
     }
 
     @Test("일반화할 게 없으면 묻지 않는다 (AI 가 rule 을 비움)")

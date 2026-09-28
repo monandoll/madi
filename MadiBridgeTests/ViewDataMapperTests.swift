@@ -287,4 +287,24 @@ struct ViewDataMapperTests {
         guard case .ready(let plan) = try #require(ViewDataMapper.plan(s, videoID: "v", ai: .claude)) else { Issue.record(""); return }
         #expect(plan.latestResultID == "o2")
     }
+
+    @Test("AI 말의 마크다운 기호를 걷는다 — 말풍선에 ** · - 가 보이지 않는다")
+    func plainStripsMarkdown() {
+        let said = "헬스장 영상이에요.\n\n- **말소리:** 거의 없어요.\n## 화면\n작게 나와요."
+        #expect(ViewDataMapper.plain(said) == "헬스장 영상이에요.\n\n· 말소리: 거의 없어요.\n화면\n작게 나와요.")
+    }
+
+    @Test("달라진 점에는 AI 말의 첫 문장만")
+    func firstSentenceOnly() {
+        #expect(ViewDataMapper.firstSentence("쉬는 구간 2곳을 뺐어요. 나머지는 그대로예요.") == "쉬는 구간 2곳을 뺐어요.")
+        let long = String(repeating: "가", count: 80)
+        #expect(ViewDataMapper.firstSentence(long).count == 60)
+    }
+
+    @Test("AI 가 제목을 안 적었으면 첫 자막으로 이름을 짓는다 — 촬영 시각보다 먼저")
+    func titleFallsBackToCaptions() throws {
+        let s = LibrarySnapshot(videos: [video("v", at: now)],
+                                compositions: [try comp("c1", title: "", at: now)], now: now)
+        #expect(ViewDataMapper.title(of: "v", s) == "첫 덩어리0 둘째0 첫 덩어리1 둘째1")
+    }
 }

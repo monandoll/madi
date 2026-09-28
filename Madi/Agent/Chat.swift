@@ -81,9 +81,11 @@ public enum Chat {
         [
             "크리에이터: \(text)",
             "",
-            "(앱이 붙임) 크리에이터가 지금 보고 있는 편집안이다. 위 요청대로 고친 편집안을 `write_composition` 으로 **새로** 보낸다.",
-            "요청과 상관없는 장면은 그대로 둔다. 영문(`secondary`)도 쓴 문장마다 다시 보낸다.",
-            "저장되면 크리에이터에게 무엇을 바꿨는지 한두 문장으로 말한다 — 편집 용어 없이.",
+            "(앱이 붙임) 크리에이터가 지금 보고 있는 편집안이다.",
+            "**고쳐 달라는 요청이면** 고친 편집안을 `write_composition` 으로 **새로** 보낸다. 요청과 상관없는 장면은 그대로 둔다. 영문(`secondary`)도 쓴 문장마다 다시 보낸다.",
+            "저장되면 크리에이터에게 무엇을 바꿨는지 한두 문장으로 말한다 — 편집 용어 없이. 첫 문장에 바꾼 것을 쓴다 (결과물 화면에 그대로 뜬다).",
+            "**질문이면**(무슨 영상인지 · 왜 그렇게 했는지 등) 편집안을 보내지 않고 답만 한다. 새 영상이 만들어지지 않는다.",
+            "답은 **세 문장 이내의 평범한 말**로 쓴다. 마크다운(`**` · `-` 목록 · `#` 제목)을 쓰지 않는다 — 채팅 말풍선에 기호가 그대로 보인다.",
             "이 요청이 다음 영상에도 통할 **일반 규칙**이면 `rule` 에 한 문장으로 적는다 (예: \"영상은 15초 안팎으로\"). 이 영상에만 해당하면 비운다 — 그러면 크리에이터에게 묻지 않는다.",
             "",
             "```json",
@@ -126,9 +128,14 @@ extension AgentJob {
             workDir: workRoot.appending(path: compositionID, directoryHint: .isDirectory)
         )
         do {
-            let said = try await turnAndCheck(choice, request, videoID: videoID, compositionID: compositionID, kind: "chat")
+            // 질문에는 편집안 없이 답만 한다 — 새 판 · 새 영상을 만들지 않는다.
+            let said = try await turnAndCheck(choice, request, videoID: videoID, compositionID: compositionID,
+                                              kind: "chat", answerOnly: true)
+            let wrote = try await db.writer.read { try CompositionRecord.fetchOne($0, key: compositionID) } != nil
             try await db.writer.write { db in
-                try ChatRecord(videoId: videoID, kind: .assistant, text: said, compositionId: compositionID).insert(db)
+                try ChatRecord(videoId: videoID, kind: .assistant, text: said,
+                               compositionId: wrote ? compositionID : nil).insert(db)
+                guard wrote else { return }
                 // §10 — 고친 뒤 한 번 묻는다. 묻는 문장은 AI 가 다듬은 일반 규칙이고, 일반화할 게 없으면 묻지 않는다 (결정 ③).
                 let proposed = try EventRecord
                     .filter(Column("kind") == "agent.rule.proposed" && Column("subjectId") == compositionID)

@@ -92,10 +92,43 @@ enum ViewDataMapper {
 
     /// 말소리에서 뽑은 제목 — AI 가 쓴 편집안 제목(가장 최근 사람이 본 판). 초안 전에는 빈 문자열.
     static func title(of videoID: String, _ s: LibrarySnapshot) -> String {
-        for c in s.visibleVersions(of: videoID).reversed() {
-            if let t = try? c.composition().meta.title, !t.isEmpty { return t }
+        let versions = s.visibleVersions(of: videoID).reversed().compactMap { try? $0.composition() }
+        for c in versions where !c.meta.title.isEmpty { return c.meta.title }
+        // AI 가 제목을 안 적은 옛 판 — 첫 자막(훅)을 이어 붙여 이름으로 쓴다. 촬영 시각보다 알아보기 쉽다.
+        if let c = versions.first {
+            let captions = c.scenes.flatMap(\.captions).map(\.text)
+            var t = ""
+            for text in captions {
+                let next = t.isEmpty ? text : t + " " + text
+                if next.count > 25 { break }
+                t = next
+            }
+            if !t.isEmpty { return t }
         }
         return ""
+    }
+
+    /// AI 말을 말풍선에 맞게 — 마크다운 기호를 걷는다 (`**굵게**`, `- 목록`, `# 제목`).
+    /// 지침(playbook)으로 막지만, 새어 나와도 기호가 보이지 않게 여기서 한 번 더 거른다.
+    static func plain(_ text: String) -> String {
+        text.components(separatedBy: "\n").map { line -> String in
+            var l = line.replacingOccurrences(of: "**", with: "").replacingOccurrences(of: "__", with: "")
+            let trimmed = l.drop(while: { $0 == " " })
+            if trimmed.hasPrefix("#") { l = String(trimmed.drop(while: { $0 == "#" || $0 == " " })) }
+            else if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") { l = "· " + trimmed.dropFirst(2) }
+            return l
+        }
+        .joined(separator: "\n")
+        .replacingOccurrences(of: "\n\n\n", with: "\n\n")
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// 첫 문장 — 결과물 "달라진 점" 한 줄. 긴 답을 통째로 넣지 않는다.
+    static func firstSentence(_ text: String) -> String {
+        let flat = plain(text).replacingOccurrences(of: "\n", with: " ")
+        let end = flat.firstIndex(where: { ".!?。".contains($0) })
+        let sentence = end.map { String(flat[...$0]) } ?? flat
+        return sentence.count > 60 ? String(sentence.prefix(59)) + "…" : sentence
     }
 
     // MARK: - 결과물
@@ -150,7 +183,7 @@ enum ViewDataMapper {
         // 이 판을 만든 채팅 수정에서 AI 가 한 말 — "무엇을 바꿨는지" 를 사람 말로 가장 잘 적은 것
         let version = s.versionRoot(of: rec.id)?.id ?? rec.id
         if let said = s.chats.last(where: { $0.kind == .assistant && $0.compositionId == version })?.text, !said.isEmpty {
-            lines.append(.init(label: said, value: ""))
+            lines.append(.init(label: firstSentence(said), value: ""))
         }
         if Copy.duration(a.duration) != Copy.duration(b.duration) {
             lines.append(.init(label: Copy.Plan.Info.length,
@@ -406,7 +439,7 @@ enum ViewDataMapper {
             case .creator: out.append(ChatMessage(id: row.id, kind: .user(row.text ?? ""), stamp: stamp))
             case .creatorNotSent: out.append(ChatMessage(id: row.id, kind: .userNotSent(row.text ?? ""), stamp: stamp))
             case .assistant:
-                out.append(ChatMessage(id: row.id, kind: .assistant(row.text ?? ""), stamp: stamp))
+                out.append(ChatMessage(id: row.id, kind: .assistant(plain(row.text ?? "")), stamp: stamp))
                 // 이 말로 생긴 판의 결과물이 보여지면 카드로 붙는다
                 if let cid = row.compositionId, let o = s.shownOutput(forVersion: cid), let ref = resultRef(o, s) {
                     out.append(ChatMessage(id: row.id + ".result", kind: .result(ref)))

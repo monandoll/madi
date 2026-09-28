@@ -17,7 +17,7 @@ import CoreGraphics
 public enum DigestBuilder {
 
     /// 형식 버전. 텍스트 형식이 바뀌면 올린다 — 옛 버전 다이제스트는 다시 만든다.
-    public static let version = 1
+    public static let version = 2   // 2: 말이 아닌 전사를 걷는다 (Transcript.droppingNonSpeech)
 
     public struct Digest: Sendable {
         public var text: String
@@ -44,7 +44,8 @@ public enum DigestBuilder {
         var clock = Date()
         func lap(_ name: String) { timings[name] = Date().timeIntervalSince(clock); clock = Date() }
 
-        let transcript = try await transcriber.transcribe(url)
+        // 말이 아닌 것(괄호로 싼 소리 설명 · 영상 길이를 넘는 낱말)은 여기서 걷는다 — 두 전사 엔진이 다 지나는 한 곳.
+        let transcript = try await transcriber.transcribe(url).droppingNonSpeech(duration: info.duration)
         lap("transcript")
         let subject = try await SubjectTrackBuilder.build(
             videoID: videoID, url: url, workDir: scratch.appending(path: "subject")
