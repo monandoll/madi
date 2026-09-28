@@ -14,6 +14,8 @@ struct PlanScreen: View {
     var state: PlanState
     var messages: [ChatMessage]
     var chips: [String]
+    /// 촬영본 제목. 편집안이 아직 없을 때(준비 중 · AI 미연결 등)에도 제목 줄은 **이 촬영본**이다 (개발이 넣음).
+    var shotTitle: String = ""
 
     var onAction: (UIAction) -> Void = { _ in }
 
@@ -234,11 +236,14 @@ struct PlanScreen: View {
     private var title: String {
         switch state {
         case .ready(let plan), .making(let plan, _): plan.shotTitle
-        case .stopped(let plan, _, _, _): plan?.shotTitle ?? SampleTitlePlaceholder.title
+        case .stopped(let plan, _, _, _): plan?.shotTitle ?? fallbackTitle
         case .notYet(let title, _): title
-        case .preparing, .noAI, .notLoggedIn: SampleTitlePlaceholder.title
+        case .preparing, .noAI, .notLoggedIn: fallbackTitle
         }
     }
+
+    /// 편집안이 없을 때의 제목 — 실제 촬영본 제목. 샘플 제목은 프리뷰(`shotTitle` 비움)에서만.
+    private var fallbackTitle: String { shotTitle.isEmpty ? SampleTitlePlaceholder.title : shotTitle }
 
     private var subtitle: String {
         switch state {

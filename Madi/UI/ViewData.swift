@@ -767,6 +767,9 @@ public struct CaptionLook: Hashable, Sendable {
         public var color: Color { Color(red: red, green: green, blue: blue) }
     }
 
+    /// 견본에 없는 색 (컬러 피커로 고른 색).
+    public static let customID = "custom"
+
     /// 이 Mac 에 설치된, 한글을 그릴 수 있는 글꼴 (`MadiFont.hangulFamilies()`).
     /// "기본" 은 목록에 없다 — 화면이 맨 앞에 붙인다.
     public var fonts: [String]
@@ -780,6 +783,12 @@ public struct CaptionLook: Hashable, Sendable {
     public var secondaryFill: Swatch.ID
     /// 보조 문구도 본문과 같은 글꼴 · 기울임을 쓸지.
     public var secondarySameAsMain: Bool
+    /// 지금 본문 · 영문 줄의 실제 색. 견본에 없는 색(컬러 피커로 고른 것)이면 `fill` 은 `CaptionLook.customID`.
+    public var fillColor: Swatch
+    public var secondaryFillColor: Swatch
+    /// 미리보기 문장 — 사람이 바꿔 넣을 수 있다 (저장되는 것은 모양뿐, 이 문장은 미리보기에만 쓴다).
+    public var previewText: String
+    public var previewSecondaryText: String
     /// 지금 고른 모양으로 그린 자막 한 장 (본문 + 영문 보조). 렌더 코드가 그린다.
     public var preview: Thumbnail
     /// 저장된 글꼴이 이 Mac 에서 지워졌다. 조용히 대체하지 않는다 (`§9`).
@@ -789,8 +798,14 @@ public struct CaptionLook: Hashable, Sendable {
         fonts: [String], font: String?, weight: Weight, italic: Bool,
         fills: [Swatch], fill: Swatch.ID,
         secondaryFills: [Swatch], secondaryFill: Swatch.ID,
-        secondarySameAsMain: Bool, preview: Thumbnail = .none, fontMissing: Bool = false
+        secondarySameAsMain: Bool, preview: Thumbnail = .none, fontMissing: Bool = false,
+        fillColor: Swatch? = nil, secondaryFillColor: Swatch? = nil,
+        previewText: String = Copy.Look.previewMain, previewSecondaryText: String = Copy.Look.previewSecondary
     ) {
+        self.fillColor = fillColor ?? fills.first { $0.id == fill } ?? Swatch(id: Self.customID, label: "", red: 1, green: 1, blue: 1)
+        self.secondaryFillColor = secondaryFillColor ?? secondaryFills.first { $0.id == secondaryFill }
+            ?? Swatch(id: Self.customID, label: "", red: 1, green: 1, blue: 1)
+        self.previewText = previewText; self.previewSecondaryText = previewSecondaryText
         self.fonts = fonts; self.font = font; self.weight = weight; self.italic = italic
         self.fills = fills; self.fill = fill
         self.secondaryFills = secondaryFills; self.secondaryFill = secondaryFill

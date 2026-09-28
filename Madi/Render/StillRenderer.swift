@@ -63,6 +63,36 @@ public enum StillRenderer {
         return image
     }
 
+    /// 배경과 다른 줄(글자)을 찾아 그 가운데로 `height` 높이 띠를 자른다. 글자가 없으면 nil.
+    public static func captionBand(_ image: CGImage, height: Int) -> CGImage? {
+        let w = image.width, h = image.height
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+              let data = ctx.data else { return nil }
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        let px = data.bindMemory(to: UInt8.self, capacity: w * h * 4)
+        let bg = (px[0], px[1], px[2])
+        var top = -1, bottom = -1
+        for y in 0..<h {
+            let row = y * w * 4
+            var ink = false
+            var x = 0
+            while x < w {
+                let i = row + x * 4
+                if abs(Int(px[i]) - Int(bg.0)) + abs(Int(px[i + 1]) - Int(bg.1)) + abs(Int(px[i + 2]) - Int(bg.2)) > 30 { ink = true; break }
+                x += 4
+            }
+            if ink { if top < 0 { top = y }; bottom = y }
+        }
+        guard top >= 0 else { return nil }
+        let mid = (top + bottom) / 2
+        let band = max(height, bottom - top + 40)
+        let y0 = min(max(0, mid - band / 2), h - band)
+        // 버퍼 줄 순서와 CGImage 줄 순서가 같다 (둘 다 위에서부터)
+        return image.cropping(to: CGRect(x: 0, y: y0, width: w, height: band))
+    }
+
     public static func makeContext(size: CGSize) throws -> CGContext {
         guard let ctx = CGContext(
             data: nil,

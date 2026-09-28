@@ -20,6 +20,8 @@ struct RootView: View {
     var plan: PlanState?
     var planMessages: [ChatMessage] = []
     var planChips: [String] = []
+    /// 연 촬영본의 제목 (편집안이 아직 없을 때도 제목 줄에 쓴다).
+    var planTitle: String = ""
 
     var results: ResultsState = .empty
     var resultDetail: ResultDetail?
@@ -108,6 +110,7 @@ struct RootView: View {
                 state: plan,
                 messages: planMessages,
                 chips: planChips,
+                shotTitle: planTitle,
                 onAction: send,
                 initialSceneID: selectedSceneID,
                 initialEditingID: editingSceneID

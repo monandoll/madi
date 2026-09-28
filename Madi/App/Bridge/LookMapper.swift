@@ -32,24 +32,35 @@ enum LookMapper {
         }
     }
 
-    /// 가장 가까운 견본.
-    static func nearest(_ c: HexColor) -> String {
-        swatchColors.min { dist($0.rgba, c.rgba) < dist($1.rgba, c.rgba) }!.id
+    /// 딱 맞는 견본 — 없으면 `CaptionLook.customID` (컬러 피커로 고른 색). 8비트로 저장되니 반 칸 안이면 같다.
+    static func matching(_ c: HexColor) -> String {
+        swatchColors.first { dist($0.rgba, c.rgba) < 3 * pow(0.5 / 255, 2) }?.id ?? CaptionLook.customID
+    }
+
+    static func swatch(_ c: HexColor, labels: [String: String]) -> CaptionLook.Swatch {
+        let id = matching(c)
+        return CaptionLook.Swatch(id: id, label: labels[id] ?? Copy.Look.customColor,
+                                  red: Double(c.rgba.r), green: Double(c.rgba.g), blue: Double(c.rgba.b))
     }
 
     static func dist(_ a: RGBA, _ b: RGBA) -> CGFloat {
         (a.r - b.r) * (a.r - b.r) + (a.g - b.g) * (a.g - b.g) + (a.b - b.b) * (a.b - b.b)
     }
 
-    static func look(_ l: StyleValues.LookValues, fonts: [String], labels: [String: String], preview: Thumbnail) -> CaptionLook {
+    static func look(_ l: StyleValues.LookValues, fonts: [String], labels: [String: String], preview: Thumbnail,
+                     previewText: String = Copy.Look.previewMain,
+                     previewSecondaryText: String = Copy.Look.previewSecondary) -> CaptionLook {
         CaptionLook(
             fonts: fonts, font: l.caption.fontFamily, weight: weight(l.caption.weight), italic: l.caption.italic,
-            fills: swatches(order: ["white", "yellow", "sky"], labels: labels), fill: nearest(l.caption.fill),
-            secondaryFills: swatches(order: ["yellow", "white", "sky"], labels: labels), secondaryFill: nearest(l.secondary.fill),
+            fills: swatches(order: ["white", "yellow", "sky"], labels: labels), fill: matching(l.caption.fill),
+            secondaryFills: swatches(order: ["yellow", "white", "sky"], labels: labels), secondaryFill: matching(l.secondary.fill),
             secondarySameAsMain: l.secondary.fontFamily == l.caption.fontFamily && l.secondary.italic == l.caption.italic,
             preview: preview,
             // 저장된 글꼴이 이 Mac 에 없다 — 조용히 대체하지 않는다 (§9)
-            fontMissing: l.caption.fontFamily.map { !fonts.contains($0) } ?? false
+            fontMissing: l.caption.fontFamily.map { !fonts.contains($0) } ?? false,
+            fillColor: swatch(l.caption.fill, labels: labels),
+            secondaryFillColor: swatch(l.secondary.fill, labels: labels),
+            previewText: previewText, previewSecondaryText: previewSecondaryText
         )
     }
 
@@ -71,6 +82,12 @@ enum LookMapper {
             if let c = color(id) { l.caption.fill = c }
         case .secondaryFill(let id):
             if let c = color(id) { l.secondary.fill = c }
+        case .fillColor(let r, let g, let b):
+            l.caption.fill = HexColor(RGBA(CGFloat(r), CGFloat(g), CGFloat(b), 1))
+        case .secondaryFillColor(let r, let g, let b):
+            l.secondary.fill = HexColor(RGBA(CGFloat(r), CGFloat(g), CGFloat(b), 1))
+        case .previewText, .previewSecondaryText:
+            break   // 미리보기 문장 — 모양이 아니다
         case .secondarySameAsMain(let on):
             if on {
                 l.secondary.fontFamily = l.caption.fontFamily

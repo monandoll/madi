@@ -20,6 +20,7 @@ final class AppController {
     var gallery: GalleryState = .loading
     var plan: PlanState?
     var planMessages: [ChatMessage] = []
+    var planTitle = ""
     var planChips: [String] = []
     var results: ResultsState = .loading
     var making: MakingState = .empty
@@ -144,6 +145,7 @@ final class AppController {
         if let id = openShotID {
             plan = ViewDataMapper.plan(s, videoID: id, ai: ai, viewing: viewingVersionID, modelReady: modelReady)
             planMessages = ViewDataMapper.chat(s, videoID: id)
+            planTitle = s.videos.first { $0.id == id }.map { ViewDataMapper.shotTitle($0, s) } ?? ""
             planChips = [Copy.Chat.Chips.cutGaps, Copy.Chat.Chips.shorter, Copy.Chat.Chips.hookFirst]
         } else {
             plan = nil
@@ -545,7 +547,7 @@ final class AppController {
         case .pickAlbum:
             pickAlbum()
         case .look(let change):
-            saveLook(change)
+            lookChanged(change)
         }
     }
 
@@ -589,18 +591,42 @@ final class AppController {
     /// 설정 화면의 자막 모양 — 가장 최근 스타일 판에서. **판이 바뀔 때만** 다시 만든다.
     /// 전에는 화면 값을 다시 계산할 때마다(분석 중 약 2초마다) 스타일 파일을 읽고 설치된 글꼴을 전부 훑었다 —
     /// 메인 스레드라 화면이 버벅였다 (6단계 실제 앱 로그: CPU 97%, 스타일 경고 2분에 54번).
-    @ObservationIgnored private var lookCache: (ref: StyleRef, look: CaptionLook)?
+    @ObservationIgnored private var lookCache: (key: LookKey, look: CaptionLook)?
     /// 설치된 한글 글꼴 — 한 번 읽는다. 글꼴을 새로 깔았으면 `refreshFonts()`.
     @ObservationIgnored private var fontsCache: [String]?
+    /// 컬러 피커를 끄는 동안의 모양 — 미리보기는 바로 바뀌고, 저장(새 스타일 판)은 손을 멈춘 뒤 한 번 한다.
+    /// 끌 때마다 저장하면 판이 수십 개 쌓인다.
+    @ObservationIgnored private var lookDraft: StyleValues.LookValues?
+    @ObservationIgnored private var lookSaveTask: Task<Void, Never>?
+
+    /// 미리보기가 달라지는 것 전부 — 스타일 판 · 저장 전 모양 · 미리보기 문장.
+    private struct LookKey: Hashable {
+        var ref: StyleRef
+        var look: StyleValues.LookValues
+        var text: String
+        var secondary: String
+    }
+
+    private static let previewTextKey = "madi.look.previewMain"
+    private static let previewSecondaryKey = "madi.look.previewSecondary"
+    private var previewText: String {
+        UserDefaults.standard.string(forKey: Self.previewTextKey) ?? Copy.Look.previewMain
+    }
+    private var previewSecondaryText: String {
+        UserDefaults.standard.string(forKey: Self.previewSecondaryKey) ?? Copy.Look.previewSecondary
+    }
 
     private func cachedLook() -> CaptionLook? {
-        guard let ref = try? StyleStore.latest() else { return nil }
-        if let c = lookCache, c.ref == ref { return c.look }
-        guard let style = try? StyleStore.load(ref) else { return nil }
+        guard let ref = try? StyleStore.latest(), let style = try? StyleStore.load(ref) else { return nil }
+        var values = style.values
+        if let lookDraft { values.look = lookDraft }
+        let key = LookKey(ref: ref, look: values.look, text: previewText, secondary: previewSecondaryText)
+        if let c = lookCache, c.key == key { return c.look }
         let fonts = fontsCache ?? MadiFont.hangulFamilies()
         fontsCache = fonts
-        let look = LookMapper.look(style.values.look, fonts: fonts, labels: swatchLabels, preview: lookPreview(style))
-        lookCache = (ref, look)
+        let look = LookMapper.look(values.look, fonts: fonts, labels: swatchLabels, preview: lookPreview(values, key),
+                                   previewText: key.text, previewSecondaryText: key.secondary)
+        lookCache = (key, look)
         return look
     }
 
@@ -610,18 +636,64 @@ final class AppController {
         recompute()
     }
 
-    /// 지금 모양으로 그린 자막 한 장 (본문 + 영문). 스타일 판마다 한 번 그린다 (캐시).
-    private func lookPreview(_ style: Style) -> Thumbnail {
-        let url = thumbnails.root.appending(path: "look-\(style.id)@\(style.version).png")
+    /// 지금 모양으로 그린 자막 — **자막 둘레만** 잘라 낸 가로 그림 (1080×360).
+    /// 세로 한 장(1080×1920)을 통째로 주면 설정의 납작한 칸이 가운데만 보여 줘서 자막이 잘려 나갔다 (빈 검은 칸).
+    /// 그리는 것은 렌더와 같은 `CaptionLayer` 다 (§7).
+    private func lookPreview(_ values: StyleValues, _ key: LookKey) -> Thumbnail {
+        let url = thumbnails.root.appending(path: "look-preview-\(abs(key.hashValue)).png")
         if !FileManager.default.fileExists(atPath: url.path) {
-            let caption = Caption(id: "look", start: 0, end: 2, text: Copy.Look.previewMain, secondary: Copy.Look.previewSecondary)
-            if let image = try? StillRenderer.renderCaption(caption, size: CGSize(width: 1080, height: 1920),
-                                                             style: style.values, slot: .fullBody) {
+            let text = key.text.isEmpty ? " " : key.text
+            let caption = Caption(id: "look", start: 0, end: 2, text: text,
+                                  secondary: key.secondary.isEmpty ? nil : key.secondary)
+            let frame = CGSize(width: 1080, height: 1920)
+            if let image = try? StillRenderer.renderCaption(caption, size: frame, style: values, slot: .fullBody),
+               let band = StillRenderer.captionBand(image, height: 360) {
+                // 옛 미리보기 파일은 지운다 (문장 · 색을 바꿀 때마다 하나씩 생긴다)
+                if let old = try? FileManager.default.contentsOfDirectory(at: thumbnails.root, includingPropertiesForKeys: nil) {
+                    for f in old where f.lastPathComponent.hasPrefix("look-") { try? FileManager.default.removeItem(at: f) }
+                }
                 try? FileManager.default.createDirectory(at: thumbnails.root, withIntermediateDirectories: true)
-                try? StillRenderer.writePNG(image, to: url)
+                try? StillRenderer.writePNG(band, to: url)
             }
         }
         return FileManager.default.fileExists(atPath: url.path) ? Thumbnail(fileURL: url) : .none
+    }
+
+    /// 자막 모양을 바꿨다. 미리보기 문장은 미리보기에만 · 컬러 피커는 멈춘 뒤 한 번 저장 · 나머지는 바로 저장.
+    private func lookChanged(_ change: UIAction.Settings.Look) {
+        switch change {
+        case .previewText(let t):
+            UserDefaults.standard.set(t, forKey: Self.previewTextKey)
+        case .previewSecondaryText(let t):
+            UserDefaults.standard.set(t, forKey: Self.previewSecondaryKey)
+        case .fillColor, .secondaryFillColor:
+            guard let base = lookDraft ?? (try? StyleStore.load(StyleStore.latest()).values.look) else { return }
+            lookDraft = LookMapper.apply(change, to: base)
+            lookSaveTask?.cancel()
+            lookSaveTask = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(700))
+                guard !Task.isCancelled else { return }
+                self?.commitLookDraft()
+                self?.recompute()
+            }
+        default:
+            commitLookDraft()
+            saveLook(change)
+        }
+    }
+
+    /// 컬러 피커로 고르던 색을 새 스타일 판으로 저장한다.
+    private func commitLookDraft() {
+        lookSaveTask?.cancel()
+        guard let draft = lookDraft else { return }
+        lookDraft = nil
+        do {
+            let base = try StyleStore.load(StyleStore.latest())
+            guard draft != base.values.look else { return }
+            try StyleStore.saveLook(draft, basedOn: base)
+        } catch {
+            MadiPipeline.log.error("자막 모양 저장 실패: \(String(describing: error), privacy: .public)")
+        }
     }
 
     /// 고른 모양을 새 스타일 판으로 저장한다 — 다음에 만드는 영상부터 (§1-8 옛 결과물은 자기 판으로).

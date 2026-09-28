@@ -335,3 +335,13 @@ case .openSettings
   멈춰 있으면 ▶ 를 얹는다. 밑에 편집안과 같은 재생 막대(`PlayerTransport`). 칸 비율은 영상 비율(가로 원본이면 가로 칸)
 - 우클릭 "재생" · 스페이스 → 그 촬영본을 고르고 정보 칸에서 튼다 (`.madiShotPlay` 알림). QuickTime 을 열지 않는다
 - 다른 촬영본을 고르면 재생을 멈춘다. 스크린샷 `gallery-video` (MADI_SHOTS_VIDEO)
+
+## ⑬ 자막 모양 — 미리보기 문장 입력 · 아무 색 (2026-09-29, 사용자 요청 · 개발이 넣음)
+
+- 미리보기가 **빈 검은 칸**이던 것: 세로 한 장(1080×1920)을 납작한 칸에 넣어 가운데만 보였다. 이제 바꾸는 층이
+  자막 둘레 띠(1080×360, `StillRenderer.captionBand`)를 넘기고, 칸은 그 비율(3:1)로 fit
+- 미리보기 문장 칸 둘 (`Copy.Look.previewTextField` · `previewSecondaryField`) — 치는 대로 미리보기가 바뀐다.
+  모양이 아니라 저장되지 않는다 (앱 설정에 문장만 기억)
+- 색: 견본 3개(자주 쓰는 색 바로가기) + **컬러 피커**(`ColorPicker`, 불투명). 견본에 없는 색이면
+  `CaptionLook.customID` · 이름 "직접 고른 색", 피커 둘레에 고른 표시. `CaptionLook.fillColor` · `secondaryFillColor` 가 실제 색
+- 피커를 끄는 동안은 미리보기만 바뀌고, 손을 멈춘 뒤(0.7초) 새 스타일 판으로 한 번 저장한다

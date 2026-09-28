@@ -133,6 +133,12 @@ public enum UIAction: Hashable, Sendable {
             case italic(Bool)
             case fill(CaptionLook.Swatch.ID)
             case secondaryFill(CaptionLook.Swatch.ID)
+            /// 컬러 피커로 고른 색 (0...1 sRGB). 견본 3개는 자주 쓰는 색 바로가기다.
+            case fillColor(red: Double, green: Double, blue: Double)
+            case secondaryFillColor(red: Double, green: Double, blue: Double)
+            /// 미리보기 문장 — 저장되는 모양이 아니다. 미리보기에만 쓴다.
+            case previewText(String)
+            case previewSecondaryText(String)
             case secondarySameAsMain(Bool)
         }
     }

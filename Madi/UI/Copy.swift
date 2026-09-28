@@ -701,6 +701,12 @@ public enum Copy {
         /// 미리보기 문장. 크기가 그대로인 게 보여야 해서 한글 본문 + 영문 한 줄.
         public static let previewMain = "반대쪽도 똑같이 진행해주세요"
         public static let previewSecondary = "Repeat on the other side."
+        /// 미리보기 문장 칸 (사람이 바꿔 넣는다).
+        public static let previewTextField = "미리보기 문장"
+        public static let previewSecondaryField = "영문 줄"
+        /// 컬러 피커로 고른 색의 이름.
+        public static let customColor = "직접 고른 색"
+        public static let pickColor = "다른 색 고르기"
     }
 
     /// 품질 안내 (`Madi/Review/GateNotice.swift`). 결과는 나왔고 **다음 촬영 때 도움이 될 한 줄**이다.

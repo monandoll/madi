@@ -265,8 +265,22 @@ struct ViewDataMapperTests {
         l = LookMapper.apply(.weight(.heavy), to: l)
         #expect(l.caption.weight == 900)
         l = LookMapper.apply(.fill("sky"), to: l)
-        #expect(LookMapper.nearest(l.caption.fill) == "sky")
+        #expect(LookMapper.matching(l.caption.fill) == "sky")
         #expect(LookMapper.look(l, fonts: [], labels: [:], preview: .none).fontMissing)   // 이 Mac 에 없는 글꼴
+    }
+
+    @Test("자막 모양 — 컬러 피커로 고른 색은 견본이 아니라 '직접 고른 색'. 견본 색을 다시 고르면 견본으로 돌아간다")
+    func customColor() throws {
+        var l = try StyleStore.load().values.look
+        l = LookMapper.apply(.fillColor(red: 1, green: 0.3, blue: 0.5), to: l)
+        l = LookMapper.apply(.secondaryFillColor(red: 0.2, green: 0.8, blue: 0.4), to: l)
+        let cl = LookMapper.look(l, fonts: [], labels: [:], preview: .none)
+        #expect(cl.fill == CaptionLook.customID && cl.secondaryFill == CaptionLook.customID)
+        #expect(abs(cl.fillColor.green - 0.3) < 0.01 && abs(cl.secondaryFillColor.green - 0.8) < 0.01)
+        l = LookMapper.apply(.fillColor(red: 1, green: 1, blue: 1), to: l)
+        #expect(LookMapper.matching(l.caption.fill) == "white")
+        // 미리보기 문장은 모양이 아니다
+        #expect(LookMapper.apply(.previewText("아무 말"), to: l) == l)
     }
 
     @Test("⑧ 고른 결과물 — 바로 앞에 보여 준 결과물과 나란히, 달라진 점(AI 말 · 길이 · 장면 수). ⑨ 판의 가장 최근 결과물 id")

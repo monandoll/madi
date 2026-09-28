@@ -204,6 +204,9 @@ private struct GeneralSettings: View {
 private struct LookSettings: View {
     var look: CaptionLook?
     var onAction: (UIAction.Settings.Look) -> Void
+    /// 미리보기 문장 칸 — 치는 대로 미리보기가 바뀐다 (개발이 넣음, viewdata-map ⑬).
+    @State private var previewText = ""
+    @State private var previewSecondaryText = ""
 
     var body: some View {
         if let look {
@@ -219,6 +222,10 @@ private struct LookSettings: View {
         Form {
             Section {
                 preview(look)
+                TextField(Copy.Look.previewTextField, text: $previewText)
+                    .onChange(of: previewText) { _, t in onAction(.previewText(t)) }
+                TextField(Copy.Look.previewSecondaryField, text: $previewSecondaryText)
+                    .onChange(of: previewSecondaryText) { _, t in onAction(.previewSecondaryText(t)) }
             } header: {
                 Text(Copy.Look.preview)
             } footer: {
@@ -246,24 +253,29 @@ private struct LookSettings: View {
             }
 
             Section {
-                swatchRow(Copy.Look.fill, swatches: look.fills, selected: look.fill) {
-                    onAction(.fill($0))
-                }
+                swatchRow(Copy.Look.fill, swatches: look.fills, selected: look.fill, current: look.fillColor,
+                          onPick: { onAction(.fill($0)) },
+                          onCustom: { onAction(.fillColor(red: $0, green: $1, blue: $2)) })
                 swatchRow(Copy.Look.secondaryFill, swatches: look.secondaryFills,
-                          selected: look.secondaryFill) {
-                    onAction(.secondaryFill($0))
-                }
+                          selected: look.secondaryFill, current: look.secondaryFillColor,
+                          onPick: { onAction(.secondaryFill($0)) },
+                          onCustom: { onAction(.secondaryFillColor(red: $0, green: $1, blue: $2)) })
                 Toggle(Copy.Look.lookSecondarySameAsMain, isOn: Binding(
                     get: { look.secondarySameAsMain }, set: { onAction(.secondarySameAsMain($0)) }
                 ))
             }
         }
         .formStyle(.grouped)
+        .onAppear {
+            previewText = look.previewText
+            previewSecondaryText = look.previewSecondaryText
+        }
     }
 
+    /// 미리보기 — 바꾸는 층이 자막 둘레만 잘라 준 그림이다 (세로 한 장을 통째로 넣으면 납작한 칸에서 자막이 잘려 나갔다).
     private func preview(_ look: CaptionLook) -> some View {
         ThumbnailView(thumbnail: look.preview, cornerRadius: Tokens.Radius.thumbnail)
-            .frame(height: 120)
+            .aspectRatio(1080.0 / 360.0, contentMode: .fit)
             .frame(maxWidth: .infinity)
             .background(Color.black, in: .rect(cornerRadius: Tokens.Radius.thumbnail))
             .accessibilityLabel(Copy.Look.preview)
@@ -297,10 +309,12 @@ private struct LookSettings: View {
         }
     }
 
-    /// 색 견본. 숫자(#RRGGBB)를 보여 주지 않는다 — 동그라미와 이름만.
+    /// 색 — 자주 쓰는 견본 3개 + 컬러 피커(아무 색). 숫자(#RRGGBB)는 보여 주지 않는다.
     private func swatchRow(
         _ title: String, swatches: [CaptionLook.Swatch], selected: CaptionLook.Swatch.ID,
-        onPick: @escaping (CaptionLook.Swatch.ID) -> Void
+        current: CaptionLook.Swatch,
+        onPick: @escaping (CaptionLook.Swatch.ID) -> Void,
+        onCustom: @escaping (Double, Double, Double) -> Void
     ) -> some View {
         LabeledContent(title) {
             HStack(spacing: Tokens.Space.inner) {
@@ -324,12 +338,27 @@ private struct LookSettings: View {
                     .accessibilityLabel(swatch.label)
                     .accessibilityAddTraits(swatch.id == selected ? .isSelected : [])
                 }
-                if let current = swatches.first(where: { $0.id == selected }) {
-                    Text(current.label)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(minWidth: 40, alignment: .leading)
+                // 아무 색 — 견본에 없는 색을 고르면 이 칸이 골라진 상태가 된다
+                ColorPicker(Copy.Look.pickColor, selection: Binding(
+                    get: { current.color },
+                    set: { color in
+                        guard let c = NSColor(color).usingColorSpace(.sRGB) else { return }
+                        onCustom(Double(c.redComponent), Double(c.greenComponent), Double(c.blueComponent))
+                    }
+                ), supportsOpacity: false)
+                .labelsHidden()
+                .help(Copy.Look.pickColor)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(Tokens.Palette.accent, lineWidth: 2)
+                        .padding(-3)
+                        .opacity(selected == CaptionLook.customID ? 1 : 0)
+                        .allowsHitTesting(false)
                 }
+                Text(swatches.first(where: { $0.id == selected })?.label ?? Copy.Look.customColor)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 64, alignment: .leading)
             }
         }
     }
