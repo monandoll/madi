@@ -18,6 +18,8 @@ public struct LibrarySnapshot: Sendable {
     public var now: Date
     /// 만드는 중 진행률 (편집안 id → 0…1). 메모리 게시판에서 온다 — DB 가 아니다.
     public var progress: [String: Double] = [:]
+    /// iCloud 원본 받는 중 진행률 (영상 id → 0…1). 메모리 게시판에서 온다.
+    public var importProgress: [String: Double] = [:]
     /// 있는 그림 파일 경로. 없는 그림은 화면이 회색 자리표시로 그린다.
     public var thumbnails: Set<String> = []
     /// 그림 자리를 정하는 곳 (경로 규칙).
@@ -33,8 +35,9 @@ public struct LibrarySnapshot: Sendable {
     }
 
     /// 있는 그림만 골라 둔다 (파일을 한 번씩 본다).
-    public mutating func attach(thumbnails store: Thumbnails, progress: [String: Double]) {
+    public mutating func attach(thumbnails store: Thumbnails, progress: [String: Double], importProgress: [String: Double] = [:]) {
         self.progress = progress
+        self.importProgress = importProgress
         thumbnailStore = store
         var paths: [URL] = videos.map { store.video($0.id) } + outputs.map { store.output($0.id) }
         for c in compositions {

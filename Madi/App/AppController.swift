@@ -71,7 +71,8 @@ final class AppController {
 
     private func receive(_ snap: LibrarySnapshot) async {
         var s = snap
-        s.attach(thumbnails: thumbnails, progress: await pipeline.progress.snapshot())
+        s.attach(thumbnails: thumbnails, progress: await pipeline.progress.snapshot(),
+                 importProgress: await pipeline.importProgress.snapshot())
         snapshot = s
         recompute()
     }
@@ -125,7 +126,8 @@ final class AppController {
         studio = ViewDataMapper.studio(snapshot ?? LibrarySnapshot(), studioName: appSettings.studioName, ai: ai, preparing: prep)
         settings = SettingsValues(
             ai: setup(for: ai), activeAI: ai, studioName: appSettings.studioName, keepDays: appSettings.keepDays,
-            photos: photos, isSlowMac: isSlowMac
+            albumName: UserDefaults.standard.string(forKey: PhotoLibraryWatcher.albumNameKey),
+            photos: photos, look: look, isSlowMac: isSlowMac
         )
         onboarding.photos = photos
         onboarding.isSlowMac = isSlowMac
@@ -192,8 +194,9 @@ final class AppController {
             } else {
                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Photos.app"))
             }
-        case .retryImport(let id):
-            try await queue.enqueue(.analyze, targetId: id)
+        case .retryImport:
+            // 받기에 실패한 영상은 다시 훑으면 다시 받는다 (Importer 는 준비 안 된 영상을 건너뛰지 않는다)
+            pipeline.rescan()
         case .addFromMac:
             let panel = NSOpenPanel()
             panel.allowsMultipleSelection = true
@@ -204,9 +207,18 @@ final class AppController {
             for url in panel.urls { try? FileManager.default.copyItem(at: url, to: MadiPipeline.inbox.appending(path: url.lastPathComponent)) }
         case .openSystemSettings:
             Self.openPhotosPrivacy()
-        case .hide, .undoHide:
-            // 목록에서 숨기기 — 엔진에 칸이 아직 없다 (docs/stage-6.spec.md 남은 것)
-            break
+        case .hide(let id):
+            try await db.writer.write { db in
+                try db.execute(sql: "UPDATE video SET hiddenAt = ? WHERE id = ?", arguments: [Date(), id])
+            }
+        case .undoHide:
+            // 가장 최근에 숨긴 것을 되살린다
+            try await db.writer.write { db in
+                try db.execute(sql: """
+                    UPDATE video SET hiddenAt = NULL
+                    WHERE id = (SELECT id FROM video WHERE hiddenAt IS NOT NULL ORDER BY hiddenAt DESC LIMIT 1)
+                    """)
+            }
         }
     }
 
@@ -487,8 +499,81 @@ final class AppController {
         case .studioName(let name): AppSettings().studioName = name
         case .keepDays(let days): AppSettings().keepDays = days
         case .openSystemSettings: Self.openPhotosPrivacy()
-        case .pickAlbum, .look:
-            break   // 앨범 거르기 · 자막 모양 저장은 다음 커밋 (docs/stage-6.spec.md)
+        case .pickAlbum:
+            pickAlbum()
+        case .look(let change):
+            saveLook(change)
+        }
+    }
+
+    /// 앨범 고르기 — 메뉴로 띄운다 (전체 보관함 + 앨범 이름들). 고르면 다음 훑기부터 그 앨범만 본다.
+    private func pickAlbum() {
+        let menu = NSMenu()
+        let target = AlbumMenuTarget { [weak self] id, name in
+            if let id {
+                UserDefaults.standard.set(id, forKey: PhotoLibraryWatcher.albumKey)
+                UserDefaults.standard.set(name, forKey: PhotoLibraryWatcher.albumNameKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: PhotoLibraryWatcher.albumKey)
+                UserDefaults.standard.removeObject(forKey: PhotoLibraryWatcher.albumNameKey)
+            }
+            self?.pipeline.rescan()
+            self?.recompute()
+        }
+        let all = NSMenuItem(title: Copy.Settings.Shots.albumAll, action: #selector(AlbumMenuTarget.pick(_:)), keyEquivalent: "")
+        all.target = target
+        menu.addItem(all)
+        menu.addItem(.separator())
+        for album in PhotoLibraryWatcher.albums() {
+            let item = NSMenuItem(title: album.name, action: #selector(AlbumMenuTarget.pick(_:)), keyEquivalent: "")
+            item.representedObject = album.id
+            item.target = target
+            menu.addItem(item)
+        }
+        albumTarget = target
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+    }
+
+    private var albumTarget: AlbumMenuTarget?
+
+    // MARK: 자막 모양
+
+    /// 견본 이름 — `Copy` 키(`swatchWhite` 등)가 생길 때까지 디자인 미리보기 데이터의 이름을 쓴다.
+    private var swatchLabels: [String: String] {
+        Dictionary((SampleData.swatchesMain + SampleData.swatchesSecondary).map { ($0.id, $0.label) }, uniquingKeysWith: { a, _ in a })
+    }
+
+    /// 설정 화면의 자막 모양 — 가장 최근 스타일 판에서.
+    private var look: CaptionLook? {
+        guard let style = try? StyleStore.load(StyleStore.latest()) else { return nil }
+        return LookMapper.look(style.values.look, fonts: MadiFont.hangulFamilies(), labels: swatchLabels,
+                               preview: lookPreview(style))
+    }
+
+    /// 지금 모양으로 그린 자막 한 장 (본문 + 영문). 스타일 판마다 한 번 그린다 (캐시).
+    private func lookPreview(_ style: Style) -> Thumbnail {
+        let url = thumbnails.root.appending(path: "look-\(style.id)@\(style.version).png")
+        if !FileManager.default.fileExists(atPath: url.path) {
+            let caption = Caption(id: "look", start: 0, end: 2, text: Copy.Look.previewMain, secondary: Copy.Look.previewSecondary)
+            if let image = try? StillRenderer.renderCaption(caption, size: CGSize(width: 1080, height: 1920),
+                                                             style: style.values, slot: .fullBody) {
+                try? FileManager.default.createDirectory(at: thumbnails.root, withIntermediateDirectories: true)
+                try? StillRenderer.writePNG(image, to: url)
+            }
+        }
+        return FileManager.default.fileExists(atPath: url.path) ? Thumbnail(fileURL: url) : .none
+    }
+
+    /// 고른 모양을 새 스타일 판으로 저장한다 — 다음에 만드는 영상부터 (§1-8 옛 결과물은 자기 판으로).
+    private func saveLook(_ change: UIAction.Settings.Look) {
+        do {
+            let base = try StyleStore.load(StyleStore.latest())
+            let next = LookMapper.apply(change, to: base.values.look)
+            guard next != base.values.look else { return }
+            try StyleStore.saveLook(next, basedOn: base)
+        } catch {
+            // 설치 안 된 글꼴 등 — 저장하지 않는다 (조용히 대체하지 않는다, §9)
+            MadiPipeline.log.error("자막 모양 저장 실패: \(String(describing: error), privacy: .public)")
         }
     }
 
@@ -497,4 +582,11 @@ final class AppController {
             NSWorkspace.shared.open(url)
         }
     }
+}
+
+/// 앨범 메뉴 항목의 대상 (NSMenu 는 selector 를 부른다).
+private final class AlbumMenuTarget: NSObject {
+    let onPick: (String?, String) -> Void
+    init(_ onPick: @escaping (String?, String) -> Void) { self.onPick = onPick }
+    @objc func pick(_ item: NSMenuItem) { onPick(item.representedObject as? String, item.title) }
 }

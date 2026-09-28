@@ -39,6 +39,9 @@ public final class FolderWatcher: @unchecked Sendable {
 
     public func stop() { source?.cancel(); source = nil }
 
+    /// 한 번 더 훑는다 ("다시 가져오기").
+    public func rescan() { scan() }
+
     /// 크기가 안정된 영상 파일을 들인다. 아직 쓰는 중이면 1초 뒤 다시 본다.
     func scan() {
         let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey, .creationDateKey])) ?? []

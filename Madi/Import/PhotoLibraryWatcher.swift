@@ -46,6 +46,24 @@ public final class PhotoLibraryWatcher: NSObject, PHPhotoLibraryChangeObserver, 
 
     public func photoLibraryDidChange(_ changeInstance: PHChange) { scan() }
 
+    /// 한 번 더 훑는다 — 받기에 실패한 영상은 다시 받는다 ("다시 가져오기"). 준비된 영상은 건너뛴다.
+    public func rescan() { scan() }
+
+    /// 이 앨범에서만 가져온다 (설정 "사진 폴더"). nil 이면 전체 보관함. 값은 설정(`madi.album.id`).
+    public static let albumKey = "madi.album.id"
+    public static let albumNameKey = "madi.album.name"
+
+    /// 앨범 목록 — 설정에서 고른다 (사용자가 만든 앨범 + 공유 앨범).
+    public static func albums() -> [(id: String, name: String)] {
+        var out: [(String, String)] = []
+        for type in [PHAssetCollectionType.album] {
+            PHAssetCollection.fetchAssetCollections(with: type, subtype: .any, options: nil).enumerateObjects { c, _, _ in
+                out.append((c.localIdentifier, c.localizedTitle ?? ""))
+            }
+        }
+        return out.filter { !$0.1.isEmpty }
+    }
+
     /// `since` 이후 영상을 훑어 새 것 · 받다 만 것을 들인다.
     private func scan() {
         lock.lock()
@@ -70,7 +88,14 @@ public final class PhotoLibraryWatcher: NSObject, PHPhotoLibraryChangeObserver, 
         let options = PHFetchOptions()
         options.predicate = NSPredicate(format: "creationDate >= %@", since as NSDate)
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
-        let assets = PHAsset.fetchAssets(with: .video, options: options)
+        let assets: PHFetchResult<PHAsset>
+        if let albumID = UserDefaults.standard.string(forKey: Self.albumKey),
+           let album = PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: [albumID], options: nil).firstObject {
+            options.predicate = NSPredicate(format: "creationDate >= %@ AND mediaType == %d", since as NSDate, PHAssetMediaType.video.rawValue)
+            assets = PHAsset.fetchAssets(in: album, options: options)
+        } else {
+            assets = PHAsset.fetchAssets(with: .video, options: options)
+        }
         var out: [IncomingVideo] = []
         assets.enumerateObjects { asset, _, _ in
             let resources = PHAssetResource.assetResources(for: asset)

@@ -19,7 +19,7 @@ enum ViewDataMapper {
     static func studio(_ s: LibrarySnapshot, studioName: String, ai: AIConnection, preparing: EnginePrep? = nil) -> StudioStatus {
         StudioStatus(
             studioName: studioName, ai: ai,
-            shotCount: s.videos.count,
+            shotCount: s.videos.filter { $0.hiddenAt == nil }.count,
             resultCount: s.outputs.filter { $0.verdict == .shown }.count,
             makingCount: s.videos.filter { !s.liveJobs(of: $0.id).isEmpty }.count,
             preparing: preparing
@@ -29,6 +29,9 @@ enum ViewDataMapper {
     // MARK: - 갤러리
 
     static func gallery(_ s: LibrarySnapshot, photos: PhotoAccess) -> GalleryState {
+        // 숨긴 촬영본은 목록에서만 뺀다 (사진 앱 원본 · 결과물은 그대로)
+        var s = s
+        s.videos = s.videos.filter { $0.hiddenAt == nil }
         if s.videos.isEmpty { return photos == .denied ? .noPhotoAccess : .empty }
         let groups = shotGroups(s)
         let importing = s.videos.filter { $0.status == .importing }.count
@@ -81,8 +84,8 @@ enum ViewDataMapper {
             isMaking: !s.liveJobs(of: v.id).isEmpty,
             thumbnail: thumb(s.thumbnailStore.video(v.id), s),
             results: results(of: v.id, s),
-            // 원본 받는 중 진행률은 엔진이 아직 들고 있지 않다 (viewdata-map 1절) — nil
-            fetchProgress: nil,
+            // iCloud 원본 받는 중 — 받는 동안만 (§2 "저장 공간 최적화")
+            fetchProgress: v.status == .importing ? s.importProgress[v.id] : nil,
             problem: v.status == .failed ? Copy.Photos.importFailedShort : nil
         )
     }
@@ -336,8 +339,27 @@ enum ViewDataMapper {
     // MARK: - 대화
 
     /// 채팅 줄. 선택지 · 알림(문구 키)은 `Copy` 에 문장이 생기면 낸다 — 지금은 내지 않는다 (copy-keys 6단계 절).
+    /// 두 번 다듬어도 소프트 항목이 남은 결과물 — 채팅 한 줄 (`reviewSoftNote`, viewdata-map 5절 2절 4).
+    /// G11(길이) 은 짧다 · 길다를 가르고, G8(훅) 은 첫 1초. G9 는 문구가 없어 내지 않는다.
+    static func softNote(_ o: OutputRecord) -> String? {
+        guard let json = o.reviewReport,
+              let report = try? JSONDecoder().decode([String: JSONValue].self, from: Data(json.utf8)),
+              case .array(let items)? = report["selfEval"] else { return nil }
+        let names = items.compactMap { if case .string(let x) = $0 { x } else { nil } }
+        if names.contains("G11"), case .number(let ratio)? = report["G11.ratio"] {
+            return Copy.Review.reviewSoftNote(ratio < 1 ? Copy.Review.softShort : Copy.Review.softLong)
+        }
+        if names.contains("G8") { return Copy.Review.reviewSoftNote(Copy.Review.softHook) }
+        return nil
+    }
+
     static func chat(_ s: LibrarySnapshot, videoID: String) -> [ChatMessage] {
         var out: [ChatMessage] = []
+        // 첫 초안의 결과물에 아쉬운 점이 남았으면 대화 맨 앞에 한 줄
+        if let draft = s.visibleVersions(of: videoID).first(where: { $0.origin == .draft }),
+           let o = s.shownOutput(forVersion: draft.id), let note = softNote(o) {
+            out.append(ChatMessage(id: o.id + ".soft", kind: .assistant(note), stamp: Copy.shotStamp(o.createdAt, now: s.now)))
+        }
         for row in s.chats where row.videoId == videoID {
             let stamp = Copy.shotStamp(row.createdAt, now: s.now)
             switch row.kind {
@@ -348,6 +370,7 @@ enum ViewDataMapper {
                 // 이 말로 생긴 판의 결과물이 보여지면 카드로 붙는다
                 if let cid = row.compositionId, let o = s.shownOutput(forVersion: cid), let ref = resultRef(o, s) {
                     out.append(ChatMessage(id: row.id + ".result", kind: .result(ref)))
+                    if let note = softNote(o) { out.append(ChatMessage(id: row.id + ".soft", kind: .assistant(note))) }
                 }
             case .choices:
                 // "앞으로도 이렇게 할까요?" — 답한 것은 다시 보이지 않는다. 버튼 설명 칸에 AI 가 다듬은 규칙 문장

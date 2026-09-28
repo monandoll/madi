@@ -116,7 +116,9 @@
 		A6F36ADDD48689551312F81C /* SubjectDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75236889EB2CBFE994D392D2 /* SubjectDetector.swift */; };
 		A71CD837B55F05CD74CD62A5 /* CaptionLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71CD7162AEC4CB13D3A85753 /* CaptionLayer.swift */; };
 		A7E7D322F78F8299E96C1152 /* PlanInfoCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0014A94310F6EDA5CA03169 /* PlanInfoCards.swift */; };
+		ABF914478FF98DCF6C76508B /* UIAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84767F18FB96C212B8D9538C /* UIAction.swift */; };
 		B05340E356C21B5CD68C3A42 /* ResultCompare.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F0225FF2EC69AD184E4175 /* ResultCompare.swift */; };
+		B189D7CF06FB2D72E3141C94 /* ImportProgressBoard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74BC230BC3EAEB1FD01D6910 /* ImportProgressBoard.swift */; };
 		B1E383D4BE3A50F11F59BDED /* FolderWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3DDAF1B5D7652CD476B8CA1 /* FolderWatcher.swift */; };
 		B30C43A565BD620B8B924792 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BA365F1784B598EF1AA5E65 /* SettingsScreen.swift */; };
 		B49FF146A330D15B603648D7 /* ChatPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B6C32DC1255DE343A5F4B1 /* ChatPanel.swift */; };
@@ -129,11 +131,13 @@
 		BAE5D4500020FEDD0DFAFA49 /* AgentJobTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 460759C148526B8AAAC3520E /* AgentJobTests.swift */; };
 		BB8593E4885B0F74346EA5CB /* OverlayPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A4A6BC2BD771958ED938CD /* OverlayPayload.swift */; };
 		BD5C66DBDDA3C777CE4F7F7C /* CaptionFiller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3144D423223C0A40C380D161 /* CaptionFiller.swift */; };
+		BF865E23BF7C814E71417DE1 /* LookMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 924EA856FED937501FD1C4D7 /* LookMapper.swift */; };
 		BFCB90F85043B09B992004C0 /* PlanPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81877A18E03E394FB21E0B6 /* PlanPlayer.swift */; };
 		C19C038351F0A44E688981C7 /* MadiKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C21F74C5550424129AA94DD1 /* MakingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4858B61215897A37099D0CF /* MakingScreen.swift */; };
 		C30334DE52E4EED78B861660 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AD3D942F0B86E1976B7C8E1 /* AppSettings.swift */; };
 		C3F5E1E8B2C2FA772A4EE989 /* SceneEditsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FF3E3EE91EC301C00612D8 /* SceneEditsTests.swift */; };
+		C482AEC9554B850D7EED078A /* LookMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 924EA856FED937501FD1C4D7 /* LookMapper.swift */; };
 		C4AB6DD33BC50E0D286F134F /* PlanScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAABD8A5FF82020B90D7687A /* PlanScreen.swift */; };
 		C5E46CC98D84D78FD698ED0E /* ImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672B9A9D8EB3302CDE9C3EB0 /* ImportTests.swift */; };
 		C86D655D7BBAA6D494891BCB /* PlanVersionList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5170EB1C03FE043B10815DE1 /* PlanVersionList.swift */; };
@@ -316,6 +320,7 @@
 		719988E041BEB26E14C18EB8 /* downloads.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = downloads.json; sourceTree = "<group>"; };
 		71CD7162AEC4CB13D3A85753 /* CaptionLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionLayer.swift; sourceTree = "<group>"; };
 		72D94087F95A27AD4220EBA1 /* PoseOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseOverlay.swift; sourceTree = "<group>"; };
+		74BC230BC3EAEB1FD01D6910 /* ImportProgressBoard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportProgressBoard.swift; sourceTree = "<group>"; };
 		75236889EB2CBFE994D392D2 /* SubjectDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubjectDetector.swift; sourceTree = "<group>"; };
 		76604ED8D37963A2E28DF6C4 /* AgentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTests.swift; sourceTree = "<group>"; };
 		791C317B14C7AF92D43CDB3E /* GateNotice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GateNotice.swift; sourceTree = "<group>"; };
@@ -330,6 +335,7 @@
 		8FF60384F64A9623137DFC0D /* WhisperCppProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperCppProvider.swift; sourceTree = "<group>"; };
 		9081079FE5F71F486BCE652A /* ChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatTests.swift; sourceTree = "<group>"; };
 		9198795506821EE4D71C606A /* Font.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Font.swift; sourceTree = "<group>"; };
+		924EA856FED937501FD1C4D7 /* LookMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookMapper.swift; sourceTree = "<group>"; };
 		928CA4ECB422E63AFE86F321 /* LibrarySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySnapshot.swift; sourceTree = "<group>"; };
 		951D1AFD131FA16F05B58E95 /* CLIInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIInstaller.swift; sourceTree = "<group>"; };
 		97883FA1954A88DF0996BBD4 /* ReframePlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReframePlannerTests.swift; sourceTree = "<group>"; };
@@ -621,6 +627,7 @@
 		5EB00CB6D8A314199C54D292 /* Bridge */ = {
 			isa = PBXGroup;
 			children = (
+				924EA856FED937501FD1C4D7 /* LookMapper.swift */,
 				D990C6BA3AF22C0461736423 /* ViewDataMapper.swift */,
 			);
 			path = Bridge;
@@ -727,6 +734,7 @@
 			children = (
 				A3DDAF1B5D7652CD476B8CA1 /* FolderWatcher.swift */,
 				CA96EF54F56D70E495B80CF0 /* Importer.swift */,
+				74BC230BC3EAEB1FD01D6910 /* ImportProgressBoard.swift */,
 				F4FD50C4641EE604A509314A /* PhotoLibraryWatcher.swift */,
 			);
 			path = Import;
@@ -1097,7 +1105,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				5F96F5A2B6544EA94B02F8F4 /* Copy.swift in Sources */,
+				BF865E23BF7C814E71417DE1 /* LookMapper.swift in Sources */,
 				236CE4D5C70465B160BC2C44 /* Tokens.swift in Sources */,
+				ABF914478FF98DCF6C76508B /* UIAction.swift in Sources */,
 				0588902F3069476C7B40624B /* ViewData.swift in Sources */,
 				04558B2B739F74039265282E /* ViewDataMapper.swift in Sources */,
 				EDB218E77464C9F32589B18E /* ViewDataMapperTests.swift in Sources */,
@@ -1130,6 +1140,7 @@
 				8EF2064B6501E6A6A705096E /* ExportSheet.swift in Sources */,
 				D4BB35D08277068BB7D7BAA3 /* FlowLayout.swift in Sources */,
 				F949B92E3B8AC97F765F9967 /* GalleryScreen.swift in Sources */,
+				C482AEC9554B850D7EED078A /* LookMapper.swift in Sources */,
 				41D529605EC5629F9025E152 /* MadiApp.swift in Sources */,
 				C21F74C5550424129AA94DD1 /* MakingScreen.swift in Sources */,
 				91DE767121295A80EF11BA08 /* NoticeBar.swift in Sources */,
@@ -1253,6 +1264,7 @@
 				DF49714AE26CCB238A41B42F /* FrameSheet.swift in Sources */,
 				7B6FE1A6648BE5F56B1E8EEF /* Gate.swift in Sources */,
 				B9CD553D8635BC96BB452F38 /* GateNotice.swift in Sources */,
+				B189D7CF06FB2D72E3141C94 /* ImportProgressBoard.swift in Sources */,
 				E5DA8CCFDC46DB4FC2633071 /* Importer.swift in Sources */,
 				CC86AF959B9705EC491D0637 /* JSONValue.swift in Sources */,
 				65326EDB401736223324DC28 /* JobQueue.swift in Sources */,

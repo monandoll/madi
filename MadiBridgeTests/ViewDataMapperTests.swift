@@ -237,4 +237,35 @@ struct ViewDataMapperTests {
         o.reviewReport = #"{"G1":"sourceLimited:subjectTooSmallLowResolution"}"#
         #expect(ViewDataMapper.gateTip(o) == Copy.Gate.tipResolution)
     }
+
+    @Test("숨긴 촬영본은 목록 · 개수에서 빠진다 · 받는 중 진행률 · 아쉬운 점 한 줄")
+    func hiddenProgressSoft() throws {
+        var hidden = video("h", at: now)
+        hidden.hiddenAt = now
+        var s = LibrarySnapshot(videos: [video("v", at: now, status: .importing), hidden], now: now)
+        s.importProgress = ["v": 0.3]
+        guard case .importing(_, _, let groups) = ViewDataMapper.gallery(s, photos: .granted) else { Issue.record(""); return }
+        #expect(groups.flatMap(\.shots).map(\.id) == ["v"])
+        #expect(groups.first?.shots.first?.fetchProgress == 0.3)
+        #expect(ViewDataMapper.studio(s, studioName: "", ai: .claude).shotCount == 1)
+
+        var o = output("o", comp: "d", verdict: .shown, at: now)
+        o.reviewReport = #"{"selfEval":["G11"],"G11.ratio":0.7}"#
+        let s2 = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)], outputs: [o], now: now)
+        #expect(ViewDataMapper.chat(s2, videoID: "v").first?.kind == .assistant(Copy.Review.reviewSoftNote(Copy.Review.softShort)))
+    }
+
+    @Test("자막 모양 — 굵기 4단계 대응(480 = 조금 굵게), 가까운 견본, 고른 것 얹기, 영문 줄 같이 바꾸기")
+    func look() throws {
+        var l = try StyleStore.load().values.look
+        let cl = LookMapper.look(l, fonts: ["나눔고딕"], labels: ["white": "흰색"], preview: .none)
+        #expect(cl.weight == .medium && cl.fill == "white" && cl.secondaryFill == "yellow" && cl.secondarySameAsMain)
+        l = LookMapper.apply(.font("나눔고딕"), to: l)
+        #expect(l.caption.fontFamily == "나눔고딕" && l.secondary.fontFamily == "나눔고딕")   // 같이 쓰는 중이라 영문도
+        l = LookMapper.apply(.weight(.heavy), to: l)
+        #expect(l.caption.weight == 900)
+        l = LookMapper.apply(.fill("sky"), to: l)
+        #expect(LookMapper.nearest(l.caption.fill) == "sky")
+        #expect(LookMapper.look(l, fonts: [], labels: [:], preview: .none).fontMissing)   // 이 Mac 에 없는 글꼴
+    }
 }
