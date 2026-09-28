@@ -395,6 +395,9 @@ final class AppController {
             resultsNotice = nil
         case .showShots:
             break
+        // 디자인이 새 결과물 행동(⑧ `select`)을 넣어도 빌드가 깨지지 않게 — 합칠 때 실제 처리로 바꾼다
+        @unknown default:
+            break
         }
     }
 
