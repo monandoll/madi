@@ -35,14 +35,15 @@ struct PlanScreen: View {
             .toolbar { toolbar }
             .inspector(isPresented: $showsChat) {
                 ChatPanel(
-                    messages: messages, chips: chips, isBusy: isBusy,
+                    messages: messages, chips: chips, isBusy: isBusy, status: chatStatus,
                     onSend: { onAction(.chat(.send($0))) },
                     onChip: { onAction(.chat(.chip($0))) },
                     onChoice: { onAction(.chat(.choice($0))) },
                     onPlayFromStart: { onAction(.chat(.playFromStart)) },
                     onUndo: { onAction(.chat(.undo)) },
                     onOpenResult: { onAction(.chat(.openResult($0.id))) },
-                    onRetrySend: { onAction(.chat(.retrySend($0))) }
+                    onRetrySend: { onAction(.chat(.retrySend($0))) },
+                    onStop: { onAction(.plan(.stop)) }
                 )
                 .inspectorColumnWidth(
                     min: Tokens.Size.chatMin,
@@ -229,6 +230,16 @@ struct PlanScreen: View {
             elapsed += scene.duration
         }
         return elapsed
+    }
+
+    /// 대화 머리줄 둘째 줄 (2026-09-29 시안).
+    private var chatStatus: String {
+        switch state {
+        case .ready(let plan): Copy.Chat.Header.talking(plan.versionLabel)
+        case .making, .preparing: Copy.Chat.Header.making
+        case .stopped(let plan, _, _, _): plan.map { Copy.Chat.Header.talking($0.versionLabel) } ?? Copy.Chat.Header.newShot
+        default: Copy.Chat.Header.newShot
+        }
     }
 
     // MARK: - 툴바

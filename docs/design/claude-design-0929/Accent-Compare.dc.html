@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>body{margin:0;background:#E7E4DF;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard Variable",Pretendard,sans-serif;color:#1F1D1A;-webkit-font-smoothing:antialiased}a{color:#1F1D1A}a:hover{color:#5E5952}</style>
+</helmet>
+<div style="padding:40px;display:flex;flex-direction:column;gap:28px;max-width:1600px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em">포인트색 후보 12가지</div>
+    <div style="font-size:14px;color:#5E5952">버튼 · 선택 테두리 · 내 말풍선 · 추천 칩 · 입력창에만 쓰여요. 바탕과 글자색은 그대로예요.</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:18px;padding:18px;background:#fff;border:0.5px solid #D6D2CB;border-radius:14px"><a href="#A" style="display:flex;flex-direction:column;gap:6px;align-items:center;text-decoration:none"><span style="width:56px;height:56px;border-radius:12px;background:#0A68E0"></span><span style="font-size:12px;color:#1F1D1A"><b>A</b> 시스템 블루</span></a><a href="#B" style="display:flex;flex-direction:column;gap:6px;align-items:center;text-decoration:none"><span style="width:56px;height:56px;border-radius:12px;background:#2B2A27"></span><span style="font-size:12px;color:#1F1D1A"><b>B</b> 그래파이트</span></a><a href="#C" style="display:flex;flex-direction:column;gap:6px;align-items:center;text-decoration:none"><span style="width:56px;height:56px;border-radius:12px;background:#B4552F"></span><span style="font-size:12px;color:#1F1D1A"><b>C</b> 클레이</span></a><a href="#D" style="display:flex;flex-direction:column;gap:6px;align-items:center;text-decoration:none"><span style="width:56px;height:56px;border-radius:12px;background:#4B55C8"></span><span style="font-size:12px;color:#1F1D1A"><b>D</b> 인디고</span></a><a href="#E" style="display:flex;flex-direction:column;gap:6px;align-items:center;text-decoration:none"><span style="width:56px;height:56px;border-radius:12px;background:#1F3F66"></span><span style="font-size:12px;color:#1F1D1A"><b>E</b> 딥 네이비</span></a><a href="#F" style="display:flex;flex-direction:column;gap:6px;align-items:center;text-decoration:none"><span style="width:56px;height:56px;border-radius:12px;background:#7248C4"></span><span style="font-size:12px;color:#1F1D1A"><b>F</b> 퍼플</span></a><a href="#G" style="display:flex;flex-direction:column;gap:6px;align-items:center;text-decoration:none"><span style="width:56px;height:56px;border-radius:12px;background:#8E2F46"></span><span style="font-size:12px;color:#1F1D1A"><b>G</b> 버건디</span></a><a href="#H" style="display:flex;flex-direction:column;gap:6px;align-items:center;text-decoration:none"><span style="width:56px;height:56px;border-radius:12px;background:#C23F66"></span><span style="font-size:12px;color:#1F1D1A"><b>H</b> 로즈</span></a><a href="#I" style="display:flex;flex-direction:column;gap:6px;align-items:center;text-decoration:none"><span style="width:56px;height:56px;border-radius:12px;background:#9A6A0E"></span><span style="font-size:12px;color:#1F1D1A"><b>I</b> 오커</span></a><a href="#J" style="display:flex;flex-direction:column;gap:6px;align-items:center;text-decoration:none"><span style="width:56px;height:56px;border-radius:12px;background:#4A5563"></span><span style="font-size:12px;color:#1F1D1A"><b>J</b> 슬레이트</span></a><a href="#K" style="display:flex;flex-direction:column;gap:6px;align-items:center;text-decoration:none"><span style="width:56px;height:56px;border-radius:12px;background:#0E7383"></span><span style="font-size:12px;color:#1F1D1A"><b>K</b> 틸</span></a><a href="#L" style="display:flex;flex-direction:column;gap:6px;align-items:center;text-decoration:none"><span style="width:56px;height:56px;border-radius:12px;background:#C44E14"></span><span style="font-size:12px;color:#1F1D1A"><b>L</b> 오렌지</span></a></div>
+  <div style="display:flex;flex-wrap:wrap;gap:32px 28px;align-items:flex-start">
+    <div id="A" style="width:360px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">A</span>
+        <span style="font-size:20px;font-weight:700">시스템 블루</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#5E5952">흰 글자 대비 5.2:1</span>
+      </div>
+      <div style="font-size:13px;color:#5E5952;margin-top:-4px">macOS 기본 강조색 계열. 가장 Mac 앱다움</div>
+      <div style="display:flex;gap:6px">
+        <div style="flex:2;height:48px;border-radius:10px;background:#0A68E0;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">#0A68E0</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#0855B8;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">호버</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#DDEAFB;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">연한</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#EEF4FD;border:0.5px solid #E3E0DA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">아주 연한</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #D6D2CB;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:0.5px solid #ECE9E4">
+          <span style="font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">골반이 틀어져있다면…</span>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:999px;border:0.5px solid #DAD6CF;font-size:12px;white-space:nowrap">편집안 2</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#0A68E0;color:#fff;font-size:12px;white-space:nowrap">만들기</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px 14px;border-bottom:0.5px solid #ECE9E4">
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px;border-radius:8px;background:#EFEDE9">
+            <div style="height:50px;border-radius:7px;background:#CFCAC2;outline:3px solid #0A68E0;outline-offset:2px"></div>
+            <span style="font-size:11px;color:#5E5952">3 · 시범</span>
+          </div>
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px">
+            <div style="height:50px;border-radius:7px;background:#DDD9D2"></div>
+            <span style="font-size:11px;color:#5E5952">4 · 설명</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;font-size:12px">
+            <span style="color:#0A68E0;font-weight:600">처음부터 보기</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#0A68E0;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6"><path d="m3 8.5 3 3 7-7"></path></svg></span>자막 위로</span>
+          </div>
+        </div>
+        <div style="padding:12px 18px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end"><div style="position:relative;max-width:78%;background:#0A68E0;color:#fff;font-size:13px;line-height:1.42;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 빼고 인스타용으로 만들어줘</span><span style="position:absolute;bottom:0;right:-7px;width:20px;height:18px;background:#0A68E0;border-bottom-left-radius:16px 14px"></span><span style="position:absolute;bottom:0;right:-26px;width:26px;height:18px;background:#fff;border-bottom-left-radius:10px"></span></div></div>
+          <div style="display:flex;margin-top:10px"><div style="position:relative;max-width:84%;background:#E9E7E3;font-size:13px;line-height:1.45;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 2곳, 5초를 빼고 만들었습니다.</span><span style="position:absolute;bottom:0;left:-7px;width:20px;height:18px;background:#E9E7E3;border-bottom-right-radius:16px 14px"></span><span style="position:absolute;bottom:0;left:-26px;width:26px;height:18px;background:#fff;border-bottom-right-radius:10px"></span></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px">
+          <div style="display:flex;gap:6px;overflow:hidden">
+            <div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#EEF4FD;border:0.5px solid #C2D9F7;color:#0855B8;font-size:12px;font-weight:500;white-space:nowrap">숏폼 뽑아줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#EEF4FD;border:0.5px solid #C2D9F7;color:#0855B8;font-size:12px;font-weight:500;white-space:nowrap">자막 넣어줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#EEF4FD;border:0.5px solid #C2D9F7;color:#0855B8;font-size:12px;font-weight:500;white-space:nowrap">인스타 규격으로</div>
+          </div>
+          <div style="height:36px;box-sizing:border-box;border-radius:18px;border:0.5px solid #0A68E0;outline:3px solid rgba(10,104,224,0.2);display:flex;align-items:center;gap:4px;padding:0 5px 0 14px">
+            <span style="flex:1;font-size:13px">30초로 줄여줘</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:#0A68E0;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"></path></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="B" style="width:360px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">B</span>
+        <span style="font-size:20px;font-weight:700">그래파이트</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#5E5952">흰 글자 대비 14.4:1</span>
+      </div>
+      <div style="font-size:13px;color:#5E5952;margin-top:-4px">거의 검정. 영상이 주인공, 도구 느낌</div>
+      <div style="display:flex;gap:6px">
+        <div style="flex:2;height:48px;border-radius:10px;background:#2B2A27;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">#2B2A27</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#232220;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">호버</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#E1E1E1;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">연한</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#F0F0F0;border:0.5px solid #E3E0DA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">아주 연한</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #D6D2CB;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:0.5px solid #ECE9E4">
+          <span style="font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">골반이 틀어져있다면…</span>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:999px;border:0.5px solid #DAD6CF;font-size:12px;white-space:nowrap">편집안 2</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#2B2A27;color:#fff;font-size:12px;white-space:nowrap">만들기</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px 14px;border-bottom:0.5px solid #ECE9E4">
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px;border-radius:8px;background:#EFEDE9">
+            <div style="height:50px;border-radius:7px;background:#CFCAC2;outline:3px solid #2B2A27;outline-offset:2px"></div>
+            <span style="font-size:11px;color:#5E5952">3 · 시범</span>
+          </div>
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px">
+            <div style="height:50px;border-radius:7px;background:#DDD9D2"></div>
+            <span style="font-size:11px;color:#5E5952">4 · 설명</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;font-size:12px">
+            <span style="color:#2B2A27;font-weight:600">처음부터 보기</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#2B2A27;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6"><path d="m3 8.5 3 3 7-7"></path></svg></span>자막 위로</span>
+          </div>
+        </div>
+        <div style="padding:12px 18px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end"><div style="position:relative;max-width:78%;background:#2B2A27;color:#fff;font-size:13px;line-height:1.42;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 빼고 인스타용으로 만들어줘</span><span style="position:absolute;bottom:0;right:-7px;width:20px;height:18px;background:#2B2A27;border-bottom-left-radius:16px 14px"></span><span style="position:absolute;bottom:0;right:-26px;width:26px;height:18px;background:#fff;border-bottom-left-radius:10px"></span></div></div>
+          <div style="display:flex;margin-top:10px"><div style="position:relative;max-width:84%;background:#E9E7E3;font-size:13px;line-height:1.45;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 2곳, 5초를 빼고 만들었습니다.</span><span style="position:absolute;bottom:0;left:-7px;width:20px;height:18px;background:#E9E7E3;border-bottom-right-radius:16px 14px"></span><span style="position:absolute;bottom:0;left:-26px;width:26px;height:18px;background:#fff;border-bottom-right-radius:10px"></span></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px">
+          <div style="display:flex;gap:6px;overflow:hidden">
+            <div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F0F0F0;border:0.5px solid #CACAC9;color:#232220;font-size:12px;font-weight:500;white-space:nowrap">숏폼 뽑아줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F0F0F0;border:0.5px solid #CACAC9;color:#232220;font-size:12px;font-weight:500;white-space:nowrap">자막 넣어줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F0F0F0;border:0.5px solid #CACAC9;color:#232220;font-size:12px;font-weight:500;white-space:nowrap">인스타 규격으로</div>
+          </div>
+          <div style="height:36px;box-sizing:border-box;border-radius:18px;border:0.5px solid #2B2A27;outline:3px solid rgba(43,42,39,0.2);display:flex;align-items:center;gap:4px;padding:0 5px 0 14px">
+            <span style="flex:1;font-size:13px">30초로 줄여줘</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:#2B2A27;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"></path></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="C" style="width:360px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">C</span>
+        <span style="font-size:20px;font-weight:700">클레이</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#5E5952">흰 글자 대비 4.9:1</span>
+      </div>
+      <div style="font-size:13px;color:#5E5952;margin-top:-4px">따뜻한 바탕과 가장 잘 어울림</div>
+      <div style="display:flex;gap:6px">
+        <div style="flex:2;height:48px;border-radius:10px;background:#B4552F;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">#B4552F</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#944627;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">호버</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#F5E7E2;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">연한</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#FAF3F0;border:0.5px solid #E3E0DA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">아주 연한</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #D6D2CB;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:0.5px solid #ECE9E4">
+          <span style="font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">골반이 틀어져있다면…</span>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:999px;border:0.5px solid #DAD6CF;font-size:12px;white-space:nowrap">편집안 2</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#B4552F;color:#fff;font-size:12px;white-space:nowrap">만들기</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px 14px;border-bottom:0.5px solid #ECE9E4">
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px;border-radius:8px;background:#EFEDE9">
+            <div style="height:50px;border-radius:7px;background:#CFCAC2;outline:3px solid #B4552F;outline-offset:2px"></div>
+            <span style="font-size:11px;color:#5E5952">3 · 시범</span>
+          </div>
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px">
+            <div style="height:50px;border-radius:7px;background:#DDD9D2"></div>
+            <span style="font-size:11px;color:#5E5952">4 · 설명</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;font-size:12px">
+            <span style="color:#B4552F;font-weight:600">처음부터 보기</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#B4552F;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6"><path d="m3 8.5 3 3 7-7"></path></svg></span>자막 위로</span>
+          </div>
+        </div>
+        <div style="padding:12px 18px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end"><div style="position:relative;max-width:78%;background:#B4552F;color:#fff;font-size:13px;line-height:1.42;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 빼고 인스타용으로 만들어줘</span><span style="position:absolute;bottom:0;right:-7px;width:20px;height:18px;background:#B4552F;border-bottom-left-radius:16px 14px"></span><span style="position:absolute;bottom:0;right:-26px;width:26px;height:18px;background:#fff;border-bottom-left-radius:10px"></span></div></div>
+          <div style="display:flex;margin-top:10px"><div style="position:relative;max-width:84%;background:#E9E7E3;font-size:13px;line-height:1.45;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 2곳, 5초를 빼고 만들었습니다.</span><span style="position:absolute;bottom:0;left:-7px;width:20px;height:18px;background:#E9E7E3;border-bottom-right-radius:16px 14px"></span><span style="position:absolute;bottom:0;left:-26px;width:26px;height:18px;background:#fff;border-bottom-right-radius:10px"></span></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px">
+          <div style="display:flex;gap:6px;overflow:hidden">
+            <div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#FAF3F0;border:0.5px solid #ECD5CB;color:#944627;font-size:12px;font-weight:500;white-space:nowrap">숏폼 뽑아줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#FAF3F0;border:0.5px solid #ECD5CB;color:#944627;font-size:12px;font-weight:500;white-space:nowrap">자막 넣어줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#FAF3F0;border:0.5px solid #ECD5CB;color:#944627;font-size:12px;font-weight:500;white-space:nowrap">인스타 규격으로</div>
+          </div>
+          <div style="height:36px;box-sizing:border-box;border-radius:18px;border:0.5px solid #B4552F;outline:3px solid rgba(180,85,47,0.2);display:flex;align-items:center;gap:4px;padding:0 5px 0 14px">
+            <span style="flex:1;font-size:13px">30초로 줄여줘</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:#B4552F;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"></path></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="D" style="width:360px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">D</span>
+        <span style="font-size:20px;font-weight:700">인디고</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#5E5952">흰 글자 대비 6.1:1</span>
+      </div>
+      <div style="font-size:13px;color:#5E5952;margin-top:-4px">블루보다 차분하고 개성 있음</div>
+      <div style="display:flex;gap:6px">
+        <div style="flex:2;height:48px;border-radius:10px;background:#4B55C8;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">#4B55C8</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#3E46A4;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">호버</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#E6E7F7;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">연한</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#F2F3FB;border:0.5px solid #E3E0DA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">아주 연한</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #D6D2CB;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:0.5px solid #ECE9E4">
+          <span style="font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">골반이 틀어져있다면…</span>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:999px;border:0.5px solid #DAD6CF;font-size:12px;white-space:nowrap">편집안 2</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#4B55C8;color:#fff;font-size:12px;white-space:nowrap">만들기</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px 14px;border-bottom:0.5px solid #ECE9E4">
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px;border-radius:8px;background:#EFEDE9">
+            <div style="height:50px;border-radius:7px;background:#CFCAC2;outline:3px solid #4B55C8;outline-offset:2px"></div>
+            <span style="font-size:11px;color:#5E5952">3 · 시범</span>
+          </div>
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px">
+            <div style="height:50px;border-radius:7px;background:#DDD9D2"></div>
+            <span style="font-size:11px;color:#5E5952">4 · 설명</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;font-size:12px">
+            <span style="color:#4B55C8;font-weight:600">처음부터 보기</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#4B55C8;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6"><path d="m3 8.5 3 3 7-7"></path></svg></span>자막 위로</span>
+          </div>
+        </div>
+        <div style="padding:12px 18px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end"><div style="position:relative;max-width:78%;background:#4B55C8;color:#fff;font-size:13px;line-height:1.42;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 빼고 인스타용으로 만들어줘</span><span style="position:absolute;bottom:0;right:-7px;width:20px;height:18px;background:#4B55C8;border-bottom-left-radius:16px 14px"></span><span style="position:absolute;bottom:0;right:-26px;width:26px;height:18px;background:#fff;border-bottom-left-radius:10px"></span></div></div>
+          <div style="display:flex;margin-top:10px"><div style="position:relative;max-width:84%;background:#E9E7E3;font-size:13px;line-height:1.45;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 2곳, 5초를 빼고 만들었습니다.</span><span style="position:absolute;bottom:0;left:-7px;width:20px;height:18px;background:#E9E7E3;border-bottom-right-radius:16px 14px"></span><span style="position:absolute;bottom:0;left:-26px;width:26px;height:18px;background:#fff;border-bottom-right-radius:10px"></span></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px">
+          <div style="display:flex;gap:6px;overflow:hidden">
+            <div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F2F3FB;border:0.5px solid #D2D5F1;color:#3E46A4;font-size:12px;font-weight:500;white-space:nowrap">숏폼 뽑아줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F2F3FB;border:0.5px solid #D2D5F1;color:#3E46A4;font-size:12px;font-weight:500;white-space:nowrap">자막 넣어줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F2F3FB;border:0.5px solid #D2D5F1;color:#3E46A4;font-size:12px;font-weight:500;white-space:nowrap">인스타 규격으로</div>
+          </div>
+          <div style="height:36px;box-sizing:border-box;border-radius:18px;border:0.5px solid #4B55C8;outline:3px solid rgba(75,85,200,0.2);display:flex;align-items:center;gap:4px;padding:0 5px 0 14px">
+            <span style="flex:1;font-size:13px">30초로 줄여줘</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:#4B55C8;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"></path></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="E" style="width:360px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">E</span>
+        <span style="font-size:20px;font-weight:700">딥 네이비</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#5E5952">흰 글자 대비 10.7:1</span>
+      </div>
+      <div style="font-size:13px;color:#5E5952;margin-top:-4px">신뢰감, 병원·전문가 톤</div>
+      <div style="display:flex;gap:6px">
+        <div style="flex:2;height:48px;border-radius:10px;background:#1F3F66;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">#1F3F66</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#193454;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">호버</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#E0E4EA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">연한</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#EFF2F4;border:0.5px solid #E3E0DA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">아주 연한</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #D6D2CB;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:0.5px solid #ECE9E4">
+          <span style="font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">골반이 틀어져있다면…</span>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:999px;border:0.5px solid #DAD6CF;font-size:12px;white-space:nowrap">편집안 2</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#1F3F66;color:#fff;font-size:12px;white-space:nowrap">만들기</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px 14px;border-bottom:0.5px solid #ECE9E4">
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px;border-radius:8px;background:#EFEDE9">
+            <div style="height:50px;border-radius:7px;background:#CFCAC2;outline:3px solid #1F3F66;outline-offset:2px"></div>
+            <span style="font-size:11px;color:#5E5952">3 · 시범</span>
+          </div>
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px">
+            <div style="height:50px;border-radius:7px;background:#DDD9D2"></div>
+            <span style="font-size:11px;color:#5E5952">4 · 설명</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;font-size:12px">
+            <span style="color:#1F3F66;font-weight:600">처음부터 보기</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#1F3F66;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6"><path d="m3 8.5 3 3 7-7"></path></svg></span>자막 위로</span>
+          </div>
+        </div>
+        <div style="padding:12px 18px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end"><div style="position:relative;max-width:78%;background:#1F3F66;color:#fff;font-size:13px;line-height:1.42;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 빼고 인스타용으로 만들어줘</span><span style="position:absolute;bottom:0;right:-7px;width:20px;height:18px;background:#1F3F66;border-bottom-left-radius:16px 14px"></span><span style="position:absolute;bottom:0;right:-26px;width:26px;height:18px;background:#fff;border-bottom-left-radius:10px"></span></div></div>
+          <div style="display:flex;margin-top:10px"><div style="position:relative;max-width:84%;background:#E9E7E3;font-size:13px;line-height:1.45;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 2곳, 5초를 빼고 만들었습니다.</span><span style="position:absolute;bottom:0;left:-7px;width:20px;height:18px;background:#E9E7E3;border-bottom-right-radius:16px 14px"></span><span style="position:absolute;bottom:0;left:-26px;width:26px;height:18px;background:#fff;border-bottom-right-radius:10px"></span></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px">
+          <div style="display:flex;gap:6px;overflow:hidden">
+            <div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#EFF2F4;border:0.5px solid #C7CFD9;color:#193454;font-size:12px;font-weight:500;white-space:nowrap">숏폼 뽑아줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#EFF2F4;border:0.5px solid #C7CFD9;color:#193454;font-size:12px;font-weight:500;white-space:nowrap">자막 넣어줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#EFF2F4;border:0.5px solid #C7CFD9;color:#193454;font-size:12px;font-weight:500;white-space:nowrap">인스타 규격으로</div>
+          </div>
+          <div style="height:36px;box-sizing:border-box;border-radius:18px;border:0.5px solid #1F3F66;outline:3px solid rgba(31,63,102,0.2);display:flex;align-items:center;gap:4px;padding:0 5px 0 14px">
+            <span style="flex:1;font-size:13px">30초로 줄여줘</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:#1F3F66;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"></path></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="F" style="width:360px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">F</span>
+        <span style="font-size:20px;font-weight:700">퍼플</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#5E5952">흰 글자 대비 6.1:1</span>
+      </div>
+      <div style="font-size:13px;color:#5E5952;margin-top:-4px">크리에이터 도구 느낌, 눈에 띔</div>
+      <div style="display:flex;gap:6px">
+        <div style="flex:2;height:48px;border-radius:10px;background:#7248C4;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">#7248C4</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#5D3BA1;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">호버</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#EBE5F7;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">연한</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#F5F2FB;border:0.5px solid #E3E0DA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">아주 연한</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #D6D2CB;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:0.5px solid #ECE9E4">
+          <span style="font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">골반이 틀어져있다면…</span>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:999px;border:0.5px solid #DAD6CF;font-size:12px;white-space:nowrap">편집안 2</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#7248C4;color:#fff;font-size:12px;white-space:nowrap">만들기</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px 14px;border-bottom:0.5px solid #ECE9E4">
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px;border-radius:8px;background:#EFEDE9">
+            <div style="height:50px;border-radius:7px;background:#CFCAC2;outline:3px solid #7248C4;outline-offset:2px"></div>
+            <span style="font-size:11px;color:#5E5952">3 · 시범</span>
+          </div>
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px">
+            <div style="height:50px;border-radius:7px;background:#DDD9D2"></div>
+            <span style="font-size:11px;color:#5E5952">4 · 설명</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;font-size:12px">
+            <span style="color:#7248C4;font-weight:600">처음부터 보기</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#7248C4;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6"><path d="m3 8.5 3 3 7-7"></path></svg></span>자막 위로</span>
+          </div>
+        </div>
+        <div style="padding:12px 18px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end"><div style="position:relative;max-width:78%;background:#7248C4;color:#fff;font-size:13px;line-height:1.42;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 빼고 인스타용으로 만들어줘</span><span style="position:absolute;bottom:0;right:-7px;width:20px;height:18px;background:#7248C4;border-bottom-left-radius:16px 14px"></span><span style="position:absolute;bottom:0;right:-26px;width:26px;height:18px;background:#fff;border-bottom-left-radius:10px"></span></div></div>
+          <div style="display:flex;margin-top:10px"><div style="position:relative;max-width:84%;background:#E9E7E3;font-size:13px;line-height:1.45;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 2곳, 5초를 빼고 만들었습니다.</span><span style="position:absolute;bottom:0;left:-7px;width:20px;height:18px;background:#E9E7E3;border-bottom-right-radius:16px 14px"></span><span style="position:absolute;bottom:0;left:-26px;width:26px;height:18px;background:#fff;border-bottom-right-radius:10px"></span></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px">
+          <div style="display:flex;gap:6px;overflow:hidden">
+            <div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F5F2FB;border:0.5px solid #DCD1F0;color:#5D3BA1;font-size:12px;font-weight:500;white-space:nowrap">숏폼 뽑아줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F5F2FB;border:0.5px solid #DCD1F0;color:#5D3BA1;font-size:12px;font-weight:500;white-space:nowrap">자막 넣어줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F5F2FB;border:0.5px solid #DCD1F0;color:#5D3BA1;font-size:12px;font-weight:500;white-space:nowrap">인스타 규격으로</div>
+          </div>
+          <div style="height:36px;box-sizing:border-box;border-radius:18px;border:0.5px solid #7248C4;outline:3px solid rgba(114,72,196,0.2);display:flex;align-items:center;gap:4px;padding:0 5px 0 14px">
+            <span style="flex:1;font-size:13px">30초로 줄여줘</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:#7248C4;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"></path></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="G" style="width:360px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">G</span>
+        <span style="font-size:20px;font-weight:700">버건디</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#5E5952">흰 글자 대비 7.9:1</span>
+      </div>
+      <div style="font-size:13px;color:#5E5952;margin-top:-4px">무게감 있고 고급스러움</div>
+      <div style="display:flex;gap:6px">
+        <div style="flex:2;height:48px;border-radius:10px;background:#8E2F46;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">#8E2F46</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#742739;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">호버</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#EFE2E5;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">연한</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#F7F0F2;border:0.5px solid #E3E0DA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">아주 연한</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #D6D2CB;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:0.5px solid #ECE9E4">
+          <span style="font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">골반이 틀어져있다면…</span>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:999px;border:0.5px solid #DAD6CF;font-size:12px;white-space:nowrap">편집안 2</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#8E2F46;color:#fff;font-size:12px;white-space:nowrap">만들기</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px 14px;border-bottom:0.5px solid #ECE9E4">
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px;border-radius:8px;background:#EFEDE9">
+            <div style="height:50px;border-radius:7px;background:#CFCAC2;outline:3px solid #8E2F46;outline-offset:2px"></div>
+            <span style="font-size:11px;color:#5E5952">3 · 시범</span>
+          </div>
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px">
+            <div style="height:50px;border-radius:7px;background:#DDD9D2"></div>
+            <span style="font-size:11px;color:#5E5952">4 · 설명</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;font-size:12px">
+            <span style="color:#8E2F46;font-weight:600">처음부터 보기</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#8E2F46;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6"><path d="m3 8.5 3 3 7-7"></path></svg></span>자막 위로</span>
+          </div>
+        </div>
+        <div style="padding:12px 18px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end"><div style="position:relative;max-width:78%;background:#8E2F46;color:#fff;font-size:13px;line-height:1.42;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 빼고 인스타용으로 만들어줘</span><span style="position:absolute;bottom:0;right:-7px;width:20px;height:18px;background:#8E2F46;border-bottom-left-radius:16px 14px"></span><span style="position:absolute;bottom:0;right:-26px;width:26px;height:18px;background:#fff;border-bottom-left-radius:10px"></span></div></div>
+          <div style="display:flex;margin-top:10px"><div style="position:relative;max-width:84%;background:#E9E7E3;font-size:13px;line-height:1.45;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 2곳, 5초를 빼고 만들었습니다.</span><span style="position:absolute;bottom:0;left:-7px;width:20px;height:18px;background:#E9E7E3;border-bottom-right-radius:16px 14px"></span><span style="position:absolute;bottom:0;left:-26px;width:26px;height:18px;background:#fff;border-bottom-right-radius:10px"></span></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px">
+          <div style="display:flex;gap:6px;overflow:hidden">
+            <div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F7F0F2;border:0.5px solid #E3CBD1;color:#742739;font-size:12px;font-weight:500;white-space:nowrap">숏폼 뽑아줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F7F0F2;border:0.5px solid #E3CBD1;color:#742739;font-size:12px;font-weight:500;white-space:nowrap">자막 넣어줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F7F0F2;border:0.5px solid #E3CBD1;color:#742739;font-size:12px;font-weight:500;white-space:nowrap">인스타 규격으로</div>
+          </div>
+          <div style="height:36px;box-sizing:border-box;border-radius:18px;border:0.5px solid #8E2F46;outline:3px solid rgba(142,47,70,0.2);display:flex;align-items:center;gap:4px;padding:0 5px 0 14px">
+            <span style="flex:1;font-size:13px">30초로 줄여줘</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:#8E2F46;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"></path></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="H" style="width:360px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">H</span>
+        <span style="font-size:20px;font-weight:700">로즈</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#5E5952">흰 글자 대비 5.0:1</span>
+      </div>
+      <div style="font-size:13px;color:#5E5952;margin-top:-4px">활기 있고 인스타 느낌</div>
+      <div style="display:flex;gap:6px">
+        <div style="flex:2;height:48px;border-radius:10px;background:#C23F66;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">#C23F66</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#9F3454;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">호버</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#F6E4EA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">연한</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#FBF2F4;border:0.5px solid #E3E0DA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">아주 연한</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #D6D2CB;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:0.5px solid #ECE9E4">
+          <span style="font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">골반이 틀어져있다면…</span>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:999px;border:0.5px solid #DAD6CF;font-size:12px;white-space:nowrap">편집안 2</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#C23F66;color:#fff;font-size:12px;white-space:nowrap">만들기</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px 14px;border-bottom:0.5px solid #ECE9E4">
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px;border-radius:8px;background:#EFEDE9">
+            <div style="height:50px;border-radius:7px;background:#CFCAC2;outline:3px solid #C23F66;outline-offset:2px"></div>
+            <span style="font-size:11px;color:#5E5952">3 · 시범</span>
+          </div>
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px">
+            <div style="height:50px;border-radius:7px;background:#DDD9D2"></div>
+            <span style="font-size:11px;color:#5E5952">4 · 설명</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;font-size:12px">
+            <span style="color:#C23F66;font-weight:600">처음부터 보기</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#C23F66;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6"><path d="m3 8.5 3 3 7-7"></path></svg></span>자막 위로</span>
+          </div>
+        </div>
+        <div style="padding:12px 18px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end"><div style="position:relative;max-width:78%;background:#C23F66;color:#fff;font-size:13px;line-height:1.42;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 빼고 인스타용으로 만들어줘</span><span style="position:absolute;bottom:0;right:-7px;width:20px;height:18px;background:#C23F66;border-bottom-left-radius:16px 14px"></span><span style="position:absolute;bottom:0;right:-26px;width:26px;height:18px;background:#fff;border-bottom-left-radius:10px"></span></div></div>
+          <div style="display:flex;margin-top:10px"><div style="position:relative;max-width:84%;background:#E9E7E3;font-size:13px;line-height:1.45;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 2곳, 5초를 빼고 만들었습니다.</span><span style="position:absolute;bottom:0;left:-7px;width:20px;height:18px;background:#E9E7E3;border-bottom-right-radius:16px 14px"></span><span style="position:absolute;bottom:0;left:-26px;width:26px;height:18px;background:#fff;border-bottom-right-radius:10px"></span></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px">
+          <div style="display:flex;gap:6px;overflow:hidden">
+            <div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#FBF2F4;border:0.5px solid #F0CFD9;color:#9F3454;font-size:12px;font-weight:500;white-space:nowrap">숏폼 뽑아줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#FBF2F4;border:0.5px solid #F0CFD9;color:#9F3454;font-size:12px;font-weight:500;white-space:nowrap">자막 넣어줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#FBF2F4;border:0.5px solid #F0CFD9;color:#9F3454;font-size:12px;font-weight:500;white-space:nowrap">인스타 규격으로</div>
+          </div>
+          <div style="height:36px;box-sizing:border-box;border-radius:18px;border:0.5px solid #C23F66;outline:3px solid rgba(194,63,102,0.2);display:flex;align-items:center;gap:4px;padding:0 5px 0 14px">
+            <span style="flex:1;font-size:13px">30초로 줄여줘</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:#C23F66;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"></path></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="I" style="width:360px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">I</span>
+        <span style="font-size:20px;font-weight:700">오커</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#5E5952">흰 글자 대비 4.7:1</span>
+      </div>
+      <div style="font-size:13px;color:#5E5952;margin-top:-4px">따뜻하고 부드러움, 대비는 낮은 편</div>
+      <div style="display:flex;gap:6px">
+        <div style="flex:2;height:48px;border-radius:10px;background:#9A6A0E;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">#9A6A0E</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#7E570B;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">호버</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#F1EADD;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">연한</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#F8F5EE;border:0.5px solid #E3E0DA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">아주 연한</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #D6D2CB;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:0.5px solid #ECE9E4">
+          <span style="font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">골반이 틀어져있다면…</span>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:999px;border:0.5px solid #DAD6CF;font-size:12px;white-space:nowrap">편집안 2</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#9A6A0E;color:#fff;font-size:12px;white-space:nowrap">만들기</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px 14px;border-bottom:0.5px solid #ECE9E4">
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px;border-radius:8px;background:#EFEDE9">
+            <div style="height:50px;border-radius:7px;background:#CFCAC2;outline:3px solid #9A6A0E;outline-offset:2px"></div>
+            <span style="font-size:11px;color:#5E5952">3 · 시범</span>
+          </div>
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px">
+            <div style="height:50px;border-radius:7px;background:#DDD9D2"></div>
+            <span style="font-size:11px;color:#5E5952">4 · 설명</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;font-size:12px">
+            <span style="color:#9A6A0E;font-weight:600">처음부터 보기</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#9A6A0E;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6"><path d="m3 8.5 3 3 7-7"></path></svg></span>자막 위로</span>
+          </div>
+        </div>
+        <div style="padding:12px 18px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end"><div style="position:relative;max-width:78%;background:#9A6A0E;color:#fff;font-size:13px;line-height:1.42;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 빼고 인스타용으로 만들어줘</span><span style="position:absolute;bottom:0;right:-7px;width:20px;height:18px;background:#9A6A0E;border-bottom-left-radius:16px 14px"></span><span style="position:absolute;bottom:0;right:-26px;width:26px;height:18px;background:#fff;border-bottom-left-radius:10px"></span></div></div>
+          <div style="display:flex;margin-top:10px"><div style="position:relative;max-width:84%;background:#E9E7E3;font-size:13px;line-height:1.45;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 2곳, 5초를 빼고 만들었습니다.</span><span style="position:absolute;bottom:0;left:-7px;width:20px;height:18px;background:#E9E7E3;border-bottom-right-radius:16px 14px"></span><span style="position:absolute;bottom:0;left:-26px;width:26px;height:18px;background:#fff;border-bottom-right-radius:10px"></span></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px">
+          <div style="display:flex;gap:6px;overflow:hidden">
+            <div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F8F5EE;border:0.5px solid #E6DAC3;color:#7E570B;font-size:12px;font-weight:500;white-space:nowrap">숏폼 뽑아줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F8F5EE;border:0.5px solid #E6DAC3;color:#7E570B;font-size:12px;font-weight:500;white-space:nowrap">자막 넣어줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F8F5EE;border:0.5px solid #E6DAC3;color:#7E570B;font-size:12px;font-weight:500;white-space:nowrap">인스타 규격으로</div>
+          </div>
+          <div style="height:36px;box-sizing:border-box;border-radius:18px;border:0.5px solid #9A6A0E;outline:3px solid rgba(154,106,14,0.2);display:flex;align-items:center;gap:4px;padding:0 5px 0 14px">
+            <span style="flex:1;font-size:13px">30초로 줄여줘</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:#9A6A0E;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"></path></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="J" style="width:360px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">J</span>
+        <span style="font-size:20px;font-weight:700">슬레이트</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#5E5952">흰 글자 대비 7.6:1</span>
+      </div>
+      <div style="font-size:13px;color:#5E5952;margin-top:-4px">가장 조용한 회청색</div>
+      <div style="display:flex;gap:6px">
+        <div style="flex:2;height:48px;border-radius:10px;background:#4A5563;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">#4A5563</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#3D4651;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">호버</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#E6E7E9;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">연한</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#F2F3F4;border:0.5px solid #E3E0DA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">아주 연한</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #D6D2CB;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:0.5px solid #ECE9E4">
+          <span style="font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">골반이 틀어져있다면…</span>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:999px;border:0.5px solid #DAD6CF;font-size:12px;white-space:nowrap">편집안 2</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#4A5563;color:#fff;font-size:12px;white-space:nowrap">만들기</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px 14px;border-bottom:0.5px solid #ECE9E4">
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px;border-radius:8px;background:#EFEDE9">
+            <div style="height:50px;border-radius:7px;background:#CFCAC2;outline:3px solid #4A5563;outline-offset:2px"></div>
+            <span style="font-size:11px;color:#5E5952">3 · 시범</span>
+          </div>
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px">
+            <div style="height:50px;border-radius:7px;background:#DDD9D2"></div>
+            <span style="font-size:11px;color:#5E5952">4 · 설명</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;font-size:12px">
+            <span style="color:#4A5563;font-weight:600">처음부터 보기</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#4A5563;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6"><path d="m3 8.5 3 3 7-7"></path></svg></span>자막 위로</span>
+          </div>
+        </div>
+        <div style="padding:12px 18px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end"><div style="position:relative;max-width:78%;background:#4A5563;color:#fff;font-size:13px;line-height:1.42;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 빼고 인스타용으로 만들어줘</span><span style="position:absolute;bottom:0;right:-7px;width:20px;height:18px;background:#4A5563;border-bottom-left-radius:16px 14px"></span><span style="position:absolute;bottom:0;right:-26px;width:26px;height:18px;background:#fff;border-bottom-left-radius:10px"></span></div></div>
+          <div style="display:flex;margin-top:10px"><div style="position:relative;max-width:84%;background:#E9E7E3;font-size:13px;line-height:1.45;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 2곳, 5초를 빼고 만들었습니다.</span><span style="position:absolute;bottom:0;left:-7px;width:20px;height:18px;background:#E9E7E3;border-bottom-right-radius:16px 14px"></span><span style="position:absolute;bottom:0;left:-26px;width:26px;height:18px;background:#fff;border-bottom-right-radius:10px"></span></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px">
+          <div style="display:flex;gap:6px;overflow:hidden">
+            <div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F2F3F4;border:0.5px solid #D2D5D8;color:#3D4651;font-size:12px;font-weight:500;white-space:nowrap">숏폼 뽑아줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F2F3F4;border:0.5px solid #D2D5D8;color:#3D4651;font-size:12px;font-weight:500;white-space:nowrap">자막 넣어줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#F2F3F4;border:0.5px solid #D2D5D8;color:#3D4651;font-size:12px;font-weight:500;white-space:nowrap">인스타 규격으로</div>
+          </div>
+          <div style="height:36px;box-sizing:border-box;border-radius:18px;border:0.5px solid #4A5563;outline:3px solid rgba(74,85,99,0.2);display:flex;align-items:center;gap:4px;padding:0 5px 0 14px">
+            <span style="flex:1;font-size:13px">30초로 줄여줘</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:#4A5563;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"></path></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="K" style="width:360px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">K</span>
+        <span style="font-size:20px;font-weight:700">틸</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#5E5952">흰 글자 대비 5.5:1</span>
+      </div>
+      <div style="font-size:13px;color:#5E5952;margin-top:-4px">시원하고 깔끔, 초록과는 다른 청록</div>
+      <div style="display:flex;gap:6px">
+        <div style="flex:2;height:48px;border-radius:10px;background:#0E7383;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">#0E7383</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#0B5E6B;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">호버</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#DDEBEE;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">연한</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#EEF5F6;border:0.5px solid #E3E0DA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">아주 연한</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #D6D2CB;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:0.5px solid #ECE9E4">
+          <span style="font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">골반이 틀어져있다면…</span>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:999px;border:0.5px solid #DAD6CF;font-size:12px;white-space:nowrap">편집안 2</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#0E7383;color:#fff;font-size:12px;white-space:nowrap">만들기</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px 14px;border-bottom:0.5px solid #ECE9E4">
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px;border-radius:8px;background:#EFEDE9">
+            <div style="height:50px;border-radius:7px;background:#CFCAC2;outline:3px solid #0E7383;outline-offset:2px"></div>
+            <span style="font-size:11px;color:#5E5952">3 · 시범</span>
+          </div>
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px">
+            <div style="height:50px;border-radius:7px;background:#DDD9D2"></div>
+            <span style="font-size:11px;color:#5E5952">4 · 설명</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;font-size:12px">
+            <span style="color:#0E7383;font-weight:600">처음부터 보기</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#0E7383;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6"><path d="m3 8.5 3 3 7-7"></path></svg></span>자막 위로</span>
+          </div>
+        </div>
+        <div style="padding:12px 18px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end"><div style="position:relative;max-width:78%;background:#0E7383;color:#fff;font-size:13px;line-height:1.42;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 빼고 인스타용으로 만들어줘</span><span style="position:absolute;bottom:0;right:-7px;width:20px;height:18px;background:#0E7383;border-bottom-left-radius:16px 14px"></span><span style="position:absolute;bottom:0;right:-26px;width:26px;height:18px;background:#fff;border-bottom-left-radius:10px"></span></div></div>
+          <div style="display:flex;margin-top:10px"><div style="position:relative;max-width:84%;background:#E9E7E3;font-size:13px;line-height:1.45;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 2곳, 5초를 빼고 만들었습니다.</span><span style="position:absolute;bottom:0;left:-7px;width:20px;height:18px;background:#E9E7E3;border-bottom-right-radius:16px 14px"></span><span style="position:absolute;bottom:0;left:-26px;width:26px;height:18px;background:#fff;border-bottom-right-radius:10px"></span></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px">
+          <div style="display:flex;gap:6px;overflow:hidden">
+            <div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#EEF5F6;border:0.5px solid #C3DCE0;color:#0B5E6B;font-size:12px;font-weight:500;white-space:nowrap">숏폼 뽑아줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#EEF5F6;border:0.5px solid #C3DCE0;color:#0B5E6B;font-size:12px;font-weight:500;white-space:nowrap">자막 넣어줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#EEF5F6;border:0.5px solid #C3DCE0;color:#0B5E6B;font-size:12px;font-weight:500;white-space:nowrap">인스타 규격으로</div>
+          </div>
+          <div style="height:36px;box-sizing:border-box;border-radius:18px;border:0.5px solid #0E7383;outline:3px solid rgba(14,115,131,0.2);display:flex;align-items:center;gap:4px;padding:0 5px 0 14px">
+            <span style="flex:1;font-size:13px">30초로 줄여줘</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:#0E7383;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"></path></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="L" style="width:360px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;font-weight:700;background:#1F1D1A;color:#fff;padding:3px 8px;border-radius:999px">L</span>
+        <span style="font-size:20px;font-weight:700">오렌지</span>
+        <span style="flex:1"></span>
+        <span style="font-size:11px;color:#5E5952">흰 글자 대비 4.7:1</span>
+      </div>
+      <div style="font-size:13px;color:#5E5952;margin-top:-4px">에너지, 운동 느낌</div>
+      <div style="display:flex;gap:6px">
+        <div style="flex:2;height:48px;border-radius:10px;background:#C44E14;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">#C44E14</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#A14010;color:#fff;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">호버</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#F7E6DE;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">연한</div>
+        <div style="flex:1;height:48px;border-radius:10px;background:#FBF3EF;border:0.5px solid #E3E0DA;color:#1F1D1A;font-size:11px;padding:7px 8px;box-sizing:border-box;display:flex;align-items:flex-end">아주 연한</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #D6D2CB;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:0.5px solid #ECE9E4">
+          <span style="font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">골반이 틀어져있다면…</span>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:999px;border:0.5px solid #DAD6CF;font-size:12px;white-space:nowrap">편집안 2</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#C44E14;color:#fff;font-size:12px;white-space:nowrap">만들기</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:12px 14px;border-bottom:0.5px solid #ECE9E4">
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px;border-radius:8px;background:#EFEDE9">
+            <div style="height:50px;border-radius:7px;background:#CFCAC2;outline:3px solid #C44E14;outline-offset:2px"></div>
+            <span style="font-size:11px;color:#5E5952">3 · 시범</span>
+          </div>
+          <div style="width:84px;display:flex;flex-direction:column;gap:6px;padding:5px">
+            <div style="height:50px;border-radius:7px;background:#DDD9D2"></div>
+            <span style="font-size:11px;color:#5E5952">4 · 설명</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center;font-size:12px">
+            <span style="color:#C44E14;font-weight:600">처음부터 보기</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:#C44E14;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6"><path d="m3 8.5 3 3 7-7"></path></svg></span>자막 위로</span>
+          </div>
+        </div>
+        <div style="padding:12px 18px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end"><div style="position:relative;max-width:78%;background:#C44E14;color:#fff;font-size:13px;line-height:1.42;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 빼고 인스타용으로 만들어줘</span><span style="position:absolute;bottom:0;right:-7px;width:20px;height:18px;background:#C44E14;border-bottom-left-radius:16px 14px"></span><span style="position:absolute;bottom:0;right:-26px;width:26px;height:18px;background:#fff;border-bottom-left-radius:10px"></span></div></div>
+          <div style="display:flex;margin-top:10px"><div style="position:relative;max-width:84%;background:#E9E7E3;font-size:13px;line-height:1.45;padding:7px 13px 8px;border-radius:18px"><span style="position:relative;z-index:1">쉬는 구간 2곳, 5초를 빼고 만들었습니다.</span><span style="position:absolute;bottom:0;left:-7px;width:20px;height:18px;background:#E9E7E3;border-bottom-right-radius:16px 14px"></span><span style="position:absolute;bottom:0;left:-26px;width:26px;height:18px;background:#fff;border-bottom-right-radius:10px"></span></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 12px">
+          <div style="display:flex;gap:6px;overflow:hidden">
+            <div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#FBF3EF;border:0.5px solid #F0D3C4;color:#A14010;font-size:12px;font-weight:500;white-space:nowrap">숏폼 뽑아줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#FBF3EF;border:0.5px solid #F0D3C4;color:#A14010;font-size:12px;font-weight:500;white-space:nowrap">자막 넣어줘</div><div style="height:26px;flex-shrink:0;display:flex;align-items:center;padding:0 11px;border-radius:13px;background:#FBF3EF;border:0.5px solid #F0D3C4;color:#A14010;font-size:12px;font-weight:500;white-space:nowrap">인스타 규격으로</div>
+          </div>
+          <div style="height:36px;box-sizing:border-box;border-radius:18px;border:0.5px solid #C44E14;outline:3px solid rgba(196,78,20,0.2);display:flex;align-items:center;gap:4px;padding:0 5px 0 14px">
+            <span style="flex:1;font-size:13px">30초로 줄여줘</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:#C44E14;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"></path></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

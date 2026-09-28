@@ -526,9 +526,15 @@ public struct EditSummary: Hashable, Sendable {
     public var lines: [Line]
     /// `되돌리기` 를 줄지. 결과물이 이미 나온 편집안은 제자리에서 고치지 않는다 (§1-8).
     public var canUndo: Bool
+    /// 카드 머리줄 (2026-09-29 시안) — `편집안 2` · `인스타 릴스 · 0:37` · 첫 장면 그림. 없으면 머리줄을 안 그린다.
+    public var versionLabel: String?
+    public var detail: String?
+    public var thumbnail: Thumbnail
 
-    public init(lines: [Line], canUndo: Bool = true) {
+    public init(lines: [Line], canUndo: Bool = true,
+                versionLabel: String? = nil, detail: String? = nil, thumbnail: Thumbnail = .none) {
         self.lines = lines; self.canUndo = canUndo
+        self.versionLabel = versionLabel; self.detail = detail; self.thumbnail = thumbnail
     }
 }
 

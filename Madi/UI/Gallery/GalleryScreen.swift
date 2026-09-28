@@ -255,7 +255,7 @@ struct GalleryScreen: View {
                 } else if let notice {
                     Text(notice)
                     Button(Copy.Action.undo) { onAction(.undoHide) }
-                        .buttonStyle(.link)
+                        .buttonStyle(.accentLink)
                         .font(.caption)
                 } else {
                     Text(Copy.Gallery.Status.selection(

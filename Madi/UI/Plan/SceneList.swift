@@ -249,7 +249,7 @@ struct SceneRow: View {
             Button(Copy.Plan.Scenes.extend, action: onExtend)
             Button(Copy.Plan.Scenes.editCaption, action: onEditCaption)
         }
-        .buttonStyle(.link)
+        .buttonStyle(.accentLink)
         .font(.caption)
         .padding(.top, Tokens.Space.hairline)
     }
@@ -272,7 +272,7 @@ struct RemovedGapRow: View {
                 .foregroundStyle(.secondary)
             if !isReadOnly {
                 Button(Copy.Plan.Scenes.bringBack, action: onRestore)
-                    .buttonStyle(.link)
+                    .buttonStyle(.accentLink)
                     .font(.caption)
             }
             Spacer(minLength: 0)

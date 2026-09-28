@@ -60,7 +60,7 @@ struct OnboardingWindow: View {
         HStack {
             if state.step == .photos {
                 Button(Copy.Onboarding.skip) { onAction(.skip) }
-                    .buttonStyle(.link)
+                    .buttonStyle(.accentLink)
             } else {
                 Button(Copy.Onboarding.back) { onAction(.back) }
             }
@@ -239,7 +239,7 @@ private struct AIStep: View {
                     Text(Copy.Onboarding.AI.waiting)
                         .font(.callout)
                     Button(Copy.Onboarding.AI.waitingCancel, action: onCancel)
-                        .buttonStyle(.link)
+                        .buttonStyle(.accentLink)
                 }
             case .connected(let ai, let account):
                 HStack(spacing: Tokens.Space.inner) {
@@ -251,7 +251,7 @@ private struct AIStep: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     Button(Copy.Onboarding.AI.otherAccount, action: onOtherAccount)
-                        .buttonStyle(.link)
+                        .buttonStyle(.accentLink)
                         .font(.caption)
                 }
             }

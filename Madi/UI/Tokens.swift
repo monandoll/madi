@@ -21,7 +21,12 @@ public enum Tokens {
         /// 설명이 안 맞는다. 시안(`design/claude-design`)이 쓰는 초록을 앱 tint 로 고정한다.
         /// 루트에서 `.tint(...)` 로 한 번 걸고, 직접 그리는 것(선택 테두리 등)에만 이 값을 쓴다.
         /// `Color.accentColor` 는 시스템 강조색이라 여기와 다른 색이 나온다 — 섞어 쓰지 않는다.
-        public static let accent = Color(red: 0.176, green: 0.416, blue: 0.333)  // #2D6A55
+        /// 2026-09-29 시안(`docs/design/claude-design-0929`)에서 초록 #2D6A55 → 남색 #26407A 로 바뀌었다.
+        public static let accent = Color(red: 0x26 / 255, green: 0x40 / 255, blue: 0x7A / 255)  // #26407A
+        /// 누른 · 올려 둔 강조색 (시안 hover). 강조 면 위 글자(`새로` · `지금` 알약)에도 쓴다.
+        public static let accentPressed = Color(red: 0x1E / 255, green: 0x33 / 255, blue: 0x62 / 255)  // #1E3362
+        /// 옅은 강조 바탕 (시안 `#E3E6EE` — `새로` · `지금` 알약, 진행 링 바탕, 고른 칸 바탕).
+        public static let accentSoft = Color(red: 0xE3 / 255, green: 0xE6 / 255, blue: 0xEE / 255)  // #E3E6EE
 
         /// 실패. 시스템 빨강을 그대로 쓴다.
         /// **진짜 실패에만** 쓴다 — AI 미연결 · 대기 · 멈춤은 실패가 아니다 (AGENTS.md §1-6).
@@ -37,14 +42,14 @@ public enum Tokens {
         public static let placeholder = Color(nsColor: .quaternarySystemFill)
     }
 
-    /// 장면 역할 색. **커스텀이 아니다** — 시스템 색을 역할에 배정만 했다.
-    /// 색은 "구분"용이고 의미는 항상 글자(`Copy.Role`)가 같이 말한다. 색맹 사용자를 위해
-    /// 색만으로 정보를 주지 않는다.
+    /// 장면 역할 색. 2026-09-29 시안에서 시스템 색 대신 정해진 색으로 바뀌었다 — 강조색(남색)과 겹치지 않고
+    /// 네 역할이 서로 구분되게. 색은 "구분"용이고 의미는 항상 글자(`Copy.Role`)가 같이 말한다.
+    /// 색맹 사용자를 위해 색만으로 정보를 주지 않는다.
     public enum RoleTint {
-        public static let hook = Color.pink
-        public static let demo = Color.blue
-        public static let explain = Color.green
-        public static let cta = Color.purple
+        public static let hook = Color(red: 0xB8 / 255, green: 0x60 / 255, blue: 0x3A / 255)     // #B8603A
+        public static let demo = Color(red: 0x3F / 255, green: 0x8A / 255, blue: 0x66 / 255)     // #3F8A66
+        public static let explain = Color(red: 0x8A / 255, green: 0x63 / 255, blue: 0xB8 / 255)  // #8A63B8
+        public static let cta = Color(red: 0xA3 / 255, green: 0x9D / 255, blue: 0x95 / 255)      // #A39D95
         public static let filler = Color.secondary
     }
 
@@ -67,6 +72,8 @@ public enum Tokens {
         public static let thumbnail: CGFloat = 6
         /// 정보 카드 · 채팅 말풍선.
         public static let card: CGFloat = 10
+        /// 채팅 말풍선 · 입력칸 (2026-09-29 시안 18).
+        public static let bubble: CGFloat = 18
     }
 
     // MARK: - 치수

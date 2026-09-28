@@ -142,6 +142,7 @@
 		C21F74C5550424129AA94DD1 /* MakingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4858B61215897A37099D0CF /* MakingScreen.swift */; };
 		C30334DE52E4EED78B861660 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AD3D942F0B86E1976B7C8E1 /* AppSettings.swift */; };
 		C3F5E1E8B2C2FA772A4EE989 /* SceneEditsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FF3E3EE91EC301C00612D8 /* SceneEditsTests.swift */; };
+		C44A8E6DBB7EBAF06986F986 /* AccentLinkStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46E609638B1D9BC9C3A45ED9 /* AccentLinkStyle.swift */; };
 		C482AEC9554B850D7EED078A /* LookMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 924EA856FED937501FD1C4D7 /* LookMapper.swift */; };
 		C4AB6DD33BC50E0D286F134F /* PlanScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAABD8A5FF82020B90D7687A /* PlanScreen.swift */; };
 		C5E46CC98D84D78FD698ED0E /* ImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672B9A9D8EB3302CDE9C3EB0 /* ImportTests.swift */; };
@@ -168,6 +169,7 @@
 		E5DA8CCFDC46DB4FC2633071 /* Importer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA96EF54F56D70E495B80CF0 /* Importer.swift */; };
 		E7B5F43FB54DA90B9F02FFDF /* MadiKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 409E7371C9108F4322587DF0 /* MadiKit.framework */; };
 		E98DDAE9458F83A89577DFF5 /* TranscriptionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E9CA9018D54ABF34880504E /* TranscriptionProvider.swift */; };
+		ED7E6CAB4A603251AAD40ADA /* AccentLinkStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46E609638B1D9BC9C3A45ED9 /* AccentLinkStyle.swift */; };
 		EDB218E77464C9F32589B18E /* ViewDataMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDBFFFE3F5DCF88E5E7FA62 /* ViewDataMapperTests.swift */; };
 		EDFC7A9DCC434C1E09B1BF3D /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4128CE6E4AFED6AD5491C264 /* SampleData.swift */; };
 		EF0F26CB078C7C8B601BDC4D /* ViewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B501D4D78085E4494C9267E0 /* ViewData.swift */; };
@@ -304,6 +306,7 @@
 		447D4CB078F15F112C14D69A /* StoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreTests.swift; sourceTree = "<group>"; };
 		448203E1948EA675814B0793 /* Spec.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Spec.json; sourceTree = "<group>"; };
 		460759C148526B8AAAC3520E /* AgentJobTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentJobTests.swift; sourceTree = "<group>"; };
+		46E609638B1D9BC9C3A45ED9 /* AccentLinkStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccentLinkStyle.swift; sourceTree = "<group>"; };
 		497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		4A688321A465B55932B0112B /* DigestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigestTests.swift; sourceTree = "<group>"; };
 		4A81EF9CEC412D0497F06714 /* OnboardingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindow.swift; sourceTree = "<group>"; };
@@ -770,6 +773,7 @@
 		C3776461BBD34CCBE8C9AA84 /* Common */ = {
 			isa = PBXGroup;
 			children = (
+				46E609638B1D9BC9C3A45ED9 /* AccentLinkStyle.swift */,
 				104E7EF0BE09E27D398F3904 /* ColorGridPicker.swift */,
 				497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */,
 				250A794115ACE186E485FB2A /* MediaPlayerView.swift */,
@@ -1165,6 +1169,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C44A8E6DBB7EBAF06986F986 /* AccentLinkStyle.swift in Sources */,
 				A4EB4CBCDDB8095655DE5D7C /* AppController.swift in Sources */,
 				DEC2AF7261A0B3A387374A6F /* ChatPanel.swift in Sources */,
 				F882C62E375BE5489A1247A0 /* ColorGridPicker.swift in Sources */,
@@ -1241,6 +1246,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ED7E6CAB4A603251AAD40ADA /* AccentLinkStyle.swift in Sources */,
 				B49FF146A330D15B603648D7 /* ChatPanel.swift in Sources */,
 				BB17F0C9E7B703BC3AD4CB6B /* ColorGridPicker.swift in Sources */,
 				7E40D672E298A150152E6A77 /* Copy.swift in Sources */,

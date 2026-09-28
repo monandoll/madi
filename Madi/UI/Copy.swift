@@ -329,9 +329,18 @@ public enum Copy {
     // MARK: - 대화
 
     public enum Chat {
+        /// 대화 패널 머리줄 (2026-09-29 시안) — "마디" 아래 지금 무엇을 이야기하는지 한 줄.
+        public enum Header {
+            public static let name = "마디"
+            public static func talking(_ version: String) -> String { "\(version)에 대해 이야기 중" }
+            public static let making = "편집안 만드는 중"
+            public static let newShot = "새 촬영본"
+        }
+        /// 입력칸 — AI 가 일하는 동안의 멈추기 (■).
+        public static let stop = "멈추기"
         public static let header = "대화"
         public static let inputPrompt = "말로 요청하기"
-        public static let inputPromptBusy = "다 되면 이어서 요청할 수 있어요"
+        public static let inputPromptBusy = "답변이 끝나면 이어서 요청할 수 있어요"
         public static let send = "보내기"
         public static let speak = "말로 하기"
 

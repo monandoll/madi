@@ -379,7 +379,8 @@ extension SampleData {
             .init(label: "길이", value: Copy.Plan.Info.lengthChange(
                 from: Copy.duration(planSourceDuration), to: Copy.duration(planDuration)
             )),
-        ]))),
+        ], versionLabel: Copy.Plan.version(2), detail: "\(PlatformKind.reels.label) · \(Copy.duration(planDuration))",
+           thumbnail: planScenes[0].thumbnail))),
     ]
 
     /// 만드는 중에 오는 대화. 아직 아무것도 못 보여주니 말로만 알린다.
