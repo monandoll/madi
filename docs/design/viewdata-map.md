@@ -264,6 +264,18 @@ case .openSettings
 | ⑧ | **결과물 고르기가 밖으로 안 나온다** | `ResultsScreen` 이 고른 결과물을 안에서만 기억한다 — `resultDetail`(이전 판과 나란히)을 채울 수 없다. 지금은 비어 있다 | `UIAction.Results.select(ResultRef.ID)` |
 | ⑨ | 편집안 칸에서 **결과물을 연 것**이 안 나온다 | `plan(.openResults)` 는 어느 결과물인지 모른다 — "봤다" 를 적을 수 없다 | `openResults` 에 id, 또는 결과물 화면에서 ⑧ |
 
+### 디자인 답 (2026-09-28)
+
+**⑨ 넣었다.** `UIAction.Plan.openResults` → `openResults(ResultRef.ID?)`.
+- id 는 `PlanView.latestResultID`(새 칸, 기본값 nil) — 이 편집안의 **가장 최근 결과물**. 매퍼가 채운다
+- `RootView` 는 그 id 를 결과물 칸의 처음 고를 것으로 넘긴다. 채팅 `openResult(id)` · 만드는 중 `openResult(id)` 도 같은 길로 그 결과물을 골라 연다
+- 개발 코드는 **고치지 않아도 컴파일된다** — `case .openResults, .play:` 는 딸린 값을 안 적어도 맞는다. "봤다" 를 적으려면 `case .openResults(let id?): Exporter.markSeen(id)` 로 나누면 된다
+
+**⑧ 넣었다.** `UIAction.Results.select(ResultRef.ID?)`.
+- `ResultsScreen` 이 고른 결과물이 바뀔 때마다 내보낸다. 처음 열 때 고른 것(⑨ 로 넘어온 것 포함)도 한 번 나온다. 고른 게 없으면 `select(nil)`
+- 개발: `case .select(let id):` 에서 그 id 로 `resultDetail`(이전 판과 나란히)을 채운다.
+  지금은 `@unknown default` 가 받아서 빌드는 되고 경고만 난다
+
 개발 쪽에 남았던 것 — **전부 이었다 (2026-09-28)**:
 - 목록에서 숨기기 · 되돌리기 (`video.hiddenAt`, 가장 최근에 숨긴 것부터 되살린다)
 - 자막 모양 저장 — 새 스타일 판(다음 영상부터). 굵기 대응 보통 400 · 조금 굵게 480(지금 기본 · 실측) · 굵게 700 · 아주 굵게 900.

@@ -130,6 +130,41 @@ enum ViewDataMapper {
         }
     }
 
+    /// ⑧ 고른 결과물을 이전 판과 나란히 — 같은 촬영본에서 **바로 앞에 보여 준** 결과물과 견준다.
+    /// 달라진 점: 그 판을 만든 AI 의 말(채팅 수정) · 길이 · 장면 수 · 자막 자리. 이전이 없으면 첫 결과물이다.
+    static func resultDetail(_ s: LibrarySnapshot, outputID: String) -> ResultDetail? {
+        guard let o = s.outputs.first(where: { $0.id == outputID && $0.verdict == .shown }),
+              let rec = s.compositions.first(where: { $0.id == o.compositionId }),
+              let video = s.videos.first(where: { $0.id == rec.videoId }),
+              let current = resultRef(o, s) else { return nil }
+        let comps = Set(s.compositions(of: video.id).map(\.id))
+        let earlier = s.outputs.filter { $0.verdict == .shown && comps.contains($0.compositionId) && $0.createdAt < o.createdAt }
+            .max { $0.createdAt < $1.createdAt }
+        guard let earlier, let previous = resultRef(earlier, s),
+              let a = try? s.compositions.first(where: { $0.id == earlier.compositionId })?.composition(),
+              let b = try? rec.composition() else {
+            return ResultDetail(shotTitle: shotTitle(video, s), current: current)
+        }
+        var lines: [EditSummary.Line] = []
+        // 이 판을 만든 채팅 수정에서 AI 가 한 말 — "무엇을 바꿨는지" 를 사람 말로 가장 잘 적은 것
+        let version = s.versionRoot(of: rec.id)?.id ?? rec.id
+        if let said = s.chats.last(where: { $0.kind == .assistant && $0.compositionId == version })?.text, !said.isEmpty {
+            lines.append(.init(label: said, value: ""))
+        }
+        if Copy.duration(a.duration) != Copy.duration(b.duration) {
+            lines.append(.init(label: Copy.Plan.Info.length,
+                               value: Copy.Plan.Info.lengthChange(from: Copy.duration(a.duration), to: Copy.duration(b.duration))))
+        }
+        if a.scenes.count != b.scenes.count {
+            lines.append(.init(label: Copy.Plan.Info.scenes,
+                               value: Copy.Plan.Info.lengthChange(from: "\(a.scenes.count)", to: "\(b.scenes.count)")))
+        }
+        if a.captionSlot != b.captionSlot {
+            lines.append(.init(label: Copy.Plan.Info.caption, value: captionSlot(b.captionSlot).label))
+        }
+        return ResultDetail(shotTitle: shotTitle(video, s), current: current, previous: previous, changes: lines)
+    }
+
     /// 내보낸 이력 한 줄 — 가장 최근 것. 폴더 저장은 문구가 없어 아직 안 낸다 (copy-keys `exportedToFolder`).
     static func exportedNote(_ outputID: String, _ s: LibrarySnapshot) -> String? {
         guard let e = s.exports.last(where: { $0.outputId == outputID && $0.target == .photos }) else { return nil }
@@ -294,7 +329,9 @@ enum ViewDataMapper {
                     when: Copy.shotStamp(v.createdAt, now: s.now),
                     resultCount: s.shownOutput(forVersion: v.id) == nil ? 0 : 1, isCurrent: v.id == rec.id
                 )
-            }
+            },
+            // ⑨ 툴바 "결과물 n개" 가 열 결과물 — 이 판의 보여 준 결과물, 없으면 이 영상의 가장 최근 것
+            latestResultID: (s.shownOutput(forVersion: rec.id) ?? results(of: video.id, s).first.flatMap { r in s.outputs.first { $0.id == r.id } })?.id
         )
     }
 

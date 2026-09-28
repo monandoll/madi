@@ -268,4 +268,23 @@ struct ViewDataMapperTests {
         #expect(LookMapper.nearest(l.caption.fill) == "sky")
         #expect(LookMapper.look(l, fonts: [], labels: [:], preview: .none).fontMissing)   // 이 Mac 에 없는 글꼴
     }
+
+    @Test("⑧ 고른 결과물 — 바로 앞에 보여 준 결과물과 나란히, 달라진 점(AI 말 · 길이 · 장면 수). ⑨ 판의 가장 최근 결과물 id")
+    func resultDetail() throws {
+        let s = LibrarySnapshot(
+            videos: [video("v", at: now)],
+            compositions: [try comp("d", at: now - 60), try comp("c", scenes: [(0, 3)], origin: .chat, revisionOf: "d", at: now - 30)],
+            outputs: [output("o1", comp: "d", verdict: .shown, at: now - 50), output("o2", comp: "c", verdict: .shown, at: now - 20)],
+            chats: [ChatRecord(videoId: "v", kind: .assistant, text: "마지막 장면을 뺐어요", compositionId: "c", createdAt: now - 25)],
+            now: now
+        )
+        let d = try #require(ViewDataMapper.resultDetail(s, outputID: "o2"))
+        #expect(d.current.id == "o2" && d.previous?.id == "o1")
+        #expect(d.changes.first?.label == "마지막 장면을 뺐어요")
+        #expect(d.changes.contains { $0.label == Copy.Plan.Info.scenes && $0.value == Copy.Plan.Info.lengthChange(from: "2", to: "1") })
+        #expect(ViewDataMapper.resultDetail(s, outputID: "o1")?.previous == nil)   // 첫 결과물
+
+        guard case .ready(let plan) = try #require(ViewDataMapper.plan(s, videoID: "v", ai: .claude)) else { Issue.record(""); return }
+        #expect(plan.latestResultID == "o2")
+    }
 }

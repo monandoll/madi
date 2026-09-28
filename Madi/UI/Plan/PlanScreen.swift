@@ -294,7 +294,7 @@ struct PlanScreen: View {
             if plan.resultCount > 0 {
                 ToolbarItem {
                     Button {
-                        onAction(.plan(.openResults))
+                        onAction(.plan(.openResults(plan.latestResultID)))
                     } label: {
                         Label(
                             Copy.results(plan.resultCount),

@@ -50,6 +50,7 @@ private struct MainWindow: View {
             planMessages: controller.planMessages,
             planChips: controller.planChips,
             results: controller.results,
+            resultDetail: controller.resultDetail,
             exportTargets: controller.exportTargets,
             resultsNotice: controller.resultsNotice,
             making: controller.making,

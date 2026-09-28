@@ -24,6 +24,9 @@ final class AppController {
     var results: ResultsState = .loading
     var making: MakingState = .empty
     var resultsNotice: ScreenNotice?
+    /// ⑧ 결과물 칸에서 고른 것을 이전 판과 나란히
+    var resultDetail: ResultDetail?
+    private var selectedResultID: String?
     /// 내보낼 곳 — 사진 앱 · Mac 에 저장 · AirDrop (§2 — 아이폰에서 보려면 사진 앱으로)
     let exportTargets: [ExportTarget] = [
         ExportTarget(title: Copy.Results.Export.photos, detail: Copy.Results.Export.photosDetail, symbol: "photo.on.rectangle"),
@@ -134,6 +137,7 @@ final class AppController {
         guard let s = snapshot else { return }
         gallery = ViewDataMapper.gallery(s, photos: photos)
         results = ViewDataMapper.results(s)
+        resultDetail = selectedResultID.flatMap { ViewDataMapper.resultDetail(s, outputID: $0) }
         making = ViewDataMapper.making(s)
         if let id = openShotID {
             plan = ViewDataMapper.plan(s, videoID: id, ai: ai, viewing: viewingVersionID, modelReady: modelReady)
@@ -288,8 +292,11 @@ final class AppController {
             await connect(ai == .codex ? .codex : .claude)
         case .login(let product):
             await connect(product == .codex ? .codex : .claude)
-        case .openResults, .play:
-            break   // 길 찾기 · 재생은 화면이 한다
+        case .openResults(let id):
+            // ⑨ 편집안에서 결과물을 열었다 — 그 결과물은 "봤다" (길 찾기는 화면이 한다)
+            if let id { try await Exporter.markSeen(db, outputID: id) }
+        case .play:
+            break   // 재생은 화면이 한다
         }
     }
 
@@ -395,9 +402,10 @@ final class AppController {
             resultsNotice = nil
         case .showShots:
             break
-        // 디자인이 새 결과물 행동(⑧ `select`)을 넣어도 빌드가 깨지지 않게 — 합칠 때 실제 처리로 바꾼다
-        @unknown default:
-            break
+        case .select(let id):
+            // ⑧ 고른 결과물 — 이전 판과 나란히 (resultDetail). 고른 것은 "봤다"
+            selectedResultID = id
+            if let id { try await Exporter.markSeen(db, outputID: id) }
         }
     }
 

@@ -42,7 +42,9 @@ public enum UIAction: Hashable, Sendable {
         case make
         /// 짜는 중 · 만드는 중을 멈춘다.
         case stop
-        case openResults
+        /// 결과물 칸으로 간다. id 는 **이 편집안의 가장 최근 결과물**(`PlanView.latestResultID`) —
+        /// 결과물 칸이 그걸 골라 연다 (viewdata-map ⑨). 모르면 nil.
+        case openResults(ResultRef.ID?)
         case connectAI
         /// 로그인이 풀린 AI 에 다시 로그인한다.
         case login(AIProduct)
@@ -78,6 +80,9 @@ public enum UIAction: Hashable, Sendable {
     }
 
     public enum Results: Hashable, Sendable {
+        /// 목록에서 고른 결과물이 바뀌었다 (처음 열 때 고른 것도 한 번 나온다). nil 이면 고른 게 없다.
+        /// 바꾸는 층은 이걸로 `resultDetail`(이전 판과 나란히)을 채운다 (viewdata-map ⑧).
+        case select(ResultRef.ID?)
         case openPlan(ResultRef.ID)
         case export(ResultRef.ID, ExportTarget)
         case trash(ResultRef.ID)
