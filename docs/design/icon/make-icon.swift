@@ -1,15 +1,19 @@
-// 앱 아이콘을 그린다.
+// 앱 아이콘 — **확정본: 1번 타임라인** (2026-09-28, 방향 셋 중 사용자가 골랐다).
 //
 //   swiftc -O -o /tmp/make-icon docs/design/icon/make-icon.swift && /tmp/make-icon
 //
-// 뜻: "마디" 는 대나무 마디 · 몸의 관절이고, 이 앱에서는 **장면**이다.
-// 세로(9:16) 영상 한 편이 길이가 다른 마디 셋으로 나뉜 모양 — 이 앱이 하는 일 그대로다
-// (촬영본을 장면으로 나눠 숏폼을 만든다). 마디 사이 틈을 좁게 둬서 **한 편의 세로 영상**으로 읽히게 한다.
+// 쓰는 곳:
+//   Madi/UI/Assets.xcassets/AppIcon.appiconset/  — macOS 칸 10장 (16 · 32 · 128 · 256 · 512, 각 1x · 2x)
+//   docs/design/icon/app-icon-1024.png           — 검토용 큰 그림
 //
-// 재생 표시(▶)는 넣지 않았다. 흰 둥근 네모 안의 ▶ 는 유튜브 로고와 너무 닮았다.
+// 뜻: 길이가 다른 클립 블록이 **컷(틈)** 으로 나뉘어 한 줄로 있고 재생 헤드가 가로지른다.
+// 한눈에 영상 편집 툴이고, 컷으로 나뉜 조각이 곧 "마디" 다. 가로 트랙이라 세로 숏폼에 묶이지 않는다
+// — 롱폼(7단계)이 와도 그대로 쓴다.
 //
-// 색은 앱 강조색(`Tokens.Palette.accent` #2D6A55)을 바탕으로 쓴다 — 앱 안의 `만들기` 버튼과 같은 초록.
-// 모양은 macOS 아이콘 격자를 따른다: 1024 캔버스 안에 824 몸통, 둥근 모서리, 옅은 그림자.
+// 그리기는 `make-icon-directions.swift` 의 `drawTimeline` 과 **같은 코드**다. 그 파일은 셋을 견주던
+// 시트용이고 여기가 확정본이다. 모양을 고치면 이쪽을 고친다.
+//
+// 작은 칸은 1024 를 줄인 그림이 아니라 **그 픽셀 크기로 다시 그린** 것이다 — 16px 에서도 선이 뭉개지지 않는다.
 
 import AppKit
 
@@ -19,84 +23,85 @@ let inset = (canvas - body) / 2
 let radius: CGFloat = 186
 
 func rgb(_ hex: UInt32, _ alpha: CGFloat = 1) -> CGColor {
-    CGColor(
-        red: CGFloat((hex >> 16) & 0xFF) / 255,
-        green: CGFloat((hex >> 8) & 0xFF) / 255,
-        blue: CGFloat(hex & 0xFF) / 255,
-        alpha: alpha
-    )
+    CGColor(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
 }
 
-func draw(into ctx: CGContext) {
-    let space = CGColorSpace(name: CGColorSpace.sRGB)!
-    let bodyRect = CGRect(x: inset, y: inset + 10, width: body, height: body)  // 그림자 자리만큼 살짝 위
-    let bodyPath = CGPath(roundedRect: bodyRect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+let space = CGColorSpace(name: CGColorSpace.sRGB)!
 
-    // 그림자
+/// macOS 아이콘 몸통 — 둥근 네모 + 그림자 + 위가 밝은 바탕. 안쪽 그리기는 몸통에 잘린다.
+func iconBody(_ ctx: CGContext, top: UInt32, bottom: UInt32, inside: (CGRect) -> Void) {
+    let rect = CGRect(x: inset, y: inset + 10, width: body, height: body)
+    let path = CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil)
     ctx.saveGState()
     ctx.setShadow(offset: CGSize(width: 0, height: -12), blur: 28, color: rgb(0x000000, 0.28))
-    ctx.addPath(bodyPath)
-    ctx.setFillColor(rgb(0x2D6A55))
-    ctx.fillPath()
+    ctx.addPath(path); ctx.setFillColor(rgb(bottom)); ctx.fillPath()
     ctx.restoreGState()
-
-    // 바탕 — 위가 조금 밝은 초록
     ctx.saveGState()
-    ctx.addPath(bodyPath)
-    ctx.clip()
-    let gradient = CGGradient(
-        colorsSpace: space,
-        colors: [rgb(0x3D8A6F), rgb(0x2D6A55), rgb(0x22523F)] as CFArray,
-        locations: [0, 0.55, 1]
-    )!
-    ctx.drawLinearGradient(
-        gradient,
-        start: CGPoint(x: 0, y: bodyRect.maxY),
-        end: CGPoint(x: 0, y: bodyRect.minY),
-        options: []
-    )
+    ctx.addPath(path); ctx.clip()
+    let g = CGGradient(colorsSpace: space, colors: [rgb(top), rgb(bottom)] as CFArray, locations: [0, 1])!
+    ctx.drawLinearGradient(g, start: CGPoint(x: 0, y: rect.maxY), end: CGPoint(x: 0, y: rect.minY), options: [])
+    inside(rect)
     ctx.restoreGState()
+}
 
-    // 9:16 영상 — 마디 셋. 길이를 일부러 다르게 둔다 (장면마다 길이가 다르다).
-    let columnHeight: CGFloat = 560
-    let columnWidth = columnHeight * 9 / 16
-    let column = CGRect(
-        x: bodyRect.midX - columnWidth / 2,
-        y: bodyRect.midY - columnHeight / 2,
-        width: columnWidth,
-        height: columnHeight
-    )
-    let gap: CGFloat = 16
-    let weights: [CGFloat] = [2.2, 1.25, 1.75]   // 위에서부터
-    let usable = columnHeight - gap * CGFloat(weights.count - 1)
-    let total = weights.reduce(0, +)
-    let segRadius: CGFloat = 34
+func roundRect(_ ctx: CGContext, _ r: CGRect, _ radius: CGFloat, _ color: CGColor) {
+    ctx.addPath(CGPath(roundedRect: r, cornerWidth: min(radius, r.width / 2), cornerHeight: min(radius, r.height / 2), transform: nil))
+    ctx.setFillColor(color); ctx.fillPath()
+}
 
-    var top = column.maxY
-    for (index, weight) in weights.enumerated() {
-        let h = usable * weight / total
-        let rect = CGRect(x: column.minX, y: top - h, width: columnWidth, height: h)
-        ctx.addPath(CGPath(roundedRect: rect, cornerWidth: segRadius, cornerHeight: segRadius, transform: nil))
-        // 마디마다 옅기를 다르게 했더니 배터리 눈금처럼 읽혔다 — 전부 흰색으로 둔다.
-        _ = index
+/// 길이가 다른 클립 블록이 **컷(틈)** 으로 나뉘어 한 줄로 있고, 재생 헤드 하나가 가로지른다.
+/// 편집 툴의 타임라인 그대로다 — 가로 트랙이라 세로 숏폼에 묶이지 않는다. 블록은 영상 조각이라 위에 옅은 "화면" 줄을 판다.
+func drawTimeline(_ ctx: CGContext) {
+    iconBody(ctx, top: 0x2E3558, bottom: 0x171B31) { r in
+        let trackY = r.midY - 80
+        let trackH: CGFloat = 170
+        let widths: [CGFloat] = [160, 96, 206, 118]
+        let colors: [(UInt32, UInt32)] = [(0xFF7A5C, 0xE8553A), (0xFFC14D, 0xF09E1B), (0x5CB8FF, 0x2F8EE8), (0xA88BFF, 0x7E5CF0)]
+        let gap: CGFloat = 20
+        let total = widths.reduce(0, +) + gap * CGFloat(widths.count - 1)
+        var x = r.midX - total / 2
+        for (w, c) in zip(widths, colors) {
+            let block = CGRect(x: x, y: trackY, width: w, height: trackH)
+            ctx.saveGState()
+            ctx.addPath(CGPath(roundedRect: block, cornerWidth: 26, cornerHeight: 26, transform: nil))
+            ctx.clip()
+            let g = CGGradient(colorsSpace: space, colors: [rgb(c.0), rgb(c.1)] as CFArray, locations: [0, 1])!
+            ctx.drawLinearGradient(g, start: CGPoint(x: 0, y: block.maxY), end: CGPoint(x: 0, y: block.minY), options: [])
+            // 클립 안의 "화면" — 위쪽에 옅은 띠 (영상 조각으로 읽히게, 막대 나열이 아니게)
+            roundRect(ctx, CGRect(x: block.minX + 14, y: block.maxY - 14 - 56, width: block.width - 28, height: 56), 12, rgb(0xFFFFFF, 0.28))
+            ctx.restoreGState()
+            x += w + gap
+        }
+        // 아래 오디오 트랙 — 얇은 한 줄 (편집 툴로 읽히게)
+        roundRect(ctx, CGRect(x: r.midX - total / 2, y: trackY - 30 - 50, width: total, height: 50), 16, rgb(0xFFFFFF, 0.14))
+        // 재생 헤드 — 흰 세로선 + 위 머리
+        let headX = r.midX - total / 2 + 160 + gap + 96 + gap + 80
         ctx.setFillColor(rgb(0xFFFFFF))
-        ctx.fillPath()
-
-        top -= h + gap
+        ctx.fill(CGRect(x: headX - 8, y: trackY - 30 - 50 - 26, width: 16, height: trackH + 30 + 50 + 26 + 60))
+        let top = trackY + trackH + 60
+        ctx.move(to: CGPoint(x: headX - 46, y: top + 56))
+        ctx.addLine(to: CGPoint(x: headX + 46, y: top + 56))
+        ctx.addLine(to: CGPoint(x: headX + 46, y: top + 14))
+        ctx.addLine(to: CGPoint(x: headX, y: top - 20))
+        ctx.addLine(to: CGPoint(x: headX - 46, y: top + 14))
+        ctx.closePath(); ctx.fillPath()
     }
 }
 
-func render(size: Int) -> Data {
-    let rep = NSBitmapImageRep(
-        bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size,
-        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-        colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
-    )!
-    let ctx = NSGraphicsContext(bitmapImageRep: rep)!.cgContext
-    ctx.clear(CGRect(x: 0, y: 0, width: size, height: size))
-    ctx.scaleBy(x: CGFloat(size) / canvas, y: CGFloat(size) / canvas)
+/// 그 픽셀 크기로 다시 그린다 (줄이지 않는다).
+func render(_ size: Int) -> Data {
+    let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size, bitsPerSample: 8,
+                               samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                               bytesPerRow: 0, bitsPerPixel: 0)!
+    NSGraphicsContext.saveGraphicsState()
+    let g = NSGraphicsContext(bitmapImageRep: rep)!
+    NSGraphicsContext.current = g
+    let ctx = g.cgContext
     ctx.interpolationQuality = .high
-    draw(into: ctx)
+    ctx.scaleBy(x: CGFloat(size) / canvas, y: CGFloat(size) / canvas)
+    drawTimeline(ctx)
+    NSGraphicsContext.restoreGraphicsState()
     return rep.representation(using: .png, properties: [:])!
 }
 
@@ -109,15 +114,13 @@ let repo = URL(fileURLWithPath: #filePath)
 let set = repo.appending(path: "Madi/UI/Assets.xcassets/AppIcon.appiconset")
 try FileManager.default.createDirectory(at: set, withIntermediateDirectories: true)
 
-// macOS 아이콘 칸: 16 · 32 · 128 · 256 · 512 포인트, 각각 1x · 2x
 let slots: [(points: Int, scale: Int)] = [
     (16, 1), (16, 2), (32, 1), (32, 2), (128, 1), (128, 2), (256, 1), (256, 2), (512, 1), (512, 2),
 ]
 var images: [[String: String]] = []
 for slot in slots {
-    let pixels = slot.points * slot.scale
     let name = "icon_\(slot.points)x\(slot.points)\(slot.scale == 2 ? "@2x" : "").png"
-    try render(size: pixels).write(to: set.appending(path: name))
+    try render(slot.points * slot.scale).write(to: set.appending(path: name))
     images.append([
         "filename": name, "idiom": "mac",
         "scale": "\(slot.scale)x", "size": "\(slot.points)x\(slot.points)",
@@ -126,10 +129,8 @@ for slot in slots {
 let contents: [String: Any] = ["images": images, "info": ["author": "xcode", "version": 1]]
 try JSONSerialization.data(withJSONObject: contents, options: [.prettyPrinted, .sortedKeys])
     .write(to: set.appending(path: "Contents.json"))
-let catalog: [String: Any] = ["info": ["author": "xcode", "version": 1]]
-try JSONSerialization.data(withJSONObject: catalog, options: [.prettyPrinted])
+try JSONSerialization.data(withJSONObject: ["info": ["author": "xcode", "version": 1]], options: [.prettyPrinted])
     .write(to: repo.appending(path: "Madi/UI/Assets.xcassets/Contents.json"))
 
-// 검토용 큰 그림 한 장
-try render(size: 1024).write(to: repo.appending(path: "docs/design/icon/app-icon-1024.png"))
+try render(1024).write(to: repo.appending(path: "docs/design/icon/app-icon-1024.png"))
 print("아이콘 \(slots.count)장 → \(set.path)")
