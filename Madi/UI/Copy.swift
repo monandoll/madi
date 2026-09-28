@@ -36,6 +36,8 @@ public enum Copy {
         public static let openInPhotos = "사진 앱에서 보기"
         /// **"삭제" 라고 쓰지 않는다.** 목록에서 안 보이게 할 뿐 원본은 사진 앱에 그대로 있다.
         public static let hideFromList = "목록에서 숨기기"
+        /// 진짜로 지운다 — 앱 사본 · 편집안 · 결과물. 사진 앱 원본은 그대로다 (확인창이 그렇게 말한다).
+        public static let deleteShot = "마디에서 삭제…"
         public static let search = "검색"
     }
 
@@ -64,6 +66,13 @@ public enum Copy {
     // MARK: - 갤러리
 
     public enum Gallery {
+        /// 촬영본 삭제 확인창. 되돌릴 수 없으니 무엇이 지워지고 무엇이 남는지 한 번에 말한다.
+        public enum Delete {
+            public static let confirmTitle = "이 촬영본을 마디에서 지울까요?"
+            public static let confirmMessage = "편집안과 결과물도 함께 지워지고, 되돌릴 수 없어요. 사진 앱의 원본과 사진 앱으로 내보낸 영상은 그대로예요."
+            public static let action = "삭제"
+        }
+
         public static let title = "촬영본"
 
         public enum Filter {

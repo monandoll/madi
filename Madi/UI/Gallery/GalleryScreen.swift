@@ -26,6 +26,8 @@ struct GalleryScreen: View {
     @State private var filter: GalleryFilter = .all
     @State private var query: String = ""
     @State private var showsInspector = true
+    /// 지울까 묻는 중인 촬영본.
+    @State private var deleting: ShotItem?
 
     var body: some View {
         contentFillsColumn
@@ -35,6 +37,20 @@ struct GalleryScreen: View {
             .navigationSubtitle(Copy.count(totalCount))
             .toolbar { toolbar }
             .searchable(text: $query, placement: .toolbar, prompt: Copy.Action.search)
+            .confirmationDialog(
+                Copy.Gallery.Delete.confirmTitle,
+                isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                presenting: deleting
+            ) { shot in
+                Button(Copy.Gallery.Delete.action, role: .destructive) {
+                    if selectedID == shot.id { selectedID = nil }
+                    onAction(.delete(shot.id))
+                    deleting = nil
+                }
+                Button(Copy.Action.cancel, role: .cancel) { deleting = nil }
+            } message: { _ in
+                Text(Copy.Gallery.Delete.confirmMessage)
+            }
             .inspector(isPresented: $showsInspector) {
                 ShotInspector(
                     shot: selectedShot,
@@ -180,6 +196,8 @@ struct GalleryScreen: View {
                 Divider()
                 // 지우는 게 아니다. 사진 앱 원본은 그대로 남는다 — 누른 뒤 상태줄이 그렇게 말한다.
                 Button(Copy.Action.hideFromList) { onAction(.hide(shot.id)) }
+                Button(Copy.Action.deleteShot, role: .destructive) { deleting = shot }
+                    .keyboardShortcut(.delete, modifiers: .command)
             } preview: {
                 // 우클릭 미리보기. 세로 그림 한 장이면 충분하다.
                 ThumbnailView(thumbnail: shot.thumbnail, cornerRadius: 0)

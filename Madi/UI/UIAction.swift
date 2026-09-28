@@ -29,6 +29,8 @@ public enum UIAction: Hashable, Sendable {
         /// 목록에서 숨기기. 사진 앱 원본은 그대로다.
         case hide(ShotItem.ID)
         case undoHide
+        /// 마디에서 삭제 (확인창을 거친 뒤). 앱 사본 · 편집안 · 결과물을 지운다. 사진 앱 원본은 그대로다.
+        case delete(ShotItem.ID)
         /// 받기 실패한 촬영본을 다시 가져온다.
         case retryImport(ShotItem.ID)
         case addFromMac

@@ -62,7 +62,7 @@ public struct Importer: Sendable {
             try fresh.insert(db)
             return fresh
         }
-        if video.status == .ready { return nil }
+        if video.status == .ready || video.deletedAt != nil { return nil }   // 지운 영상은 다시 들이지 않는다
         try db.log("import.seen", subject: video.id, payload: ["source": .string(item.source.rawValue)])
 
         try FileManager.default.createDirectory(at: originals, withIntermediateDirectories: true)

@@ -278,7 +278,51 @@ public struct AppDatabase: Sendable {
         m.registerMigration("v6-hide") { db in
             try db.alter(table: "video") { t in t.add(column: "hiddenAt", .datetime) }
         }
+        // 6단계 — 촬영본 삭제 (UIAction.gallery(.delete)). 행은 남기고 표시만 — 다시 들이지 않게.
+        m.registerMigration("v7-delete") { db in
+            try db.alter(table: "video") { t in t.add(column: "deletedAt", .datetime) }
+        }
         return m
+    }
+}
+
+extension AppDatabase {
+
+    /// 촬영본을 마디에서 지운다 — 편집안 · 결과물 · 분석 · 채팅 · 줄 선 작업까지. **사진 앱 원본은 건드리지 않는다.**
+    /// 영상 행은 `deletedAt` 표시로 남는다 (같은 영상이 사진 보관함 · 폴더에서 다시 들어오지 않게).
+    /// - Returns: 지울 파일들 (앱 사본 · 결과물 mp4 · 분석 폴더). 디스크 지우기는 부르는 쪽이 DB 를 닫은 뒤 한다.
+    ///   이미 도는 작업은 끝까지 간다 — 결과를 저장하려다 행이 없어 실패하고 멈춘다.
+    @discardableResult
+    public func deleteVideo(_ id: String, analysisRoot: URL) throws -> [URL] {
+        try writer.write { db -> [URL] in
+            guard let video = try VideoRecord.fetchOne(db, key: id) else { return [] }
+            let comps = try CompositionRecord.filter(Column("videoId") == id).fetchAll(db)
+            let compIDs = comps.map(\.id)
+            let outputs = try OutputRecord.filter(compIDs.contains(Column("compositionId"))).fetchAll(db)
+            let chatIDs = try String.fetchAll(db, sql: "SELECT id FROM chat WHERE videoId = ?", arguments: [id])
+
+            var files: [URL] = outputs.map { URL(fileURLWithPath: $0.path) }
+            if let p = video.localPath { files.append(URL(fileURLWithPath: p)) }
+            files.append(analysisRoot.appending(path: id, directoryHint: .isDirectory))
+
+            let targets = [id] + compIDs + chatIDs
+            try db.execute(sql: "DELETE FROM job WHERE state != 'running' AND targetId IN (\(targets.map { _ in "?" }.joined(separator: ",")))",
+                           arguments: StatementArguments(targets)!)
+            for o in outputs { try o.delete(db) }            // export 는 cascade
+            // 편집안은 revisionOf(RESTRICT)로 사슬이다 — 아무도 가리키지 않는 끝 판부터 지운다 (시각이 같아도 맞게)
+            while try CompositionRecord.filter(Column("videoId") == id).fetchCount(db) > 0 {
+                try db.execute(sql: """
+                    DELETE FROM composition WHERE videoId = ?
+                    AND id NOT IN (SELECT revisionOf FROM composition WHERE revisionOf IS NOT NULL)
+                    """, arguments: [id])
+                if db.changesCount == 0 { break }   // 다른 영상 판이 가리키는 경우 — 일어나지 않지만 무한 반복은 막는다
+            }
+            try db.execute(sql: "DELETE FROM chat WHERE videoId = ?", arguments: [id])
+            try db.execute(sql: "DELETE FROM digest WHERE videoId = ?", arguments: [id])
+            try db.execute(sql: "UPDATE video SET deletedAt = ?, hiddenAt = NULL, localPath = NULL WHERE id = ?",
+                           arguments: [Date(), id])
+            return files
+        }
     }
 }
 

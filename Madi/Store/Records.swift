@@ -27,6 +27,9 @@ public struct VideoRecord: Codable, Hashable, Sendable, FetchableRecord, Persist
     public var error: String?
     /// 갤러리에서 숨긴 때. 목록에서만 빠진다 — 사진 앱 원본 · 앱 사본 · 결과물은 그대로.
     public var hiddenAt: Date?
+    /// 마디에서 지운 때. 사본 · 분석 · 편집안 · 결과물은 지워지고 이 행만 남는다 —
+    /// 사진 보관함 · 폴더 감시가 같은 영상을 **다시 들이지 않게** 하는 표시다 (`AppDatabase.deleteVideo`).
+    public var deletedAt: Date?
 
     public init(
         id: String = UUID().uuidString, source: Source, sourceRef: String, localPath: String? = nil,

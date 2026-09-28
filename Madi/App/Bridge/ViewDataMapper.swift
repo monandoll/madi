@@ -19,7 +19,7 @@ enum ViewDataMapper {
     static func studio(_ s: LibrarySnapshot, studioName: String, ai: AIConnection, preparing: EnginePrep? = nil) -> StudioStatus {
         StudioStatus(
             studioName: studioName, ai: ai,
-            shotCount: s.videos.filter { $0.hiddenAt == nil }.count,
+            shotCount: s.videos.filter { $0.hiddenAt == nil && $0.deletedAt == nil }.count,
             resultCount: s.outputs.filter { $0.verdict == .shown }.count,
             makingCount: s.videos.filter { !s.liveJobs(of: $0.id).isEmpty }.count,
             preparing: preparing
@@ -31,7 +31,7 @@ enum ViewDataMapper {
     static func gallery(_ s: LibrarySnapshot, photos: PhotoAccess) -> GalleryState {
         // 숨긴 촬영본은 목록에서만 뺀다 (사진 앱 원본 · 결과물은 그대로)
         var s = s
-        s.videos = s.videos.filter { $0.hiddenAt == nil }
+        s.videos = s.videos.filter { $0.hiddenAt == nil && $0.deletedAt == nil }
         if s.videos.isEmpty { return photos == .denied ? .noPhotoAccess : .empty }
         let groups = shotGroups(s)
         let importing = s.videos.filter { $0.status == .importing }.count

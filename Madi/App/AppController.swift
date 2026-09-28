@@ -217,6 +217,20 @@ final class AppController {
             try await db.writer.write { db in
                 try db.execute(sql: "UPDATE video SET hiddenAt = ? WHERE id = ?", arguments: [Date(), id])
             }
+        case .delete(let id):
+            // 마디에서 삭제 — DB 부터 지우고(편집안 · 결과물 · 분석 · 채팅), 파일은 그다음. 사진 앱 원본은 그대로다.
+            let video = snapshot?.videos.first { $0.id == id }
+            let files = try db.deleteVideo(id, analysisRoot: AnalyzeJob.defaultRoot)
+            for url in files { try? FileManager.default.removeItem(at: url) }
+            // 폴더로 들어온 영상은 입구 폴더의 파일을 휴지통으로 (되살릴 수 있게). 입구 밖 파일은 건드리지 않는다
+            if let video, video.source == .folder {
+                let file = URL(fileURLWithPath: video.sourceRef)
+                if file.deletingLastPathComponent().standardizedFileURL.path == MadiPipeline.inbox.standardizedFileURL.path {
+                    try? FileManager.default.trashItem(at: file, resultingItemURL: nil)
+                }
+            }
+            if openShotID == id { openShotID = nil; viewingVersionID = nil }
+            try? db.log("video.deleted", subject: id, payload: ["files": .number(Double(files.count))])
         case .undoHide:
             // 가장 최근에 숨긴 것을 되살린다
             try await db.writer.write { db in
