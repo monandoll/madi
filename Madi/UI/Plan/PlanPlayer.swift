@@ -17,14 +17,23 @@ struct PlanPlayer: View {
     var onPlay: () -> Void = {}
     var onPrevious: () -> Void = {}
     var onNext: () -> Void = {}
+    /// 재생할 영상 (이 판의 결과물). 있으면 썸네일 · 자리표시 막대 대신 **앱 안에서 재생**한다 (개발이 넣음, viewdata-map ⑩).
+    var url: URL? = nil
 
     var body: some View {
-        VStack(spacing: Tokens.Space.inner) {
-            ThumbnailView(thumbnail: thumbnail, cornerRadius: Tokens.Radius.card)
+        if let url {
+            PlanVideo(url: url)
                 .aspectRatio(Tokens.Ratio.vertical, contentMode: .fit)
+                .clipShape(.rect(cornerRadius: Tokens.Radius.card))
                 .frame(maxHeight: .infinity)
+        } else {
+            VStack(spacing: Tokens.Space.inner) {
+                ThumbnailView(thumbnail: thumbnail, cornerRadius: Tokens.Radius.card)
+                    .aspectRatio(Tokens.Ratio.vertical, contentMode: .fit)
+                    .frame(maxHeight: .infinity)
 
-            transport
+                transport
+            }
         }
     }
 

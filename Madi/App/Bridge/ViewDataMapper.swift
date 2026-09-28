@@ -112,7 +112,8 @@ enum ViewDataMapper {
             id: o.id, platform: platform(comp.meta.platform), planLabel: Copy.Plan.version(number),
             when: Copy.shotStamp(o.createdAt, now: s.now), duration: comp.duration, sceneCount: comp.scenes.count,
             isNew: o.seenAt == nil, exportedNote: exportedNote(o.id, s), thumbnail: thumb(s.thumbnailStore.output(o.id), s),
-            notice: gateTip(o)
+            notice: gateTip(o),
+            fileURL: FileManager.default.fileExists(atPath: o.path) ? URL(fileURLWithPath: o.path) : nil
         )
     }
 
@@ -331,7 +332,9 @@ enum ViewDataMapper {
                 )
             },
             // ⑨ 툴바 "결과물 n개" 가 열 결과물 — 이 판의 보여 준 결과물, 없으면 이 영상의 가장 최근 것
-            latestResultID: (s.shownOutput(forVersion: rec.id) ?? results(of: video.id, s).first.flatMap { r in s.outputs.first { $0.id == r.id } })?.id
+            latestResultID: (s.shownOutput(forVersion: rec.id) ?? results(of: video.id, s).first.flatMap { r in s.outputs.first { $0.id == r.id } })?.id,
+            // 편집안 자리에서 재생 — 이 판의 보여 준 결과물 (내보낸 mp4, 자막 포함). 아직 안 만든 판이면 썸네일
+            previewURL: s.shownOutput(forVersion: rec.id).flatMap { FileManager.default.fileExists(atPath: $0.path) ? URL(fileURLWithPath: $0.path) : nil }
         )
     }
 

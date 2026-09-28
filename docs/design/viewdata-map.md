@@ -292,7 +292,16 @@ case .openSettings
 - `ResultsScreen` 이 `ResultCompare(onPlay:)` 를 잇지 않아 결과물 화면의 "처음부터 재생" 은 행동조차 안 나온다.
   갤러리 정보 패널의 ▶ 는 버튼이 아니라 장식이다
 
-개발이 임시로 한 것: 편집안의 재생 · 처음부터 보기 · 여기서 재생 → 그 판의 결과물 mp4 를 **QuickTime 으로 연다** (결과물이 없으면 원본).
+~~개발이 임시로 한 것: QuickTime 으로 연다~~ → **앱 안에서 재생한다 (2026-09-28, 사용자 결정 "개발이 최소로 직접 고침")**.
+개발이 `Madi/UI` 에서 고친 줄 (디자인이 다시 그려도 된다 — 지킬 것은 "내보낸 mp4 를 앱 안에서 재생"):
+- 새 파일 `Common/MediaPlayerView.swift` — `AVPlayerView` 를 감싼 뷰 · 주소마다 재생기 하나(`MediaPlayers`) ·
+  편집안 영상(`PlanVideo`, 위치 옮기기 알림 `.madiPlayerSeek` 을 받는다)
+- `ViewData`: `ResultRef.fileURL` · `PlanView.previewURL` (기본값 nil)
+- `PlanPlayer`: `url` 이 있으면 썸네일 · 자리표시 막대 대신 영상 (재생 막대는 `AVPlayerView` 것)
+- `PlanScreen`: `PlanPlayer(url: plan.previewURL)` 한 줄
+- `ResultCompare`: 결과물마다 영상, "둘 다 처음부터 재생" 은 같이 처음부터 튼다
+- 편집안 "처음부터 보기" · 장면 "여기서 재생" 은 바꾸는 층이 알림으로 플레이어를 그 위치(장면 시작)로 옮겨 튼다
+- 아직 안 만든 판(사람이 고친 판)은 영상이 없어 썸네일이다 — `§7` 레이어 트리 미리보기는 따로 만든다
 
 제안 (디자인이 정한다):
 - `ResultRef.fileURL: URL?` · `PlanView.previewURL: URL?`(그 판의 보여 준 결과물) 를 ViewData 에 두고, 플레이어 자리에서

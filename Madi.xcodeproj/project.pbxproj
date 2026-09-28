@@ -146,6 +146,7 @@
 		D0EEACB252B6F1F127A60173 /* PlanScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAABD8A5FF82020B90D7687A /* PlanScreen.swift */; };
 		D10203FAB9F6AF59412F2EB8 /* SubjectTrack.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACC2DA0E608DE6F2C2FD7C62 /* SubjectTrack.swift */; };
 		D17C7DB4308BAEEFBAEE8773 /* FontLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4681562F04878CEC2D88BB3 /* FontLibrary.swift */; };
+		D23F74F4F05FF7BAA9AE958C /* MediaPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250A794115ACE186E485FB2A /* MediaPlayerView.swift */; };
 		D3DE1FBA1874E3F8CAE5605A /* RenderProgressBoard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10053543A76B1004657D680E /* RenderProgressBoard.swift */; };
 		D4BB35D08277068BB7D7BAA3 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */; };
 		D551C493AC40898375C6970C /* MCPTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3DE2F64D15C0B58E43CE28 /* MCPTests.swift */; };
@@ -175,6 +176,7 @@
 		F9DC06A3CE9CE4965712E42D /* RenderJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 561BB4F10E5D25D2D79B6FAC /* RenderJob.swift */; };
 		FC3555D591D888294B8CF13A /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B2B8D01B0628FACEC7DDB1 /* Renderer.swift */; };
 		FD39110C27EFFA4607677D95 /* PlanPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81877A18E03E394FB21E0B6 /* PlanPlayer.swift */; };
+		FD82CCE4362E8E4ACA616944 /* MediaPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250A794115ACE186E485FB2A /* MediaPlayerView.swift */; };
 		FDAD3F002F69F8295199DB0C /* Copy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2704493EA14FFB218BD85234 /* Copy.swift */; };
 		FE596BD45B64E915E2199894 /* DigestBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807D00B9149F72389F639F77 /* DigestBuilder.swift */; };
 		FEEC32C7333058C382E673AD /* UIAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84767F18FB96C212B8D9538C /* UIAction.swift */; };
@@ -271,6 +273,7 @@
 		1DB646EB14B2FAA8FBB871F5 /* ExportCaptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportCaptionTests.swift; sourceTree = "<group>"; };
 		1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MadiApp.swift; sourceTree = "<group>"; };
 		2223B52C773741B4A0C9EA8F /* ReframeLimitsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReframeLimitsTests.swift; sourceTree = "<group>"; };
+		250A794115ACE186E485FB2A /* MediaPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPlayerView.swift; sourceTree = "<group>"; };
 		2704493EA14FFB218BD85234 /* Copy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copy.swift; sourceTree = "<group>"; };
 		2B960902DF371A1FE0B3178F /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		2CE4AE6B3B5EEED7B9828936 /* CLILocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLILocator.swift; sourceTree = "<group>"; };
@@ -744,6 +747,7 @@
 			isa = PBXGroup;
 			children = (
 				497F9DE1AE3E6385A22EBDDB /* FlowLayout.swift */,
+				250A794115ACE186E485FB2A /* MediaPlayerView.swift */,
 				14B2355EFFC3613EC4CA904B /* NoticeBar.swift */,
 				CA06076D2C37AFB52A054685 /* ThumbnailView.swift */,
 			);
@@ -1143,6 +1147,7 @@
 				C482AEC9554B850D7EED078A /* LookMapper.swift in Sources */,
 				41D529605EC5629F9025E152 /* MadiApp.swift in Sources */,
 				C21F74C5550424129AA94DD1 /* MakingScreen.swift in Sources */,
+				D23F74F4F05FF7BAA9AE958C /* MediaPlayerView.swift in Sources */,
 				91DE767121295A80EF11BA08 /* NoticeBar.swift in Sources */,
 				4E19E4AAB0BB06DB67347743 /* OnboardingWindow.swift in Sources */,
 				363EB979B9A40786AA646B7B /* Pipeline.swift in Sources */,
@@ -1211,6 +1216,7 @@
 				199876224754E62B0491DBC4 /* FlowLayout.swift in Sources */,
 				56BA0DAE7878958DC6021E5E /* GalleryScreen.swift in Sources */,
 				C8B61DEDF14AD95B4CDD3FD9 /* MakingScreen.swift in Sources */,
+				FD82CCE4362E8E4ACA616944 /* MediaPlayerView.swift in Sources */,
 				301098484B660F51FDF2024F /* NoticeBar.swift in Sources */,
 				A0312AE4491C1E3124A66BBC /* OnboardingWindow.swift in Sources */,
 				5B8607DBBD22F351DF047ECB /* PlanInfoCards.swift in Sources */,

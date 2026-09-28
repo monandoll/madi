@@ -9,6 +9,8 @@ struct ResultCompare: View {
     var mode: CompareMode
 
     var onPlay: () -> Void = {}
+    /// 앱 안 재생 (개발이 넣음, viewdata-map ⑩) — 결과물마다 재생기 하나, "둘 다 처음부터" 는 같이 튼다.
+    @StateObject private var players = MediaPlayers()
 
     var body: some View {
         // 나란히 보는 게 목적이라 **그림이 남는 높이를 다 쓴다.**
@@ -58,7 +60,7 @@ struct ResultCompare: View {
 
                 Button(showsPrevious ? Copy.Results.Compare.playBoth : Copy.Results.Compare.play,
                        systemImage: "play.fill",
-                       action: onPlay)
+                       action: { players.playAllFromStart(); onPlay() })
                 .controlSize(.small)
 
                 changes
@@ -82,9 +84,16 @@ struct ResultCompare: View {
                     .foregroundStyle(.secondary)
             }
 
-            ThumbnailView(thumbnail: result.thumbnail, cornerRadius: Tokens.Radius.card)
-                .aspectRatio(Tokens.Ratio.vertical, contentMode: .fit)
-                .frame(height: height)
+            Group {
+                if let url = result.fileURL {
+                    MediaPlayerView(player: players.player(for: url))
+                        .clipShape(.rect(cornerRadius: Tokens.Radius.card))
+                } else {
+                    ThumbnailView(thumbnail: result.thumbnail, cornerRadius: Tokens.Radius.card)
+                }
+            }
+            .aspectRatio(Tokens.Ratio.vertical, contentMode: .fit)
+            .frame(height: height)
 
             Text("\(Copy.duration(result.duration)) · \(Copy.scenes(result.sceneCount))")
                 .font(.caption)

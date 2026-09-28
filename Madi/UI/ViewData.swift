@@ -67,17 +67,22 @@ public struct ResultRef: Identifiable, Hashable, Sendable {
     /// 긴 설명(`Copy.Gate.subjectTooSmall` 등)은 채팅으로 간다 (viewdata-map 3절 ⑤).
     public var notice: String?
 
+    /// 결과물 영상 파일 (내보낸 mp4 — 자막이 그려져 있다). 앱 안 재생에 쓴다 (개발이 넣음, viewdata-map ⑩).
+    public var fileURL: URL?
+
     public init(
         id: String, platform: PlatformKind, planLabel: String, when: String,
         duration: Double, sceneCount: Int, isNew: Bool = false,
         exportedNote: String? = nil,
         thumbnail: Thumbnail = .none,
-        notice: String? = nil
+        notice: String? = nil,
+        fileURL: URL? = nil
     ) {
         self.id = id; self.platform = platform; self.planLabel = planLabel
         self.when = when; self.duration = duration; self.sceneCount = sceneCount
         self.isNew = isNew; self.exportedNote = exportedNote; self.thumbnail = thumbnail
         self.notice = notice
+        self.fileURL = fileURL
     }
 }
 
@@ -370,6 +375,8 @@ public struct PlanView: Identifiable, Hashable, Sendable {
     public var resultCount: Int
     /// 이 편집안의 가장 최근 결과물. 툴바 "결과물 n개" 를 누르면 결과물 칸이 이걸 골라 연다 (⑨).
     public var latestResultID: ResultRef.ID?
+    /// 편집안 자리에서 재생할 영상 (이 판의 보여 준 결과물 mp4). 없으면 썸네일 (개발이 넣음, viewdata-map ⑩).
+    public var previewURL: URL?
     /// 이 촬영본의 편집안 전부. 툴바에서 고른다.
     public var versions: [PlanVersion]
 
@@ -380,7 +387,8 @@ public struct PlanView: Identifiable, Hashable, Sendable {
         captionSlot: CaptionSlot,
         scenes: [SceneCardItem], resultCount: Int,
         versions: [PlanVersion] = [],
-        latestResultID: ResultRef.ID? = nil
+        latestResultID: ResultRef.ID? = nil,
+        previewURL: URL? = nil
     ) {
         self.id = id; self.shotID = shotID; self.shotTitle = shotTitle
         self.platform = platform; self.versionLabel = versionLabel
@@ -390,6 +398,7 @@ public struct PlanView: Identifiable, Hashable, Sendable {
         self.scenes = scenes; self.resultCount = resultCount
         self.versions = versions
         self.latestResultID = latestResultID
+        self.previewURL = previewURL
     }
 
     public var removedGapCount: Int { scenes.filter { $0.removedGapAfter != nil }.count }

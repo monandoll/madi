@@ -167,7 +167,8 @@ struct PlanScreen: View {
                     thumbnail: currentScene(plan).thumbnail,
                     position: position(in: plan),
                     total: plan.targetDuration,
-                    onPlay: { onAction(.plan(.play)) }
+                    onPlay: { onAction(.plan(.play)) },
+                    url: plan.previewURL
                 )
                 .frame(width: 158)
 

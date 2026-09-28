@@ -325,7 +325,7 @@ final class AppController {
         case .shorten: try await edit(.shorten(sceneID: id, seconds: 1), db)
         case .restoreGap: try await edit(.restoreGap(sceneID: id), db)
         case .editCaption(let text, let secondary): try await edit(.editCaption(sceneID: id, text: text, secondary: secondary), db)
-        case .playFromHere: playCurrent()
+        case .playFromHere: playCurrent(sceneID: id)
         case .select: break   // 화면이 한다
         }
     }
@@ -360,18 +360,16 @@ final class AppController {
         }
     }
 
-    /// 재생 — 앱 안 플레이어가 아직 없다 (디자인 `PlanPlayer` 는 자리표시). 그때까지 **보고 있는 판의 결과물**을
-    /// 기본 플레이어(QuickTime)로 연다. 결과물이 없으면(고친 뒤 아직 안 만든 판) 원본을 연다.
-    private func playCurrent() {
-        guard let s = snapshot, let videoID = openShotID else { return }
-        let url: URL? = {
-            if let id = currentVersionID(), let o = s.shownOutput(forVersion: id) { return URL(fileURLWithPath: o.path) }
-            if let o = ViewDataMapper.results(of: videoID, s).first.flatMap({ r in s.outputs.first { $0.id == r.id } }) {
-                return URL(fileURLWithPath: o.path)
-            }
-            return s.videos.first { $0.id == videoID }?.localPath.map { URL(fileURLWithPath: $0) }
-        }()
-        if let url { NSWorkspace.shared.open(url) }
+    /// 재생 — 편집안 자리의 앱 안 플레이어를 이 위치로 옮겨 튼다 (`PlanVideo` 가 알림을 받는다).
+    /// 위치는 결과물 타임라인의 초 — 장면이면 그 장면이 시작하는 곳.
+    private func playCurrent(sceneID: String? = nil) {
+        var seconds = 0.0
+        if let sceneID, let id = currentVersionID(),
+           let comp = try? snapshot?.compositions.first(where: { $0.id == id })?.composition(),
+           let i = comp.scenes.firstIndex(where: { $0.id == sceneID }) {
+            seconds = comp.sceneOffsets[i]
+        }
+        NotificationCenter.default.post(name: .madiPlayerSeek, object: nil, userInfo: ["seconds": seconds])
     }
 
     private func send(_ text: String, videoID: String, _ db: AppDatabase, _ queue: JobQueue) async throws {
