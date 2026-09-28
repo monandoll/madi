@@ -41,6 +41,7 @@ private struct MainWindow: View {
     let controller: AppController
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         RootView(
@@ -63,5 +64,6 @@ private struct MainWindow: View {
         .onChange(of: controller.showsOnboarding) { _, shows in
             if !shows { dismissWindow(id: "onboarding") }
         }
+        .onChange(of: controller.settingsRequest) { _, _ in openSettings() }
     }
 }

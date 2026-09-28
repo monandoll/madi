@@ -285,3 +285,19 @@ case .openSettings
 - 원본 받는 중 진행률 — 가져오기가 메모리 게시판에 올린다
 - "다시 가져오기" 는 분석이 아니라 **원본을 다시 받는다** (다시 훑으면 받기 실패한 영상을 다시 받는다)
 
+### ⑩ 앱 안 재생 — 지금은 재생이 안 된다 (개발 → 디자인, 2026-09-28)
+
+사용자 확인: **동영상 재생이 안 된다.** 까닭 둘:
+- `PlanPlayer` · `ResultCompare` 는 썸네일 + 버튼인 **자리표시**다 (`PlanPlayer` 주석: "실제 재생은 개발이 붙인다")
+- `ResultsScreen` 이 `ResultCompare(onPlay:)` 를 잇지 않아 결과물 화면의 "처음부터 재생" 은 행동조차 안 나온다.
+  갤러리 정보 패널의 ▶ 는 버튼이 아니라 장식이다
+
+개발이 임시로 한 것: 편집안의 재생 · 처음부터 보기 · 여기서 재생 → 그 판의 결과물 mp4 를 **QuickTime 으로 연다** (결과물이 없으면 원본).
+
+제안 (디자인이 정한다):
+- `ResultRef.fileURL: URL?` · `PlanView.previewURL: URL?`(그 판의 보여 준 결과물) 를 ViewData 에 두고, 플레이어 자리에서
+  AVKit `VideoPlayer` 로 바로 재생한다 — 내보낸 mp4 에 자막이 이미 그려져 있다 (`§7` 내보낸 파일)
+- 아직 안 만든 판(사람이 고친 판)의 미리보기는 `§7` 대로 `AVPlayer` + `AVSynchronizedLayer` + **같은 레이어 트리** 여야 한다 —
+  이건 개발이 뷰 하나(`MadiKit`)로 만들어 넘기는 게 맞다. 필요하면 말해 달라
+- `ResultCompare.onPlay` 를 `UIAction.Results.play(ResultRef.ID)` 로 내보내기 (앱 안 플레이어 전에는 개발이 QuickTime 으로 연다)
+
