@@ -80,6 +80,9 @@ public enum UIAction: Hashable, Sendable {
     }
 
     public enum Results: Hashable, Sendable {
+        /// 목록에서 고른 결과물이 바뀌었다 (처음 열 때 고른 것도 한 번 나온다). nil 이면 고른 게 없다.
+        /// 바꾸는 층은 이걸로 `resultDetail`(이전 판과 나란히)을 채운다 (viewdata-map ⑧).
+        case select(ResultRef.ID?)
         case openPlan(ResultRef.ID)
         case export(ResultRef.ID, ExportTarget)
         case trash(ResultRef.ID)

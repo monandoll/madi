@@ -63,8 +63,11 @@ struct ResultsScreen: View {
             } message: { _ in
                 Text(Copy.Results.Trash.confirmMessage)
             }
+            // 고른 것을 밖으로 (⑧). 처음 연 것도 한 번 내보낸다 — 바꾸는 층이 `detail` 을 채운다.
+            .onChange(of: selectedID) { _, id in onAction(.select(id)) }
             .onAppear {
                 if selectedID == nil { selectedID = initialSelection }
+                if selectedID == nil { onAction(.select(nil)) }
                 if showsExportSheet { isExporting = true }
                 if showsTrashConfirm {
                     trashing = state.allItems.first { $0.id == initialSelection }
