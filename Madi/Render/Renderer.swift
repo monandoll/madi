@@ -345,6 +345,12 @@ public struct Renderer {
         videoComposition.frameDuration = CMTime(value: 1, timescale: CMTimeScale(comp.fps))
         videoComposition.instructions = instructions
 
+        // 렌더는 백그라운드 스레드에서 레이어를 만든다. 명시적 트랜잭션으로 감싸 닫는다 —
+        // 안 그러면 스레드가 끝날 때 "deleted thread with uncommitted CATransaction" 이 찍힌다. 그림은 같다.
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        defer { CATransaction.commit() }
+
         let bounds = CGRect(origin: .zero, size: renderSize)
         let videoLayer = CALayer()
         videoLayer.frame = bounds
