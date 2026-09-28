@@ -157,16 +157,43 @@ struct ViewDataMapperTests {
     @Test("만드는 중 — 도는 것 먼저, 기다리는 것은 메모, 오늘 보여 준 결과물")
     func making() throws {
         let s = LibrarySnapshot(
-            videos: [video("v", at: now)],
-            compositions: [try comp("a", at: now - 60), try comp("b", at: now - 50)],
+            videos: [video("v", at: now), video("w", at: now)],
+            compositions: [try comp("a", at: now - 60), try comp("b", video: "w", at: now - 50)],
             outputs: [output("o", comp: "a", verdict: .shown, at: now - 5)],
             jobs: [job(.render, "b", .queued), job(.render, "a", .running)],
             now: now
         )
         guard case .loaded(let jobs, let done) = ViewDataMapper.making(s) else { Issue.record(""); return }
+        #expect(jobs.count == 2)                                  // 촬영본마다 한 줄
         guard case .running = jobs.first?.state else { Issue.record("도는 것이 먼저가 아니다"); return }
         guard case .queued = jobs.last?.state else { Issue.record(""); return }
         #expect(done.map(\.id) == ["o"])
+    }
+
+    @Test("편집안은 있는데 만들다(렌더) 멈췄으면 '준비 중' 으로 계속 돌리지 않고 멈췄다고 말한다")
+    func renderFailedStops() throws {
+        var failed = job(.render, "d", .failed); failed.error = "원본 영상은 60.00초인데 60.08초 지점을 달라고 했습니다"
+        let s = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now)], jobs: [failed], now: now)
+        guard case .stopped(let plan, let reason, _, _) = try #require(ViewDataMapper.plan(s, videoID: "v", ai: .claude)) else {
+            Issue.record("멈춤으로 안 보인다"); return
+        }
+        #expect(plan?.id == "d" && reason == Copy.AI.renderFailed)
+    }
+
+    @Test("만드는 중 — 숏폼 만들기를 누른 순간(분석 · AI 초안)부터 촬영본이 목록에 뜬다. 분석 진행률이 전체 퍼센트에 들어간다")
+    func makingFromTheStart() throws {
+        var s = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], now: now)
+        s.analysisProgress["v"] = AnalysisProgress(step: .findPerson, fraction: 0.5)
+        guard case .loaded(let jobs, _) = ViewDataMapper.making(s), case .running(let p) = jobs.first?.state else {
+            Issue.record("분석 중인 촬영본이 목록에 없다"); return
+        }
+        #expect(jobs[0].planLabel == Copy.Plan.Preparing.title)
+        #expect(abs(p.fraction - (0.05 + 0.45 * 0.35)) < 1e-9)
+        #expect(p.steps.map(\.state) == [.done, .running, .waiting, .waiting])   // 받아적기 · 사람 찾기 · 장면 나누기 · 만들기
+        // AI 초안 중 — 반쯤
+        let drafting = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.agent, "v", .running)], now: now)
+        guard case .loaded(let d, _) = ViewDataMapper.making(drafting), case .running(let p2) = d.first?.state else { Issue.record(""); return }
+        #expect(p2.fraction == 0.5)
     }
 
     @Test("그림 · 진행률 — 있는 그림만 넘기고, 도는 렌더에 진행률을 붙인다")
@@ -183,7 +210,8 @@ struct ViewDataMapperTests {
         let shot = ViewDataMapper.shot(s.videos[0], s)
         #expect(shot.thumbnail.fileURL == store.video("v"))
         guard case .loaded(let jobs, _) = ViewDataMapper.making(s), case .running(let p) = jobs.first?.state else { Issue.record(""); return }
-        #expect(p.fraction == 0.4)
+        #expect(abs(p.fraction - (0.65 + 0.25 * 0.4)) < 1e-9)     // 전체 진행률 — 만들기 단계 안에서 0.4
+        #expect(p.steps.last?.progress == 0.4)
         try? FileManager.default.removeItem(at: dir)
     }
 

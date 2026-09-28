@@ -225,7 +225,7 @@ public struct MadiTools: Sendable {
         } catch {
             return .text("전사를 읽지 못했다 (앱 문제): \(error)", error: true)
         }
-        let snapped = CaptionFiller.snapToWords(&comp, words: words)
+        let snapped = CaptionFiller.snapToWords(&comp, words: words, limit: duration ?? nil)
         problems = CaptionFiller.fill(&comp, words: words, style: styleValue.values.caption, translations: translations)
         if !problems.isEmpty { return reject(problems) }
 

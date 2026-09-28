@@ -104,6 +104,11 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         DYLIB_INSTALL_NAME_BASE: "@rpath"
         DEFINES_MODULE: YES
+      configs:
+        # 엔진은 Debug 에서도 최적화한다 — Xcode ⌘R(Debug)로 켠 앱에서 1분 영상 분석이 353초 걸렸다
+        # (Release 52초). 사람 찾기 · 컷 찾기의 픽셀 계산이 최적화 없이는 몇 배 느리다.
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
 
   # 0단계의 프리뷰 창 하나. 본 UI 는 6단계다 (docs/stage-0.spec.md 범위 밖).
   Madi:

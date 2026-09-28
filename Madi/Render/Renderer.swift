@@ -151,7 +151,9 @@ public struct Renderer {
                 throw Failure.noVideoTrack(scene.source.videoID)
             }
             let duration = try await asset.load(.duration).seconds
-            guard scene.source.end <= duration + 0.05 else {
+            // 조금(0.25초 안) 넘친 건 영상 끝에서 자른다 — 전사 낱말 끝이 영상보다 길게 나와 경계가 밀린 경우.
+            // 넣는 구간은 아래에서 min(끝, 길이) 로 자른다. 더 넘치면 편집안이 틀린 것이다.
+            guard scene.source.end <= duration + 0.25 else {
                 throw Failure.sourceTooShort(
                     scene.source.videoID, asked: scene.source.end, actual: duration
                 )

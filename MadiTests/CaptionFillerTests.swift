@@ -65,4 +65,12 @@ extension CaptionFillerTests {
         var e = comp(start: 10.0, end: 12.2)
         #expect(CaptionFiller.snapToWords(&e, words: words) == 0)
     }
+
+    @Test("낱말 끝으로 밀어도 영상 길이를 넘지 않는다 — 전사 마지막 낱말 끝이 영상보다 길게 나온다 (60.00초 영상에 60.08)")
+    func snapStopsAtVideoEnd() throws {
+        // out 11.3 은 "스트레칭을"(10.8~11.4) 뒤쪽이라 11.4 로 밀리지만, 영상이 11.35초에서 끝난다
+        var c = comp(start: 10.4, end: 11.3)
+        CaptionFiller.snapToWords(&c, words: words, limit: 11.35)
+        #expect(c.scenes[0].source.end == 11.35)
+    }
 }

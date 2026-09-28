@@ -28,7 +28,9 @@ public enum CaptionFiller {
     /// 자막에서는 빠진다 (2026-09-27 첫 초안 — "20초 동안" 의 "20초" 한가운데서 잘렸다).
     /// 경계가 낱말 가운데보다 앞이면 그 낱말을 넣고, 뒤면 뺀다.
     @discardableResult
-    public static func snapToWords(_ comp: inout Composition, words: [Word]) -> Int {
+    /// - Parameter limit: 영상 길이. 낱말 끝으로 밀어도 이 뒤로는 안 간다 — 전사 마지막 낱말 끝이 영상보다
+    ///   길게 나오는 일이 있다 (실제: 60.00초 영상에 60.08초까지 밀려 렌더가 5번 연속 실패).
+    public static func snapToWords(_ comp: inout Composition, words: [Word], limit: Double? = nil) -> Int {
         var moved = 0
         for i in comp.scenes.indices {
             var src = comp.scenes[i].source
@@ -38,6 +40,7 @@ public enum CaptionFiller {
             if let w = words.first(where: { $0.start < src.end && src.end < $0.end }) {
                 src.end = src.end > (w.start + w.end) / 2 ? w.end : w.start
             }
+            if let limit { src.end = min(src.end, limit) }
             if src != comp.scenes[i].source, src.end > src.start {
                 comp.scenes[i].source = src
                 moved += 1

@@ -1459,6 +1459,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = app.madi.kit;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;

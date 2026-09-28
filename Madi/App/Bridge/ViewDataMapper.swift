@@ -282,6 +282,16 @@ enum ViewDataMapper {
             default: break
             }
         }
+        // 판은 있는데 만들다(렌더) 멈췄다 — "준비 중" 으로 계속 돌리지 않는다 (끝없이 기다리게 했다)
+        if let newest = versions.last, live.isEmpty {
+            let ids = Set(s.compositions(of: videoID).map(\.id))
+            let lastMake = s.jobs.filter { ($0.kind == .render || $0.kind == .selfEval) && ids.contains($0.targetId) }
+                .max { ($0.id ?? 0) < ($1.id ?? 0) }
+            if let lastMake, lastMake.state == .failed, lastMake.error != "멈춤" {
+                return .stopped(plan: planView(newest, video: video, versions: versions, s),
+                                reason: Copy.AI.renderFailed, actions: stoppedActions, isFinal: false)
+            }
+        }
         // 판은 있는데 보여 준 것이 없고 더 도는 것도 없다 — 두 번 다듬어도 안 됐다
         if let newest = versions.last, live.isEmpty, gaveUp(newest.id, s) {
             return gaveUpState(newest.id, view: planView(newest, video: video, versions: versions, s), s)
@@ -495,19 +505,69 @@ enum ViewDataMapper {
 
     // MARK: - 만드는 중
 
+    /// 만드는 중 — **숏폼 만들기를 누른 순간부터** 촬영본 한 줄 (분석 → AI 초안 → 만들기 → 검사).
+    /// 전에는 렌더 작업만 보여서, 몇 분 걸리는 분석 · AI 동안 목록이 비어 있었다 (사이드바는 "1" 인데).
     static func making(_ s: LibrarySnapshot) -> MakingState {
-        let renders = s.jobs.filter { $0.kind == .render && ($0.state == .running || $0.state == .queued) }
-            .sorted { ($0.state == .running ? 0 : 1, $0.createdAt) < ($1.state == .running ? 0 : 1, $1.createdAt) }
-        let jobs: [MakingJob] = renders.compactMap { job in
-            guard let rec = s.compositions.first(where: { $0.id == job.targetId }), let comp = try? rec.composition(),
-                  let video = s.videos.first(where: { $0.id == rec.videoId }) else { return nil }
-            let number = s.versionRoot(of: rec.id).flatMap { versionNumber($0.id, s) } ?? 1
-            let state: MakingJob.State = job.state == .running
-                ? .running(MakingProgress(fraction: s.progress[rec.id] ?? 0, steps: []))
-                : .queued(note: Copy.MakingScreen.queuedNote(shotTitle(video, s)))
-            return MakingJob(id: String(job.id ?? 0), shotTitle: shotTitle(video, s), platform: platform(comp.meta.platform),
-                             planLabel: Copy.Plan.version(number), duration: comp.duration, state: state)
+        let live = s.jobs.filter { $0.state == .running || $0.state == .queued }
+        // 작업 → 촬영본
+        func videoID(of job: JobRecord) -> String? {
+            switch job.kind {
+            case .analyze, .agent: return job.targetId
+            case .render, .selfEval: return s.compositions.first { $0.id == job.targetId }?.videoId
+            case .chat: return s.chats.first { $0.id == job.targetId }?.videoId
+            }
         }
+        var byVideo: [String: [JobRecord]] = [:]
+        for j in live { if let v = videoID(of: j) { byVideo[v, default: []].append(j) } }
+
+        let rows: [(running: Bool, at: Date, job: MakingJob)] = byVideo.compactMap { vid, jobs in
+            guard let video = s.videos.first(where: { $0.id == vid }), video.deletedAt == nil else { return nil }
+            // 가장 뒤 단계의 작업이 이 줄을 대표한다
+            func rank(_ k: JobRecord.Kind) -> Int {
+                switch k { case .analyze: 0; case .agent, .chat: 1; case .render: 2; case .selfEval: 3 }
+            }
+            guard let lead = jobs.max(by: { rank($0.kind) < rank($1.kind) }) else { return nil }
+            let running = jobs.contains { $0.state == .running }
+            let rec = (lead.kind == .render || lead.kind == .selfEval) ? s.compositions.first { $0.id == lead.targetId } : nil
+            let comp = try? rec?.composition()
+            let number = rec.flatMap { s.versionRoot(of: $0.id) }.flatMap { versionNumber($0.id, s) } ?? 1
+            let planLabel = rec == nil ? Copy.Plan.Preparing.title : Copy.Plan.version(number)
+            let duration = comp?.duration ?? video.durationSec ?? 0
+
+            let state: MakingJob.State
+            if !running {
+                state = .queued(note: Copy.MakingScreen.queuedNote(shotTitle(video, s)))
+            } else {
+                // 단계 줄 — 준비(받아적기 · 사람 찾기 · 장면 나누기) + 만들기
+                let analysis = lead.kind == .analyze ? s.analysisProgress[vid] : nil
+                var steps = prepareSteps(jobs, analysis: analysis, now: s.now)
+                let renderFraction = rec.map { s.progress[$0.id] ?? 0 } ?? 0
+                steps.append(PrepareStep(title: Copy.Plan.Making.encode,
+                                         state: lead.kind == .selfEval ? .done : lead.kind == .render ? .running : .waiting,
+                                         progress: lead.kind == .render ? renderFraction : nil))
+                // 전체 진행률 — 단계 무게(1분 영상 실측 비율 어림): 받아적기 5 · 사람 찾기 45 · AI 15 · 만들기 25 · 검사 10.
+                // AI 단계는 잴 수 없어 그동안 막대가 멈춘다 (지난 시간은 단계 줄에 보인다)
+                let fraction: Double
+                switch lead.kind {
+                case .analyze:
+                    switch analysis?.step {
+                    case .transcribe?: fraction = 0.05 * (analysis?.fraction ?? 0)
+                    case .findPerson?: fraction = 0.05 + 0.45 * 0.7 * (analysis?.fraction ?? 0)
+                    case .rest?: fraction = 0.05 + 0.45 * (0.7 + 0.3 * (analysis?.fraction ?? 0))
+                    case nil: fraction = 0
+                    }
+                case .agent, .chat: fraction = 0.5
+                case .render: fraction = 0.65 + 0.25 * renderFraction
+                case .selfEval: fraction = 0.9
+                }
+                state = .running(MakingProgress(fraction: fraction, steps: steps))
+            }
+            let item = MakingJob(id: String(lead.id ?? 0), shotTitle: shotTitle(video, s),
+                                 platform: platform(comp?.meta.platform ?? .reels), planLabel: planLabel,
+                                 duration: duration, thumbnail: thumb(s.thumbnailStore.video(vid), s), state: state)
+            return (running, jobs.map(\.createdAt).min() ?? s.now, item)
+        }
+        let jobs = rows.sorted { ($0.running ? 0 : 1, $0.at) < ($1.running ? 0 : 1, $1.at) }.map(\.job)
         let startOfDay = Calendar.current.startOfDay(for: s.now)
         let done: [DoneItem] = s.outputs.filter { $0.verdict == .shown && $0.createdAt >= startOfDay }.compactMap { o in
             guard let rec = s.compositions.first(where: { $0.id == o.compositionId }),

@@ -330,7 +330,12 @@ final class AppController {
             try await edit(.move(from: from, to: to), db)
         case .choice(let c):
             if c.title == Copy.Plan.Stopped.tryAgain, let id = openShotID {
-                try await queue.enqueue(.analyze, targetId: id)   // 다이제스트는 캐시다 — 분석 뒤 초안이 다시 걸린다
+                if let s = snapshot, !s.visibleVersions(of: id).isEmpty {
+                    // 판은 있다 — 만들다(렌더) 멈춘 것. 가장 최근 판을 다시 만든다
+                    try await ensureDraft(videoID: id, db, queue)
+                } else {
+                    try await queue.enqueue(.analyze, targetId: id)   // 다이제스트는 캐시다 — 분석 뒤 초안이 다시 걸린다
+                }
             } else if c.title == Copy.Plan.Stopped.pickAnother {
                 openShotID = nil
                 viewingVersionID = nil

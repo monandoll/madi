@@ -45,6 +45,8 @@ public struct Transcript: Codable, Hashable, Sendable {
             }
             if t.contains("♪") || t.contains("*") { continue }
             if w.start >= duration { continue }
+            var w = w
+            w.end = min(w.end, duration)   // 마지막 낱말 끝이 영상보다 길게 나온다 (60.00초 영상에 60.08)
             kept.append(w)
         }
         return Transcript(videoID: videoID, words: kept)

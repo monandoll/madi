@@ -92,7 +92,9 @@ public actor JobQueue {
         for kind in JobRecord.Kind.allCases where !busy.contains(kind) {
             guard let job = try? claimNext(kind) else { continue }
             busy.insert(kind)
-            Task { await self.run(job) }
+            // 사람이 기다리는 일이다 — 우선순위를 명시한다. 물려받으면 부른 쪽(폴더 · 사진 감시)의 낮은 우선순위로
+            // 효율 코어에 밀릴 수 있다
+            Task(priority: .userInitiated) { await self.run(job) }
         }
         if isIdle() {
             let waiters = idleWaiters
