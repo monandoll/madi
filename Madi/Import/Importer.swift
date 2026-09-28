@@ -37,8 +37,12 @@ public struct Importer: Sendable {
     public let queue: JobQueue?
     public let originals: URL
 
-    public init(db: AppDatabase, queue: JobQueue?, originals: URL = Importer.defaultOriginals) {
-        self.db = db; self.queue = queue; self.originals = originals
+    /// 원본 받는 중 진행률을 올릴 곳 (메모리). 없으면 안 올린다.
+    public let progressBoard: ImportProgressBoard?
+
+    public init(db: AppDatabase, queue: JobQueue?, originals: URL = Importer.defaultOriginals,
+                progressBoard: ImportProgressBoard? = nil) {
+        self.db = db; self.queue = queue; self.originals = originals; self.progressBoard = progressBoard
     }
 
     public static var defaultOriginals: URL {
@@ -65,7 +69,13 @@ public struct Importer: Sendable {
         let destination = originals.appending(path: "\(video.id).\(item.fileExtension.lowercased())")
         do {
             try? FileManager.default.removeItem(at: destination)   // 받다 만 조각
-            try await item.fetch(destination) { progress?($0) }
+            let board = progressBoard
+            let videoID = video.id
+            try await item.fetch(destination) { p in
+                progress?(p)
+                if let board { Task { await board.set(videoID, p) } }
+            }
+            if let board { await board.clear(videoID) }
             let info = try await FrameSheet.info(of: destination)
             video.localPath = destination.path
             video.durationSec = info.duration
@@ -74,6 +84,7 @@ public struct Importer: Sendable {
             video.status = .ready
             video.error = nil
         } catch {
+            if let board = progressBoard { await board.clear(video.id) }
             video.status = .failed
             video.error = "\(error)"
         }

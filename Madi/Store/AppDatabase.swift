@@ -274,6 +274,10 @@ public struct AppDatabase: Sendable {
                 t.column("createdAt", .datetime).notNull()
             }
         }
+        // 6단계 — 갤러리에서 숨기기 (UIAction.gallery(.hide)). 사진 앱 원본 · 앱 사본은 그대로, 목록에서만 빠진다.
+        m.registerMigration("v6-hide") { db in
+            try db.alter(table: "video") { t in t.add(column: "hiddenAt", .datetime) }
+        }
         return m
     }
 }

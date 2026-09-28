@@ -271,17 +271,17 @@ case .openSettings
 - `RootView` 는 그 id 를 결과물 칸의 처음 고를 것으로 넘긴다. 채팅 `openResult(id)` · 만드는 중 `openResult(id)` 도 같은 길로 그 결과물을 골라 연다
 - 개발 코드는 **고치지 않아도 컴파일된다** — `case .openResults, .play:` 는 딸린 값을 안 적어도 맞는다. "봤다" 를 적으려면 `case .openResults(let id?): Exporter.markSeen(id)` 로 나누면 된다
 
-**⑧ 보류 — 개발 한 줄이 먼저 필요하다.** 제안대로 `UIAction.Results.select(ResultRef.ID?)` 를 넣으면
-`AppController.results(_:)` 의 `switch` 가 exhaustive 라 빌드가 깨진다. `Madi/App` 은 디자인이 못 만진다.
-화면 쪽은 준비돼 있다 (넣을 것 두 줄):
-- `ResultsScreen`: `.onChange(of: selectedID) { _, id in onAction(.select(id)) }` + 처음 열 때 고른 게 없으면 `select(nil)` 한 번
-- 개발: `case .select(let id):` 에서 고른 id 를 들고 `resultDetail` 을 채운다
+**⑧ 넣었다.** `UIAction.Results.select(ResultRef.ID?)`.
+- `ResultsScreen` 이 고른 결과물이 바뀔 때마다 내보낸다. 처음 열 때 고른 것(⑨ 로 넘어온 것 포함)도 한 번 나온다. 고른 게 없으면 `select(nil)`
+- 개발: `case .select(let id):` 에서 그 id 로 `resultDetail`(이전 판과 나란히)을 채운다.
+  지금은 `@unknown default` 가 받아서 빌드는 되고 경고만 난다
 
-순서: 개발이 `case .select: break` 한 줄을 먼저 넣어 주거나, 디자인이 넣은 뒤 같은 머지에서 개발이 받는다 — 정해 주면 바로 넣는다.
-
-개발 쪽에 남은 것 (디자인 일 아님):
-- 목록에서 숨기기(`gallery(.hide)`) — 엔진에 칸이 없다
-- 자막 모양 저장(`settings(.look)`) · 앨범 거르기(`settings(.pickAlbum)`)
-- "아쉬운 점 남음" 채팅 한 줄(`reviewSoftNote`) — 되먹임 판정 이벤트를 스냅숏에 넣어야 한다
-- 원본 받는 중 진행률(`ShotItem.fetchProgress`) — Importer 가 들고 있지 않다
+개발 쪽에 남았던 것 — **전부 이었다 (2026-09-28)**:
+- 목록에서 숨기기 · 되돌리기 (`video.hiddenAt`, 가장 최근에 숨긴 것부터 되살린다)
+- 자막 모양 저장 — 새 스타일 판(다음 영상부터). 굵기 대응 보통 400 · 조금 굵게 480(지금 기본 · 실측) · 굵게 700 · 아주 굵게 900.
+  미리보기는 렌더 코드(`StillRenderer`)가 판마다 한 장 그린다
+- 앨범 거르기 — 설정 "앨범 고르기" 를 누르면 **메뉴**(전체 보관함 + 앨범들)가 뜬다. 확인 버튼이 없어 새 문구가 필요 없다
+- "아쉬운 점 남음" — 보여 준 결과물 리포트의 소프트 항목(G11 짧음 · 김, G8 훅)으로 채팅 한 줄. G9 는 문구가 없어 안 낸다
+- 원본 받는 중 진행률 — 가져오기가 메모리 게시판에 올린다
+- "다시 가져오기" 는 분석이 아니라 **원본을 다시 받는다** (다시 훑으면 받기 실패한 영상을 다시 받는다)
 

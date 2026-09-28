@@ -25,6 +25,8 @@ public struct VideoRecord: Codable, Hashable, Sendable, FetchableRecord, Persist
     public var importedAt: Date
     public var status: Status
     public var error: String?
+    /// 갤러리에서 숨긴 때. 목록에서만 빠진다 — 사진 앱 원본 · 앱 사본 · 결과물은 그대로.
+    public var hiddenAt: Date?
 
     public init(
         id: String = UUID().uuidString, source: Source, sourceRef: String, localPath: String? = nil,

@@ -19,6 +19,14 @@ final class MadiPipeline {
     private(set) var preparer: ModelPreparer?
     /// 만드는 중 진행률 — 바꾸는 층이 읽는다 (메모리).
     let progress = RenderProgressBoard()
+    /// iCloud 원본 받는 중 진행률 (메모리).
+    let importProgress = ImportProgressBoard()
+
+    /// "다시 가져오기" — 받기에 실패한 영상을 다시 받게 한 번 더 훑는다.
+    func rescan() {
+        photos?.rescan()
+        folder?.rescan()
+    }
     private var photos: PhotoLibraryWatcher?
     private var folder: FolderWatcher?
 
@@ -85,7 +93,7 @@ final class MadiPipeline {
             queueBox.queue = queue
             try await queue.start()
 
-            let importer = Importer(db: db, queue: queue)
+            let importer = Importer(db: db, queue: queue, progressBoard: importProgress)
             let folder = FolderWatcher(importer: importer, folder: Self.inbox)
             try folder.start()
             let photos = PhotoLibraryWatcher(importer: importer, since: Self.importSince)
