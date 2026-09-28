@@ -711,6 +711,10 @@ public enum Copy {
         public static let favorites = "자주 쓰는 색"
         public static let setFavorite = "지금 색으로 바꾸기"
         public static let setFavoriteHint = "칸을 누르면 지금 색으로 바뀌어요."
+        /// 색 말풍선 — 색 코드를 알면 바로 친다.
+        public static let hex = "HEX"
+        public static let hexPlaceholder = "#FFFFFF"
+        public static let hexInvalid = "#RRGGBB 로 써 주세요"
     }
 
     /// 품질 안내 (`Madi/Review/GateNotice.swift`). 결과는 나왔고 **다음 촬영 때 도움이 될 한 줄**이다.

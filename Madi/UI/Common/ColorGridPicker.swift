@@ -27,6 +27,21 @@ struct PickedColor: Hashable {
         self.init(red: q(c.redComponent), green: q(c.greenComponent), blue: q(c.blueComponent))
     }
 
+    /// `#RRGGBB` (대문자). 말풍선 HEX 칸에 보인다.
+    var hex: String {
+        func h(_ x: Double) -> String { String(format: "%02X", Int((x * 255).rounded())) }
+        return "#" + h(red) + h(green) + h(blue)
+    }
+
+    /// `#FF3366` · `ff3366` · `#f36` 처럼 쓴 것을 읽는다. 못 읽으면 nil.
+    init?(hex raw: String) {
+        var s = raw.trimmingCharacters(in: .whitespaces).uppercased()
+        if s.hasPrefix("#") { s.removeFirst() }
+        if s.count == 3 { s = s.map { "\($0)\($0)" }.joined() }
+        guard s.count == 6, let v = UInt32(s, radix: 16) else { return nil }
+        self.init(red: Double((v >> 16) & 0xFF) / 255, green: Double((v >> 8) & 0xFF) / 255, blue: Double(v & 0xFF) / 255)
+    }
+
     init(white: Double) {
         let q = (white * 255).rounded() / 255
         self.init(red: q, green: q, blue: q)
@@ -93,7 +108,38 @@ struct ColorGridPanel: View {
     var onPick: (PickedColor) -> Void
     var onSetFavorite: (Int) -> Void
 
-    var body: some View { panel }
+    /// HEX 칸 — 지금 색을 보여 주고, 쳐서 엔터를 누르면 그 색으로.
+    @State private var hexText = ""
+    @State private var hexInvalid = false
+
+    var body: some View {
+        panel
+            .onAppear { hexText = current.hex }
+            .onChange(of: current) { _, c in hexText = c.hex; hexInvalid = false }
+    }
+
+    private var hexField: some View {
+        HStack(spacing: Tokens.Space.inner) {
+            Text(Copy.Look.hex)
+                .font(.caption.weight(.semibold))
+            TextField(Copy.Look.hexPlaceholder, text: $hexText)
+                .textFieldStyle(.roundedBorder)
+                .font(.body.monospaced())
+                .frame(width: 100)
+                .onSubmit {
+                    if let c = PickedColor(hex: hexText) { onPick(c); hexInvalid = false } else { hexInvalid = true }
+                }
+            RoundedRectangle(cornerRadius: 4)
+                .fill(current.color)
+                .frame(width: 20, height: 20)
+                .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(.black.opacity(0.2), lineWidth: 1) }
+            if hexInvalid {
+                Text(Copy.Look.hexInvalid)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
 
     private var panel: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.between) {
@@ -102,6 +148,8 @@ struct ColorGridPanel: View {
                 block(ColorGrid.rows.prefix(1))
                 block(ColorGrid.rows.dropFirst())
             }
+
+            hexField
 
             Divider()
 

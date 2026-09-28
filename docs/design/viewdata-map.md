@@ -354,3 +354,5 @@ case .openSettings
   → 그 칸이 지금 색으로 바뀐다. 본문 · 영문 줄이 따로 기억한다 (앱 설정, 스타일 판이 아니다)
 - `UIAction.Settings.Look.setFavorite(Row, index:)` · `Row { main, secondary }`. 문구 `Copy.Look.favorites` · `setFavorite` · `setFavoriteHint`
 - 스크린샷 `color-grid-panel` (말풍선은 창 밖이라 안쪽만)
+- (2026-09-29 이어서) 말풍선 격자 밑에 **HEX 칸** — 지금 색을 `#RRGGBB` 로 보여 주고, 쳐서 엔터를 누르면 그 색
+  (`#FF3366` · `ff3366` · `#f36` 모두 읽는다). 못 읽으면 "#RRGGBB 로 써 주세요". 사용자 요청으로 "숫자를 화면에 안 보인다" 는 규칙을 이 칸에서만 푼다
