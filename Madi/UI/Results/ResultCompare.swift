@@ -18,12 +18,15 @@ struct ResultCompare: View {
         GeometryReader { proxy in
             content(paneHeight: paneHeight(in: proxy.size))
         }
+        // 다른 결과물을 고르거나 화면을 떠나면 멈춘다 — 안 보이는 영상 소리가 나지 않게.
+        .onChange(of: detail.current.id) { players.pauseAll() }
+        .onDisappear { players.pauseAll() }
     }
 
     /// 제목 · 라벨 · 길이줄 · 재생 버튼 · 달라진 점 카드가 쓰는 높이.
     private let chrome: CGFloat = 276
     /// 결과물 영상 밑 재생 막대가 쓰는 높이.
-    private static let transportHeight: CGFloat = 44
+    private static let transportHeight: CGFloat = 70
 
     private func paneHeight(in size: CGSize) -> CGFloat {
         let columns = CGFloat(showsPrevious ? 2 : 1)

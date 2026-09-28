@@ -24,6 +24,7 @@ struct PlanPlayer: View {
         if let url {
             // 영상 + 같은 꼴의 재생 막대 (MediaPlayerView.swift)
             PlanVideo(url: url)
+                .id(url)   // 다른 판으로 바뀌면 옛 재생기를 멈추고 새로 만든다
         } else {
             VStack(spacing: Tokens.Space.inner) {
                 ThumbnailView(thumbnail: thumbnail, cornerRadius: Tokens.Radius.card)

@@ -18,6 +18,11 @@ final class MediaPlayers: ObservableObject {
         return p
     }
 
+    /// 전부 멈춘다 — 다른 결과물로 옮기거나 화면을 떠날 때. 안 멈추면 안 보이는 영상 소리가 계속 난다.
+    func pauseAll() {
+        for p in players.values { p.pause() }
+    }
+
     /// 전부 처음부터 같이 튼다 (결과물 "둘 다 처음부터 재생").
     func playAllFromStart() {
         for p in players.values {
@@ -57,16 +62,22 @@ final class PlayerClock: ObservableObject {
     private var observer: Any?
     private var bag: Set<AnyCancellable> = []
 
+    @Published var isMuted = false
+
     func attach(_ player: AVPlayer) {
         guard self.player !== player else { return }
+        detach()
         self.player = player
+        isMuted = player.isMuted
+        position = 0
+        total = 0
         observer = player.addPeriodicTimeObserver(
             forInterval: CMTime(value: 1, timescale: 10), queue: .main
-        ) { [weak self] time in
+        ) { [weak self, weak player] time in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.position = time.seconds.isFinite ? time.seconds : 0
-                if let d = player.currentItem?.duration.seconds, d.isFinite { self.total = d }
+                if let d = player?.currentItem?.duration.seconds, d.isFinite { self.total = d }
             }
         }
         // 길이는 재생 전에도 보여 준다 (0:00 / 0:00 으로 두지 않는다).
@@ -80,6 +91,27 @@ final class PlayerClock: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] status in self?.isPlaying = status != .paused }
             .store(in: &bag)
+    }
+
+    /// 재생기를 놓는다 — 멈추고 관찰을 뗀다. 화면이 사라질 때도 부른다.
+    func detach() {
+        guard let player else { return }
+        player.pause()
+        if let observer { player.removeTimeObserver(observer) }
+        observer = nil
+        bag.removeAll()
+        self.player = nil
+    }
+
+    func skip(_ delta: Double) {
+        let upper = total > 0 ? total : position + delta
+        seek(min(max(0, position + delta), upper))
+    }
+
+    func toggleMute() {
+        guard let player else { return }
+        player.isMuted.toggle()
+        isMuted = player.isMuted
     }
 
     func seek(_ seconds: Double) {
@@ -116,27 +148,33 @@ struct PlayerTransport: View {
             .labelsHidden()
 
             HStack(spacing: Tokens.Space.inner) {
-                Button { clock.seek(0) } label: {
-                    Image(systemName: "backward.end.fill")
-                }
-                .help(Copy.Plan.Scenes.playFromHere)
+                Text(Copy.duration(clock.position))
+                Spacer(minLength: 0)
+                Text(Copy.duration(clock.total))
+            }
+            .font(.caption2)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
 
+            // 처음으로 · 10초 뒤로 · 재생/멈춤 · 10초 앞으로 · 소리. QuickTime 과 같은 버튼만 둔다.
+            HStack(spacing: Tokens.Space.inner) {
+                Button { clock.seek(0) } label: { Image(systemName: "backward.end.fill") }
+                    .help(Copy.Plan.Scenes.playFromHere)
+                Button { clock.skip(-10) } label: { Image(systemName: "gobackward.10") }
                 Button { clock.toggle() } label: {
                     Image(systemName: clock.isPlaying ? "pause.fill" : "play.fill")
-                        .frame(width: 12)
+                        .imageScale(.large)
+                        .frame(width: 18)
                 }
                 .help(Copy.Action.play)
-
-                Spacer(minLength: 0)
-
-                Text("\(Copy.duration(clock.position)) / \(Copy.duration(clock.total))")
-                    .font(.caption)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                Button { clock.skip(10) } label: { Image(systemName: "goforward.10") }
+                Button { clock.toggleMute() } label: {
+                    Image(systemName: clock.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                        .frame(width: 16)
+                }
             }
             .buttonStyle(.borderless)
-            .imageScale(.small)
+            .frame(maxWidth: .infinity)
         }
     }
 }
@@ -167,6 +205,7 @@ struct PlanVideo: View {
             PlayerTransport(clock: clock)
         }
         .onAppear { clock.attach(player) }
+        .onDisappear { clock.detach() }
         .onReceive(NotificationCenter.default.publisher(for: .madiPlayerSeek)) { note in
             clock.seek(note.userInfo?["seconds"] as? Double ?? 0)
             player.play()
@@ -193,5 +232,7 @@ struct ResultVideo: View {
                 .frame(width: height * Tokens.Ratio.vertical)
         }
         .onAppear { clock.attach(player) }
+        .onChange(of: ObjectIdentifier(player)) { clock.attach(player) }
+        .onDisappear { clock.detach() }
     }
 }
