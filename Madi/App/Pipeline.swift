@@ -91,7 +91,7 @@ final class MadiPipeline {
                 .analyze: analyzeThenDraft, .agent: agent.handler,
                 .render: renderThenReview, .selfEval: agent.selfEvalHandler,
                 .chat: agent.chatHandler,
-            ])
+            ], loadLevel: { LoadGovernor.shared.level })
             queueBox.queue = queue
             try await queue.start()
 

@@ -423,10 +423,13 @@ public struct PrepareStep: Identifiable, Hashable, Sendable {
     public var progress: Double?
     /// 잴 수 없는 단계(AI 가 장면을 나누는 중)는 지난 시간만 — "32초째". 남은 시간을 지어내지 않는다.
     public var elapsed: String?
+    /// 제목 옆 짧은 한 줄 — "맥 식히는 중" (앱이 발열 · 메모리를 보고 쉬어 가는 중, `LoadGovernor`).
+    public var note: String?
 
-    public init(title: String, state: State, remaining: String? = nil, progress: Double? = nil, elapsed: String? = nil) {
+    public init(title: String, state: State, remaining: String? = nil, progress: Double? = nil, elapsed: String? = nil,
+                note: String? = nil) {
         self.title = title; self.state = state; self.remaining = remaining
-        self.progress = progress; self.elapsed = elapsed
+        self.progress = progress; self.elapsed = elapsed; self.note = note
     }
 }
 

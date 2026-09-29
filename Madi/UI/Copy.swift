@@ -260,6 +260,8 @@ public enum Copy {
             public static func elapsed(_ seconds: Int) -> String {
                 seconds < 60 ? "\(seconds)초째" : "\(seconds / 60)분 \(seconds % 60)초째"
             }
+            /// 앱이 맥 발열 · 메모리를 보고 쉬어 가는 중. 느린 게 고장이 아니라는 걸 먼저 말한다 (§17 조용히 느려지지 않는다).
+            public static let cooling = "맥 식히는 중"
             public static func percent(_ fraction: Double) -> String { "\(Int((fraction * 100).rounded(.down)))%" }
             public static let stop = "멈추기"
             public static let scenesComing = "나누는 중…"

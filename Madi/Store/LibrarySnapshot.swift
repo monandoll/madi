@@ -22,6 +22,8 @@ public struct LibrarySnapshot: Sendable {
     public var importProgress: [String: Double] = [:]
     /// 분석 단계 · 진행률 (영상 id →). 메모리 게시판에서 온다.
     public var analysisProgress: [String: AnalysisProgress] = [:]
+    /// 맥이 뜨겁거나 메모리가 모자라 쉬어 가는 중 (`LoadGovernor.isCooling`) — 화면에 "맥 식히는 중".
+    public var cooling = false
     /// 있는 그림 파일 경로. 없는 그림은 화면이 회색 자리표시로 그린다.
     public var thumbnails: Set<String> = []
     /// 그림 자리를 정하는 곳 (경로 규칙).

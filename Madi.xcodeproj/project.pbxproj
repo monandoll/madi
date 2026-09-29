@@ -81,6 +81,7 @@
 		65326EDB401736223324DC28 /* JobQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 444F3E850EBEC7F3B7079326 /* JobQueue.swift */; };
 		6B3E982EF607902E95F17BE7 /* PoseOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D94087F95A27AD4220EBA1 /* PoseOverlay.swift */; };
 		6D4B129FC7A94FA17CCD51C8 /* ResultsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DE86554CE56C56FE4CD25A /* ResultsScreen.swift */; };
+		702D34723316DEE7BFF3EF3E /* LoadGovernorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2AD1E882B32A4165668572 /* LoadGovernorTests.swift */; };
 		70E53AA18374F6A0DD3FBC2E /* SourceInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67E1C649B3812749092A8C66 /* SourceInfo.swift */; };
 		723CCEBEA826566D40F50F58 /* JobQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE313119A97621F7104ADA4 /* JobQueueTests.swift */; };
 		73C3A381504F317447570B53 /* PromptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8174C4882F6A4FE14235FC8F /* PromptTests.swift */; };
@@ -96,6 +97,7 @@
 		7EC27D66EB8FA2EB23EF7B40 /* StyleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17ABE83D90BA6977FB20DD73 /* StyleStore.swift */; };
 		7ED4B11B1A9439F07368CED2 /* SoftGates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530E68C62BA0792D05E49AD5 /* SoftGates.swift */; };
 		846E8E752D4B74FD0CCF297F /* LibrarySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 928CA4ECB422E63AFE86F321 /* LibrarySnapshot.swift */; };
+		8571CEFDD3A30B318C028049 /* LoadGovernor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580EB71084CE728DC82BA5F1 /* LoadGovernor.swift */; };
 		87D7D92C08C884BBC772C42E /* Exporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB750C99EDC7DBD5D64D819A /* Exporter.swift */; };
 		8D14896445466BABE07F2DCE /* StoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 447D4CB078F15F112C14D69A /* StoreTests.swift */; };
 		8D1F02B9DA0396383C797357 /* ExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034A7ED45B0CF4B22BAC1E53 /* ExportSheet.swift */; };
@@ -322,6 +324,7 @@
 		56043B60D8D7F65420927E55 /* playbook.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = playbook.md; sourceTree = "<group>"; };
 		561BB4F10E5D25D2D79B6FAC /* RenderJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderJob.swift; sourceTree = "<group>"; };
 		57238E9396123FB6046C5696 /* AgentRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRunner.swift; sourceTree = "<group>"; };
+		580EB71084CE728DC82BA5F1 /* LoadGovernor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadGovernor.swift; sourceTree = "<group>"; };
 		58B6C32DC1255DE343A5F4B1 /* ChatPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatPanel.swift; sourceTree = "<group>"; };
 		5AAB938E5C34F7D8ACF83F31 /* SceneEdits.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneEdits.swift; sourceTree = "<group>"; };
 		62AEF9EC7C2DE464565CB5B3 /* DeleteVideoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteVideoTests.swift; sourceTree = "<group>"; };
@@ -330,6 +333,7 @@
 		67E1C649B3812749092A8C66 /* SourceInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceInfo.swift; sourceTree = "<group>"; };
 		69FA9B25C6634222F16324AB /* ShotInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotInspector.swift; sourceTree = "<group>"; };
 		6B194ACA3DE903D8E5ED55D4 /* SelfEvalRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfEvalRequest.swift; sourceTree = "<group>"; };
+		6F2AD1E882B32A4165668572 /* LoadGovernorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadGovernorTests.swift; sourceTree = "<group>"; };
 		707E5FDEAE3A4BA7B3017CB7 /* Gate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gate.swift; sourceTree = "<group>"; };
 		71179A0F34B7DEC6B15915CC /* ReframePlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReframePlanner.swift; sourceTree = "<group>"; };
 		719988E041BEB26E14C18EB8 /* downloads.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = downloads.json; sourceTree = "<group>"; };
@@ -588,6 +592,7 @@
 			isa = PBXGroup;
 			children = (
 				444F3E850EBEC7F3B7079326 /* JobQueue.swift */,
+				580EB71084CE728DC82BA5F1 /* LoadGovernor.swift */,
 			);
 			path = Queue;
 			sourceTree = "<group>";
@@ -617,6 +622,7 @@
 				D1D715F0E27C29617EEBED60 /* ExportTests.swift */,
 				672B9A9D8EB3302CDE9C3EB0 /* ImportTests.swift */,
 				4EE313119A97621F7104ADA4 /* JobQueueTests.swift */,
+				6F2AD1E882B32A4165668572 /* LoadGovernorTests.swift */,
 				E87AAA1966A951C8D211F2A7 /* LookPreviewTests.swift */,
 				BD3DE2F64D15C0B58E43CE28 /* MCPTests.swift */,
 				36634EACED983CF2596C4C3D /* OverlayPayloadTests.swift */,
@@ -1223,6 +1229,7 @@
 				DA870BC5460CB9EEB22151A9 /* ExportTests.swift in Sources */,
 				C5E46CC98D84D78FD698ED0E /* ImportTests.swift in Sources */,
 				723CCEBEA826566D40F50F58 /* JobQueueTests.swift in Sources */,
+				702D34723316DEE7BFF3EF3E /* LoadGovernorTests.swift in Sources */,
 				4C3CD3DDCFF0DA99F093678C /* LookPreviewTests.swift in Sources */,
 				D551C493AC40898375C6970C /* MCPTests.swift in Sources */,
 				0B6D2C26766F7C92DBC12F7B /* OverlayPayloadTests.swift in Sources */,
@@ -1315,6 +1322,7 @@
 				65326EDB401736223324DC28 /* JobQueue.swift in Sources */,
 				B84729514D4454755BF89583 /* Layout.swift in Sources */,
 				846E8E752D4B74FD0CCF297F /* LibrarySnapshot.swift in Sources */,
+				8571CEFDD3A30B318C028049 /* LoadGovernor.swift in Sources */,
 				D8806A081E22A3D3F9CE96A7 /* MCPServer.swift in Sources */,
 				B8E2C45A9F9772D4EC3B758E /* MadiTools.swift in Sources */,
 				1C33500A52B9172F220E23E1 /* ModelPreparer.swift in Sources */,

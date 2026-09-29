@@ -14,10 +14,23 @@ public actor JobQueue {
     private let handlers: [JobRecord.Kind: Handler]
     private var busy: Set<JobRecord.Kind> = []
     private var idleWaiters: [CheckedContinuation<Void, Never>] = []
+    /// 이 Mac 이 지금 무거운 일을 얼마나 받을 수 있나 (`LoadGovernor`). 없으면 언제나 `full` — 테스트 기본값.
+    private let loadLevel: @Sendable () -> LoadLevel
+    /// 무거운 일을 미뤄 뒀을 때 다시 볼 간격.
+    private let recheckAfter: Duration
+    private var recheckScheduled = false
 
-    public init(db: AppDatabase, handlers: [JobRecord.Kind: Handler]) {
+    /// 무거운 일 — 영상을 통째로 읽거나 새로 만든다. 맥에 여유가 없으면 이 둘은 **하나씩만** 돈다.
+    /// AI 턴(agent · selfEval · chat)은 다른 프로세스(CLI)가 하고 가벼워서 그대로 둔다.
+    static func isHeavy(_ kind: JobRecord.Kind) -> Bool { kind == .analyze || kind == .render }
+
+    public init(db: AppDatabase, handlers: [JobRecord.Kind: Handler],
+                loadLevel: @escaping @Sendable () -> LoadLevel = { .full },
+                recheckAfter: Duration = .seconds(3)) {
         self.db = db
         self.handlers = handlers
+        self.loadLevel = loadLevel
+        self.recheckAfter = recheckAfter
     }
 
     /// 앱 시작 때 한 번. 지난 실행에서 `running` 으로 남은 작업은 도중에 죽은 것이다 — 다시 줄 세운다.
@@ -89,18 +102,45 @@ public actor JobQueue {
 
     private func pump() {
         // 종류마다 하나씩 동시에 돈다 — 분석 1 · 렌더 1 (§2) · AI 1 (4단계).
+        // 단, 맥에 여유가 없으면(LoadGovernor) 무거운 일(분석 · 렌더)은 하나씩, 위험하면 식을 때까지 새로 시작하지 않는다.
+        let level = loadLevel()
+        var heldBack = false
         for kind in JobRecord.Kind.allCases where !busy.contains(kind) {
+            if Self.isHeavy(kind), level >= .eased,
+               level == .paused || busy.contains(where: Self.isHeavy) {
+                if hasQueued(kind) { heldBack = true }
+                continue
+            }
             guard let job = try? claimNext(kind) else { continue }
             busy.insert(kind)
             // 사람이 기다리는 일이다 — 우선순위를 명시한다. 물려받으면 부른 쪽(폴더 · 사진 감시)의 낮은 우선순위로
             // 효율 코어에 밀릴 수 있다
             Task(priority: .userInitiated) { await self.run(job) }
         }
+        // 미뤄 둔 무거운 일 — 식었는지 조금 뒤에 다시 본다 (끝난 일이 없어도)
+        if heldBack, !recheckScheduled {
+            recheckScheduled = true
+            Task { [recheckAfter] in
+                try? await Task.sleep(for: recheckAfter)
+                await self.recheck()
+            }
+        }
         if isIdle() {
             let waiters = idleWaiters
             idleWaiters = []
             for w in waiters { w.resume() }
         }
+    }
+
+    private func recheck() {
+        recheckScheduled = false
+        pump()
+    }
+
+    private func hasQueued(_ kind: JobRecord.Kind) -> Bool {
+        ((try? db.writer.read {
+            try JobRecord.filter(Column("kind") == kind.rawValue && Column("state") == "queued").fetchCount($0)
+        }) ?? 0) > 0
     }
 
     /// 가장 오래된 줄 선 작업을 잡는다. 잡는 것과 `running` 표시는 한 트랜잭션이다.

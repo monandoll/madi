@@ -41,7 +41,8 @@ public enum VideoScan {
     public static func run(
         url: URL, subjectTimes: [Double], cutFPS: Double,
         onSubject: (Double, CIImage) throws -> Void,
-        progress: ((Double) -> Void)? = nil
+        progress: ((Double) -> Void)? = nil,
+        pace: (TimeInterval) async -> Void = { await LoadGovernor.shared.breathe(worked: $0) }
     ) async throws -> Result {
         let asset = AVURLAsset(url: url)
         guard let track = try await asset.loadTracks(withMediaType: .video).first else {
@@ -80,6 +81,7 @@ public enum VideoScan {
             //   불어나 10분 영상에서 메모리가 바닥났고, WindowServer 가 멈춰 맥이 두 번 재부팅됐다 (2026-09-29).
             var finished = false
             while !finished {
+                let started = Date()
                 try autoreleasepool {
                     guard let sample = output.copyNextSampleBuffer() else { finished = true; return }
                     guard let buffer = CMSampleBufferGetImageBuffer(sample) else { return }
@@ -102,6 +104,8 @@ public enum VideoScan {
 
                     if pts - lastReport >= 1 { progress?(min(pts / max(duration, 0.01), 1)); lastReport = pts }
                 }
+                // 맥이 뜨거우면 쉬어 가고, 위험하면 식을 때까지 기다린다 (LoadGovernor). 보통이면 바로 돌아온다
+                await pace(Date().timeIntervalSince(started))
             }
             guard reader.status == .failed else { break }
             restarts += 1

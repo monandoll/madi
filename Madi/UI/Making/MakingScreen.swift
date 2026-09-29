@@ -182,6 +182,9 @@ private struct MakingJobCard: View {
                         StepIcon(state: step.state)
                         Text(step.title)
                             .foregroundStyle(step.state == .waiting ? .secondary : .primary)
+                        if let note = step.note {
+                            Text(note).foregroundStyle(.secondary)
+                        }
                     }
                     .font(.caption)
                 }

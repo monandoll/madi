@@ -482,6 +482,11 @@ private struct PlanPreparingView: View {
                             .frame(width: 16)
                         Text(step.title)
                             .foregroundStyle(step.state == .waiting ? .secondary : .primary)
+                        if let note = step.note {
+                            Text(note)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                         Spacer(minLength: Tokens.Space.section)
                         if step.state == .done {
                             Text(Copy.Plan.Preparing.done)

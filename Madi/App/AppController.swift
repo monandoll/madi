@@ -80,6 +80,7 @@ final class AppController {
         s.attach(thumbnails: thumbnails, progress: await pipeline.progress.snapshot(),
                  importProgress: await pipeline.importProgress.snapshot())
         s.analysisProgress = await pipeline.analysisProgress.snapshot()
+        s.cooling = LoadGovernor.shared.isCooling
         snapshot = s
         recompute()
         startProgressTicker()
@@ -102,6 +103,7 @@ final class AppController {
                               import: await self.pipeline.importProgress.snapshot(),
                               analysis: await self.pipeline.analysisProgress.snapshot())
                 s.now = Date()
+                s.cooling = LoadGovernor.shared.isCooling
                 self.snapshot = s
                 self.recompute()
                 if !busy && s.importProgress.isEmpty { self.progressTicker = nil; return }

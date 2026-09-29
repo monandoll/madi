@@ -68,6 +68,11 @@ do { try validate(values) } catch { fail("\(error)") }
 /// 자막 위치 슬롯. 기본은 앉아서 말하는 상반신 (공개본 A 무리).
 let slot = CaptionSlot(rawValue: option("slot") ?? "upperBody") ?? .upperBody
 
+// 시험용 — 맥이 뜨겁거나 메모리가 모자란 상황을 흉내 낸다 (LoadGovernor). full · eased · gentle · paused
+if let raw = ProcessInfo.processInfo.environment["MADI_LOAD_LEVEL"] {
+    LoadGovernor.shared.override = ["full": .full, "eased": .eased, "gentle": .gentle, "paused": .paused][raw]
+}
+
 switch args.first {
 
 case "font":

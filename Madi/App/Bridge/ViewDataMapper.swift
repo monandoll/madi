@@ -299,7 +299,7 @@ enum ViewDataMapper {
         return .preparing(prepareSteps(live, fetchingOriginal: video.status == .importing, modelReady: modelReady,
                                        fetchProgress: s.importProgress[video.id],
                                        analysis: live.contains { $0.kind == .analyze } ? s.analysisProgress[video.id] : nil,
-                                       now: s.now))
+                                       now: s.now, cooling: s.cooling))
     }
 
     static var stoppedActions: [ChatChoice] {
@@ -339,7 +339,7 @@ enum ViewDataMapper {
     /// 받아적기와 사람 찾기는 **동시에** 돈다 (`DigestBuilder`) — 둘 다 "도는 중" 이면 둘 다 퍼센트가 오른다.
     static func prepareSteps(_ live: [JobRecord], fetchingOriginal: Bool = false, modelReady: Bool = true,
                              fetchProgress: Double? = nil, analysis: AnalysisProgress? = nil,
-                             now: Date = Date()) -> [PrepareStep] {
+                             now: Date = Date(), cooling: Bool = false) -> [PrepareStep] {
         let kinds = Set(live.map(\.kind))
         let rendering = kinds.contains(.render) || kinds.contains(.selfEval)
         let agent = live.first { $0.kind == .agent }
@@ -367,6 +367,8 @@ enum ViewDataMapper {
             if let started = agent?.startedAt { step.elapsed = Copy.Plan.Preparing.elapsed(max(0, Int(now.timeIntervalSince(started)))) }
             steps.append(step)
         }
+        // 쉬어 가는 중이면 도는 단계에 "맥 식히는 중" — 느린 게 고장이 아니라는 걸 먼저 말한다
+        if cooling { for k in steps.indices where steps[k].state == .running { steps[k].note = Copy.Plan.Preparing.cooling } }
         return steps
     }
 
@@ -529,11 +531,12 @@ enum ViewDataMapper {
             } else {
                 // 단계 줄 — 준비(받아적기 · 사람 찾기 · 장면 나누기) + 만들기
                 let analysis = lead.kind == .analyze ? s.analysisProgress[vid] : nil
-                var steps = prepareSteps(jobs, analysis: analysis, now: s.now)
+                var steps = prepareSteps(jobs, analysis: analysis, now: s.now, cooling: s.cooling)
                 let renderFraction = rec.map { s.progress[$0.id] ?? 0 } ?? 0
                 steps.append(PrepareStep(title: Copy.Plan.Making.encode,
                                          state: lead.kind == .selfEval ? .done : lead.kind == .render ? .running : .waiting,
-                                         progress: lead.kind == .render ? renderFraction : nil))
+                                         progress: lead.kind == .render ? renderFraction : nil,
+                                         note: s.cooling && lead.kind == .render ? Copy.Plan.Preparing.cooling : nil))
                 // 전체 진행률 — 단계 무게(어림): 분석 50(받아적기 · 사람 찾기 동시) · AI 15 · 만들기 25 · 검사 10.
                 // AI 단계는 잴 수 없어 그동안 막대가 멈춘다 (지난 시간은 단계 줄에 보인다)
                 let fraction: Double
