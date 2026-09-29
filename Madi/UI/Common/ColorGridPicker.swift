@@ -97,6 +97,8 @@ struct ColorGridPicker: View {
         .accessibilityLabel(Copy.Look.pickColor)
         .popover(isPresented: $isOpen, arrowEdge: .bottom) {
             ColorGridPanel(current: current, favorites: favorites, onPick: onPick, onSetFavorite: onSetFavorite)
+                // 말풍선 기본 재질은 반투명이라 창 밖으로 나간 부분에 바탕화면이 비친다 — 다크 모드 Mac 에서 짙은 회색이 됐다
+                .presentationBackground(Color(nsColor: .windowBackgroundColor))
         }
     }
 }
@@ -119,20 +121,23 @@ struct ColorGridPanel: View {
     }
 
     private var hexField: some View {
-        HStack(spacing: Tokens.Space.inner) {
-            Text(Copy.Look.hex)
-                .font(.caption.weight(.semibold))
-            TextField(Copy.Look.hexPlaceholder, text: $hexText)
-                .textFieldStyle(.roundedBorder)
-                .font(.body.monospaced())
-                .frame(width: 100)
-                .onSubmit {
-                    if let c = PickedColor(hex: hexText) { onPick(c); hexInvalid = false } else { hexInvalid = true }
-                }
-            RoundedRectangle(cornerRadius: 4)
-                .fill(current.color)
-                .frame(width: 20, height: 20)
-                .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(.black.opacity(0.2), lineWidth: 1) }
+        VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+            HStack(spacing: Tokens.Space.inner) {
+                Text(Copy.Look.hex)
+                    .font(.caption.weight(.semibold))
+                TextField(Copy.Look.hexPlaceholder, text: $hexText)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.body.monospaced())
+                    .frame(width: 100)
+                    .onSubmit {
+                        if let c = PickedColor(hex: hexText) { onPick(c); hexInvalid = false } else { hexInvalid = true }
+                    }
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(current.color)
+                    .frame(width: 20, height: 20)
+                    .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(.black.opacity(0.2), lineWidth: 1) }
+            }
+            // 칸 옆에 두면 말풍선 폭에 걸려 "#RRGGBB 로…" 로 잘렸다 — 아래 줄에
             if hexInvalid {
                 Text(Copy.Look.hexInvalid)
                     .font(.caption)
