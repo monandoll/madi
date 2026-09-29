@@ -25,6 +25,8 @@ final class AppController {
     var results: ResultsState = .loading
     var making: MakingState = .empty
     var resultsNotice: ScreenNotice?
+    /// 갤러리 상태줄 한 줄 — 숨긴 뒤 "목록에서 숨겼어요 · 되돌리기". 전에는 앱이 채우지 않아 숨긴 촬영본을 되살릴 길이 없었다
+    var galleryNotice: String?
     /// ⑧ 결과물 칸에서 고른 것을 이전 판과 나란히
     var resultDetail: ResultDetail?
     private var selectedResultID: String?
@@ -255,6 +257,7 @@ final class AppController {
             try await db.writer.write { db in
                 try db.execute(sql: "UPDATE video SET hiddenAt = ? WHERE id = ?", arguments: [Date(), id])
             }
+            galleryNotice = Copy.Gallery.Hidden.notice
         case .delete(let id):
             // 마디에서 삭제 — 도는 작업부터 멈추고(분석 · AI 턴 — 전에는 지운 영상의 AI 턴이 끝까지 돌았다),
             // DB 를 지우고(편집안 · 결과물 · 분석 · 채팅), 파일은 그다음. 사진 앱 원본은 그대로다.
@@ -277,6 +280,7 @@ final class AppController {
             if openShotID == id { openShotID = nil; viewingVersionID = nil }
             try? db.log("video.deleted", subject: id, payload: ["files": .number(Double(files.count))])
         case .undoHide:
+            galleryNotice = nil
             // 가장 최근에 숨긴 것을 되살린다
             try await db.writer.write { db in
                 try db.execute(sql: """
