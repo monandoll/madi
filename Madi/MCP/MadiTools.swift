@@ -226,6 +226,8 @@ public struct MadiTools: Sendable {
             return .text("전사를 읽지 못했다 (앱 문제): \(error)", error: true)
         }
         let snapped = CaptionFiller.snapToWords(&comp, words: words, limit: duration ?? nil)
+        // 말 앞뒤 숨 쉴 틈 (크리에이터 완성본 실측 — 앞 0.10초 · 뒤 0.15초). 자막을 채우기 **전에** — 자막 시각은 장면 시작 기준이다
+        CaptionFiller.breathe(&comp, words: words, limit: duration ?? nil)
         problems = CaptionFiller.fill(&comp, words: words, style: styleValue.values.caption, translations: translations)
         if !problems.isEmpty { return reject(problems) }
 

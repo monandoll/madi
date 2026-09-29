@@ -49,6 +49,55 @@ public enum CaptionFiller {
         return moved
     }
 
+    /// 말 앞뒤에 **숨 쉴 틈**을 붙인다 — 말 앞 `lead`, 말 끝 뒤 `tail`. 붙인 경계 수를 돌려준다.
+    ///
+    /// 낱말 경계에 딱 맞춰 자르면 말끝 여운이 잘린다 — 전사의 낱말 끝 시각은 실제 소리보다 이르다.
+    /// 크리에이터 완성본 10편(말하는 컷 132곳, `madi-spike cutpace`)은 말 끝 뒤 **중앙 0.14초**, 컷 뒤 첫 말까지
+    /// **중앙 0.10초**를 남겼다. 우리 AI 초안은 말 끝 뒤 0.00~0.06초였다 (2026-09-29 "컷이 너무 타이트하다",
+    /// `docs/findings/2026-09-29-cut-breath.md`).
+    /// - 조용한 틈에서만 가져온다 — 앞뒤 낱말 · 영상 끝 · **다른 장면의 원본 구간**을 넘지 않는다
+    /// - 결과물에서 원본이 그대로 이어지는 두 장면 사이(앞 장면 끝 = 뒤 장면 시작)는 컷이 아니라 건드리지 않는다
+    /// - **첫 장면 시작에는 붙이지 않는다** — 완성본 10편 모두 첫 말이 0.00초에 시작한다 (G8 훅).
+    ///   **마지막 장면 끝**은 조금 더(`endTail` 0.30초) — 완성본 마지막 말 뒤 중앙 0.30초
+    /// - 줄이지 않는다. 늘리기만 한다
+    @discardableResult
+    public static func breathe(_ comp: inout Composition, words: [Word], lead: Double = 0.10, tail: Double = 0.15,
+                               endTail: Double = 0.30, limit: Double? = nil) -> Int {
+        var changed = 0
+        let scenes = comp.scenes
+        for i in scenes.indices {
+            var src = scenes[i].source
+            let inside = words.filter { $0.start >= src.start - 0.01 && $0.end <= src.end + 0.05 }
+            guard let first = inside.first, let last = inside.last else { continue }
+            let joinedBefore = i > 0 && scenes[i - 1].source.videoID == src.videoID
+                && abs(scenes[i - 1].source.end - src.start) < 0.01
+            let joinedAfter = i + 1 < scenes.count && scenes[i + 1].source.videoID == src.videoID
+                && abs(scenes[i + 1].source.start - src.end) < 0.01
+            let others = scenes.indices.filter { $0 != i && scenes[$0].source.videoID == src.videoID }.map { scenes[$0].source }
+
+            let lead = i == 0 ? 0 : lead
+            let tail = i == scenes.count - 1 ? endTail : tail
+            if !joinedBefore, lead > 0, first.start - src.start < lead {
+                var floor = max(0, first.start - lead)
+                if let prev = words.last(where: { $0.end <= first.start - 0.001 }) { floor = max(floor, prev.end + 0.02) }
+                for o in others where o.end <= src.start + 0.001 { floor = max(floor, o.end) }
+                if floor < src.start { src.start = floor }
+            }
+            if !joinedAfter, src.end - last.end < tail {
+                var ceiling = last.end + tail
+                if let next = words.first(where: { $0.start >= last.end + 0.001 }) { ceiling = min(ceiling, next.start - 0.02) }
+                if let limit { ceiling = min(ceiling, limit) }
+                for o in others where o.start >= src.end - 0.001 { ceiling = min(ceiling, o.start) }
+                if ceiling > src.end { src.end = ceiling }
+            }
+            if src != scenes[i].source {
+                comp.scenes[i].source = src
+                changed += 1
+            }
+        }
+        return changed
+    }
+
     /// 장면마다 원본 구간 안의 낱말을 분절해 `captions` 를 채우고, 영문을 나눠 붙인다.
     /// 문제가 있으면 AI 가 고칠 수 있는 문장으로 돌려준다 (빈 배열이면 성공).
     public static func fill(

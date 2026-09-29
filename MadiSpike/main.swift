@@ -467,6 +467,88 @@ case "scancompare":
         print(String(format: "시간 예전 사람 %.1f초 + 컷 %.1f초 = %.1f초 · 새(한 번 읽기) %.1f초", oldSubject, oldScenes, oldSubject + oldScenes, newTime))
     } catch { fail("\(error)") }
 
+case "cutpace":
+    // 컷 호흡 재기 — 완성본에서 컷 앞뒤로 말이 얼마나 비는지 (2026-09-29 "컷이 너무 타이트하다").
+    // 쌤 공개본(완성본)과 우리 결과물을 같은 방법으로 잰다. 점프컷도 잡도록 프레임마다 화면 변화를 본다.
+    guard args.count > 1 else { fail("사용법: madi-spike cutpace <완성본 영상...>") }
+    setvbuf(stdout, nil, _IOLBF, 0)
+    do {
+        let provider = TranscriptionEngine.forThisMachine.makeProvider(root: Downloads.defaultRoot)
+        try await provider.warmUp()
+        var allLead: [Double] = [], allTail: [Double] = [], allPause: [Double] = [], allShot: [Double] = []
+        var allFirst: [Double] = [], allLast: [Double] = []
+        func med(_ v: [Double]) -> Double { let s = v.sorted(); return s.isEmpty ? .nan : s[s.count / 2] }
+        func pct(_ v: [Double], _ p: Double) -> Double { let s = v.sorted(); return s.isEmpty ? .nan : s[min(s.count - 1, Int(Double(s.count) * p))] }
+        for path in args.dropFirst() {
+            let url = URL(fileURLWithPath: path)
+            let asset = AVURLAsset(url: url)
+            let duration = try await asset.load(.duration).seconds
+            let words = try await provider.transcribe(url, languageCode: "ko").droppingNonSpeech(duration: duration).words
+            // 프레임마다 작은 흑백 — 해독할 때 72×128 로 줄여 받는다
+            guard let track = try await asset.loadTracks(withMediaType: .video).first else { continue }
+            let reader = try AVAssetReader(asset: asset)
+            let out = AVAssetReaderTrackOutput(track: track, outputSettings: [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+                kCVPixelBufferWidthKey as String: 72, kCVPixelBufferHeightKey as String: 128,
+            ])
+            reader.add(out); reader.startReading()
+            var times: [Double] = [], grays: [[UInt8]] = []
+            var done = false
+            while !done {
+                autoreleasepool {
+                    guard let sample = out.copyNextSampleBuffer() else { done = true; return }
+                    guard let buf = CMSampleBufferGetImageBuffer(sample) else { return }
+                    CVPixelBufferLockBaseAddress(buf, .readOnly)
+                    let w = CVPixelBufferGetWidth(buf), h = CVPixelBufferGetHeight(buf), row = CVPixelBufferGetBytesPerRow(buf)
+                    let base = CVPixelBufferGetBaseAddress(buf)!.assumingMemoryBound(to: UInt8.self)
+                    var g = [UInt8](repeating: 0, count: w * h)
+                    for y in 0..<h { for x in 0..<w { let o = y * row + x * 4; g[y * w + x] = UInt8((Int(base[o]) + Int(base[o + 1]) * 2 + Int(base[o + 2])) / 4) } }
+                    CVPixelBufferUnlockBaseAddress(buf, .readOnly)
+                    times.append(CMSampleBufferGetPresentationTimeStamp(sample).seconds); grays.append(g)
+                }
+            }
+            var diff = [Double](repeating: 0, count: grays.count)
+            for i in 1..<grays.count {
+                var sum = 0; for k in 0..<grays[i].count { sum += abs(Int(grays[i][k]) - Int(grays[i - 1][k])) }
+                diff[i] = Double(sum) / Double(grays[i].count) / 255
+            }
+            // 컷 — 주변(±15프레임) 중앙값의 3배 넘게 튀고 ±3프레임 안에서 가장 큰 곳. 너무 작은 변화(0.03 밑)는 뺀다
+            var cuts: [Double] = []
+            for i in 1..<diff.count {
+                let lo = max(1, i - 15), hi = min(diff.count - 1, i + 15)
+                let around = (lo...hi).filter { abs($0 - i) > 1 }.map { diff[$0] }
+                let m = med(around)
+                let peak = (max(1, i - 3)...min(diff.count - 1, i + 3)).allSatisfy { diff[$0] <= diff[i] }
+                if diff[i] >= 0.03, diff[i] >= 3 * max(m, 0.004), peak { cuts.append(times[i]) }
+            }
+            // 컷 앞뒤 말 — 3초 안에 말이 있을 때만 (말하는 구간의 컷)
+            var lead: [Double] = [], tail: [Double] = []
+            for c in cuts {
+                if let before = words.last(where: { $0.end <= c + 0.05 }), c - before.end <= 3,
+                   let after = words.first(where: { $0.start >= c - 0.05 }), after.start - c <= 3 {
+                    tail.append(max(0, c - before.end)); lead.append(max(0, after.start - c))
+                }
+            }
+            // 말 사이 쉼 (컷과 무관하게) — 0.1초 넘는 틈
+            var pauses: [Double] = []
+            for (a, b) in zip(words, words.dropFirst()) where b.start - a.end > 0.1 { pauses.append(b.start - a.end) }
+            let shots = zip([0] + cuts, cuts + [duration]).map { $1 - $0 }
+            let first = words.first?.start ?? .nan, last = words.last.map { duration - $0.end } ?? .nan
+            allLead += lead; allTail += tail; allPause += pauses; allShot += shots
+            if first.isFinite { allFirst.append(first) }; if last.isFinite { allLast.append(last) }
+            let speech = words.reduce(0) { $0 + ($1.end - $1.start) }
+            print(String(format: "%@  %.1f초 · 컷 %d (장면 중앙 %.2f초) · 말 차지 %.0f%% · 첫 말 %.2f초 · 마지막 말 뒤 %.2f초",
+                         url.deletingPathExtension().lastPathComponent, duration, cuts.count, med(shots),
+                         speech / duration * 100, first, last))
+            print(String(format: "   말하는 컷 %d곳 — 컷 앞 꼬리 중앙 %.2f초 · 컷 뒤 머리 중앙 %.2f초 · 말 사이 쉼 중앙 %.2f초 (%d곳)",
+                         lead.count, med(tail), med(lead), med(pauses), pauses.count))
+        }
+        print(String(format: "\n[전체] 컷 앞 꼬리 중앙 %.2f초 (하위 25%% %.2f · 상위 25%% %.2f) · 컷 뒤 머리 중앙 %.2f초 (%.2f · %.2f)",
+                     med(allTail), pct(allTail, 0.25), pct(allTail, 0.75), med(allLead), pct(allLead, 0.25), pct(allLead, 0.75)))
+        print(String(format: "[전체] 말 사이 쉼 중앙 %.2f초 · 장면 길이 중앙 %.2f초 · 첫 말 중앙 %.2f초 · 마지막 말 뒤 중앙 %.2f초 · 말하는 컷 %d곳",
+                     med(allPause), med(allShot), med(allFirst), med(allLast), allLead.count))
+    } catch { fail("\(error)") }
+
 case "digestprogress":
     // 분석 진행률이 실제로 움직이는지 본다 (편집안 준비 화면 퍼센트, viewdata-map ⑮). 앱이 받아 둔 모델을 쓴다.
     guard args.count > 1 else { fail("사용법: madi-spike digestprogress <영상>") }
