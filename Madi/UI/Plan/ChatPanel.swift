@@ -43,6 +43,9 @@ struct ChatPanel: View {
                     .padding(.top, 4)
                     .padding(.bottom, Tokens.Space.between)
                 }
+                // 메시지 앱처럼 최근 말(맨 아래)에서 시작한다 — 전에는 맨 위에서 열려 마지막 말풍선이 잘려 보였다 (1100 창)
+                .defaultScrollAnchor(.bottom)
+                .onAppear { if let last = messages.last?.id { proxy.scrollTo(last, anchor: .bottom) } }
                 .onChange(of: messages.last?.id) { _, last in
                     if let last { withAnimation { proxy.scrollTo(last, anchor: .bottom) } }
                 }

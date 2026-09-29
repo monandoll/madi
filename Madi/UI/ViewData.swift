@@ -557,12 +557,15 @@ public struct ChatChoice: Identifiable, Hashable, Sendable {
 
 /// 촬영본 한 편에서 나온 결과물 묶음. 같은 영상에서 여러 편집안 · 여러 규격이 나온다.
 public struct ResultGroup: Identifiable, Hashable, Sendable {
-    public var id: String { shotTitle }
+    /// 촬영본 id. 제목으로 가르면 **같은 제목의 촬영본 둘**(같은 영상을 두 번 넣음)이 한 칸으로 겹쳐
+    /// 한쪽 결과물 줄이 전부 사라졌다 (2026-09-30 — 결과물 8개 중 3개만 보임). 없으면 제목.
+    public var id: String { shotID ?? shotTitle }
+    public var shotID: String?
     public var shotTitle: String
     public var items: [ResultRef]
 
-    public init(shotTitle: String, items: [ResultRef]) {
-        self.shotTitle = shotTitle; self.items = items
+    public init(shotTitle: String, items: [ResultRef], shotID: String? = nil) {
+        self.shotTitle = shotTitle; self.items = items; self.shotID = shotID
     }
 }
 

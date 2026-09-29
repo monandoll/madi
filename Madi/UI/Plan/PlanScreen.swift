@@ -341,6 +341,8 @@ struct PlanScreen: View {
                         showsVersions = false
                         onAction(.plan(.pickVersion(version.id)))
                     }
+                    // 불투명 바탕 — 기본 재질은 반투명이라 뒤의 대화 말풍선이 비쳤다 (색 말풍선과 같은 까닭)
+                    .presentationBackground(Color(nsColor: .windowBackgroundColor))
                 }
             }
             if plan.resultCount > 0 {

@@ -100,7 +100,8 @@ private struct GeneralSettings: View {
                         }
                     } label: {
                         Text(name(ai))
-                        Text(account)
+                        // 계정을 모르면 줄을 두지 않는다 — 빈 둘째 줄 때문에 이 줄만 키가 커져 글이 위로 붙었다
+                        if !account.isEmpty { Text(account) }
                     }
                 case .notLoggedIn(let product):
                     // 설치는 돼 있다. 연결하기가 아니라 로그인하기다.

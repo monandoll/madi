@@ -217,7 +217,7 @@ enum ViewDataMapper {
     static func results(_ s: LibrarySnapshot) -> ResultsState {
         let groups = s.videos.sorted { shotAt($0) > shotAt($1) }.compactMap { v -> ResultGroup? in
             let items = results(of: v.id, s)
-            return items.isEmpty ? nil : ResultGroup(shotTitle: shotTitle(v, s), items: items)
+            return items.isEmpty ? nil : ResultGroup(shotTitle: shotTitle(v, s), items: items, shotID: v.id)
         }
         return groups.isEmpty ? .empty : .loaded(groups)
     }
@@ -462,13 +462,21 @@ enum ViewDataMapper {
 
     static func chat(_ s: LibrarySnapshot, videoID: String) -> [ChatMessage] {
         var out: [ChatMessage] = []
+        // 날짜 줄은 메시지 앱처럼 **대화가 끊겼다 이어질 때만** — 첫 말 · 날이 바뀜 · 30분 넘게 쉼.
+        // 전에는 말풍선마다 붙어 "9월 29일" 이 네 번 이어졌다 (2026-09-30 실제 앱)
+        var lastAt: Date?
+        func stamp(_ at: Date) -> String? {
+            defer { lastAt = at }
+            if let last = lastAt, at.timeIntervalSince(last) < 30 * 60, Calendar.current.isDate(at, inSameDayAs: last) { return nil }
+            return Copy.chatStamp(at, now: s.now)
+        }
         // 첫 초안의 결과물에 아쉬운 점이 남았으면 대화 맨 앞에 한 줄
         if let draft = s.visibleVersions(of: videoID).first(where: { $0.origin == .draft }),
            let o = s.shownOutput(forVersion: draft.id), let note = softNote(o) {
-            out.append(ChatMessage(id: o.id + ".soft", kind: .assistant(note), stamp: Copy.shotStamp(o.createdAt, now: s.now)))
+            out.append(ChatMessage(id: o.id + ".soft", kind: .assistant(note), stamp: stamp(o.createdAt)))
         }
         for row in s.chats where row.videoId == videoID {
-            let stamp = Copy.shotStamp(row.createdAt, now: s.now)
+            let stamp = stamp(row.createdAt)
             switch row.kind {
             case .creator: out.append(ChatMessage(id: row.id, kind: .user(row.text ?? ""), stamp: stamp))
             case .creatorNotSent: out.append(ChatMessage(id: row.id, kind: .userNotSent(row.text ?? ""), stamp: stamp))
@@ -567,8 +575,9 @@ enum ViewDataMapper {
         let done: [DoneItem] = s.outputs.filter { $0.verdict == .shown && $0.createdAt >= startOfDay }.compactMap { o in
             guard let rec = s.compositions.first(where: { $0.id == o.compositionId }),
                   let video = s.videos.first(where: { $0.id == rec.videoId }), let comp = try? rec.composition() else { return nil }
+            // 그림은 결과물 그림 — 전에는 넘기지 않아 줄마다 빈 자리표시였다 (2026-09-30)
             return DoneItem(id: o.id, shotTitle: shotTitle(video, s), platform: platform(comp.meta.platform),
-                            when: Copy.time(o.createdAt))
+                            when: Copy.time(o.createdAt), thumbnail: thumb(s.thumbnailStore.output(o.id), s))
         }
         return jobs.isEmpty && done.isEmpty ? .empty : .loaded(jobs: jobs, doneToday: done)
     }

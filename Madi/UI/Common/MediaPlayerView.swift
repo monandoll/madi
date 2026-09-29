@@ -165,19 +165,27 @@ struct PlayerTransport: View {
             // 처음으로 · 10초 뒤로 · 재생/멈춤 · 10초 앞으로 · 소리. QuickTime 과 같은 버튼만 둔다.
             HStack(spacing: Tokens.Space.inner) {
                 Button { clock.seek(0) } label: { Image(systemName: "backward.end.fill") }
-                    .help(Copy.Plan.Scenes.playFromHere)
+                    .help(Copy.Player.toStart)
+                    .accessibilityLabel(Copy.Player.toStart)
                 Button { clock.skip(-10) } label: { Image(systemName: "gobackward.10") }
+                    .help(Copy.Player.back10)
+                    .accessibilityLabel(Copy.Player.back10)
                 Button { clock.toggle() } label: {
                     Image(systemName: clock.isPlaying ? "pause.fill" : "play.fill")
                         .imageScale(.large)
                         .frame(width: 18)
                 }
-                .help(Copy.Action.play)
+                .help(clock.isPlaying ? Copy.Player.pause : Copy.Player.play)
+                .accessibilityLabel(clock.isPlaying ? Copy.Player.pause : Copy.Player.play)
                 Button { clock.skip(10) } label: { Image(systemName: "goforward.10") }
+                    .help(Copy.Player.forward10)
+                    .accessibilityLabel(Copy.Player.forward10)
                 Button { clock.toggleMute() } label: {
                     Image(systemName: clock.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                         .frame(width: 16)
                 }
+                .help(clock.isMuted ? Copy.Player.unmute : Copy.Player.mute)
+                .accessibilityLabel(clock.isMuted ? Copy.Player.unmute : Copy.Player.mute)
             }
             .buttonStyle(.borderless)
             .frame(maxWidth: .infinity)

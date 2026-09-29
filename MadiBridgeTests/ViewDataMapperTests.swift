@@ -154,6 +154,49 @@ struct ViewDataMapperTests {
         #expect(ref.planLabel == Copy.Plan.version(2))
     }
 
+    @Test("채팅 날짜 줄 — 대화가 끊겼다 이어질 때만 (첫 말 · 30분 넘게 쉼 · 날이 바뀜). '오늘 오후 2:20' 꼴")
+    func chatStamps() throws {
+        let rows = [
+            ChatRecord(id: "a", videoId: "v", kind: .creator, text: "하나", createdAt: now - 3 * 3600),
+            ChatRecord(id: "b", videoId: "v", kind: .assistant, text: "둘", createdAt: now - 3 * 3600 + 20),
+            ChatRecord(id: "c", videoId: "v", kind: .creator, text: "셋", createdAt: now - 60),
+        ]
+        let s = LibrarySnapshot(videos: [video("v", at: now)], chats: rows, now: now)
+        let stamps = ViewDataMapper.chat(s, videoID: "v").map(\.stamp)
+        #expect(stamps[0] == Copy.chatStamp(now - 3 * 3600, now: now))
+        #expect(stamps[1] == nil)                      // 20초 뒤 답 — 줄 없음
+        #expect(stamps[2] != nil)                      // 3시간 쉼
+        #expect(Copy.chatStamp(now, now: now).hasPrefix(Copy.Gallery.Group.today + " "))
+    }
+
+    @Test("결과물 묶음 — 같은 제목의 촬영본 둘은 따로 묶인다 (겹쳐서 한쪽 줄이 사라지지 않는다)")
+    func sameTitleGroups() throws {
+        let s = LibrarySnapshot(
+            videos: [video("v", at: now), video("w", at: now - 60)],
+            compositions: [try comp("d", video: "v", at: now - 50), try comp("e", video: "w", at: now - 40)],
+            outputs: [output("o1", comp: "d", verdict: .shown, at: now - 30), output("o2", comp: "e", verdict: .shown, at: now - 20)],
+            now: now
+        )
+        guard case .loaded(let groups) = ViewDataMapper.results(s) else { Issue.record("비었다"); return }
+        #expect(groups.count == 2)
+        #expect(Set(groups.map(\.id)).count == 2)
+        #expect(groups.flatMap(\.items).count == 2)
+    }
+
+    @Test("만드는 중 — 오늘 다 만든 것에 결과물 그림을 넘긴다")
+    func doneThumbnail() throws {
+        var s = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)],
+                                outputs: [output("o", comp: "d", verdict: .shown, at: now - 10)], now: now)
+        let dir = FileManager.default.temporaryDirectory.appending(path: "thumbs-\(UUID().uuidString)")
+        let store = Thumbnails(root: dir)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data([0xFF]).write(to: store.output("o"))
+        s.attach(thumbnails: store, progress: [:])
+        guard case .loaded(_, let done) = ViewDataMapper.making(s) else { Issue.record(""); return }
+        #expect(done.first?.thumbnail.fileURL == store.output("o"))
+        try? FileManager.default.removeItem(at: dir)
+    }
+
     @Test("만드는 중 — 도는 것 먼저, 기다리는 것은 메모, 오늘 보여 준 결과물")
     func making() throws {
         let s = LibrarySnapshot(

@@ -334,7 +334,23 @@ public enum Copy {
 
     // MARK: - 대화
 
+    /// 재생 막대 버튼 — 도움말(마우스를 올리면)과 VoiceOver 가 읽는 이름. QuickTime 과 같은 말.
+    /// 전에는 "처음으로" 버튼을 시스템이 그림 이름대로 "끝으로 이동" 으로 읽었고, 도움말은 "여기서부터 재생" 이었다.
+    public enum Player {
+        public static let toStart = "처음으로"
+        public static let back10 = "10초 뒤로"
+        public static let forward10 = "10초 앞으로"
+        public static let play = "재생"
+        public static let pause = "멈춤"
+        public static let mute = "소리 끄기"
+        public static let unmute = "소리 켜기"
+        /// 영상이 아직 없는 편집안의 미리보기 자리 (사람이 고친 판 · 만드는 중).
+        public static let notMadeYet = "영상을 만들면 여기서 볼 수 있어요"
+    }
+
     public enum Chat {
+        /// 대화 날짜 줄의 "어제" (`Copy.chatStamp`).
+        public static let yesterday = "어제"
         /// 대화 패널 머리줄 (2026-09-29 시안) — "마디" 아래 지금 무엇을 이야기하는지 한 줄.
         public enum Header {
             public static let name = "마디"
@@ -836,5 +852,15 @@ public enum Copy {
     /// 오늘 찍은 것은 시각만, 그 전은 날짜만 보여준다 (사진 앱과 같은 규칙).
     public static func shotStamp(_ date: Date, now: Date = Date()) -> String {
         Calendar.current.isDate(date, inSameDayAs: now) ? time(date) : day(date)
+    }
+
+    /// 대화 날짜 줄 — `오늘 오후 2:20` · `어제 오전 1:16` · `9월 27일 오후 3:00`. 앞 낱말(날)을 화면이 굵게 쓴다 (시안).
+    public static func chatStamp(_ date: Date, now: Date = Date()) -> String {
+        let cal = Calendar.current
+        if cal.isDate(date, inSameDayAs: now) { return "\(Gallery.Group.today) \(time(date))" }
+        if let yesterday = cal.date(byAdding: .day, value: -1, to: now), cal.isDate(date, inSameDayAs: yesterday) {
+            return "\(Chat.yesterday) \(time(date))"
+        }
+        return "\(day(date).replacingOccurrences(of: " ", with: "\u{00A0}")) \(time(date))"
     }
 }
