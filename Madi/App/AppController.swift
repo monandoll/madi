@@ -43,7 +43,9 @@ final class AppController {
     static let onboardedKey = "madi.onboarded"
 
     // MARK: 엔진 쪽 상태
-    private var snapshot: LibrarySnapshot?
+    /// 가장 최근 스냅숏 — 새 스냅숏과 진행률 칠하기가 서로 덮지 않게 상자 하나로만 바꾼다 (`SnapshotBox`).
+    @ObservationIgnored private let box = SnapshotBox()
+    private var snapshot: LibrarySnapshot? { box.current }
     private var openShotID: String?
     private var viewingVersionID: String?
     private var ai: AIConnection = .none
@@ -77,36 +79,30 @@ final class AppController {
 
     private func receive(_ snap: LibrarySnapshot) async {
         var s = snap
-        s.attach(thumbnails: thumbnails, progress: await pipeline.progress.snapshot(),
-                 importProgress: await pipeline.importProgress.snapshot())
-        s.analysisProgress = await pipeline.analysisProgress.snapshot()
-        s.cooling = LoadGovernor.shared.isCooling
-        snapshot = s
+        s.attach(thumbnails: thumbnails, progress: [:])
+        await box.receive(s) { await self.readProgress() }
         recompute()
         startProgressTicker()
     }
 
+    /// 메모리 게시판의 진행률 — 만드는 중 · 원본 받기 · 분석 · 맥 식히는 중.
+    private func readProgress() async -> ProgressReading {
+        ProgressReading(render: await pipeline.progress.snapshot(), imports: await pipeline.importProgress.snapshot(),
+                        analysis: await pipeline.analysisProgress.snapshot(), cooling: LoadGovernor.shared.isCooling)
+    }
+
     /// 진행률은 DB 가 아니라 메모리 게시판에 있어서, DB 가 안 바뀌면 화면이 따라오지 않는다 (퍼센트가 멈춰 보였다).
-    /// 작업이 도는 동안만 0.5초마다 게시판을 다시 읽는다. 작업이 끝나면 멈춘다.
+    /// 작업이 도는 동안만 0.5초마다 게시판을 다시 읽는다. 작업이 끝나면 멈춘다 — 끝났는지는 **가장 최근** 스냅숏으로 본다.
     @ObservationIgnored private var progressTicker: Task<Void, Never>?
 
     private func startProgressTicker() {
-        guard progressTicker == nil, let s = snapshot,
-              s.jobs.contains(where: { $0.state == .queued || $0.state == .running }) || !s.importProgress.isEmpty
-        else { return }
+        guard progressTicker == nil, box.isBusy else { return }
         progressTicker = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(500))
-                guard let self, var s = self.snapshot else { return }
-                let busy = s.jobs.contains { $0.state == .queued || $0.state == .running }
-                s.setProgress(render: await self.pipeline.progress.snapshot(),
-                              import: await self.pipeline.importProgress.snapshot(),
-                              analysis: await self.pipeline.analysisProgress.snapshot())
-                s.now = Date()
-                s.cooling = LoadGovernor.shared.isCooling
-                self.snapshot = s
+                guard let self, await self.box.refresh(reading: { await self.readProgress() }) else { return }
                 self.recompute()
-                if !busy && s.importProgress.isEmpty { self.progressTicker = nil; return }
+                if !self.box.isBusy { self.progressTicker = nil; return }
             }
         }
     }
