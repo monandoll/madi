@@ -3,8 +3,11 @@ import Foundation
 /// 사람이 장면 카드에서 직접 고친 것 (ViewData `UIAction.scene` · `.plan(.moveScenes)`, docs/stage-6.spec.md).
 ///
 /// - 고친 편집안은 **항상 새 편집안**이다 (`revisionOf`, §5 · §10). 출처는 `chat`(사람이 고친 판)
-/// - 원본 구간이 바뀐 장면은 자막을 전사에서 **다시 채운다** (분절은 템플릿 값, `CaptionFiller`). 그 장면의 영문은 비운다 —
-///   문장 번역을 덩어리에 나눈 것이라 구간이 바뀌면 맞지 않는다. 다음 채팅 수정에서 AI 가 다시 맞춘다
+/// - 원본 구간이 바뀐 장면은 자막을 전사에서 **다시 채운다** (분절은 템플릿 값, `CaptionFiller`). 글자가 그대로인 덩어리는
+///   영문도 그대로 둔다 — 새로 들어온 말의 덩어리만 영문이 빈다 (다음 채팅 수정에서 AI 가 채운다).
+///   전에는 1초만 늘려도 그 장면의 영문이 **전부** 지워졌다 (2026-09-30 실제 앱)
+/// - 자막 고치기에서 영문을 주지 않으면(nil) 영문은 그대로다. 카드에는 영문 칸이 없고, 목록도 영문을 안 건드리면 nil 을 준다 —
+///   전에는 nil 이 "지운다" 여서 본문만 고쳐도 영문이 사라졌다
 /// - 사람이 고친 자막 글자는 그대로 둔다 (전사 오타 고치기)
 /// - **바뀌는 것이 없으면 새 편집안을 만들지 않는다** (`Failure.noChange`) — 영상 끝에 붙은 장면을 "늘리기" 할 때마다
 ///   똑같은 "편집안 N" 이 쌓였다 (2026-09-30 실제 앱 DB: 내용이 같은 판 28개)
@@ -86,7 +89,7 @@ public enum SceneEdits {
             let i = try index(id)
             guard !c.scenes[i].captions.isEmpty else { throw Failure.noChange }
             c.scenes[i].captions[0].text = text
-            c.scenes[i].captions[0].secondary = secondary
+            if let secondary { c.scenes[i].captions[0].secondary = secondary }
         }
         c = Composition(
             id: newID, videoID: c.videoID, templateID: c.templateID, templateVersion: c.templateVersion,
@@ -101,8 +104,17 @@ public enum SceneEdits {
             _ = CaptionFiller.fill(&only, words: words, style: style, translations: [])
             for s in only.scenes {
                 if let i = c.scenes.firstIndex(where: { $0.id == s.id }) {
+                    // 글자가 그대로인 덩어리는 영문을 지킨다 (같은 글자가 여럿이면 앞에서부터 차례로)
+                    var old = c.scenes[i].captions.filter { $0.secondary != nil }
+                    var refilled = s.captions
+                    for k in refilled.indices {
+                        if let j = old.firstIndex(where: { $0.text == refilled[k].text }) {
+                            refilled[k].secondary = old[j].secondary
+                            old.remove(at: j)
+                        }
+                    }
                     c.scenes[i].source = s.source
-                    c.scenes[i].captions = s.captions
+                    c.scenes[i].captions = refilled
                     c.scenes[i].reframe = ReframeTrack()      // 구간이 바뀌면 화면 잡기도 다시
                 }
             }

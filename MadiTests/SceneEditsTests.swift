@@ -35,14 +35,25 @@ struct SceneEditsTests {
         #expect(throws: SceneEdits.Failure.lastScene) { try SceneEdits.apply(.remove(sceneID: "s1"), to: c, newID: "m", words: words, style: try StyleStore.load().values.caption, sourceDuration: 10) }
     }
 
-    @Test("늘리기 — 끝을 1초 늘리고 낱말 경계에 맞춘 뒤 그 장면 자막만 다시 채운다 (영문은 비운다)")
+    @Test("늘리기 — 끝을 1초 늘리고 낱말 경계에 맞춘 뒤 그 장면 자막만 다시 채운다. 글자가 그대로인 덩어리는 영문을 지킨다")
     func extendRefills() throws {
         let c = try apply(.extend(sceneID: "s2", seconds: 1))
         #expect(c.scenes[1].source.end == 5.0)       // 4.0 + 1 — 낱말 안에 떨어지지 않아 그대로
         #expect(c.scenes[1].captions.map(\.text).joined(separator: " ").hasSuffix("다섯."))
-        #expect(c.scenes[1].captions.allSatisfy { $0.secondary == nil })
+        // 새로 들어온 말("다섯.")이 붙어 덩어리가 바뀌었으면 영문이 비고, 그대로인 덩어리는 영문이 남는다
+        for cap in c.scenes[1].captions {
+            #expect(cap.secondary == (cap.text == "셋 넷" ? "three four" : nil))
+        }
         #expect(c.scenes[0].captions[0].secondary == "one two")    // 안 건드린 장면은 그대로
         try validate(c)
+    }
+
+    @Test("말 없는 곳으로 늘리면 덩어리 글자가 그대로라 영문도 그대로 — 1초 늘렸다고 영문이 사라지지 않는다")
+    func extendKeepsEnglish() throws {
+        let c = try apply(.extend(sceneID: "s1", seconds: 1))     // 1.0 → 2.0, 뒤 낱말은 3.0 부터
+        #expect(c.scenes[0].source.end > 1.0)
+        #expect(c.scenes[0].captions.map(\.text) == ["하나 둘"])
+        #expect(c.scenes[0].captions.first?.secondary == "one two")
     }
 
     @Test("줄이기 — 너무 짧아지면 거절")
@@ -61,8 +72,11 @@ struct SceneEditsTests {
     @Test("순서 바꾸기 · 자막 고치기")
     func moveAndCaption() throws {
         #expect(try apply(.move(from: IndexSet(integer: 1), to: 0)).scenes.map(\.id) == ["s2", "s1"])
+        // 영문을 주지 않으면(카드) 영문은 그대로 — 전에는 지워졌다
         let c = try apply(.editCaption(sceneID: "s1", text: "하나 두울", secondary: nil))
-        #expect(c.scenes[0].captions[0].text == "하나 두울" && c.scenes[0].captions[0].secondary == nil)
+        #expect(c.scenes[0].captions[0].text == "하나 두울" && c.scenes[0].captions[0].secondary == "one two")
+        let e = try apply(.editCaption(sceneID: "s1", text: "하나 둘", secondary: "one, two"))
+        #expect(e.scenes[0].captions[0].secondary == "one, two")
     }
 
     @Test("바뀌는 것이 없으면 새 편집안을 만들지 않는다 — 끝에 닿은 장면 늘리기 · 제자리 옮기기 · 같은 자막 · 뒤에 틈 없음")
