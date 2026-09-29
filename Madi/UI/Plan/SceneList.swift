@@ -111,19 +111,35 @@ struct SceneList: View {
     @ViewBuilder
     private func menu(_ scene: SceneCardItem) -> some View {
         if !isReadOnly {
-            Button(Copy.Plan.Scenes.editCaptionFull) { editingID = scene.id }
-                .keyboardShortcut(.return, modifiers: [])
-            Divider()
-            Button(Copy.Plan.Scenes.extendOne) { onExtend(scene) }
-                .keyboardShortcut("]")
-            Button(Copy.Plan.Scenes.shortenOne) { onShorten(scene) }
-                .keyboardShortcut("[")
-            Button(Copy.Plan.Scenes.playFromHere) { onPlayFrom(scene) }
-                .keyboardShortcut(.space, modifiers: [])
-            Divider()
-            Button(Copy.Plan.Scenes.removeScene) { onRemove(scene) }
-                .keyboardShortcut(.delete)
+            SceneMenuItems(
+                onEditCaption: { editingID = scene.id }, onExtend: { onExtend(scene) },
+                onShorten: { onShorten(scene) }, onPlayFrom: { onPlayFrom(scene) }, onRemove: { onRemove(scene) }
+            )
         }
+    }
+}
+
+/// 장면 우클릭 메뉴 — 세로 목록 · 가로 띠가 **같은 것**을 쓴다. 줄 버튼과 같은 말이다.
+struct SceneMenuItems: View {
+    var onEditCaption: () -> Void
+    var onExtend: () -> Void
+    var onShorten: () -> Void
+    var onPlayFrom: () -> Void
+    var onRemove: () -> Void
+
+    var body: some View {
+        Button(Copy.Plan.Scenes.editCaptionFull, action: onEditCaption)
+            .keyboardShortcut(.return, modifiers: [])
+        Divider()
+        Button(Copy.Plan.Scenes.extendOne, action: onExtend)
+            .keyboardShortcut("]")
+        Button(Copy.Plan.Scenes.shortenOne, action: onShorten)
+            .keyboardShortcut("[")
+        Button(Copy.Plan.Scenes.playFromHere, action: onPlayFrom)
+            .keyboardShortcut(.space, modifiers: [])
+        Divider()
+        Button(Copy.Plan.Scenes.removeScene, action: onRemove)
+            .keyboardShortcut(.delete)
     }
 }
 

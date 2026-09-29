@@ -151,7 +151,11 @@ struct PlanScreen: View {
 
     private func ready(_ plan: PlanView, top: Top = .summary) -> some View {
         GeometryReader { proxy in
-            readyBody(plan, top: top, topHeight: topHeight(for: proxy.size.height))
+            // 넓으면 장면을 가로 띠로 — 띠 높이만 남기고 나머지를 위(미리보기)에 준다. 띠 아래가 휑하게 비지 않게
+            let wide = proxy.size.width >= Self.stripMinWidth
+            readyBody(plan, top: top, wide: wide,
+                      topHeight: wide ? max(topHeight(for: proxy.size.height), proxy.size.height - Self.stripHeight)
+                                      : topHeight(for: proxy.size.height))
         }
     }
 
@@ -161,7 +165,12 @@ struct PlanScreen: View {
         min(290, max(216, height * 0.34))
     }
 
-    private func readyBody(_ plan: PlanView, top: Top, topHeight: CGFloat) -> some View {
+    /// 미리보기 폭 — 위쪽 높이에 맞춘 세로 영상 폭 (재생 막대 · 여백 약 90pt 를 빼고 9:16). 좁아도 158 은 둔다.
+    private func playerWidth(_ topHeight: CGFloat) -> CGFloat {
+        max(158, (topHeight - 90) * Tokens.Ratio.vertical)
+    }
+
+    private func readyBody(_ plan: PlanView, top: Top, wide: Bool, topHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             // 위: 지금 어떻게 생겼나. 아래: 무엇으로 이뤄졌나.
             // 위쪽 높이를 고정한다 — 창이 낮아질 때 줄어들어야 하는 건 장면 목록이 아니다.
@@ -173,7 +182,7 @@ struct PlanScreen: View {
                     onPlay: { onAction(.plan(.play)) },
                     url: plan.previewURL
                 )
-                .frame(width: 158)
+                .frame(width: playerWidth(topHeight))
 
                 Group {
                     switch top {
@@ -199,24 +208,50 @@ struct PlanScreen: View {
 
             // "지금 보는 장면" 카드를 따로 두지 않는다. 목록에서 고른 줄이 그 자리다 —
             // 같은 것을 두 군데 보여주면 어느 쪽을 봐야 하는지 묻게 된다.
-            SceneList(
-                plan: plan,
-                selectedID: $selectedID,
-                editingID: $editingID,
-                isReadOnly: top.isReadOnly,
-                readOnlyNote: top.readOnlyNote,
-                onRemove: { onAction(.scene($0.id, .remove)) },
-                onExtend: { onAction(.scene($0.id, .extend)) },
-                onShorten: { onAction(.scene($0.id, .shorten)) },
-                onPlayFrom: { onAction(.scene($0.id, .playFromHere)) },
-                onRestoreGap: { onAction(.scene($0.id, .restoreGap)) },
-                onMove: { onAction(.plan(.moveScenes(from: $0, to: $1))) },
-                onCommitCaption: { scene, text, secondary in
-                    onAction(.scene(scene.id, .editCaption(text: text, secondary: secondary)))
+            // 넓으면 가로 띠(편집 앱처럼), 좁으면 세로 목록 — 사용자 결정 2026-09-29 "창 크기 따라 둘 다".
+            // 가로 띠는 좁은 창에서 9개 중 2~3개만 보여 훑을 수 없었다 (decisions.md).
+            Group {
+                if wide {
+                    SceneStrip(
+                            plan: plan, selectedID: $selectedID, editingID: $editingID,
+                            isReadOnly: top.isReadOnly, readOnlyNote: top.readOnlyNote,
+                            onRemove: { onAction(.scene($0.id, .remove)) },
+                            onExtend: { onAction(.scene($0.id, .extend)) },
+                            onShorten: { onAction(.scene($0.id, .shorten)) },
+                            onPlayFrom: { onAction(.scene($0.id, .playFromHere)) },
+                            onRestoreGap: { onAction(.scene($0.id, .restoreGap)) },
+                            onMove: { onAction(.plan(.moveScenes(from: $0, to: $1))) },
+                            onCommitCaption: { scene, text, secondary in
+                                onAction(.scene(scene.id, .editCaption(text: text, secondary: secondary)))
+                            }
+                        )
+                    .frame(height: Self.stripHeight, alignment: .top)
+                } else {
+                    SceneList(
+                        plan: plan,
+                        selectedID: $selectedID,
+                        editingID: $editingID,
+                        isReadOnly: top.isReadOnly,
+                        readOnlyNote: top.readOnlyNote,
+                        onRemove: { onAction(.scene($0.id, .remove)) },
+                        onExtend: { onAction(.scene($0.id, .extend)) },
+                        onShorten: { onAction(.scene($0.id, .shorten)) },
+                        onPlayFrom: { onAction(.scene($0.id, .playFromHere)) },
+                        onRestoreGap: { onAction(.scene($0.id, .restoreGap)) },
+                        onMove: { onAction(.plan(.moveScenes(from: $0, to: $1))) },
+                        onCommitCaption: { scene, text, secondary in
+                            onAction(.scene(scene.id, .editCaption(text: text, secondary: secondary)))
+                        }
+                    )
                 }
-            )
+            }
         }
     }
+
+    /// 이 폭부터 장면을 가로 띠로 — 카드(172) 네 장 반이 들어가는 폭. 1440 창 · 대화창 열림 ≈ 870, 1100 창 ≈ 580.
+    static let stripMinWidth: CGFloat = 760
+    /// 가로 띠가 쓰는 높이 — 제목 줄 + 카드(그림 96 · 역할 · 자막 두 줄 · 버튼 막대) + 스크롤 막대.
+    static let stripHeight: CGFloat = 272
 
     private func currentScene(_ plan: PlanView) -> SceneCardItem {
         plan.scenes.first { $0.id == selectedID } ?? plan.scenes[0]

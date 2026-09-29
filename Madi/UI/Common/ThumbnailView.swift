@@ -7,15 +7,31 @@ import SwiftUI
 struct ThumbnailView: View {
     var thumbnail: Thumbnail
     var cornerRadius: CGFloat = Tokens.Radius.thumbnail
+    /// 그림이 칸보다 길쭉해서 잘릴 때 **어디를 가운데로** 둘지 (0 위 · 0.5 가운데 · 1 아래).
+    /// 세로 영상을 가로 칸(가로 장면 띠)에 넣으면 가운데만 남아 얼굴이 잘린다 — 그때 위쪽으로 당긴다.
+    var focusY: CGFloat = 0.5
 
     var body: some View {
         Rectangle()
             .fill(Tokens.Palette.placeholder)
             .overlay {
                 if let image = nsImage {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFill()
+                    if focusY == 0.5 {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        GeometryReader { box in
+                            let scale = max(box.size.width / image.size.width, box.size.height / image.size.height)
+                            let h = image.size.height * scale
+                            let offset = min(0, max(box.size.height - h, box.size.height / 2 - h * focusY))
+                            Image(nsImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: box.size.width, height: h)
+                                .offset(y: offset)
+                        }
+                    }
                 } else {
                     Image(systemName: "video")
                         .imageScale(.large)

@@ -214,6 +214,10 @@ public enum Copy {
             /// 줄 버튼과 우클릭 메뉴가 **같은 말**을 쓴다. 다르면 다른 기능인 줄 안다.
             public static let extend = "1초 늘리기"
             public static let editCaption = "자막"
+            /// 가로 띠 카드의 좁은 버튼 (2026-09-29 시안 — `− 빼기 | + 늘리기 | ✎ 자막`). 우클릭 메뉴는 `extendOne`.
+            public static let extendShort = "늘리기"
+            /// 가로 띠의 뺀 쉬는 구간 카드 제목 — 길이는 아래 줄에 따로.
+            public static let gapTitle = "쉬는 구간"
             public static let editCaptionFull = "자막 고치기"
             public static let extendOne = "1초 늘리기"
             public static let shortenOne = "1초 줄이기"
