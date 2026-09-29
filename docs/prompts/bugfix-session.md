@@ -29,8 +29,11 @@
 
 - **언제**: 결과물 품질에 닿는 것은 전부 — 컷 · 호흡 · 장면 길이 · 자막(크기 · 위치 · 분절 · 영문) · 화면 잡기 · 훅 · 길이 · 말 비율.
   버그를 고치기 전에도, 고친 뒤 "됐다" 고 말하기 전에도 본다
+- **어디**: 유튜브 https://www.youtube.com/@physila_sh (숏폼 132편) · 인스타 https://www.instagram.com/physila_sh/ .
+  영상별 링크 · 받는 법 · 시험용 대용 영상 출처는 전부 **`docs/video-sources.md`**
 - **무엇을**: 쌤 공개 숏폼 10편(완성본) `spike/source/{59HP4jxLFeA,8DF9jrxQM4U,EDpBGkaNJmU,L469kzZZe1E,lzDW-9ITfWU,nCshtY04NiY,RnP7b0JFWj4,UzemW44yzSo,Wp7dWPpiFew,xaUpqHAQjo4}.mp4`
-  · 프레임 `reference/*.jpg`(34장). 쌤 촬영 원본은 아직 없다 — 완성본은 **쌤이 어떻게 편집하는지**를 보여 준다
+  · 프레임 `reference/*.jpg`(34장). 10편으로 부족하면 `docs/video-sources.md` 1-2 목록(132편)에서 더 받아 잰다.
+  쌤 촬영 원본은 아직 없다 — 완성본은 **쌤이 어떻게 편집하는지**를 보여 준다
 - **어떻게 본다**: 숫자만 보지 말고 **그림을 연다** (에이전트는 PNG · JPG 를 직접 볼 수 있다)
   - 같은 시각 프레임 뽑기: `madi-spike frames <영상> <폴더> --at 0,2,4,6` → 뽑은 PNG 를 읽어서 본다
   - 여러 편 한 장에: `madi-spike contact <출력.png> <영상…> --at 0.3`
