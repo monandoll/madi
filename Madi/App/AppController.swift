@@ -224,8 +224,17 @@ final class AppController {
             // 정보 칸에서 그 자리에서 튼다 (QuickTime 을 열지 않는다)
             NotificationCenter.default.post(name: .madiShotPlay, object: nil, userInfo: ["id": id])
         case .revealInPhotos(let id):
-            if let path = snapshot?.videos.first(where: { $0.id == id })?.localPath {
-                NSWorkspace.shared.open(URL(fileURLWithPath: path))
+            // 전에는 앱 사본 파일을 기본 앱으로 열어 사진 앱 대신 QuickTime 이 떴다 (2026-09-30 실제 앱).
+            // 폴더로 들어온 것은 사진 앱에 없다 — 원본 파일을 Finder 에서 고른 채로 보여 준다 (메뉴도 "Finder에서 보기").
+            // 사진 보관함에서 온 것은 사진 앱을 앞으로 (그 항목을 골라 여는 공개 방법은 없다)
+            guard let video = snapshot?.videos.first(where: { $0.id == id }) else { return }
+            if video.source == .folder {
+                let original = URL(fileURLWithPath: video.sourceRef)
+                if FileManager.default.fileExists(atPath: original.path) {
+                    NSWorkspace.shared.activateFileViewerSelecting([original])
+                } else {
+                    NSWorkspace.shared.open(MadiPipeline.inbox)
+                }
             } else {
                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Photos.app"))
             }

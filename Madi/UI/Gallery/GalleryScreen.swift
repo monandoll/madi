@@ -192,7 +192,7 @@ struct GalleryScreen: View {
                 Divider()
                 Button(Copy.Action.play) { selectedID = shot.id; onAction(.play(shot.id)) }
                     .keyboardShortcut(.space, modifiers: [])
-                Button(Copy.Action.openInPhotos) { onAction(.revealInPhotos(shot.id)) }
+                Button(shot.isFromPhotos ? Copy.Action.openInPhotos : Copy.Action.showInFinder) { onAction(.revealInPhotos(shot.id)) }
                 Divider()
                 // 지우는 게 아니다. 사진 앱 원본은 그대로 남는다 — 누른 뒤 상태줄이 그렇게 말한다.
                 Button(Copy.Action.hideFromList) { onAction(.hide(shot.id)) }

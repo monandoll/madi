@@ -183,6 +183,15 @@ struct ViewDataMapperTests {
         #expect(groups.flatMap(\.items).count == 2)
     }
 
+    @Test("촬영본 출처 — 폴더로 들어온 것은 사진 앱에 없다 (우클릭 'Finder에서 보기')")
+    func shotSource() {
+        let photos = video("p", at: now)
+        let folder = VideoRecord(id: "f", source: .folder, sourceRef: "/tmp/f.mov", durationSec: 60, capturedAt: now, status: .ready)
+        let s = LibrarySnapshot(videos: [photos, folder], now: now)
+        #expect(ViewDataMapper.shot(photos, s).isFromPhotos)
+        #expect(!ViewDataMapper.shot(folder, s).isFromPhotos)
+    }
+
     @Test("만드는 중 — 오늘 다 만든 것에 결과물 그림을 넘긴다")
     func doneThumbnail() throws {
         var s = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)],

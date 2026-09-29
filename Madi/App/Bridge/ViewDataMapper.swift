@@ -88,7 +88,8 @@ enum ViewDataMapper {
             fetchProgress: v.status == .importing ? s.importProgress[v.id] : nil,
             problem: v.status == .failed ? Copy.Photos.importFailedShort : nil,
             // 정보 칸에서 그 자리에서 튼다 — 다 받은 앱 사본만
-            videoURL: v.status == .ready ? v.localPath.map { URL(fileURLWithPath: $0) } : nil
+            videoURL: v.status == .ready ? v.localPath.map { URL(fileURLWithPath: $0) } : nil,
+            isFromPhotos: v.source == .photos
         )
     }
 

@@ -412,3 +412,11 @@ case .openSettings
 - **만드는 중 · 오늘 다 만든 것** — 그림을 안 넘겨 빈 자리표시였다 (결과물 그림)
 - **설정 · AI 연결** — 계정 칸이 빈 문자열이라 빈 둘째 줄로 "Codex" 줄만 키가 컸다 (비면 줄을 두지 않는다)
 - **앱 메뉴 · 툴바 설명이 영어**였다 — `CFBundleLocalizations: [ko]`
+
+## ⑲ "사진 앱에서 보기" — 출처에 따라 (2026-09-30 버그 잡기 · 개발이 고침)
+
+- 전에는 앱 사본 파일을 기본 앱으로 열어 **사진 앱 대신 QuickTime** 이 떴다
+- `ShotItem.isFromPhotos` — 폴더(Mac 에 있는 영상 넣기 · `~/Movies/madi`)로 들어온 촬영본은 사진 앱에 없다.
+  우클릭 메뉴가 **"Finder에서 보기"** (`Copy.Action.showInFinder`)이고 원본 파일을 Finder 에서 고른 채로 보여 준다
+- 사진 보관함에서 온 것은 사진 앱을 앞으로 가져온다 (그 항목을 골라 여는 공개 방법이 없다 — Photos AppleScript `spotlight` 은
+  "사진 앱 제어" 허락이 따로 필요해 넣지 않았다)

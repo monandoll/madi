@@ -34,6 +34,8 @@ public enum Copy {
         public static let playFromStart = "처음부터 보기"
         public static let export = "내보내기"
         public static let openInPhotos = "사진 앱에서 보기"
+        /// 폴더로 들어온 촬영본 — 사진 앱에 없다. 원본 파일을 Finder 에서 보여 준다.
+        public static let showInFinder = "Finder에서 보기"
         /// **"삭제" 라고 쓰지 않는다.** 목록에서 안 보이게 할 뿐 원본은 사진 앱에 그대로 있다.
         public static let hideFromList = "목록에서 숨기기"
         /// 진짜로 지운다 — 앱 사본 · 편집안 · 결과물. 사진 앱 원본은 그대로다 (확인창이 그렇게 말한다).
