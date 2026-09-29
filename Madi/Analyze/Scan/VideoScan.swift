@@ -2,6 +2,7 @@ import AVFoundation
 import CoreImage
 import CoreGraphics
 import ImageIO
+import OSLog
 
 /// 영상을 **처음부터 끝까지 한 번, 차례로** 읽으며 사람 찾기 프레임과 컷 찾기 썸네일을 같이 뽑는다.
 ///
@@ -13,6 +14,8 @@ import ImageIO
 /// - 사람 찾기: 시각 t 에 **화면에 보이는** 프레임 (예전 `AVAssetImageGenerator` 관용 0)
 /// - 컷 찾기: 시각 t **이후 첫** 프레임 (예전 관용 앞 0 · 뒤 반 표본)
 public enum VideoScan {
+
+    static let log = Logger(subsystem: "app.madi", category: "scan")
 
     public enum Failure: Error, CustomStringConvertible {
         case noVideoTrack(URL)
@@ -48,13 +51,6 @@ public enum VideoScan {
         let duration = try await asset.load(.duration).seconds
         let orientation = Self.orientation(transform)
 
-        let reader = try AVAssetReader(asset: asset)
-        let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-        ])
-        reader.add(output)
-        guard reader.startReading() else { throw Failure.readerFailed(reader.error.map { "\($0)" } ?? "?") }
-
         let context = CIContext(options: [.cacheIntermediates: false])
         let cutStep = 1 / cutFPS
         var cutTarget = 0.0
@@ -62,31 +58,60 @@ public enum VideoScan {
         var thumbs: [[UInt8]] = []
         var previous: (pts: Double, image: CIImage)?
         var lastReport = -1.0
+        // 해독기(VideoToolbox XPC)가 도중에 끊기면 읽기가 통째로 실패한다 (10분 영상 72% 에서 실측).
+        // 끊긴 곳 바로 뒤부터 새 읽기를 열어 이어 간다. 몇 번 해도 안 되면 그때 멈춘다.
+        var restarts = 0
 
-        while let sample = output.copyNextSampleBuffer() {
-            guard let buffer = CMSampleBufferGetImageBuffer(sample) else { continue }
-            let pts = CMSampleBufferGetPresentationTimeStamp(sample).seconds
-            let image = CIImage(cvPixelBuffer: buffer).oriented(orientation)
-
-            // 사람 찾기 — t 가 이 프레임보다 앞이면 t 에 보이던 것은 직전 프레임이다
-            while subjectIndex < subjectTimes.count, subjectTimes[subjectIndex] < pts - 1e-6 {
-                try onSubject(subjectTimes[subjectIndex], previous?.image ?? image)
-                subjectIndex += 1
+        while true {
+            let reader = try AVAssetReader(asset: asset)
+            if let resumeAt = previous?.pts {
+                reader.timeRange = CMTimeRange(start: CMTime(seconds: resumeAt + 0.001, preferredTimescale: 600),
+                                               end: CMTime(seconds: duration + 1, preferredTimescale: 600))
             }
-            // 컷 찾기 — t 이후 첫 프레임
-            while cutTarget < duration - 0.01, cutTarget <= pts + 1e-6 {
-                thumbs.append(gray(image, context))
-                cutTarget += cutStep
-            }
-            previous = (pts, image)
+            let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            ])
+            reader.add(output)
+            guard reader.startReading() else { throw Failure.readerFailed(reader.error.map { "\($0)" } ?? "?") }
 
-            if pts - lastReport >= 1 { progress?(min(pts / max(duration, 0.01), 1)); lastReport = pts }
+            // ★ 프레임마다 autoreleasepool 로 비운다. 이 반복은 중간에 멈추지(await) 않아서, 비우지 않으면
+            //   프레임마다 생기는 임시 객체(`oriented` 가 돌려주는 CIImage · Vision 내부)가 **영상이 끝날 때까지**
+            //   해독된 프레임(1080p 한 장 약 8MB)을 붙잡는다. 해독 서비스(VTDecoderXPCService)가 1초에 1.5GB 씩
+            //   불어나 10분 영상에서 메모리가 바닥났고, WindowServer 가 멈춰 맥이 두 번 재부팅됐다 (2026-09-29).
+            var finished = false
+            while !finished {
+                try autoreleasepool {
+                    guard let sample = output.copyNextSampleBuffer() else { finished = true; return }
+                    guard let buffer = CMSampleBufferGetImageBuffer(sample) else { return }
+                    let pts = CMSampleBufferGetPresentationTimeStamp(sample).seconds
+                    // 이어 읽을 때 키프레임부터 다시 나온다 — 이미 본 프레임은 건너뛴다
+                    if let p = previous?.pts, pts <= p + 1e-6 { return }
+                    let image = CIImage(cvPixelBuffer: buffer).oriented(orientation)
+
+                    // 사람 찾기 — t 가 이 프레임보다 앞이면 t 에 보이던 것은 직전 프레임이다
+                    while subjectIndex < subjectTimes.count, subjectTimes[subjectIndex] < pts - 1e-6 {
+                        try onSubject(subjectTimes[subjectIndex], previous?.image ?? image)
+                        subjectIndex += 1
+                    }
+                    // 컷 찾기 — t 이후 첫 프레임
+                    while cutTarget < duration - 0.01, cutTarget <= pts + 1e-6 {
+                        thumbs.append(gray(image, context))
+                        cutTarget += cutStep
+                    }
+                    previous = (pts, image)
+
+                    if pts - lastReport >= 1 { progress?(min(pts / max(duration, 0.01), 1)); lastReport = pts }
+                }
+            }
+            guard reader.status == .failed else { break }
+            restarts += 1
+            if restarts > 3 { throw Failure.readerFailed(reader.error.map { "\($0)" } ?? "?") }
+            log.warning("영상 읽기가 끊겨 \(String(format: "%.1f", previous?.pts ?? 0), privacy: .public)초부터 다시 연다 (\(restarts)번째)")
         }
-        if reader.status == .failed { throw Failure.readerFailed(reader.error.map { "\($0)" } ?? "?") }
         // 끝에 남은 시각 — 마지막 프레임
         if let last = previous?.image {
             while subjectIndex < subjectTimes.count {
-                try onSubject(subjectTimes[subjectIndex], last)
+                try autoreleasepool { try onSubject(subjectTimes[subjectIndex], last) }
                 subjectIndex += 1
             }
             while cutTarget < duration - 0.01 {
