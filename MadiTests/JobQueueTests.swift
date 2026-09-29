@@ -82,6 +82,26 @@ struct JobQueueTests {
         #expect(job.attempts == 2)
     }
 
+    @Test("멈추기는 도는 작업도 끊는다 — 이유는 '멈춤', 끝까지 기다리지 않는다")
+    func cancelRunning() async throws {
+        let db = try AppDatabase.inMemory()
+        let queue = JobQueue(db: db, handlers: [.agent: { _ in try await Task.sleep(for: .seconds(30)) }])
+        try await queue.start()
+        try await queue.enqueue(.agent, targetId: "v")
+        // 돌기 시작할 때까지
+        for _ in 0..<100 {
+            if try await db.writer.read({ try JobRecord.fetchOne($0)?.state }) == .running { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        let started = Date()
+        #expect(try await queue.cancel(targetIds: ["v"]) == 1)
+        await queue.waitUntilIdle()
+        #expect(Date().timeIntervalSince(started) < 5)
+        let job = try #require(try await db.writer.read { try JobRecord.fetchOne($0) })
+        #expect(job.state == .failed)
+        #expect(job.error == "멈춤")
+    }
+
     @Test("실패는 에러와 함께 남고, 다음 작업은 계속 돈다")
     func failureIsRecordedAndQueueContinues() async throws {
         struct Boom: Error, CustomStringConvertible { var description: String { "원본을 못 읽음" } }

@@ -67,20 +67,26 @@ public struct AgentRunner: Sendable {
 
         var parser = provider.makeParser()
         var finished = false
+        // 멈추기(■) · 촬영본 삭제 — 취소되면 **바로** CLI 를 끝낸다. 줄을 읽을 때만 보면 CLI 가 조용히 생각하는 동안
+        // (수십 초) 멈추지 않았다 (2026-09-30 실제 앱: 누른 뒤에도 codex 가 끝까지 돌았다)
         do {
-            for try await line in stdout.fileHandleForReading.bytes.lines {
-                try Task.checkCancellation()
-                for event in parser.parse(line: line) {
-                    if case .started(_, let tools?) = event, let extra = Self.unexpectedTools(tools) {
-                        process.terminate()
-                        out.yield(.finished(AgentOutcome(isError: true, message: "madi 도구 말고 다른 도구가 열려 있다: \(extra.joined(separator: ", "))")))
-                        finished = true
-                        break
+            try await withTaskCancellationHandler {
+                for try await line in stdout.fileHandleForReading.bytes.lines {
+                    try Task.checkCancellation()
+                    for event in parser.parse(line: line) {
+                        if case .started(_, let tools?) = event, let extra = Self.unexpectedTools(tools) {
+                            process.terminate()
+                            out.yield(.finished(AgentOutcome(isError: true, message: "madi 도구 말고 다른 도구가 열려 있다: \(extra.joined(separator: ", "))")))
+                            finished = true
+                            break
+                        }
+                        if case .finished = event { finished = true }
+                        out.yield(event)
                     }
-                    if case .finished = event { finished = true }
-                    out.yield(event)
+                    if finished { break }
                 }
-                if finished { break }
+            } onCancel: {
+                process.terminate()
             }
         } catch is CancellationError {
             process.terminate()

@@ -250,6 +250,28 @@ struct ViewDataMapperTests {
         #expect(final && plan?.id == "d")
     }
 
+    @Test("사람이 멈췄다(■) — 빈 '준비 중' 이 아니라 '멈췄어요 · 다시 해 보기'. 초안 전이든 영상 만들다든")
+    func stoppedByYou() throws {
+        var stopped = job(.agent, "v", .failed)
+        stopped.error = "멈춤"
+        stopped.finishedAt = now
+        let s1 = LibrarySnapshot(videos: [video("v", at: now)], jobs: [stopped], now: now)
+        guard case .stopped(let p1, let r1, let a1, _) = try #require(ViewDataMapper.plan(s1, videoID: "v", ai: .claude)) else {
+            Issue.record("준비 중으로 남았다"); return
+        }
+        #expect(p1 == nil && r1 == Copy.AI.stoppedByYou && a1.first?.title == Copy.Plan.Stopped.tryAgain)
+
+        // 초안은 나왔는데 영상 만들기(렌더)를 멈췄다 — 보여 준 결과물이 아직 없다
+        var render = job(.render, "d", .failed)
+        render.error = "멈춤"
+        render.finishedAt = now
+        let s2 = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)], jobs: [render], now: now)
+        guard case .stopped(let p2, let r2, _, _) = try #require(ViewDataMapper.plan(s2, videoID: "v", ai: .claude)) else {
+            Issue.record("멈춘 렌더가 멈췄다고 안 나온다"); return
+        }
+        #expect(p2?.id == "d" && r2 == Copy.AI.stoppedByYou)
+    }
+
     @Test("고른 판을 보여 준다 — 사람이 직접 고친 판(결과물 없음)도 ready")
     func viewing() throws {
         let s = LibrarySnapshot(videos: [video("v", at: now)],

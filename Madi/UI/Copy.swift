@@ -637,6 +637,8 @@ public enum Copy {
         public static let analyzeFailed = "영상을 살펴보다 멈췄어요. 한 번 더 해 볼게요."
         /// 영상을 만들다(렌더) 멈췄을 때. 전에는 "준비 중" 으로 계속 돌아 끝없이 기다리게 했다.
         public static let renderFailed = "영상을 만들다 멈췄어요. 한 번 더 해 볼게요."
+        /// 사람이 멈추기(■)를 눌러 멈췄을 때 — 실패가 아니다. 다시 할지는 사람이 고른다.
+        public static let stoppedByYou = "멈춰 달라고 하셔서 멈췄어요. 다시 해 보기를 누르면 이어서 할게요."
     }
 
     /// 스스로 살펴보고 다시 다듬기. "검사" · "게이트" · "self-eval" · "렌더" 는 쓰지 않는다.

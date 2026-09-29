@@ -268,7 +268,11 @@ enum ViewDataMapper {
 
         if versions.isEmpty && live.isEmpty {
             // 짜다가 멈췄다 — 오늘 실패한 작업 (viewdata-map 3절 ②)
-            let failed = s.jobs.filter { $0.state == .failed && $0.targetId == videoID && $0.error != "멈춤" }.last
+            let failed = s.jobs.filter { $0.state == .failed && $0.targetId == videoID }.last
+            // 사람이 멈췄다 (■) — 전에는 이걸 건너뛰어, 도는 것도 없는 "준비 중" 보드가 멈춘 채 남았다
+            if let failed, failed.error == "멈춤" {
+                return .stopped(plan: nil, reason: Copy.AI.stoppedByYou, actions: stoppedActions, isFinal: false)
+            }
             if let failed, failed.kind == .agent {
                 return .stopped(plan: nil, reason: Copy.AI.aiDraftFailed + " " + failureReason(failed.error, ai: ai),
                                 actions: stoppedActions, isFinal: false)
@@ -287,9 +291,10 @@ enum ViewDataMapper {
             let ids = Set(s.compositions(of: videoID).map(\.id))
             let lastMake = s.jobs.filter { ($0.kind == .render || $0.kind == .selfEval) && ids.contains($0.targetId) }
                 .max { ($0.id ?? 0) < ($1.id ?? 0) }
-            if let lastMake, lastMake.state == .failed, lastMake.error != "멈춤" {
+            if let lastMake, lastMake.state == .failed {
                 return .stopped(plan: planView(newest, video: video, versions: versions, s),
-                                reason: Copy.AI.renderFailed, actions: stoppedActions, isFinal: false)
+                                reason: lastMake.error == "멈춤" ? Copy.AI.stoppedByYou : Copy.AI.renderFailed,
+                                actions: stoppedActions, isFinal: false)
             }
         }
         // 판은 있는데 보여 준 것이 없고 더 도는 것도 없다 — 두 번 다듬어도 안 됐다
