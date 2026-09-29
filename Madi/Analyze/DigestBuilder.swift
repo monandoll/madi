@@ -17,7 +17,7 @@ import CoreGraphics
 public enum DigestBuilder {
 
     /// 형식 버전. 텍스트 형식이 바뀌면 올린다 — 옛 버전 다이제스트는 다시 만든다.
-    public static let version = 2   // 2: 말이 아닌 전사를 걷는다 (Transcript.droppingNonSpeech)
+    public static let version = 3   // 2: 말이 아닌 전사를 걷는다 · 3: 사람 위치 줄을 구간으로 묶는다
 
     public struct Digest: Sendable {
         public var text: String
@@ -143,6 +143,44 @@ public enum DigestBuilder {
 
     // MARK: - 텍스트
 
+    /// 사람 위치 줄. 0.5초 표본을 **비슷하면 한 줄로 묶는다** — 위치 · 크기(x y w h)가 모두 구간 첫 표본에서
+    /// `tolerance` 안이면 같은 구간이다. 전에는 표본마다 한 줄이라 31분 영상에서 이 칸만 3,732줄(다이제스트의 93%)이었다
+    /// — AI 턴이 느려지고 구독을 많이 먹는다. 자세가 바뀌면(서기 ↔ 바닥, 높이 0.3 넘게) 구간이 끊겨 그대로 보인다.
+    /// 화면 잡기(리프레임)는 이 글이 아니라 표본(`SubjectTrack`)을 쓴다 — 여기서 줄여도 영향 없다.
+    static func subjectLines(_ samples: [SubjectSample], tolerance: Double = 0.03) -> [String] {
+        func t3(_ t: Double) -> String { String(format: "%05.1f", t) }
+        var out: [String] = []
+        var i = 0
+        while i < samples.count {
+            let first = samples[i]
+            var j = i + 1
+            while j < samples.count {
+                let next = samples[j]
+                switch (first.box, next.box) {
+                case (nil, nil): j += 1; continue
+                case let (a?, b?) where abs(a.x - b.x) <= tolerance && abs(a.y - b.y) <= tolerance
+                                    && abs(a.w - b.w) <= tolerance && abs(a.h - b.h) <= tolerance:
+                    j += 1; continue
+                default: break
+                }
+                break
+            }
+            let run = samples[i..<j]
+            let time = run.count == 1 ? t3(first.t) : "\(t3(first.t))-\(t3(run.last!.t))"
+            let boxes = run.compactMap(\.box)
+            if boxes.isEmpty {
+                out.append("\(time)  -")
+            } else {
+                let n = Double(boxes.count)
+                out.append(String(format: "%@  %.2f %.2f %.2f %.2f", time,
+                                  boxes.map(\.x).reduce(0, +) / n, boxes.map(\.y).reduce(0, +) / n,
+                                  boxes.map(\.w).reduce(0, +) / n, boxes.map(\.h).reduce(0, +) / n))
+            }
+            i = j
+        }
+        return out
+    }
+
     static func render(
         videoID: String, info: FrameSheet.Info, transcript: Transcript, subject: SubjectTrack,
         audio: AudioAnalyzer.Result, scenes: SceneCutDetector.Result, sheets: [(String, [Double])]
@@ -158,14 +196,8 @@ public enum DigestBuilder {
         if sentences.isEmpty { out.append("(말 없음)") }
         for s in sentences { out.append("[\(t2(s.start))-\(t2(s.end))] \(s.text)") }
 
-        out.append("\n## SUBJECT  (0.5s, 정규화 x y w h — y 는 아래에서, 사람 분할 마스크)")
-        for s in subject.samples {
-            if let b = s.box {
-                out.append(String(format: "%@  %.2f %.2f %.2f %.2f", t3(s.t), b.x, b.y, b.w, b.h))
-            } else {
-                out.append("\(t3(s.t))  -")
-            }
-        }
+        out.append("\n## SUBJECT  (0.5s 표본 · 비슷하면 `시작-끝` 한 줄로 묶음, 정규화 x y w h — y 는 아래에서, 사람 분할 마스크)")
+        out.append(contentsOf: subjectLines(subject.samples))
         let found = subject.samples.compactMap(\.box)
         if found.isEmpty {
             out.append("(요약) 사람을 찾지 못했다")

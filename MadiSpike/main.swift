@@ -470,6 +470,7 @@ case "scancompare":
 case "digestprogress":
     // 분석 진행률이 실제로 움직이는지 본다 (편집안 준비 화면 퍼센트, viewdata-map ⑮). 앱이 받아 둔 모델을 쓴다.
     guard args.count > 1 else { fail("사용법: madi-spike digestprogress <영상>") }
+    setvbuf(stdout, nil, _IOLBF, 0)   // 파일로 받아도 줄마다 바로 쓴다 (부하 테스트를 도중에 본다)
     do {
         let video = URL(fileURLWithPath: args[1])
         let provider = TranscriptionEngine.forThisMachine.makeProvider(root: Downloads.defaultRoot)
@@ -478,11 +479,35 @@ case "digestprogress":
         final class Last: @unchecked Sendable { var line = "" }
         let last = Last()
         let work = FileManager.default.temporaryDirectory.appending(path: "madi-dp-\(UUID().uuidString)")
-        _ = try await DigestBuilder.build(videoID: "dp", url: video, transcriber: provider, workDir: work) { step, f in
+        // 부하 테스트 — 15초마다 발열 상태 · 속도 조절 단계 (LoadGovernor)
+        let watcher = Task {
+            let names = ["보통", "약간", "뜨거움", "위험"]
+            while !Task.isCancelled {
+                let i = LoadGovernor.shared.inputs
+                print(String(format: "%5.1f초  [맥] 발열 %@ · 메모리 압박 %d · 단계 %@",
+                             Date().timeIntervalSince(started), names[min(i.thermal, 3)], i.memory.rawValue,
+                             "\(LoadGovernor.shared.level)"))
+                try? await Task.sleep(for: .seconds(15))
+            }
+        }
+        let digest = try await DigestBuilder.build(videoID: "dp", url: video, transcriber: provider, workDir: work) { step, f in
             let line = String(format: "%5.1f초  %@ %3d%%", Date().timeIntervalSince(started), "\(step)", Int(f * 100))
             if line.suffix(14) != last.line.suffix(14) { print(line); last.line = line }
         }
+        watcher.cancel()
         print(String(format: "끝 %.1f초", Date().timeIntervalSince(started)))
+        // AI 에게 넘기는 글의 크기 — 영상이 길면 이것도 길어진다
+        let lines = digest.text.split(separator: "\n", omittingEmptySubsequences: false)
+        let sections = ["TRANSCRIPT", "SUBJECT", "AUDIO", "SCENES", "FRAMES"].map { name -> String in
+            guard let i = lines.firstIndex(where: { $0.hasPrefix("## \(name)") }) else { return "\(name) -" }
+            let rest = lines[(i + 1)...]
+            let n = rest.firstIndex(where: { $0.hasPrefix("## ") }).map { $0 - i - 1 } ?? rest.count
+            return "\(name) \(n)줄"
+        }
+        print("다이제스트 \(digest.text.count)자 · \(lines.count)줄 · 낱말 \(digest.transcript.words.count)개 · " + sections.joined(separator: " · "))
+        if let out = ProcessInfo.processInfo.environment["MADI_DIGEST_OUT"] {
+            try digest.text.write(toFile: out, atomically: true, encoding: .utf8)
+        }
     } catch { fail("\(error)") }
 
 case "splittest":
