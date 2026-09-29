@@ -288,6 +288,17 @@ public struct AppDatabase: Sendable {
 
 extension AppDatabase {
 
+    /// 이 촬영본으로 결과물을 한 번이라도 만들었는가 — **휴지통으로 보낸 것도 센다** (스냅숏은 휴지통 결과물을 거른다).
+    /// 사람이 버린 결과물을 편집안을 열 때 몰래 다시 만들지 않으려고 본다.
+    public func hasEverMadeOutput(videoID: String) throws -> Bool {
+        try writer.read { db in
+            try Int.fetchOne(db, sql: """
+                SELECT COUNT(*) FROM output JOIN composition ON composition.id = output.compositionId
+                WHERE composition.videoId = ?
+                """, arguments: [videoID]) ?? 0
+        } > 0
+    }
+
     /// 촬영본을 마디에서 지운다 — 편집안 · 결과물 · 분석 · 채팅 · 줄 선 작업까지. **사진 앱 원본은 건드리지 않는다.**
     /// 영상 행은 `deletedAt` 표시로 남는다 (같은 영상이 사진 보관함 · 폴더에서 다시 들어오지 않게).
     /// - Returns: 지울 파일들 (앱 사본 · 결과물 mp4 · 분석 폴더). 디스크 지우기는 부르는 쪽이 DB 를 닫은 뒤 한다.

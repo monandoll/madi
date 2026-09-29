@@ -52,6 +52,17 @@ struct ExportTests {
         #expect(snap.outputs.isEmpty)
     }
 
+    @Test("휴지통으로 보낸 결과물도 '만든 적 있다' — 편집안을 열 때 몰래 다시 만들지 않는다")
+    func everMadeCountsTrashed() async throws {
+        let dir = try tmp()
+        let db = try setup(dir)
+        #expect(try db.hasEverMadeOutput(videoID: "v"))
+        try await Exporter.trash(db, outputID: "o")
+        #expect(try db.hasEverMadeOutput(videoID: "v"))       // 스냅숏에선 빠져도 여기선 센다
+        try await db.writer.write { try VideoRecord(id: "w", source: .folder, sourceRef: "/y", status: .ready).insert($0) }
+        #expect(try !db.hasEverMadeOutput(videoID: "w"))
+    }
+
     @Test("보관 기간 — 기간이 지난 촬영본의 앱 사본만 지우고, 작업이 걸린 영상은 건너뛴다")
     func retention() async throws {
         let dir = try tmp()

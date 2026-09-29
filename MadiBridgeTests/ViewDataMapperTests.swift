@@ -183,6 +183,16 @@ struct ViewDataMapperTests {
         #expect(groups.flatMap(\.items).count == 2)
     }
 
+    @Test("결과물을 다 휴지통으로 보낸 판 — '준비 중' 에 갇히지 않고 그 판을 보여 준다")
+    func trashedResultsShowPlan() throws {
+        // 휴지통 결과물은 스냅숏에서 빠진다 → 판은 있고 결과물 · 도는 작업은 없다
+        let s = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)], now: now)
+        guard case .ready(let plan) = try #require(ViewDataMapper.plan(s, videoID: "v", ai: .claude)) else {
+            Issue.record("준비 중에 갇혔다"); return
+        }
+        #expect(plan.id == "d" && plan.previewURL == nil)
+    }
+
     @Test("촬영본 출처 — 폴더로 들어온 것은 사진 앱에 없다 (우클릭 'Finder에서 보기')")
     func shotSource() {
         let photos = video("p", at: now)

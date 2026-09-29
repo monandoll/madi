@@ -302,6 +302,11 @@ enum ViewDataMapper {
         if let newest = versions.last, live.isEmpty, gaveUp(newest.id, s) {
             return gaveUpState(newest.id, view: planView(newest, video: video, versions: versions, s), s)
         }
+        // 판은 있는데 결과물을 다 휴지통으로 보냈다 — 그 판을 보여 준다 (만들기로 다시 만든다).
+        // 전에는 도는 것도 없는 "준비 중" 보드에 갇혔다
+        if let newest = versions.last, live.isEmpty {
+            return .ready(planView(newest, video: video, versions: versions, s))
+        }
         return .preparing(prepareSteps(live, fetchingOriginal: video.status == .importing, modelReady: modelReady,
                                        fetchProgress: s.importProgress[video.id],
                                        analysis: live.contains { $0.kind == .analyze } ? s.analysisProgress[video.id] : nil,

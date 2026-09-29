@@ -297,8 +297,9 @@ final class AppController {
         guard let s = snapshot, s.liveJobs(of: videoID).isEmpty else { return }
         let versions = s.visibleVersions(of: videoID)
         if let newest = versions.last {
-            let hasOutput = s.outputs.contains { s.versionRoot(of: $0.compositionId)?.id != nil && s.compositions(of: videoID).map(\.id).contains($0.compositionId) }
-            if !hasOutput { try await queue.enqueue(.render, targetId: newest.id) }
+            // 휴지통으로 보낸 결과물도 "있었던 것" 이다 — 사람이 버린 것을 열자마자 몰래 다시 만들지 않는다
+            // (2026-09-30 실제 앱: 결과물을 다 버린 촬영본을 열자 렌더가 걸려 버린 결과물이 되살아났다)
+            if try !db.hasEverMadeOutput(videoID: videoID) { try await queue.enqueue(.render, targetId: newest.id) }
             return
         }
         let hasDigest = try await db.writer.read { try DigestRecord.fetchOne($0, key: videoID) } != nil
