@@ -126,6 +126,9 @@ targets:
         # 하루 한 번 알아서 확인한다 — 크리에이터는 "업데이트 있음" 알림과 버튼만 본다 (§2)
         SUEnableAutomaticChecks: true
         SUScheduledCheckInterval: 86400
+        # 앱 언어는 한국어 하나다. 없으면 macOS 가 기본 메뉴(정보 · 설정… · 가리기 · 종료 · 편집)와 툴바 설명을
+        # 영어로 붙인다 (2026-09-30 실제 앱 메뉴 "About Madi · Settings… · Quit Madi")
+        CFBundleLocalizations: [ko]
     sources:
       - path: Madi/App
       # 디자인 AI 가 만드는 화면 (docs/prompts/design-ai.md). 아직 앱 창에 붙지 않았고
