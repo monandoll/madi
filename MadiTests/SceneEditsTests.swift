@@ -65,6 +65,23 @@ struct SceneEditsTests {
         #expect(c.scenes[0].captions[0].text == "하나 두울" && c.scenes[0].captions[0].secondary == nil)
     }
 
+    @Test("바뀌는 것이 없으면 새 편집안을 만들지 않는다 — 끝에 닿은 장면 늘리기 · 제자리 옮기기 · 같은 자막 · 뒤에 틈 없음")
+    func noChange() throws {
+        // 원본 끝(10초)에 닿은 장면. 끝이 원본보다 조금 넘어 있어도(10.08 — 실제 앱 60.08/60.00) 줄여서 새 판을 만들지 않는다
+        for end in [10.0, 10.08] {
+            var c = comp()
+            c.scenes[1].source.end = end
+            #expect(throws: SceneEdits.Failure.noChange) {
+                try SceneEdits.apply(.extend(sceneID: "s2", seconds: 1), to: c, newID: "n", words: words,
+                                     style: try StyleStore.load().values.caption, sourceDuration: 10)
+            }
+        }
+        #expect(throws: SceneEdits.Failure.noChange) { try apply(.move(from: IndexSet(integer: 0), to: 0)) }
+        #expect(throws: SceneEdits.Failure.noChange) { try apply(.move(from: IndexSet(integer: 0), to: 1)) }
+        #expect(throws: SceneEdits.Failure.noChange) { try apply(.editCaption(sceneID: "s1", text: "하나 둘", secondary: "one two")) }
+        #expect(throws: SceneEdits.Failure.noChange) { try apply(.restoreGap(sceneID: "s2")) }   // 마지막 장면 — 뒤에 틈이 없다
+    }
+
     @Test("멈추기 — 줄 선 작업만 멈춘다")
     func cancelQueued() async throws {
         let db = try AppDatabase.inMemory()
