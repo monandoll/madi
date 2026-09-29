@@ -28,6 +28,17 @@ struct PromptTests {
         #expect(p.contains("`v1`"))
     }
 
+    @Test("크리에이터 편집 문법(30편 실측)이 지침에 있고, 품질 기준이 그와 부딪히지 않는다")
+    func creatorStyle() throws {
+        let p = try PromptAssembler.assemble(videoID: "v1")
+        #expect(p.contains("## 구성 — 크리에이터의 틀"))
+        #expect(p.contains("## 끝맺음") && p.contains("꼭 따라해보세요"))
+        #expect(p.contains("1.25초"))                                     // 장면 호흡
+        // 품질 기준 칸이 지침보다 세다(§10) — 옛 컷 리듬 "1.5~4.0초" 가 있으면 AI 가 장면을 길게 묶는다
+        #expect(!PromptAssembler.gateSummary.contains("1.5~4"))
+        #expect(!p.contains("1.5~4"))
+    }
+
     @Test("크리에이터 규칙 · 대화 · 요청")
     func rulesAndTalk() throws {
         let empty = try PromptAssembler.assemble(videoID: "v1")
