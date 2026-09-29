@@ -120,27 +120,28 @@
 2. **원인을 찾는다** (증상 말고). 예: "끝없이 기다림" 의 원인은 화면이 아니라 60.08초 경계였다
 3. **회귀 테스트를 쓴다** — `MadiTests`(엔진) · `MadiBridgeTests`(엔진 → 화면 값)
 4. 화면이 바뀌면 **두 크기 스크린샷**을 눈으로 본다 (좁은 창에서 세로 목록 · 넓은 창에서 가로 띠)
-5. **버그 하나 = 브랜치 하나 = PR 하나.** `rebuild` 에 바로 커밋하지 않는다 (아래 "브랜치 · PR")
+5. **세션 하나 = 브랜치 하나 = PR 하나, 버그 하나 = 커밋 하나.** `rebuild` 에 바로 커밋하지 않는다 (아래 "브랜치 · PR")
 6. 사용자에게 **한국어로** 알린다 — 무엇이 깨졌고, 왜 그랬고, 무엇을 고쳤고, **아직 확인 못 한 것**
 
-## 브랜치 · PR (사용자 지시 2026-09-29)
+## 브랜치 · PR (사용자 지시 2026-09-29, **2026-09-30 고침**)
 
-버그마다 `rebuild` 에서 `fix/` 브랜치를 떼서 커밋 · 푸시 · PR 까지 한다. 원격 `monandoll/madi`, `gh` 는 monandoll 로 로그인돼 있다.
+**세션마다 `rebuild` 에서 `fix/` 브랜치 하나를 떼서 PR 하나로 올린다. 버그마다 커밋을 따로 하고 같은 브랜치에 계속 푸시한다.**
+(2026-09-30 버그마다 PR 을 나눴더니 사용자가 "하나의 PR 로 합쳐야지" 했다 — #38~#42 를 #43 으로 합쳤다)
+원격 `monandoll/madi`, `gh` 는 monandoll 로 로그인돼 있다.
 
 ```
 git switch rebuild && git pull --ff-only
-git switch -c fix/<짧은-영문-이름>          # 예: fix/noop-edit-versions · fix/stop-running-job
-# 고치고 · 테스트 · 다시 눌러 확인
-git commit                                   # 무엇이 · 왜 · 어떻게 확인했는지
-git push -u origin fix/<이름>
-gh pr create --base rebuild --title "<무엇을 고쳤나>" --body "<아래 본문>"
+git switch -c fix/bugfix-<날짜>              # 세션에 한 번
+# 버그마다: 고치고 · 테스트 · 다시 눌러 확인
+git commit                                   # 버그 하나 — 무엇이 · 왜 · 어떻게 확인했는지
+git push                                     # 같은 브랜치에 계속
+gh pr create --base rebuild ...              # 세션에 한 번. 버그가 늘면 본문 표를 고친다 (gh pr edit)
 ```
 
 - PR 대상(base)은 **`rebuild`** 다 (`main` 아님)
 - PR 본문: 무엇이 깨졌나 · 원인 · 고친 것 · **확인한 것** (눌러 봄 / 스크린샷 / 테스트 / 쌤 영상과 비교) · **확인 못 한 것**.
   본문 끝에 `🤖 Generated with [Claude Code](https://claude.com/claude-code)`
 - **머지는 하지 않는다** — 사용자가 한다. PR 링크를 보고한다
-- 다음 버그는 다시 `rebuild` 에서 뗀다. 앞 PR 이 머지되기 전에 **같은 파일**을 또 고쳐야 하면 먼저 묻는다 (충돌)
 - CI 는 PR 에서 돌지 않는다 (`AGENTS.md §14` — 단계 태그 · 수동 실행에서만). 로컬 테스트가 통과해야 PR 을 만든다
 
 ## 6. 지킬 것
