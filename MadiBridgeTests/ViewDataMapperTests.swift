@@ -261,6 +261,20 @@ struct ViewDataMapperTests {
         #expect(edited.id == "e" && edited.versionLabel == Copy.Plan.version(2))
     }
 
+    @Test("결과 길이는 장면 길이의 합 — AI 가 적은 목표 길이가 아니다. 장면을 빼면 줄어든다")
+    func lengthIsActual() throws {
+        // 목표 6초 · 장면 3초 + 2.5초 = 5.5초, 사람이 한 장면을 뺀 판은 3초
+        let s = LibrarySnapshot(videos: [video("v", at: now)],
+                                compositions: [try comp("d", at: now - 60),
+                                               try comp("e", scenes: [(0, 3)], origin: .chat, revisionOf: "d", at: now - 10)],
+                                outputs: [output("o", comp: "d", verdict: .shown, at: now - 50)], now: now)
+        guard case .ready(let draft) = try #require(ViewDataMapper.plan(s, videoID: "v", ai: .claude)) else { Issue.record(""); return }
+        #expect(draft.targetDuration == 5.5)
+        guard case .ready(let edited) = try #require(ViewDataMapper.plan(s, videoID: "v", ai: .claude, viewing: "e")) else { Issue.record(""); return }
+        #expect(edited.targetDuration == 3)
+        #expect(edited.versions.map(\.duration) == [5.5, 3])   // 판 목록과 같은 값
+    }
+
     @Test("채팅 '앞으로도?' — 규칙 문장은 버튼 설명에, 답하면 사라진다 · 받기 실패 · 원본 한계 안내")
     func remembersAndNotices() throws {
         let ask = ChatRecord(id: "q", videoId: "v", kind: .choices, payload: ["ask": .string("askRemember"), "rule": .string("영상은 15초 안팎으로")], createdAt: now)

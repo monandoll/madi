@@ -379,7 +379,9 @@ enum ViewDataMapper {
             id: rec.id, shotID: video.id, shotTitle: shotTitle(video, s),
             platform: platform(comp?.meta.platform ?? .reels),
             versionLabel: Copy.Plan.version(number), versionCount: versions.count,
-            sourceDuration: video.durationSec ?? 0, targetDuration: comp?.meta.targetDurationSec ?? 0,
+            // 화면의 "결과 길이" (1:00 → 0:23 · 장면 n개 · 0:23) — 장면 길이의 합. AI 가 처음 적은 목표 길이
+            // (`meta.targetDurationSec`)를 넣으면 빼기 · 늘리기를 해도 숫자가 안 바뀐다 (2026-09-30 실제 앱: 4.2초 장면을 빼도 0:27)
+            sourceDuration: video.durationSec ?? 0, targetDuration: comp?.duration ?? 0,
             captionSlot: captionSlot(comp?.captionSlot ?? .fullBody),
             scenes: comp.map { sceneCards($0, s) } ?? [],
             resultCount: results(of: video.id, s).count,
