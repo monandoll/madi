@@ -16,11 +16,12 @@ struct SoftGatesTests {
                            meta: Composition.Meta(targetDurationSec: target), captionSlot: .fullBody, scenes: scenes)
     }
 
-    @Test("G8 — 첫 장면이 훅이고 첫 자막이 0.5초 안")
+    @Test("G8 — 첫 장면이 훅이고 첫 자막이 2.0초 안 (크리에이터 30편 중 가장 늦은 1.75초가 통과한다)")
     func hook() {
         #expect(SoftGates.g8(comp(roles: [.hook, .demo], lengths: [2, 2], target: 4)).0 == .pass)
         #expect(SoftGates.g8(comp(roles: [.demo, .hook], lengths: [2, 2], target: 4)).0 == .fail)
-        #expect(SoftGates.g8(comp(roles: [.hook], lengths: [2], target: 2, firstCaption: 0.8)).0 == .fail)
+        #expect(SoftGates.g8(comp(roles: [.hook], lengths: [3], target: 3, firstCaption: 1.75)).0 == .pass)   // 4T63BIVj0-Y
+        #expect(SoftGates.g8(comp(roles: [.hook], lengths: [3], target: 3, firstCaption: 2.5)).0 == .fail)
         #expect(SoftGates.g8(comp(roles: [.hook], lengths: [2], target: 2, firstCaption: nil)).0 == .fail)
     }
 
@@ -32,10 +33,11 @@ struct SoftGatesTests {
         #expect(abs(ratio - 0.669) < 0.01)   // 4단계 NOCXAZE8XdQ · Codex
     }
 
-    @Test("G10 — 장면 중앙값 (리포트만)")
+    @Test("G10 — 장면 중앙값 0.4~3.6초 (크리에이터 30편 범위, 리포트만)")
     func rhythm() {
         #expect(SoftGates.g10(comp(roles: [.hook, .demo, .cta], lengths: [2, 3, 5], target: 10)) == (.pass, 3))
-        #expect(SoftGates.g10(comp(roles: [.hook, .demo, .cta], lengths: [1, 1, 5], target: 7)).0 == .fail)
+        #expect(SoftGates.g10(comp(roles: [.hook, .demo, .cta], lengths: [1, 1.25, 5], target: 7.25)).0 == .pass)   // 크리에이터 중앙 1.25
+        #expect(SoftGates.g10(comp(roles: [.hook, .demo, .cta], lengths: [4, 7, 8], target: 19)).0 == .fail)        // 31분 초안 7.6초
     }
 
     @Test("G9 — 무음이면서 거의 멈춘 구간이 이어진 길이")
