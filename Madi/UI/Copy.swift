@@ -443,10 +443,17 @@ public enum Copy {
             public static let airdropDetail = "가까이 있는 기기로 바로 보내요"
             public static func done(_ target: String) -> String { "\(target)(으)로 보냈어요" }
             /// 내보내다 막힌 경우. 결과물 화면에는 채팅이 없어서 화면 위 한 줄로 말한다.
+            /// 받는 곳마다 말이 다르다 — 전에는 "Mac에 저장에 넣지 못했어요" 처럼 이름을 그대로 끼워 넣었다 (2026-09-30).
             public static func failed(_ target: String) -> String {
-                "\(target)에 넣지 못했어요"
+                switch target {
+                case files: "Mac에 저장하지 못했어요."
+                case airdrop: "AirDrop으로 보내지 못했어요."
+                default: "\(target)에 넣지 못했어요."
+                }
             }
             public static let failedReason = "잠시 뒤 다시 해보거나 Mac에 저장해 주세요."
+            /// Mac 저장이 막힌 경우 — 대개 고른 폴더에 쓸 수 없다. "Mac에 저장해 주세요" 는 말이 안 된다.
+            public static let failedReasonFolder = "다른 폴더를 골라 다시 해 주세요."
             public static let retry = "다시 내보내기"
             public static let saveToMac = "Mac에 저장"
             /// 목록 줄에 남는 이력. `사진 앱에 저장함 · 오후 2:40`

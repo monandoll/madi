@@ -458,27 +458,7 @@ final class AppController {
     private func results(_ a: UIAction.Results, _ db: AppDatabase) async throws {
         switch a {
         case .export(let id, let target):
-            do {
-                if target.title == Copy.Results.Export.photos {
-                    try await Exporter.toPhotos(db, outputID: id)
-                } else if target.title == Copy.Results.Export.files {
-                    let panel = NSOpenPanel()
-                    panel.canChooseDirectories = true
-                    panel.canChooseFiles = false
-                    guard panel.runModal() == .OK, let folder = panel.url else { return }
-                    let name = snapshot.flatMap { s in s.outputs.first { $0.id == id }.flatMap { o in
-                        s.compositions.first { $0.id == o.compositionId }.flatMap { try? $0.composition().meta.title } } } ?? ""
-                    try await Exporter.toFolder(db, outputID: id, folder: folder, name: name)
-                } else if let path = snapshot?.outputs.first(where: { $0.id == id })?.path {
-                    NSSharingService(named: .sendViaAirDrop)?.perform(withItems: [URL(fileURLWithPath: path)])
-                }
-                resultsNotice = nil
-            } catch {
-                resultsNotice = ScreenNotice(
-                    message: Copy.Results.Export.failed(target.title) + " " + Copy.Results.Export.failedReason,
-                    actions: [ChatChoice(title: Copy.Results.Export.retry, isPrimary: true), ChatChoice(title: Copy.Results.Export.saveToMac)]
-                )
-            }
+            await export(id, to: target, db)
         case .trash(let id):
             try await Exporter.trash(db, outputID: id)
         case .openPlan(let id):
@@ -487,14 +467,49 @@ final class AppController {
             openShotID = rec.videoId
             viewingVersionID = s.versionRoot(of: rec.id)?.id
             try await Exporter.markSeen(db, outputID: id)
-        case .dismissNotice, .noticeChoice:
+        case .noticeChoice(let choice):
+            // 실패 안내의 버튼 — 누르면 그 일을 한다 (전에는 안내만 닫았다)
             resultsNotice = nil
+            guard let failed = failedExport else { return }
+            failedExport = nil
+            if let target = ViewDataMapper.exportRetry(choice, failed: failed.target, targets: exportTargets) {
+                await export(failed.id, to: target, db)
+            }
+        case .dismissNotice:
+            resultsNotice = nil
+            failedExport = nil
         case .showShots:
             break
         case .select(let id):
             // ⑧ 고른 결과물 — 이전 판과 나란히 (resultDetail). 고른 것은 "봤다"
             selectedResultID = id
             if let id { try await Exporter.markSeen(db, outputID: id) }
+        }
+    }
+
+    /// 막힌 내보내기 — 실패 안내의 "다시 내보내기" · "Mac에 저장" 이 이어서 한다.
+    private var failedExport: (id: String, target: ExportTarget)?
+
+    private func export(_ id: String, to target: ExportTarget, _ db: AppDatabase) async {
+        do {
+            if target.title == Copy.Results.Export.photos {
+                try await Exporter.toPhotos(db, outputID: id)
+            } else if target.title == Copy.Results.Export.files {
+                let panel = NSOpenPanel()
+                panel.canChooseDirectories = true
+                panel.canChooseFiles = false
+                guard panel.runModal() == .OK, let folder = panel.url else { return }
+                let name = snapshot.flatMap { s in s.outputs.first { $0.id == id }.flatMap { o in
+                    s.compositions.first { $0.id == o.compositionId }.flatMap { try? $0.composition().meta.title } } } ?? ""
+                try await Exporter.toFolder(db, outputID: id, folder: folder, name: name)
+            } else if let path = snapshot?.outputs.first(where: { $0.id == id })?.path {
+                NSSharingService(named: .sendViaAirDrop)?.perform(withItems: [URL(fileURLWithPath: path)])
+            }
+            resultsNotice = nil
+            failedExport = nil
+        } catch {
+            failedExport = (id, target)
+            resultsNotice = ViewDataMapper.exportFailed(target)
         }
     }
 

@@ -431,3 +431,12 @@ case .openSettings
 - **"둘 다 처음부터 재생"** 은 두 말소리가 겹쳐 어느 쪽도 못 알아들었다 — 소리는 **지금 판만**, 이전 판은 소리를 끈다
   (막대의 소리 버튼이 🔇 로 바뀐다. 각자 다시 켤 수 있다)
 - `MediaPlayers` 를 `Madi/UI/Common/MediaPlayers.swift` 로 떼어 냈다 — 화면 없이 테스트하려고 (`MadiBridgeTests/MediaPlayersTests`)
+
+## ㉑ 내보내기 실패 안내 — 버튼이 일을 한다 (2026-09-30 버그 잡기 두 번째 훑기 · 개발이 고침)
+
+- 결과물 화면 위 실패 한 줄의 **"다시 내보내기" · "Mac에 저장" 이 둘 다 안내만 닫았다** (눌러서 확인 — 새 파일 없음)
+- 지금: "다시 내보내기" 는 같은 곳으로 다시(폴더면 고르는 창이 다시 뜬다), "Mac에 저장" 은 폴더 저장으로 이어진다
+  (`ViewDataMapper.exportFailed` · `exportRetry`, 바꾸는 층 `AppController.export`)
+- 문장이 "Mac에 저장**에 넣지** 못했어요 잠시 뒤 … Mac에 저장해 주세요" 였다 — 받는 곳 이름을 그대로 끼워 넣어서.
+  `Copy.Results.Export.failed` 가 받는 곳마다 말을 고른다. Mac 저장이 막혔을 때는 "다른 폴더를 골라 다시 해 주세요."
+  (새 키 `failedReasonFolder`) 이고 "Mac에 저장" 버튼을 또 두지 않는다

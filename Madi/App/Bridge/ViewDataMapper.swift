@@ -202,6 +202,27 @@ enum ViewDataMapper {
         return ResultDetail(shotTitle: shotTitle(video, s), current: current, previous: previous, changes: lines)
     }
 
+    /// 내보내기가 막혔을 때 화면 위 한 줄. 버튼은 **누르면 그 일을 한다** — 전에는 둘 다 안내만 닫았다 (2026-09-30).
+    /// Mac 저장이 막혔으면 "Mac에 저장" 을 또 권하지 않는다 (다른 폴더로 다시).
+    static func exportFailed(_ target: ExportTarget) -> ScreenNotice {
+        let toFolder = target.title == Copy.Results.Export.files
+        return ScreenNotice(
+            message: Copy.Results.Export.failed(target.title) + " "
+                + (toFolder ? Copy.Results.Export.failedReasonFolder : Copy.Results.Export.failedReason),
+            actions: [ChatChoice(title: Copy.Results.Export.retry, isPrimary: true)]
+                + (toFolder ? [] : [ChatChoice(title: Copy.Results.Export.saveToMac)])
+        )
+    }
+
+    /// 실패 안내에서 고른 버튼 → 다시 보낼 곳. "다시 내보내기" 는 같은 곳, "Mac에 저장" 은 폴더 저장.
+    static func exportRetry(_ choice: ChatChoice, failed: ExportTarget, targets: [ExportTarget]) -> ExportTarget? {
+        switch choice.title {
+        case Copy.Results.Export.retry: failed
+        case Copy.Results.Export.saveToMac: targets.first { $0.title == Copy.Results.Export.files }
+        default: nil
+        }
+    }
+
     /// 내보낸 이력 한 줄 — 가장 최근 것. 폴더 저장은 문구가 없어 아직 안 낸다 (copy-keys `exportedToFolder`).
     static func exportedNote(_ outputID: String, _ s: LibrarySnapshot) -> String? {
         guard let e = s.exports.last(where: { $0.outputId == outputID && $0.target == .photos }) else { return nil }

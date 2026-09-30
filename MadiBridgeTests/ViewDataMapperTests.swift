@@ -474,4 +474,22 @@ struct ViewDataMapperTests {
                                 compositions: [try comp("c1", title: "", at: now)], now: now)
         #expect(ViewDataMapper.title(of: "v", s) == "첫 덩어리0 둘째0 첫 덩어리1 둘째1")
     }
+
+    @Test("내보내기 실패 안내 — 버튼이 할 일로 이어진다. Mac 저장이 막히면 'Mac에 저장' 을 또 권하지 않는다")
+    func exportFailedNotice() {
+        let photos = ExportTarget(title: Copy.Results.Export.photos, detail: "", symbol: "")
+        let files = ExportTarget(title: Copy.Results.Export.files, detail: "", symbol: "")
+        let targets = [photos, files]
+
+        let p = ViewDataMapper.exportFailed(photos)
+        #expect(p.actions.map(\.title) == [Copy.Results.Export.retry, Copy.Results.Export.saveToMac])
+        #expect(ViewDataMapper.exportRetry(p.actions[0], failed: photos, targets: targets) == photos)
+        #expect(ViewDataMapper.exportRetry(p.actions[1], failed: photos, targets: targets) == files)
+
+        let f = ViewDataMapper.exportFailed(files)
+        #expect(f.actions.map(\.title) == [Copy.Results.Export.retry])
+        #expect(f.message.hasPrefix("Mac에 저장하지 못했어요."))
+        #expect(!f.message.contains("Mac에 저장에"))
+        #expect(ViewDataMapper.exportRetry(f.actions[0], failed: files, targets: targets) == files)
+    }
 }
