@@ -154,6 +154,27 @@ struct ViewDataMapperTests {
         #expect(ref.planLabel == Copy.Plan.version(2))
     }
 
+    @Test("채팅으로 새 판이 생기면 AI 말 밑에 달라진 점 카드 — 편집안 번호 · 길이 · 장면 수 · 되돌리기")
+    func chatEditSummary() throws {
+        let rows = [
+            ChatRecord(id: "m1", videoId: "v", kind: .creator, text: "줄여 줘", createdAt: now - 40),
+            ChatRecord(id: "m2", videoId: "v", kind: .assistant, text: "줄였어요", compositionId: "c1", createdAt: now - 30),
+        ]
+        let s = LibrarySnapshot(
+            videos: [video("v", at: now)],
+            compositions: [try comp("d", scenes: [(0, 3), (3.5, 6), (7, 10)], at: now - 60),
+                           try comp("c1", scenes: [(0, 3), (3.5, 6)], origin: .chat, revisionOf: "d", at: now - 30)],
+            chats: rows, now: now
+        )
+        let kinds = ViewDataMapper.chat(s, videoID: "v").map(\.kind)
+        #expect(kinds.count == 3)
+        guard case .summary(let card) = kinds[2] else { Issue.record("달라진 점 카드 아님"); return }
+        #expect(card.canUndo)
+        #expect(card.versionLabel == Copy.Plan.version(2))
+        #expect(card.lines.map(\.label) == [Copy.Plan.Info.length, Copy.Plan.Info.scenes])
+        #expect(card.lines.last?.value == Copy.Plan.Info.lengthChange(from: "3", to: "2"))
+    }
+
     @Test("채팅 날짜 줄 — 대화가 끊겼다 이어질 때만 (첫 말 · 30분 넘게 쉼 · 날이 바뀜). '오늘 오후 2:20' 꼴")
     func chatStamps() throws {
         let rows = [

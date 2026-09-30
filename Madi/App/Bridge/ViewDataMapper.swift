@@ -189,6 +189,13 @@ enum ViewDataMapper {
         if let said = s.chats.last(where: { $0.kind == .assistant && $0.compositionId == version })?.text, !said.isEmpty {
             lines.append(.init(label: firstSentence(said), value: ""))
         }
+        lines += changeLines(a, b)
+        return ResultDetail(shotTitle: shotTitle(video, s), current: current, previous: previous, changes: lines)
+    }
+
+    /// 두 편집안의 차이 — 길이 · 장면 수 · 자막 자리. 결과물 나란히 보기와 대화의 달라진 점 카드가 같이 쓴다.
+    static func changeLines(_ a: Composition, _ b: Composition) -> [EditSummary.Line] {
+        var lines: [EditSummary.Line] = []
         if Copy.duration(a.duration) != Copy.duration(b.duration) {
             lines.append(.init(label: Copy.Plan.Info.length,
                                value: Copy.Plan.Info.lengthChange(from: Copy.duration(a.duration), to: Copy.duration(b.duration))))
@@ -200,7 +207,23 @@ enum ViewDataMapper {
         if a.captionSlot != b.captionSlot {
             lines.append(.init(label: Copy.Plan.Info.caption, value: captionSlot(b.captionSlot).label))
         }
-        return ResultDetail(shotTitle: shotTitle(video, s), current: current, previous: previous, changes: lines)
+        return lines
+    }
+
+    /// 대화의 달라진 점 카드 (디자인 ⑯ — 머리줄 · 표 · "처음부터 보기 | 되돌리기"). 채팅 수정으로 새 판이 생기면 AI 말 밑에 붙는다.
+    /// 전에는 화면(카드)만 있고 바꾸는 층이 내지 않아, 대화에서 되돌릴 곳이 없었다 (2026-09-30).
+    static func editSummary(_ versionID: String, _ s: LibrarySnapshot) -> EditSummary? {
+        guard let rec = s.compositions.first(where: { $0.id == versionID }), let b = try? rec.composition(),
+              let prevID = rec.revisionOf, let prev = s.compositions.first(where: { $0.id == prevID }),
+              let a = try? prev.composition() else { return nil }
+        let lines = changeLines(a, b)
+        guard !lines.isEmpty else { return nil }
+        return EditSummary(
+            lines: lines, canUndo: true,
+            versionLabel: versionNumber(versionID, s).map { Copy.Plan.version($0) },
+            detail: "\(platform(b.meta.platform).label) · \(Copy.duration(b.duration))",
+            thumbnail: b.scenes.first.map { thumb(s.thumbnailStore.scene(rec.id, $0.id), s) } ?? .none
+        )
     }
 
     /// 내보내기가 막혔을 때 화면 위 한 줄. 버튼은 **누르면 그 일을 한다** — 전에는 둘 다 안내만 닫았다 (2026-09-30).
@@ -518,6 +541,10 @@ enum ViewDataMapper {
             case .creatorNotSent: out.append(ChatMessage(id: row.id, kind: .userNotSent(row.text ?? ""), stamp: stamp))
             case .assistant:
                 out.append(ChatMessage(id: row.id, kind: .assistant(plain(row.text ?? "")), stamp: stamp))
+                // 이 말로 새 판이 생겼으면 달라진 점 카드 — 처음부터 보기 · 되돌리기
+                if let cid = row.compositionId, let summary = editSummary(cid, s) {
+                    out.append(ChatMessage(id: row.id + ".summary", kind: .summary(summary)))
+                }
                 // 이 말로 생긴 판의 결과물이 보여지면 카드로 붙는다
                 if let cid = row.compositionId, let o = s.shownOutput(forVersion: cid), let ref = resultRef(o, s) {
                     out.append(ChatMessage(id: row.id + ".result", kind: .result(ref)))
