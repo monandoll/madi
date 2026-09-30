@@ -263,7 +263,15 @@ struct GalleryScreen: View {
                         selected: selectedID == nil ? 0 : 1
                     ))
                     Text("·")
-                    Text(Copy.Gallery.Status.syncedWithICloud)
+                    if studio.photos == .granted {
+                        Text(Copy.Gallery.Status.syncedWithICloud)
+                    } else {
+                        // 권한이 없으면 맞춰져 있다고 하지 않는다 — 켜는 길을 준다
+                        Text(Copy.Gallery.Status.photosOff)
+                        Button(Copy.Gallery.Status.connectPhotos) { onAction(.allowPhotos) }
+                            .buttonStyle(.accentLink)
+                            .font(.caption)
+                    }
                 }
                 Spacer()
             }

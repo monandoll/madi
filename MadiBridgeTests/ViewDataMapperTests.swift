@@ -500,4 +500,11 @@ struct ViewDataMapperTests {
         #expect(!f.message.contains("Mac에 저장에"))
         #expect(ViewDataMapper.exportRetry(f.actions[0], failed: files, targets: targets) == files)
     }
+
+    @Test("사진 권한을 상태줄에 넘긴다 — 권한이 없는데 'iCloud 사진과 맞춰져 있음' 이라고 하지 않게")
+    func studioCarriesPhotoAccess() {
+        let s = LibrarySnapshot(now: now)
+        #expect(ViewDataMapper.studio(s, studioName: "", ai: .none, photos: .notAsked).photos == .notAsked)
+        #expect(ViewDataMapper.studio(s, studioName: "", ai: .none, photos: .granted).photos == .granted)
+    }
 }

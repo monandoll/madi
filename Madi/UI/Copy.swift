@@ -141,6 +141,9 @@ public enum Copy {
 
         public enum Status {
             public static let syncedWithICloud = "iCloud 사진과 맞춰져 있음"
+            /// 사진 권한이 없을 때 — 전에는 권한과 상관없이 "맞춰져 있음" 이라고 했다 (2026-09-30).
+            public static let photosOff = "사진 앱과 연결 안 됨"
+            public static let connectPhotos = "연결하기"
             public static func lastChecked(_ minutes: Int) -> String {
                 minutes < 1 ? "방금 확인" : "\(minutes)분 전 확인"
             }
@@ -562,6 +565,10 @@ public enum Copy {
             public static let title = "준비됐어요"
             public static let message =
                 "아이폰으로 찍은 촬영본이 자동으로 들어와요.\n처음 가져오는 데 1~2분쯤 걸려요."
+            /// 사진 접근을 건너뛰었을 때 — 저절로 들어온다고 약속하지 않는다 (2026-09-30).
+            public static let messageNoPhotos =
+                "사진 보관함을 허용하지 않아서 촬영본이 저절로 들어오지는 않아요.\n"
+                + "‘Mac에 있는 영상 넣기’로 넣거나, 설정에서 언제든 사진 접근을 켤 수 있어요."
             public static let start = "마디 시작하기"
         }
     }
@@ -604,6 +611,8 @@ public enum Copy {
             public static let photoAccess = "사진 접근"
             public static let photoAccessOn = "허용됨"
             public static let photoAccessOff = "허용 안 됨"
+            /// 아직 묻지 않았다 — "허용 안 됨" 과 다르다. 여기서 바로 켤 수 있다.
+            public static let photoAccessNotAsked = "아직 안 켰어요"
         }
 
         public static let loading = "연결을 확인하고 있어요"

@@ -156,7 +156,8 @@ final class AppController {
 
     private func recompute() {
         let appSettings = AppSettings()
-        studio = ViewDataMapper.studio(snapshot ?? LibrarySnapshot(), studioName: appSettings.studioName, ai: ai, preparing: prep)
+        studio = ViewDataMapper.studio(snapshot ?? LibrarySnapshot(), studioName: appSettings.studioName, ai: ai, preparing: prep,
+                                       photos: photos)
         settings = SettingsValues(
             ai: setup(for: ai), activeAI: ai, studioName: appSettings.studioName, keepDays: appSettings.keepDays,
             albumName: UserDefaults.standard.string(forKey: PhotoLibraryWatcher.albumNameKey),
@@ -254,6 +255,8 @@ final class AppController {
             for url in panel.urls { try? FileManager.default.copyItem(at: url, to: MadiPipeline.inbox.appending(path: url.lastPathComponent)) }
         case .openSystemSettings:
             Self.openPhotosPrivacy()
+        case .allowPhotos:
+            await allowPhotos()
         case .hide(let id):
             try await db.writer.write { db in
                 try db.execute(sql: "UPDATE video SET hiddenAt = ? WHERE id = ?", arguments: [Date(), id])
@@ -621,6 +624,7 @@ final class AppController {
         case .studioName(let name): AppSettings().studioName = name
         case .keepDays(let days): AppSettings().keepDays = days
         case .openSystemSettings: Self.openPhotosPrivacy()
+        case .allowPhotos: await allowPhotos()
         case .pickAlbum:
             pickAlbum()
         case .look(let change):
@@ -820,6 +824,12 @@ final class AppController {
             // 설치 안 된 글꼴 등 — 저장하지 않는다 (조용히 대체하지 않는다, §9)
             MadiPipeline.log.error("자막 모양 저장 실패: \(String(describing: error), privacy: .public)")
         }
+    }
+
+    /// 사진 접근 켜기 — 아직 안 물었으면 권한 창, 거절했으면 시스템 설정 (묻지 않은 앱은 시스템 설정 목록에 없다).
+    private func allowPhotos() async {
+        if Self.photoAccess() == .notAsked { _ = await pipeline.startPhotos() } else { Self.openPhotosPrivacy() }
+        photos = Self.photoAccess()
     }
 
     static func openPhotosPrivacy() {

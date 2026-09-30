@@ -16,13 +16,14 @@ enum ViewDataMapper {
 
     // MARK: - 사이드바
 
-    static func studio(_ s: LibrarySnapshot, studioName: String, ai: AIConnection, preparing: EnginePrep? = nil) -> StudioStatus {
+    static func studio(_ s: LibrarySnapshot, studioName: String, ai: AIConnection, preparing: EnginePrep? = nil,
+                       photos: PhotoAccess = .granted) -> StudioStatus {
         StudioStatus(
             studioName: studioName, ai: ai,
             shotCount: s.videos.filter { $0.hiddenAt == nil && $0.deletedAt == nil }.count,
             resultCount: s.outputs.filter { $0.verdict == .shown }.count,
             makingCount: s.videos.filter { !s.liveJobs(of: $0.id).isEmpty }.count,
-            preparing: preparing
+            preparing: preparing, photos: photos
         )
     }
 

@@ -244,15 +244,18 @@ public struct StudioStatus: Hashable, Sendable {
     public var makingCount: Int
     /// 편집 준비가 안 끝났으면 사이드바 아래에 한 줄. 끝났으면 `nil` (viewdata-map 3절 ①).
     public var preparing: EnginePrep?
+    /// 사진 보관함 권한 — 갤러리 상태줄이 "iCloud 사진과 맞춰져 있음" 을 말해도 되는가 (viewdata-map ㉓).
+    public var photos: PhotoAccess
 
     public init(
         studioName: String, ai: AIConnection,
         shotCount: Int, resultCount: Int, makingCount: Int,
-        preparing: EnginePrep? = nil
+        preparing: EnginePrep? = nil, photos: PhotoAccess = .granted
     ) {
         self.studioName = studioName; self.ai = ai
         self.shotCount = shotCount; self.resultCount = resultCount
         self.makingCount = makingCount; self.preparing = preparing
+        self.photos = photos
     }
 
     public func count(for section: LibrarySection) -> Int {

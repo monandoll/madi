@@ -177,7 +177,17 @@ private struct GeneralSettings: View {
                         .foregroundStyle(Tokens.Palette.ok)
                         .labelStyle(.titleAndIcon)
                         .font(.callout)
-                default:
+                case .notAsked:
+                    // 아직 묻지 않았다 — 여기서 권한 창을 띄운다. 묻지 않은 앱은 시스템 설정 목록에 없어서
+                    // 전에 있던 "시스템 설정 열기" 로는 켤 곳이 없었다 (2026-09-30)
+                    HStack(spacing: Tokens.Space.inner) {
+                        Text(Copy.Settings.Shots.photoAccessNotAsked)
+                            .foregroundStyle(.secondary)
+                        Button(Copy.Onboarding.Photos.allow) {
+                            onAction(.allowPhotos)
+                        }
+                    }
+                case .denied:
                     HStack(spacing: Tokens.Space.inner) {
                         Text(Copy.Settings.Shots.photoAccessOff)
                             .foregroundStyle(.secondary)

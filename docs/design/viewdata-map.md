@@ -450,3 +450,15 @@ case .openSettings
 - 저장한 뒤 **아무 표시가 없었다** — 목록 줄에 "✓ 다운로드에 저장함 · 오후 11:45" (저장한 폴더 이름, 올릴 때 찾는 곳).
   copy-keys `exportedToFolder` 는 새 키 없이 `historyLine` 으로 닫았다
 - "Mac에 저장" 설명 `filesDetail` — "폴더를 고르면" → "저장할 곳을 고르면"
+
+## ㉓ 사진 권한 — 사실대로 말한다 (2026-09-30 버그 잡기 두 번째 훑기 · 개발이 고침)
+
+개발 맥은 사진 권한을 **아직 묻지 않은 상태**(앱 로그 "사진 보관함 권한 없음 (0)")였는데 화면 세 곳이 다르게 말했다.
+- **갤러리 상태줄** — 권한과 상관없이 늘 "iCloud 사진과 맞춰져 있음" (문구를 박아 두었다).
+  이제 `StudioStatus.photos` 가 허용이 아니면 "사진 앱과 연결 안 됨 · **연결하기**" (`UIAction.Gallery.allowPhotos`)
+- **설정 · 사진 접근** — 묻지 않음과 거절을 똑같이 "허용 안 됨 · 시스템 설정 열기" 로 보였다. 묻지 않은 앱은 시스템 설정 목록에
+  **없어서 켤 곳이 없다.** 이제 묻지 않음 → "아직 안 켰어요 · 사진 접근 허용"(권한 창, `UIAction.Settings.allowPhotos`),
+  거절 → 전과 같이 "허용 안 됨 · 시스템 설정 열기"
+- **첫 실행 마지막 화면** — 사진 접근을 건너뛰어도 "아이폰으로 찍은 촬영본이 자동으로 들어와요" 라고 약속했다.
+  이제 허용하지 않았으면 `Copy.Onboarding.Ready.messageNoPhotos` ("…저절로 들어오지는 않아요. ‘Mac에 있는 영상 넣기’로 넣거나…")
+- 새 문구 키: `Gallery.Status.photosOff` · `connectPhotos`, `Settings.Shots.photoAccessNotAsked`, `Onboarding.Ready.messageNoPhotos`
