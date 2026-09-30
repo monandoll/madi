@@ -64,6 +64,13 @@ final class AppController {
 
     func start() async {
         photos = Self.photoAccess()
+        // 보관함 목록 · 미리보기 그림이 늘면 다시 그린다 (그림 파일은 DB 관측에 안 잡힌다)
+        pipeline.onLibraryChange = { [weak self] in
+            Task { @MainActor in
+                guard let self, let s = self.snapshot else { return }
+                await self.receive(s)
+            }
+        }
         await pipeline.start()
         Task { await refreshAI() }
         guard let db = pipeline.db else { return }
@@ -247,9 +254,14 @@ final class AppController {
             } else {
                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Photos.app"))
             }
-        case .retryImport:
-            // 받기에 실패한 영상은 다시 훑으면 다시 받는다 (Importer 는 준비 안 된 영상을 건너뛰지 않는다)
-            pipeline.rescan()
+        case .retryImport(let id):
+            // 받기에 실패한 영상은 다시 훑으면 다시 받는다 (Importer 는 준비 안 된 영상을 건너뛰지 않는다).
+            // 사진 보관함에 전부터 있던 영상은 훑기가 목록만 올리므로 그 영상을 짚어서 받는다
+            if let v = snapshot?.videos.first(where: { $0.id == id }), v.source == .photos {
+                pipeline.fetchOriginal(sourceRef: v.sourceRef)
+            } else {
+                pipeline.rescan()
+            }
         case .addFromMac:
             let panel = NSOpenPanel()
             panel.allowsMultipleSelection = true
@@ -307,6 +319,14 @@ final class AppController {
     /// - 판은 있는데 결과물도 도는 작업도 없으면(자동 렌더 전에 만든 판) 가장 최근 판을 렌더에 건다 — 검사한 결과만 보여 준다.
     private func ensureDraft(videoID: String, _ db: AppDatabase, _ queue: JobQueue) async throws {
         guard let s = snapshot, s.liveJobs(of: videoID).isEmpty else { return }
+        // 사진 보관함에 있던 영상 — 아직 원본을 안 받았다. 지금 받는다 (받으면 가져오기가 분석을 건다)
+        if let video = s.videos.first(where: { $0.id == videoID }), video.status != .ready {
+            // 목록에만 있거나, 받다가 실패했으면 (다시 해 보기) 받는다. 받는 중이면 기다린다
+            if video.source == .photos, video.status == .listed || video.status == .failed {
+                pipeline.fetchOriginal(sourceRef: video.sourceRef)
+            }
+            return   // 분석 · 초안은 원본이 온 뒤에
+        }
         let versions = s.visibleVersions(of: videoID)
         if let newest = versions.last {
             // 휴지통으로 보낸 결과물도 "있었던 것" 이다 — 사람이 버린 것을 열자마자 몰래 다시 만들지 않는다

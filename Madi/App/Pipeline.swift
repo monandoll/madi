@@ -31,7 +31,17 @@ final class MadiPipeline {
     private var photos: PhotoLibraryWatcher?
     private var folder: FolderWatcher?
 
-    /// 사진 보관함에서 들일 영상의 시작 시각 = 앱을 처음 켠 시각. 보관함 전체를 들이지 않는다.
+    /// 보관함 목록 · 미리보기 그림이 늘었을 때 부른다 — 화면이 다시 그린다 (바꾸는 층이 건다).
+    var onLibraryChange: (@Sendable () -> Void)?
+
+    /// 목록에만 있던 사진 보관함 영상의 원본을 받는다 (`숏폼 만들기` 를 눌렀을 때). 받으면 분석이 걸린다.
+    func fetchOriginal(sourceRef: String) {
+        guard let photos else { return }
+        Task.detached(priority: .userInitiated) { await photos.fetch(localIdentifier: sourceRef) }
+    }
+
+    /// 이 시각(앱을 처음 켠 시각) **이후에 찍은** 영상은 바로 받아 분석해 둔다. 그 전부터 보관함에 있던 영상은
+    /// 목록에만 올리고 고를 때 받는다 (`PhotoLibraryWatcher`).
     static var importSince: Date {
         let key = "madi.import.since"
         if let d = UserDefaults.standard.object(forKey: key) as? Date { return d }
@@ -102,7 +112,8 @@ final class MadiPipeline {
             let importer = Importer(db: db, queue: queue, progressBoard: importProgress)
             let folder = FolderWatcher(importer: importer, folder: Self.inbox)
             try folder.start()
-            let photos = PhotoLibraryWatcher(importer: importer, since: Self.importSince)
+            let photos = PhotoLibraryWatcher(importer: importer, since: Self.importSince, thumbnails: thumbnails,
+                                             onChange: onLibraryChange)
 
             self.db = db; self.queue = queue; self.preparer = preparer
             self.folder = folder; self.photos = photos

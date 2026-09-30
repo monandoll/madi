@@ -101,8 +101,8 @@ public enum Copy {
         public enum Connect {
             public static let title = "사진 앱을 연결하면 아이폰 영상이 저절로 들어와요"
             public static let message =
-                "아이폰과 이 Mac에서 iCloud 사진이 켜져 있으면, 찍은 영상이 1~2분 안에 여기 나타나요.\n"
-                + "영상만 읽고, 이 Mac 밖으로 보내지 않아요."
+                "연결하면 사진 보관함에 있는 영상이 바로 보이고, 새로 찍은 영상은 1~2분 안에 나타나요.\n"
+                + "아이폰과 이 Mac에서 iCloud 사진이 켜져 있어야 해요. 영상만 읽고, 이 Mac 밖으로 보내지 않아요."
             public static let action = "사진 앱 연결하기"
         }
 
@@ -756,8 +756,9 @@ public enum Copy {
         public static func photoLibraryDenied(folder: String) -> String {
             "사진 보관함을 못 봐도 괜찮아요. ‘\(folder)’ 폴더에 영상을 넣어 주시면 바로 가져와요. 나중에 설정에서 다시 켤 수 있어요."
         }
-        /// 첫 실행 뒤 조용한 안내 — **앞으로 찍는 영상부터** 들어온다.
-        public static let importFromPhotosSince = "지금부터 찍는 영상이 들어와요. 예전 영상은 가져오지 않아요."
+        /// 첫 실행 뒤 · 빈 갤러리의 조용한 안내 — 보관함에 있던 영상도 **전부 보인다** (2026-10-01, 전에는 "예전 영상은 가져오지 않아요").
+        /// 예전 영상은 목록에만 있고 `숏폼 만들기` 를 누를 때 원본을 받는다.
+        public static let importFromPhotosSince = "사진 보관함에 있던 영상도 모두 보여요. 예전 영상은 고를 때 원본을 받아 와요."
         /// 갤러리 칸 · 정보 패널 — iCloud 에서 원본을 받는 중.
         public static func importFetchingOriginal(_ fraction: Double) -> String {
             "원본 가져오는 중 · \(Int((fraction * 100).rounded()))%"

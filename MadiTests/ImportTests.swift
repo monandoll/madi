@@ -106,6 +106,57 @@ struct ImportTests {
         #expect(try await importer.receive(item("ph:SHOT/L0/001", copying: source))?.status == .ready)
     }
 
+    @Test("사진 보관함에 있던 영상 — 목록에만 올린다(복사 · 분석 없음). 아는 영상 · 지운 영상 · 내보낸 결과물은 건너뛴다")
+    func listsExistingLibrary() async throws {
+        let dir = try tempDir(); defer { try? FileManager.default.removeItem(at: dir) }
+        let db = try AppDatabase.inMemory()
+        let queue = JobQueue(db: db, handlers: [:])
+        let importer = Importer(db: db, queue: queue, originals: dir.appending(path: "originals"))
+        let old = Date(timeIntervalSince1970: 1_700_000_000)
+        func listed(_ ref: String) -> Importer.Listed {
+            Importer.Listed(sourceRef: ref, capturedAt: old, durationSec: 42, width: 1080, height: 1920)
+        }
+        // 이미 아는 영상 하나 · 지운 영상 하나
+        try await db.writer.write { db in
+            try VideoRecord(id: "known", source: .photos, sourceRef: "ph:KNOWN", status: .ready).insert(db)
+            try VideoRecord(id: "gone", source: .photos, sourceRef: "ph:GONE", status: .listed).insert(db)
+            try db.execute(sql: "UPDATE video SET deletedAt = ? WHERE id = 'gone'", arguments: [Date()])
+        }
+        Exporter.sent.insert("ph:OURS"); defer { Exporter.sent.remove("ph:OURS") }
+
+        let fresh = try await importer.list([listed("ph:A"), listed("ph:B"), listed("ph:KNOWN"), listed("ph:GONE"), listed("ph:OURS")])
+        #expect(Set(fresh.map(\.sourceRef)) == ["ph:A", "ph:B"])
+        let a = try #require(try await db.writer.read { try VideoRecord.filter(Column("sourceRef") == "ph:A").fetchOne($0) })
+        #expect(a.status == .listed && a.localPath == nil && a.durationSec == 42 && a.height == 1920 && a.capturedAt == old)
+        #expect(try await db.writer.read { try JobRecord.fetchCount($0) } == 0)             // 분석을 걸지 않는다
+        #expect(!FileManager.default.fileExists(atPath: dir.appending(path: "originals").path))   // 복사도 없다
+        // 다시 훑어도 늘지 않는다
+        #expect(try await importer.list([listed("ph:A"), listed("ph:B")]).isEmpty)
+    }
+
+    @Test("목록에만 있던 영상을 고르면 그때 원본을 받고 분석을 건다 — 받는 동안은 '받는 중'")
+    func fetchesListedOnDemand() async throws {
+        let dir = try tempDir(); defer { try? FileManager.default.removeItem(at: dir) }
+        let source = dir.appending(path: "src.mp4")
+        try await TestVideo.makeSolid(at: source, seconds: 0.5)
+        let db = try AppDatabase.inMemory()
+        let queue = JobQueue(db: db, handlers: [:])
+        let importer = Importer(db: db, queue: queue, originals: dir.appending(path: "originals"))
+        _ = try await importer.list([Importer.Listed(sourceRef: "ph:OLD", capturedAt: nil, durationSec: 9, width: 10, height: 10)])
+
+        final class Seen: @unchecked Sendable { var status: VideoRecord.Status? }
+        let seen = Seen()
+        let item = IncomingVideo(source: .photos, sourceRef: "ph:OLD", fileExtension: "MOV", capturedAt: nil) { dest, _ in
+            seen.status = try await db.writer.read { try VideoRecord.filter(Column("sourceRef") == "ph:OLD").fetchOne($0)?.status }
+            try FileManager.default.copyItem(at: source, to: dest)
+        }
+        let v = try #require(try await importer.receive(item))
+        #expect(seen.status == .importing)                                  // 받는 동안
+        #expect(v.status == .ready && v.localPath != nil)
+        #expect(try await db.writer.read { try VideoRecord.fetchCount($0) } == 1)   // 같은 행이다
+        #expect(try await db.writer.read { try JobRecord.fetchAll($0) }.map(\.kind) == [.analyze])
+    }
+
     @Test("원본 받기에 실패하면 남기고, 다시 보이면 이어 받는다")
     func retriesFailedFetch() async throws {
         let dir = try tempDir(); defer { try? FileManager.default.removeItem(at: dir) }

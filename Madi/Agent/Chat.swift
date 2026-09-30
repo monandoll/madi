@@ -67,8 +67,12 @@ public enum Chat {
         var row = ChatRecord(videoId: videoID, kind: .creator, text: text)
         try await db.writer.write { [row] in try row.insert($0) }
         do {
-            let hasDigest = try await db.writer.read { try DigestRecord.fetchOne($0, key: videoID) } != nil
-            try await enqueue(hasDigest ? .agent : .analyze, videoID)
+            let (ready, hasDigest) = try await db.writer.read { db in
+                (try VideoRecord.fetchOne(db, key: videoID)?.status == .ready, try DigestRecord.fetchOne(db, key: videoID) != nil)
+            }
+            // 원본을 아직 받는 중이면(사진 보관함에 있던 영상) 여기서 걸지 않는다 — 다 받으면 가져오기가 분석을 걸고,
+            // 분석이 끝나면 파이프라인이 이 말을 보고 초안을 건다
+            if ready { try await enqueue(hasDigest ? .agent : .analyze, videoID) }
         } catch {
             row.kind = .creatorNotSent
             try await db.writer.write { [row] in try row.update($0) }

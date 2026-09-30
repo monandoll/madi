@@ -110,7 +110,8 @@ struct ViewDataMapperTests {
 
         // 넣자마자 도는 분석만 있고 요청이 없으면 — 묻는다 (짜는 중이 아니다). 요청이 오면 그때부터 짜는 중
         let prepOnly = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], now: now)
-        #expect(ViewDataMapper.plan(prepOnly, videoID: "v", ai: .claude) == .asking(preparing: 0))
+        // (사진 보관함 영상은 원본 받기가 앞 3할 — 분석이 막 시작했으면 0.3)
+        #expect(ViewDataMapper.plan(prepOnly, videoID: "v", ai: .claude) == .asking(preparing: 0.3))
         let asked = ChatRecord(id: "q", videoId: "v", kind: .creator, text: "알아서 만들어줘", createdAt: now)
         let analyzing = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], chats: [asked], now: now)
         guard case .preparing(let a) = try #require(ViewDataMapper.plan(analyzing, videoID: "v", ai: .claude)) else { Issue.record(""); return }
@@ -593,5 +594,28 @@ struct ViewDataMapperTests {
         let kinds = ViewDataMapper.chat(done, videoID: "v").map(\.kind)
         #expect(kinds.prefix(3) == [.assistant(Copy.Chat.Ask.greeting), .user("어깨 부분만 20초로"), .assistant("어깨 부분으로 만들었어요.")])
         guard case .result = kinds.last else { Issue.record("결과물 카드가 없다"); return }
+    }
+
+    @Test("사진 보관함에 있던 영상(목록에만) — 갤러리에 그냥 보이고 '가져오는 중' 이 아니다. 열면 받기부터, 못 받으면 멈춤")
+    func listedLibraryShots() throws {
+        var old = video("old", at: now - 400 * 86400, status: .listed)
+        old.durationSec = 42
+        let s = LibrarySnapshot(videos: [old], now: now)
+        // 갤러리 — 받는 중 막대가 아니라 목록
+        guard case .loaded(let groups) = ViewDataMapper.gallery(s, photos: .granted) else { Issue.record("loaded 가 아니다"); return }
+        let cell = try #require(groups.first?.shots.first)
+        #expect(cell.duration == 42 && cell.fetchProgress == nil && cell.videoURL == nil && !cell.isMaking && !cell.isPreparing)
+        // 열었다 — 원본을 받기 시작한다 (묻는 화면, 준비 0%)
+        #expect(ViewDataMapper.plan(s, videoID: "old", ai: .claude) == .asking(preparing: 0))
+        // 받는 중 — 받은 만큼이 준비의 앞 3할
+        var fetching = LibrarySnapshot(videos: [video("old", at: now, status: .importing)], now: now)
+        fetching.importProgress["old"] = 0.5
+        #expect(ViewDataMapper.plan(fetching, videoID: "old", ai: .claude) == .asking(preparing: 0.15))
+        // 못 받았다 — 멈췄다고 말하고 다시 해 보기
+        let failed = LibrarySnapshot(videos: [video("old", at: now, status: .failed)], now: now)
+        guard case .stopped(let plan, let reason, let actions, _) = try #require(ViewDataMapper.plan(failed, videoID: "old", ai: .claude)) else {
+            Issue.record("멈춤이 아니다"); return
+        }
+        #expect(plan == nil && reason == Copy.Photos.importFailedShort && actions.first?.title == Copy.Plan.Stopped.tryAgain)
     }
 }

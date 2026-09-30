@@ -209,6 +209,17 @@ struct ChatTests {
         #expect(try db.pendingDraftRequest(videoID: "v1").isEmpty)
     }
 
+    @Test("원본을 아직 안 받은 영상(사진 보관함에 있던 것)에 요청하면 말만 남긴다 — 분석은 원본이 온 뒤 가져오기가 건다")
+    func firstRequestWaitsForOriginal() async throws {
+        let db = try AppDatabase.inMemory()
+        try await db.writer.write { try VideoRecord(id: "v1", source: .photos, sourceRef: "ph:OLD", status: .importing).insert($0) }
+        final class Kinds: @unchecked Sendable { var v: [JobRecord.Kind] = [] }
+        let kinds = Kinds()
+        try await Chat.sendFirstRequest(db: db, videoID: "v1", text: "알아서 만들어줘") { k, _ in kinds.v.append(k) }
+        #expect(kinds.v.isEmpty)
+        #expect(try db.pendingDraftRequest(videoID: "v1").count == 1)
+    }
+
     @Test("첫 초안 턴 — 크리에이터 말이 요청 칸에 들어가고, AI 말이 그 편집안과 함께 대화에 남는다")
     func firstDraftUsesRequest() async throws {
         let db = try emptyShot()

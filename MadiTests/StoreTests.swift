@@ -33,6 +33,42 @@ struct StoreTests {
         #expect(c.scenes[0].captions[0].text == "어깨가")
     }
 
+    @Test("v8 — 촬영본 표를 다시 만들어도 옛 행 · 다른 표의 연결이 그대로다. 'listed' 상태를 받는다")
+    func v8KeepsRowsAndReferences() throws {
+        let queue = try DatabaseQueue()
+        try AppDatabase.migrator.migrate(queue, upTo: "v7-delete")
+        try queue.write { db in
+            try db.execute(sql: """
+                INSERT INTO video (id, source, sourceRef, localPath, durationSec, importedAt, status, hiddenAt)
+                VALUES ('v', 'folder', '/x/a.mov', '/o/a.mov', 12.5, '2026-09-28 00:00:00', 'ready', '2026-09-29 00:00:00')
+                """)
+            try db.execute(sql: "INSERT INTO chat (id, videoId, kind, text, createdAt) VALUES ('c', 'v', 'creator', '안녕', '2026-09-28 00:00:01')")
+        }
+        try AppDatabase.migrator.migrate(queue)
+
+        try queue.write { db in
+            // 옛 행이 그대로다
+            let row = try #require(try Row.fetchOne(db, sql: "SELECT * FROM video WHERE id = 'v'"))
+            #expect(row["localPath"] == "/o/a.mov" && row["durationSec"] == 12.5 && row["status"] == "ready")
+            #expect((row["hiddenAt"] as String?) != nil)
+            // 새 상태를 받는다 · 모르는 상태는 여전히 거절한다
+            try db.execute(sql: "INSERT INTO video (id, source, sourceRef, importedAt, status) VALUES ('l', 'photos', 'ph:1', '2026-10-01', 'listed')")
+            #expect(throws: (any Error).self) {
+                try db.execute(sql: "INSERT INTO video (id, source, sourceRef, importedAt, status) VALUES ('x', 'photos', 'ph:2', '2026-10-01', 'nope')")
+            }
+            // 같은 원본 두 번은 여전히 안 된다
+            #expect(throws: (any Error).self) {
+                try db.execute(sql: "INSERT INTO video (id, source, sourceRef, importedAt, status) VALUES ('d', 'photos', 'ph:1', '2026-10-01', 'listed')")
+            }
+            // 다른 표의 연결 — 없는 촬영본을 가리키는 대화는 거절, 촬영본을 지우면 대화도 같이 지워진다
+            #expect(throws: (any Error).self) {
+                try db.execute(sql: "INSERT INTO chat (id, videoId, kind, createdAt) VALUES ('c2', 'none', 'creator', '2026-10-01')")
+            }
+            try db.execute(sql: "DELETE FROM video WHERE id = 'v'")
+            #expect(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM chat") == 0)
+        }
+    }
+
     @Test("같은 원본을 두 번 들이지 않는다")
     func rejectsDuplicateSource() throws {
         let db = try AppDatabase.inMemory()

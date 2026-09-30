@@ -337,10 +337,11 @@ enum ViewDataMapper {
             case .notLoggedIn(let product): return .notLoggedIn(product)
             default: break
             }
-            let analysis = live.contains { $0.kind == .analyze } ? s.analysisProgress[video.id] : nil
-            let running = live.contains { $0.kind == .analyze }
-            // 받아적기 · 사람 찾기가 같이 돈다 — 오래 걸리는 사람 찾기가 9할 (만드는 중 막대와 같은 어림)
-            return .asking(preparing: running ? 0.1 * (analysis?.transcribe ?? 0) + 0.9 * (analysis?.findPerson ?? 0) : nil)
+            // 원본을 못 받았다 (사진 보관함에 있던 영상을 받다가) — 멈췄다고 말하고 다시 해 보기를 준다
+            if video.status == .failed {
+                return .stopped(plan: nil, reason: Copy.Photos.importFailedShort, actions: stoppedActions, isFinal: false)
+            }
+            return .asking(preparing: preparingFraction(video, live: live, s))
         }
 
         if versions.isEmpty && live.isEmpty {
@@ -387,6 +388,18 @@ enum ViewDataMapper {
                                        fetchProgress: s.importProgress[video.id],
                                        analysis: live.contains { $0.kind == .analyze } ? s.analysisProgress[video.id] : nil,
                                        now: s.now, cooling: s.cooling))
+    }
+
+    /// 편집 준비가 얼마나 됐나 (묻는 화면의 한 줄) — 원본 받기(사진 보관함에 있던 영상) → 분석. 다 됐으면 nil.
+    /// 받아적기 · 사람 찾기가 같이 돌고 오래 걸리는 사람 찾기가 9할이다 (만드는 중 막대와 같은 어림).
+    static func preparingFraction(_ video: VideoRecord, live: [JobRecord], _ s: LibrarySnapshot) -> Double? {
+        let fetched = video.source == .photos ? 0.3 : 0      // 사진 보관함 영상은 받기가 앞 3할
+        if video.status == .listed || video.status == .importing {
+            return 0.3 * (s.importProgress[video.id] ?? 0)
+        }
+        guard live.contains(where: { $0.kind == .analyze }) else { return nil }
+        let a = s.analysisProgress[video.id]
+        return fetched + (1 - fetched) * (0.1 * (a?.transcribe ?? 0) + 0.9 * (a?.findPerson ?? 0))
     }
 
     static var stoppedActions: [ChatChoice] {
