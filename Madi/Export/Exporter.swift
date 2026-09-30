@@ -44,6 +44,17 @@ public enum Exporter {
         return try String.fetchAll(db, sql: "SELECT location FROM export WHERE location IS NOT NULL").contains(ref)
     }
 
+    /// 내보내는 파일 이름(확장자 없이) — "스튜디오 · 제목". 첫 실행 · 설정이 결과물이 이 이름으로 저장된다고 말한다
+    /// (전에는 제목만 썼다). 스튜디오가 비면 제목만, 둘 다 비면 "마디".
+    public static func fileName(studio: String, title: String) -> String {
+        func clean(_ s: String) -> String {
+            s.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let parts = [clean(studio), clean(title)].filter { !$0.isEmpty }
+        return parts.isEmpty ? "마디" : parts.joined(separator: " · ")
+    }
+
     static func output(_ db: AppDatabase, _ id: String) async throws -> OutputRecord {
         guard let o = try await db.writer.read({ try OutputRecord.fetchOne($0, key: id) }) else { throw Failure.noOutput(id) }
         return o
@@ -57,16 +68,18 @@ public enum Exporter {
         try? db.log("export.done", subject: outputID, payload: ["target": .string(target.rawValue)])
     }
 
-    /// 사진 앱으로. 돌려주는 값은 사진 앱의 식별자.
+    /// 사진 앱으로. 돌려주는 값은 사진 앱의 식별자. `name` 은 사진 앱 정보에 남는 파일 이름 (확장자 없이, `fileName`).
     @discardableResult
-    public static func toPhotos(_ db: AppDatabase, outputID: String) async throws -> String {
+    public static func toPhotos(_ db: AppDatabase, outputID: String, name: String = "") async throws -> String {
         let o = try await output(db, outputID)
         let url = URL(fileURLWithPath: o.path)
         nonisolated(unsafe) var identifier: String?
         do {
             try await PHPhotoLibrary.shared().performChanges {
                 let request = PHAssetCreationRequest.forAsset()
-                request.addResource(with: .video, fileURL: url, options: nil)
+                let options = PHAssetResourceCreationOptions()
+                if !name.isEmpty { options.originalFilename = "\(name).mp4" }
+                request.addResource(with: .video, fileURL: url, options: options)
                 identifier = request.placeholderForCreatedAsset?.localIdentifier
                 // 변경이 보관함에 들어가기 **전에** 적는다 — 변경 알림을 받은 가져오기가 먼저 봐도 걸러지게
                 if let identifier { sent.insert(identifier) }
@@ -95,6 +108,24 @@ public enum Exporter {
         // 입구 폴더(폴더 감시)에 저장해도 촬영본으로 다시 들어오지 않게 — 복사 **전에** 적는다
         sent.insert(dest.path)
         do {
+            try fm.copyItem(at: URL(fileURLWithPath: o.path), to: dest)
+        } catch {
+            sent.remove(dest.path)
+            throw error
+        }
+        try await record(db, outputID, .folder, dest.path)
+        return dest
+    }
+
+    /// 사람이 저장 창에서 고른 자리(이름 포함)에 복사한다. 같은 이름이 있으면 저장 창이 이미 "대치할까요?" 를 물었다.
+    @discardableResult
+    public static func toFile(_ db: AppDatabase, outputID: String, url dest: URL) async throws -> URL {
+        let o = try await output(db, outputID)
+        let fm = FileManager.default
+        // 입구 폴더(폴더 감시)에 저장해도 촬영본으로 다시 들어오지 않게 — 복사 **전에** 적는다
+        sent.insert(dest.path)
+        do {
+            if fm.fileExists(atPath: dest.path) { try fm.removeItem(at: dest) }
             try fm.copyItem(at: URL(fileURLWithPath: o.path), to: dest)
         } catch {
             sent.remove(dest.path)

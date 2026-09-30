@@ -223,10 +223,18 @@ enum ViewDataMapper {
         }
     }
 
-    /// 내보낸 이력 한 줄 — 가장 최근 것. 폴더 저장은 문구가 없어 아직 안 낸다 (copy-keys `exportedToFolder`).
+    /// 내보낸 이력 한 줄 — 가장 최근 것. 사진 앱이면 "사진 앱에 저장함", Mac 이면 **저장한 폴더 이름**
+    /// ("다운로드에 저장함 · 오후 11:42") — 올리려고 파일을 찾을 때 어디 있는지 알게. 전에는 폴더 저장은 아무 표시가 없었다.
     static func exportedNote(_ outputID: String, _ s: LibrarySnapshot) -> String? {
-        guard let e = s.exports.last(where: { $0.outputId == outputID && $0.target == .photos }) else { return nil }
-        return Copy.Results.Export.historyLine(target: Copy.Results.Export.photos, when: Copy.time(e.createdAt))
+        guard let e = s.exports.last(where: { $0.outputId == outputID }) else { return nil }
+        let place: String
+        switch e.target {
+        case .photos: place = Copy.Results.Export.photos
+        case .folder:
+            guard let path = e.location else { return nil }
+            place = FileManager.default.displayName(atPath: URL(fileURLWithPath: path).deletingLastPathComponent().path)
+        }
+        return Copy.Results.Export.historyLine(target: place, when: Copy.time(e.createdAt))
     }
 
     static func results(of videoID: String, _ s: LibrarySnapshot) -> [ResultRef] {

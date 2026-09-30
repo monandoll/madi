@@ -438,7 +438,9 @@ public enum Copy {
             public static let photos = "사진 앱"
             public static let photosDetail = "아이폰에서 바로 확인하고 올릴 수 있어요"
             public static let files = "Mac에 저장"
-            public static let filesDetail = "폴더를 고르면 파일로 저장해요"
+            public static let filesDetail = "저장할 곳을 고르면 파일로 저장해요"
+            /// 저장 창 위 한 줄 (macOS 저장 창).
+            public static let saveMessage = "영상을 저장할 곳을 골라 주세요. 올릴 때 여기서 찾으면 돼요."
             public static let airdrop = "AirDrop"
             public static let airdropDetail = "가까이 있는 기기로 바로 보내요"
             public static func done(_ target: String) -> String { "\(target)(으)로 보냈어요" }

@@ -35,6 +35,24 @@ struct ExportTests {
         #expect(try await db.writer.read { try ExportRecord.fetchCount($0) } == 2)
     }
 
+    @Test("저장 창에서 고른 자리에 저장 — 같은 이름은 바꿔 쓰고(저장 창이 이미 물었다) 이력은 그 경로")
+    func toFileReplaces() async throws {
+        let dir = try tmp(), dest = try tmp()
+        let db = try setup(dir)
+        let url = dest.appending(path: "테스트 · 골반 스트레칭.mp4")
+        try Data("old".utf8).write(to: url)
+        try await Exporter.toFile(db, outputID: "o", url: url)
+        #expect(try Data(contentsOf: url) == Data("video".utf8))
+        #expect(try await db.writer.read { try ExportRecord.fetchOne($0) }?.location == url.path)
+    }
+
+    @Test("내보내는 이름은 '스튜디오 · 제목' — 첫 실행이 약속한 꼴. 경로 글자는 바꾸고, 비면 제목만 · '마디'")
+    func fileName() {
+        #expect(Exporter.fileName(studio: "수현쌤", title: "골반 스트레칭") == "수현쌤 · 골반 스트레칭")
+        #expect(Exporter.fileName(studio: "", title: "a/b:c") == "a-b-c")
+        #expect(Exporter.fileName(studio: " ", title: "") == "마디")
+    }
+
     @Test("봤다는 처음 한 번만 적는다 · 휴지통은 파일을 옮기고 행은 남긴다")
     func seenAndTrash() async throws {
         let dir = try tmp()

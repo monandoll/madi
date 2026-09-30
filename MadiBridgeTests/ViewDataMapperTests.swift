@@ -288,6 +288,14 @@ struct ViewDataMapperTests {
         let ref = try #require(ViewDataMapper.results(of: "v", s2).first)
         #expect(ref.isNew == false)
         #expect(ref.exportedNote == Copy.Results.Export.historyLine(target: Copy.Results.Export.photos, when: Copy.time(now)))
+
+        // Mac 에 저장한 것도 줄에 남는다 — 저장한 폴더 이름으로 (전에는 아무 표시가 없었다)
+        let folder = FileManager.default.temporaryDirectory.appending(path: "올릴 영상", directoryHint: .isDirectory)
+        let s3 = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)], outputs: [o], now: now,
+                                 exports: [ExportRecord(outputId: "o", target: .photos, location: "x", createdAt: now - 60),
+                                           ExportRecord(outputId: "o", target: .folder, location: folder.appending(path: "a.mp4").path, createdAt: now)])
+        let saved = try #require(ViewDataMapper.results(of: "v", s3).first)
+        #expect(saved.exportedNote == Copy.Results.Export.historyLine(target: "올릴 영상", when: Copy.time(now)))
     }
 
     @Test("멈춘 편집안 — 짜다 실패(편집안 없음) · 로그인 필요 · 두 번 다듬어도 안 됨(isFinal)")

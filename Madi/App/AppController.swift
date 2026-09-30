@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import Observation
 import Photos
+import UniformTypeIdentifiers
 import MadiKit
 
 /// 화면과 엔진 사이 (docs/stage-6.spec.md · `docs/design/viewdata-map.md` 5절).
@@ -492,16 +493,22 @@ final class AppController {
 
     private func export(_ id: String, to target: ExportTarget, _ db: AppDatabase) async {
         do {
+            // 결과물 이름 — "스튜디오 · 제목" (첫 실행 · 설정이 이렇게 저장된다고 말한다)
+            let title = snapshot.flatMap { s in s.outputs.first { $0.id == id }.flatMap { o in
+                s.compositions.first { $0.id == o.compositionId }.flatMap { try? $0.composition().meta.title } } } ?? ""
+            let studio = AppSettings().studioName
+            let name = Exporter.fileName(studio: studio.isEmpty ? Copy.Onboarding.Studio.defaultName : studio, title: title)
             if target.title == Copy.Results.Export.photos {
-                try await Exporter.toPhotos(db, outputID: id)
+                try await Exporter.toPhotos(db, outputID: id, name: name)
             } else if target.title == Copy.Results.Export.files {
-                let panel = NSOpenPanel()
-                panel.canChooseDirectories = true
-                panel.canChooseFiles = false
-                guard panel.runModal() == .OK, let folder = panel.url else { return }
-                let name = snapshot.flatMap { s in s.outputs.first { $0.id == id }.flatMap { o in
-                    s.compositions.first { $0.id == o.compositionId }.flatMap { try? $0.composition().meta.title } } } ?? ""
-                try await Exporter.toFolder(db, outputID: id, folder: folder, name: name)
+                // macOS 의 저장 창 — 이름과 자리를 고르고 "저장". 전에는 폴더 고르는 "열기" 창이라 무엇을 하는지 알 수 없었다
+                let panel = NSSavePanel()
+                panel.nameFieldStringValue = "\(name).mp4"
+                panel.allowedContentTypes = [.mpeg4Movie]
+                panel.canCreateDirectories = true
+                panel.message = Copy.Results.Export.saveMessage
+                guard panel.runModal() == .OK, let url = panel.url else { return }
+                try await Exporter.toFile(db, outputID: id, url: url)
             } else if let path = snapshot?.outputs.first(where: { $0.id == id })?.path {
                 NSSharingService(named: .sendViaAirDrop)?.perform(withItems: [URL(fileURLWithPath: path)])
             }
