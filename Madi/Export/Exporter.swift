@@ -21,6 +21,29 @@ public enum Exporter {
         }
     }
 
+    /// 앱이 내보낸 것 — 사진 앱 식별자 · 파일 경로. **가져오기가 이걸 새 촬영본으로 다시 들이지 않게** 한다.
+    ///
+    /// 전에는 사진 앱으로 보낸 결과물이 사진 보관함 감시에 새 영상으로 잡혀 촬영본이 되고, 분석 → AI 초안 → 렌더까지
+    /// 저절로 돌았다 — 구독을 쓰고, 그 결과물을 또 보내면 또 들어온다 (2026-09-30).
+    /// 이력(`export` 행)은 보내기가 끝난 **뒤에** 적히는데 사진 앱 변경 알림은 그 전에 올 수 있어, 방금 보낸 것은 메모리에도 둔다.
+    public static let sent = SentRefs()
+
+    public final class SentRefs: @unchecked Sendable {
+        private let lock = NSLock()
+        private var refs: Set<String> = []
+        public func insert(_ ref: String) { lock.withLock { _ = refs.insert(ref) } }
+        public func remove(_ ref: String) { lock.withLock { _ = refs.remove(ref) } }
+        public func contains(_ ref: String) -> Bool { lock.withLock { refs.contains(ref) } }
+    }
+
+    /// 이 영상(사진 앱 식별자 · 파일 경로)이 앱이 내보낸 결과물인가 — 방금 보낸 것 또는 이력.
+    public static func isOwnExport(_ ref: String, _ db: Database) throws -> Bool {
+        if sent.contains(ref) { return true }
+        // SQL 로 비교하지 않는다 — 같은 한글 경로가 조합 방식(NFC · NFD)만 달라 바이트가 다르게 온다
+        // (저장한 경로는 NFD, 폴더 감시가 읽은 경로는 NFC 였다). Swift 문자열은 글자로 비교한다.
+        return try String.fetchAll(db, sql: "SELECT location FROM export WHERE location IS NOT NULL").contains(ref)
+    }
+
     static func output(_ db: AppDatabase, _ id: String) async throws -> OutputRecord {
         guard let o = try await db.writer.read({ try OutputRecord.fetchOne($0, key: id) }) else { throw Failure.noOutput(id) }
         return o
@@ -45,8 +68,11 @@ public enum Exporter {
                 let request = PHAssetCreationRequest.forAsset()
                 request.addResource(with: .video, fileURL: url, options: nil)
                 identifier = request.placeholderForCreatedAsset?.localIdentifier
+                // 변경이 보관함에 들어가기 **전에** 적는다 — 변경 알림을 받은 가져오기가 먼저 봐도 걸러지게
+                if let identifier { sent.insert(identifier) }
             }
         } catch {
+            if let identifier { sent.remove(identifier) }
             try? db.log("export.failed", subject: outputID, payload: ["target": .string("photos"), "error": .string("\(error)")])
             throw Failure.photos(error.localizedDescription)
         }
@@ -66,7 +92,14 @@ public enum Exporter {
             dest = folder.appending(path: "\(base) \(n).mp4")
             n += 1
         }
-        try fm.copyItem(at: URL(fileURLWithPath: o.path), to: dest)
+        // 입구 폴더(폴더 감시)에 저장해도 촬영본으로 다시 들어오지 않게 — 복사 **전에** 적는다
+        sent.insert(dest.path)
+        do {
+            try fm.copyItem(at: URL(fileURLWithPath: o.path), to: dest)
+        } catch {
+            sent.remove(dest.path)
+            throw error
+        }
         try await record(db, outputID, .folder, dest.path)
         return dest
     }
