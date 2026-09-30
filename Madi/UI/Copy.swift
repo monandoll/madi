@@ -375,7 +375,8 @@ public enum Copy {
         public enum Chips {
             public static let cutGaps = "쉬는 구간 잘라줘"
             public static let captions = "자막 넣어줘"
-            public static let shorter = "30초로 줄여줘"
+            /// 길이를 박지 않는다 — 결과물이 이미 20초 안팎(크리에이터 중앙 19초)이라 "30초로" 는 늘리라는 말이 됐다 (2026-09-30).
+            public static let shorter = "더 짧게 줄여줘"
             public static let reels = "인스타 규격으로"
             public static let shorts = "유튜브 쇼츠로"
             public static let hookFirst = "앞에 훅 넣어줘"
