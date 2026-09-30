@@ -73,6 +73,14 @@ struct RootView: View {
             if selection == nil { selection = section }
             if opensPlan, plan != nil { showsPlan = true }
         }
+        // 편집안은 촬영본 칸 안의 화면이다. 사이드바에서 다른 칸을 고르면 편집안을 닫고 그 칸으로 간다 —
+        // 전에는 사이드바 선택만 바뀌고 본문은 편집안 그대로였다 (2026-09-30 실제 앱)
+        .onChange(of: selection) { _, new in
+            if showsPlan, new != .shots {
+                showsPlan = false
+                onAction(.plan(.close))
+            }
+        }
     }
 
     @ViewBuilder

@@ -77,7 +77,7 @@ struct SceneStrip: View {
             onEditCaption: { editingID = scene.id },
             onCommit: { text in
                 editingID = nil
-                // 카드에는 영문 칸이 없다 — nil 이면 AI 가 새 본문에 맞춰 영문을 다시 만든다
+                // 카드에는 영문 칸이 없다 — nil 이면 영문은 그대로 둔다 (SceneEdits)
                 onCommitCaption(scene, text, nil)
             }
         )

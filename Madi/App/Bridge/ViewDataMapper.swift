@@ -16,13 +16,14 @@ enum ViewDataMapper {
 
     // MARK: - 사이드바
 
-    static func studio(_ s: LibrarySnapshot, studioName: String, ai: AIConnection, preparing: EnginePrep? = nil) -> StudioStatus {
+    static func studio(_ s: LibrarySnapshot, studioName: String, ai: AIConnection, preparing: EnginePrep? = nil,
+                       photos: PhotoAccess = .granted) -> StudioStatus {
         StudioStatus(
             studioName: studioName, ai: ai,
             shotCount: s.videos.filter { $0.hiddenAt == nil && $0.deletedAt == nil }.count,
             resultCount: s.outputs.filter { $0.verdict == .shown }.count,
             makingCount: s.videos.filter { !s.liveJobs(of: $0.id).isEmpty }.count,
-            preparing: preparing
+            preparing: preparing, photos: photos
         )
     }
 
@@ -88,7 +89,8 @@ enum ViewDataMapper {
             fetchProgress: v.status == .importing ? s.importProgress[v.id] : nil,
             problem: v.status == .failed ? Copy.Photos.importFailedShort : nil,
             // 정보 칸에서 그 자리에서 튼다 — 다 받은 앱 사본만
-            videoURL: v.status == .ready ? v.localPath.map { URL(fileURLWithPath: $0) } : nil
+            videoURL: v.status == .ready ? v.localPath.map { URL(fileURLWithPath: $0) } : nil,
+            isFromPhotos: v.source == .photos
         )
     }
 
@@ -187,6 +189,13 @@ enum ViewDataMapper {
         if let said = s.chats.last(where: { $0.kind == .assistant && $0.compositionId == version })?.text, !said.isEmpty {
             lines.append(.init(label: firstSentence(said), value: ""))
         }
+        lines += changeLines(a, b)
+        return ResultDetail(shotTitle: shotTitle(video, s), current: current, previous: previous, changes: lines)
+    }
+
+    /// 두 편집안의 차이 — 길이 · 장면 수 · 자막 자리. 결과물 나란히 보기와 대화의 달라진 점 카드가 같이 쓴다.
+    static func changeLines(_ a: Composition, _ b: Composition) -> [EditSummary.Line] {
+        var lines: [EditSummary.Line] = []
         if Copy.duration(a.duration) != Copy.duration(b.duration) {
             lines.append(.init(label: Copy.Plan.Info.length,
                                value: Copy.Plan.Info.lengthChange(from: Copy.duration(a.duration), to: Copy.duration(b.duration))))
@@ -198,13 +207,58 @@ enum ViewDataMapper {
         if a.captionSlot != b.captionSlot {
             lines.append(.init(label: Copy.Plan.Info.caption, value: captionSlot(b.captionSlot).label))
         }
-        return ResultDetail(shotTitle: shotTitle(video, s), current: current, previous: previous, changes: lines)
+        return lines
     }
 
-    /// 내보낸 이력 한 줄 — 가장 최근 것. 폴더 저장은 문구가 없어 아직 안 낸다 (copy-keys `exportedToFolder`).
+    /// 대화의 달라진 점 카드 (디자인 ⑯ — 머리줄 · 표 · "처음부터 보기 | 되돌리기"). 채팅 수정으로 새 판이 생기면 AI 말 밑에 붙는다.
+    /// 전에는 화면(카드)만 있고 바꾸는 층이 내지 않아, 대화에서 되돌릴 곳이 없었다 (2026-09-30).
+    static func editSummary(_ versionID: String, _ s: LibrarySnapshot) -> EditSummary? {
+        guard let rec = s.compositions.first(where: { $0.id == versionID }), let b = try? rec.composition(),
+              let prevID = rec.revisionOf, let prev = s.compositions.first(where: { $0.id == prevID }),
+              let a = try? prev.composition() else { return nil }
+        let lines = changeLines(a, b)
+        guard !lines.isEmpty else { return nil }
+        return EditSummary(
+            lines: lines, canUndo: true,
+            versionLabel: versionNumber(versionID, s).map { Copy.Plan.version($0) },
+            detail: "\(platform(b.meta.platform).label) · \(Copy.duration(b.duration))",
+            thumbnail: b.scenes.first.map { thumb(s.thumbnailStore.scene(rec.id, $0.id), s) } ?? .none
+        )
+    }
+
+    /// 내보내기가 막혔을 때 화면 위 한 줄. 버튼은 **누르면 그 일을 한다** — 전에는 둘 다 안내만 닫았다 (2026-09-30).
+    /// Mac 저장이 막혔으면 "Mac에 저장" 을 또 권하지 않는다 (다른 폴더로 다시).
+    static func exportFailed(_ target: ExportTarget) -> ScreenNotice {
+        let toFolder = target.title == Copy.Results.Export.files
+        return ScreenNotice(
+            message: Copy.Results.Export.failed(target.title) + " "
+                + (toFolder ? Copy.Results.Export.failedReasonFolder : Copy.Results.Export.failedReason),
+            actions: [ChatChoice(title: Copy.Results.Export.retry, isPrimary: true)]
+                + (toFolder ? [] : [ChatChoice(title: Copy.Results.Export.saveToMac)])
+        )
+    }
+
+    /// 실패 안내에서 고른 버튼 → 다시 보낼 곳. "다시 내보내기" 는 같은 곳, "Mac에 저장" 은 폴더 저장.
+    static func exportRetry(_ choice: ChatChoice, failed: ExportTarget, targets: [ExportTarget]) -> ExportTarget? {
+        switch choice.title {
+        case Copy.Results.Export.retry: failed
+        case Copy.Results.Export.saveToMac: targets.first { $0.title == Copy.Results.Export.files }
+        default: nil
+        }
+    }
+
+    /// 내보낸 이력 한 줄 — 가장 최근 것. 사진 앱이면 "사진 앱에 저장함", Mac 이면 **저장한 폴더 이름**
+    /// ("다운로드에 저장함 · 오후 11:42") — 올리려고 파일을 찾을 때 어디 있는지 알게. 전에는 폴더 저장은 아무 표시가 없었다.
     static func exportedNote(_ outputID: String, _ s: LibrarySnapshot) -> String? {
-        guard let e = s.exports.last(where: { $0.outputId == outputID && $0.target == .photos }) else { return nil }
-        return Copy.Results.Export.historyLine(target: Copy.Results.Export.photos, when: Copy.time(e.createdAt))
+        guard let e = s.exports.last(where: { $0.outputId == outputID }) else { return nil }
+        let place: String
+        switch e.target {
+        case .photos: place = Copy.Results.Export.photos
+        case .folder:
+            guard let path = e.location else { return nil }
+            place = FileManager.default.displayName(atPath: URL(fileURLWithPath: path).deletingLastPathComponent().path)
+        }
+        return Copy.Results.Export.historyLine(target: place, when: Copy.time(e.createdAt))
     }
 
     static func results(of videoID: String, _ s: LibrarySnapshot) -> [ResultRef] {
@@ -217,7 +271,7 @@ enum ViewDataMapper {
     static func results(_ s: LibrarySnapshot) -> ResultsState {
         let groups = s.videos.sorted { shotAt($0) > shotAt($1) }.compactMap { v -> ResultGroup? in
             let items = results(of: v.id, s)
-            return items.isEmpty ? nil : ResultGroup(shotTitle: shotTitle(v, s), items: items)
+            return items.isEmpty ? nil : ResultGroup(shotTitle: shotTitle(v, s), items: items, shotID: v.id)
         }
         return groups.isEmpty ? .empty : .loaded(groups)
     }
@@ -268,7 +322,11 @@ enum ViewDataMapper {
 
         if versions.isEmpty && live.isEmpty {
             // 짜다가 멈췄다 — 오늘 실패한 작업 (viewdata-map 3절 ②)
-            let failed = s.jobs.filter { $0.state == .failed && $0.targetId == videoID && $0.error != "멈춤" }.last
+            let failed = s.jobs.filter { $0.state == .failed && $0.targetId == videoID }.last
+            // 사람이 멈췄다 (■) — 전에는 이걸 건너뛰어, 도는 것도 없는 "준비 중" 보드가 멈춘 채 남았다
+            if let failed, failed.error == "멈춤" {
+                return .stopped(plan: nil, reason: Copy.AI.stoppedByYou, actions: stoppedActions, isFinal: false)
+            }
             if let failed, failed.kind == .agent {
                 return .stopped(plan: nil, reason: Copy.AI.aiDraftFailed + " " + failureReason(failed.error, ai: ai),
                                 actions: stoppedActions, isFinal: false)
@@ -287,14 +345,20 @@ enum ViewDataMapper {
             let ids = Set(s.compositions(of: videoID).map(\.id))
             let lastMake = s.jobs.filter { ($0.kind == .render || $0.kind == .selfEval) && ids.contains($0.targetId) }
                 .max { ($0.id ?? 0) < ($1.id ?? 0) }
-            if let lastMake, lastMake.state == .failed, lastMake.error != "멈춤" {
+            if let lastMake, lastMake.state == .failed {
                 return .stopped(plan: planView(newest, video: video, versions: versions, s),
-                                reason: Copy.AI.renderFailed, actions: stoppedActions, isFinal: false)
+                                reason: lastMake.error == "멈춤" ? Copy.AI.stoppedByYou : Copy.AI.renderFailed,
+                                actions: stoppedActions, isFinal: false)
             }
         }
         // 판은 있는데 보여 준 것이 없고 더 도는 것도 없다 — 두 번 다듬어도 안 됐다
         if let newest = versions.last, live.isEmpty, gaveUp(newest.id, s) {
             return gaveUpState(newest.id, view: planView(newest, video: video, versions: versions, s), s)
+        }
+        // 판은 있는데 결과물을 다 휴지통으로 보냈다 — 그 판을 보여 준다 (만들기로 다시 만든다).
+        // 전에는 도는 것도 없는 "준비 중" 보드에 갇혔다
+        if let newest = versions.last, live.isEmpty {
+            return .ready(planView(newest, video: video, versions: versions, s))
         }
         return .preparing(prepareSteps(live, fetchingOriginal: video.status == .importing, modelReady: modelReady,
                                        fetchProgress: s.importProgress[video.id],
@@ -379,7 +443,9 @@ enum ViewDataMapper {
             id: rec.id, shotID: video.id, shotTitle: shotTitle(video, s),
             platform: platform(comp?.meta.platform ?? .reels),
             versionLabel: Copy.Plan.version(number), versionCount: versions.count,
-            sourceDuration: video.durationSec ?? 0, targetDuration: comp?.meta.targetDurationSec ?? 0,
+            // 화면의 "결과 길이" (1:00 → 0:23 · 장면 n개 · 0:23) — 장면 길이의 합. AI 가 처음 적은 목표 길이
+            // (`meta.targetDurationSec`)를 넣으면 빼기 · 늘리기를 해도 숫자가 안 바뀐다 (2026-09-30 실제 앱: 4.2초 장면을 빼도 0:27)
+            sourceDuration: video.durationSec ?? 0, targetDuration: comp?.duration ?? 0,
             captionSlot: captionSlot(comp?.captionSlot ?? .fullBody),
             scenes: comp.map { sceneCards($0, s) } ?? [],
             resultCount: results(of: video.id, s).count,
@@ -455,18 +521,30 @@ enum ViewDataMapper {
 
     static func chat(_ s: LibrarySnapshot, videoID: String) -> [ChatMessage] {
         var out: [ChatMessage] = []
+        // 날짜 줄은 메시지 앱처럼 **대화가 끊겼다 이어질 때만** — 첫 말 · 날이 바뀜 · 30분 넘게 쉼.
+        // 전에는 말풍선마다 붙어 "9월 29일" 이 네 번 이어졌다 (2026-09-30 실제 앱)
+        var lastAt: Date?
+        func stamp(_ at: Date) -> String? {
+            defer { lastAt = at }
+            if let last = lastAt, at.timeIntervalSince(last) < 30 * 60, Calendar.current.isDate(at, inSameDayAs: last) { return nil }
+            return Copy.chatStamp(at, now: s.now)
+        }
         // 첫 초안의 결과물에 아쉬운 점이 남았으면 대화 맨 앞에 한 줄
         if let draft = s.visibleVersions(of: videoID).first(where: { $0.origin == .draft }),
            let o = s.shownOutput(forVersion: draft.id), let note = softNote(o) {
-            out.append(ChatMessage(id: o.id + ".soft", kind: .assistant(note), stamp: Copy.shotStamp(o.createdAt, now: s.now)))
+            out.append(ChatMessage(id: o.id + ".soft", kind: .assistant(note), stamp: stamp(o.createdAt)))
         }
         for row in s.chats where row.videoId == videoID {
-            let stamp = Copy.shotStamp(row.createdAt, now: s.now)
+            let stamp = stamp(row.createdAt)
             switch row.kind {
             case .creator: out.append(ChatMessage(id: row.id, kind: .user(row.text ?? ""), stamp: stamp))
             case .creatorNotSent: out.append(ChatMessage(id: row.id, kind: .userNotSent(row.text ?? ""), stamp: stamp))
             case .assistant:
                 out.append(ChatMessage(id: row.id, kind: .assistant(plain(row.text ?? "")), stamp: stamp))
+                // 이 말로 새 판이 생겼으면 달라진 점 카드 — 처음부터 보기 · 되돌리기
+                if let cid = row.compositionId, let summary = editSummary(cid, s) {
+                    out.append(ChatMessage(id: row.id + ".summary", kind: .summary(summary)))
+                }
                 // 이 말로 생긴 판의 결과물이 보여지면 카드로 붙는다
                 if let cid = row.compositionId, let o = s.shownOutput(forVersion: cid), let ref = resultRef(o, s) {
                     out.append(ChatMessage(id: row.id + ".result", kind: .result(ref)))
@@ -560,8 +638,9 @@ enum ViewDataMapper {
         let done: [DoneItem] = s.outputs.filter { $0.verdict == .shown && $0.createdAt >= startOfDay }.compactMap { o in
             guard let rec = s.compositions.first(where: { $0.id == o.compositionId }),
                   let video = s.videos.first(where: { $0.id == rec.videoId }), let comp = try? rec.composition() else { return nil }
+            // 그림은 결과물 그림 — 전에는 넘기지 않아 줄마다 빈 자리표시였다 (2026-09-30)
             return DoneItem(id: o.id, shotTitle: shotTitle(video, s), platform: platform(comp.meta.platform),
-                            when: Copy.time(o.createdAt))
+                            when: Copy.time(o.createdAt), thumbnail: thumb(s.thumbnailStore.output(o.id), s))
         }
         return jobs.isEmpty && done.isEmpty ? .empty : .loaded(jobs: jobs, doneToday: done)
     }

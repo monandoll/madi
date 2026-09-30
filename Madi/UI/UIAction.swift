@@ -35,6 +35,8 @@ public enum UIAction: Hashable, Sendable {
         case retryImport(ShotItem.ID)
         case addFromMac
         case openSystemSettings
+        /// 상태줄 "사진 앱 연결" — 아직 안 물었으면 권한 창, 거절했으면 시스템 설정 (바꾸는 층이 고른다).
+        case allowPhotos
     }
 
     public enum Plan: Hashable, Sendable {
@@ -123,6 +125,8 @@ public enum UIAction: Hashable, Sendable {
         case keepDays(Int)
         case pickAlbum
         case openSystemSettings
+        /// 사진 접근을 아직 묻지 않았을 때 — 권한 창을 띄운다. 묻지 않은 앱은 시스템 설정 목록에 없어 거기서는 켤 수 없다.
+        case allowPhotos
         case look(Look)
 
         /// 자막 모양 (`§9`). **고르는 것만 있다** — 숫자 입력칸이 없다.

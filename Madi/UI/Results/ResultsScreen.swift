@@ -133,6 +133,8 @@ struct ResultsScreen: View {
             } description: {
                 EmptyView()
             }
+            // 폭을 채운다 — 안 채우면 목록 · 안내가 창 가운데로 몰려 왼쪽에 빈 기둥이 생겼다 (2026-09-30)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 

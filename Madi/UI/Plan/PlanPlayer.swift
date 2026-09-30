@@ -26,47 +26,19 @@ struct PlanPlayer: View {
             PlanVideo(url: url)
                 .id(url)   // 다른 판으로 바뀌면 옛 재생기를 멈추고 새로 만든다
         } else {
+            // 아직 영상이 없는 판 (사람이 고친 판 · 만드는 중). 누를 수 없는 재생 막대를 두면 눌러도 아무 일이 없어
+            // 고장 난 것처럼 보였다 — 그림과 한 줄만 둔다 (2026-09-30)
             VStack(spacing: Tokens.Space.inner) {
                 ThumbnailView(thumbnail: thumbnail, cornerRadius: Tokens.Radius.card)
                     .aspectRatio(Tokens.Ratio.vertical, contentMode: .fit)
                     .frame(maxHeight: .infinity)
 
-                transport
-            }
-        }
-    }
-
-    private var transport: some View {
-        VStack(spacing: Tokens.Space.tight) {
-            // 위치 막대. 끌어서 옮기는 것 말고는 아무 뜻이 없다.
-            ProgressView(value: min(position, total), total: max(total, 0.001))
-                .progressViewStyle(.linear)
-                .controlSize(.small)
-
-            HStack(spacing: Tokens.Space.inner) {
-                Button(action: onPrevious) {
-                    Image(systemName: "backward.end.fill")
-                }
-                .help(Copy.Plan.Scenes.playFromHere)
-
-                Button(action: onPlay) {
-                    Image(systemName: "play.fill")
-                }
-                .help(Copy.Action.play)
-
-                Button(action: onNext) {
-                    Image(systemName: "forward.end.fill")
-                }
-
-                Spacer()
-
-                Text("\(Copy.duration(position)) / \(Copy.duration(total))")
+                Text(Copy.Player.notMadeYet)
                     .font(.caption)
-                    .monospacedDigit()
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .buttonStyle(.borderless)
-            .imageScale(.small)
         }
     }
 }

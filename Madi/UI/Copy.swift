@@ -34,6 +34,8 @@ public enum Copy {
         public static let playFromStart = "처음부터 보기"
         public static let export = "내보내기"
         public static let openInPhotos = "사진 앱에서 보기"
+        /// 폴더로 들어온 촬영본 — 사진 앱에 없다. 원본 파일을 Finder 에서 보여 준다.
+        public static let showInFinder = "Finder에서 보기"
         /// **"삭제" 라고 쓰지 않는다.** 목록에서 안 보이게 할 뿐 원본은 사진 앱에 그대로 있다.
         public static let hideFromList = "목록에서 숨기기"
         /// 진짜로 지운다 — 앱 사본 · 편집안 · 결과물. 사진 앱 원본은 그대로다 (확인창이 그렇게 말한다).
@@ -139,6 +141,9 @@ public enum Copy {
 
         public enum Status {
             public static let syncedWithICloud = "iCloud 사진과 맞춰져 있음"
+            /// 사진 권한이 없을 때 — 전에는 권한과 상관없이 "맞춰져 있음" 이라고 했다 (2026-09-30).
+            public static let photosOff = "사진 앱과 연결 안 됨"
+            public static let connectPhotos = "연결하기"
             public static func lastChecked(_ minutes: Int) -> String {
                 minutes < 1 ? "방금 확인" : "\(minutes)분 전 확인"
             }
@@ -334,7 +339,23 @@ public enum Copy {
 
     // MARK: - 대화
 
+    /// 재생 막대 버튼 — 도움말(마우스를 올리면)과 VoiceOver 가 읽는 이름. QuickTime 과 같은 말.
+    /// 전에는 "처음으로" 버튼을 시스템이 그림 이름대로 "끝으로 이동" 으로 읽었고, 도움말은 "여기서부터 재생" 이었다.
+    public enum Player {
+        public static let toStart = "처음으로"
+        public static let back10 = "10초 뒤로"
+        public static let forward10 = "10초 앞으로"
+        public static let play = "재생"
+        public static let pause = "멈춤"
+        public static let mute = "소리 끄기"
+        public static let unmute = "소리 켜기"
+        /// 영상이 아직 없는 편집안의 미리보기 자리 (사람이 고친 판 · 만드는 중).
+        public static let notMadeYet = "영상을 만들면 여기서 볼 수 있어요"
+    }
+
     public enum Chat {
+        /// 대화 날짜 줄의 "어제" (`Copy.chatStamp`).
+        public static let yesterday = "어제"
         /// 대화 패널 머리줄 (2026-09-29 시안) — "마디" 아래 지금 무엇을 이야기하는지 한 줄.
         public enum Header {
             public static let name = "마디"
@@ -354,7 +375,8 @@ public enum Copy {
         public enum Chips {
             public static let cutGaps = "쉬는 구간 잘라줘"
             public static let captions = "자막 넣어줘"
-            public static let shorter = "30초로 줄여줘"
+            /// 길이를 박지 않는다 — 결과물이 이미 20초 안팎(크리에이터 중앙 19초)이라 "30초로" 는 늘리라는 말이 됐다 (2026-09-30).
+            public static let shorter = "더 짧게 줄여줘"
             public static let reels = "인스타 규격으로"
             public static let shorts = "유튜브 쇼츠로"
             public static let hookFirst = "앞에 훅 넣어줘"
@@ -420,15 +442,24 @@ public enum Copy {
             public static let photos = "사진 앱"
             public static let photosDetail = "아이폰에서 바로 확인하고 올릴 수 있어요"
             public static let files = "Mac에 저장"
-            public static let filesDetail = "폴더를 고르면 파일로 저장해요"
+            public static let filesDetail = "저장할 곳을 고르면 파일로 저장해요"
+            /// 저장 창 위 한 줄 (macOS 저장 창).
+            public static let saveMessage = "영상을 저장할 곳을 골라 주세요. 올릴 때 여기서 찾으면 돼요."
             public static let airdrop = "AirDrop"
             public static let airdropDetail = "가까이 있는 기기로 바로 보내요"
             public static func done(_ target: String) -> String { "\(target)(으)로 보냈어요" }
             /// 내보내다 막힌 경우. 결과물 화면에는 채팅이 없어서 화면 위 한 줄로 말한다.
+            /// 받는 곳마다 말이 다르다 — 전에는 "Mac에 저장에 넣지 못했어요" 처럼 이름을 그대로 끼워 넣었다 (2026-09-30).
             public static func failed(_ target: String) -> String {
-                "\(target)에 넣지 못했어요"
+                switch target {
+                case files: "Mac에 저장하지 못했어요."
+                case airdrop: "AirDrop으로 보내지 못했어요."
+                default: "\(target)에 넣지 못했어요."
+                }
             }
             public static let failedReason = "잠시 뒤 다시 해보거나 Mac에 저장해 주세요."
+            /// Mac 저장이 막힌 경우 — 대개 고른 폴더에 쓸 수 없다. "Mac에 저장해 주세요" 는 말이 안 된다.
+            public static let failedReasonFolder = "다른 폴더를 골라 다시 해 주세요."
             public static let retry = "다시 내보내기"
             public static let saveToMac = "Mac에 저장"
             /// 목록 줄에 남는 이력. `사진 앱에 저장함 · 오후 2:40`
@@ -535,6 +566,10 @@ public enum Copy {
             public static let title = "준비됐어요"
             public static let message =
                 "아이폰으로 찍은 촬영본이 자동으로 들어와요.\n처음 가져오는 데 1~2분쯤 걸려요."
+            /// 사진 접근을 건너뛰었을 때 — 저절로 들어온다고 약속하지 않는다 (2026-09-30).
+            public static let messageNoPhotos =
+                "사진 보관함을 허용하지 않아서 촬영본이 저절로 들어오지는 않아요.\n"
+                + "‘Mac에 있는 영상 넣기’로 넣거나, 설정에서 언제든 사진 접근을 켤 수 있어요."
             public static let start = "마디 시작하기"
         }
     }
@@ -577,6 +612,8 @@ public enum Copy {
             public static let photoAccess = "사진 접근"
             public static let photoAccessOn = "허용됨"
             public static let photoAccessOff = "허용 안 됨"
+            /// 아직 묻지 않았다 — "허용 안 됨" 과 다르다. 여기서 바로 켤 수 있다.
+            public static let photoAccessNotAsked = "아직 안 켰어요"
         }
 
         public static let loading = "연결을 확인하고 있어요"
@@ -637,6 +674,8 @@ public enum Copy {
         public static let analyzeFailed = "영상을 살펴보다 멈췄어요. 한 번 더 해 볼게요."
         /// 영상을 만들다(렌더) 멈췄을 때. 전에는 "준비 중" 으로 계속 돌아 끝없이 기다리게 했다.
         public static let renderFailed = "영상을 만들다 멈췄어요. 한 번 더 해 볼게요."
+        /// 사람이 멈추기(■)를 눌러 멈췄을 때 — 실패가 아니다. 다시 할지는 사람이 고른다.
+        public static let stoppedByYou = "멈춰 달라고 하셔서 멈췄어요. 다시 해 보기를 누르면 이어서 할게요."
     }
 
     /// 스스로 살펴보고 다시 다듬기. "검사" · "게이트" · "self-eval" · "렌더" 는 쓰지 않는다.
@@ -834,5 +873,15 @@ public enum Copy {
     /// 오늘 찍은 것은 시각만, 그 전은 날짜만 보여준다 (사진 앱과 같은 규칙).
     public static func shotStamp(_ date: Date, now: Date = Date()) -> String {
         Calendar.current.isDate(date, inSameDayAs: now) ? time(date) : day(date)
+    }
+
+    /// 대화 날짜 줄 — `오늘 오후 2:20` · `어제 오전 1:16` · `9월 27일 오후 3:00`. 앞 낱말(날)을 화면이 굵게 쓴다 (시안).
+    public static func chatStamp(_ date: Date, now: Date = Date()) -> String {
+        let cal = Calendar.current
+        if cal.isDate(date, inSameDayAs: now) { return "\(Gallery.Group.today) \(time(date))" }
+        if let yesterday = cal.date(byAdding: .day, value: -1, to: now), cal.isDate(date, inSameDayAs: yesterday) {
+            return "\(Chat.yesterday) \(time(date))"
+        }
+        return "\(day(date).replacingOccurrences(of: " ", with: "\u{00A0}")) \(time(date))"
     }
 }

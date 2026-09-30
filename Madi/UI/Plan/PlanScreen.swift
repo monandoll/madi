@@ -50,6 +50,8 @@ struct PlanScreen: View {
                     ideal: Tokens.Size.chatIdeal,
                     max: 420
                 )
+                // 불투명 바탕 — 인스펙터 기본 재질은 반투명이라 가로 장면 띠의 카드가 대화 패널 아래로 흐리게 비쳤다 (2026-09-30)
+                .background(Color(nsColor: .windowBackgroundColor))
             }
             .onAppear {
                 if selectedID == nil { selectedID = initialSceneID }
@@ -306,11 +308,12 @@ struct PlanScreen: View {
         }
     }
 
-    /// 짜는 중 · 만드는 중에는 요청을 받지 않는다.
+    /// 짜는 중 · 만드는 중 · **AI 가 채팅 요청을 고치는 중**에는 요청을 받지 않고 멈추기(■)를 준다.
+    /// 전에는 채팅 턴 동안 입력칸이 열려 있고 멈출 길이 없었다 — 판 상태는 "준비됨" 이라서 (2026-09-30).
     private var isBusy: Bool {
         switch state {
-        case .preparing, .making: true
-        default: false
+        case .preparing, .making: return true
+        default: return messages.contains { if case .typing = $0.kind { true } else { false } }
         }
     }
 
@@ -341,6 +344,8 @@ struct PlanScreen: View {
                         showsVersions = false
                         onAction(.plan(.pickVersion(version.id)))
                     }
+                    // 불투명 바탕 — 기본 재질은 반투명이라 뒤의 대화 말풍선이 비쳤다 (색 말풍선과 같은 까닭)
+                    .presentationBackground(Color(nsColor: .windowBackgroundColor))
                 }
             }
             if plan.resultCount > 0 {

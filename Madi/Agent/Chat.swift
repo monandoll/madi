@@ -149,11 +149,24 @@ extension AgentJob {
                 }
             }
         } catch {
-            try? await db.writer.write { db in
-                try ChatRecord(videoId: videoID, kind: .notice,
-                               payload: ["key": .string(Chat.Key.aiDraftFailed), "detail": .string("\(error)")]).insert(db)
-            }
+            chatFailed(message, error: error)
             throw error
+        }
+    }
+
+    /// 수정 턴이 막혔다 — 알림 줄을 남기고, 크리에이터 말은 "보내지 못함" 으로 바꾼다. 말풍선 밑에 "다시 보내기" 가 붙는다.
+    /// 알림은 "쓰신 말은 그대로 있으니 다시 보내 주세요" 라고 하는데, 전에는 누를 곳이 없어 같은 말을 다시 써야 했다 (2026-09-30).
+    /// 보내지 못한 말은 AI 대화 이력에서도 빠진다 (`history`).
+    ///
+    /// **동기 쓰기** (async 가 아닌 함수라 동기 쓰기가 골라진다) — 멈추기(■)로 끊긴 작업 안에서 비동기 쓰기는 GRDB 가
+    /// CancellationError 로 거절해, 알림도 못 남기고 말풍선이 그대로였다 (눌러서 찾음).
+    private func chatFailed(_ message: ChatRecord, error: Error) {
+        try? db.writer.write { db in
+            try ChatRecord(videoId: message.videoId, kind: .notice,
+                           payload: ["key": .string(Chat.Key.aiDraftFailed), "detail": .string("\(error)")]).insert(db)
+            var sent = message
+            sent.kind = .creatorNotSent
+            try sent.update(db)
         }
     }
 

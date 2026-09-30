@@ -154,6 +154,89 @@ struct ViewDataMapperTests {
         #expect(ref.planLabel == Copy.Plan.version(2))
     }
 
+    @Test("채팅으로 새 판이 생기면 AI 말 밑에 달라진 점 카드 — 편집안 번호 · 길이 · 장면 수 · 되돌리기")
+    func chatEditSummary() throws {
+        let rows = [
+            ChatRecord(id: "m1", videoId: "v", kind: .creator, text: "줄여 줘", createdAt: now - 40),
+            ChatRecord(id: "m2", videoId: "v", kind: .assistant, text: "줄였어요", compositionId: "c1", createdAt: now - 30),
+        ]
+        let s = LibrarySnapshot(
+            videos: [video("v", at: now)],
+            compositions: [try comp("d", scenes: [(0, 3), (3.5, 6), (7, 10)], at: now - 60),
+                           try comp("c1", scenes: [(0, 3), (3.5, 6)], origin: .chat, revisionOf: "d", at: now - 30)],
+            chats: rows, now: now
+        )
+        let kinds = ViewDataMapper.chat(s, videoID: "v").map(\.kind)
+        #expect(kinds.count == 3)
+        guard case .summary(let card) = kinds[2] else { Issue.record("달라진 점 카드 아님"); return }
+        #expect(card.canUndo)
+        #expect(card.versionLabel == Copy.Plan.version(2))
+        #expect(card.lines.map(\.label) == [Copy.Plan.Info.length, Copy.Plan.Info.scenes])
+        #expect(card.lines.last?.value == Copy.Plan.Info.lengthChange(from: "3", to: "2"))
+    }
+
+    @Test("채팅 날짜 줄 — 대화가 끊겼다 이어질 때만 (첫 말 · 30분 넘게 쉼 · 날이 바뀜). '오늘 오후 2:20' 꼴")
+    func chatStamps() throws {
+        let rows = [
+            ChatRecord(id: "a", videoId: "v", kind: .creator, text: "하나", createdAt: now - 3 * 3600),
+            ChatRecord(id: "b", videoId: "v", kind: .assistant, text: "둘", createdAt: now - 3 * 3600 + 20),
+            ChatRecord(id: "c", videoId: "v", kind: .creator, text: "셋", createdAt: now - 60),
+        ]
+        let s = LibrarySnapshot(videos: [video("v", at: now)], chats: rows, now: now)
+        let stamps = ViewDataMapper.chat(s, videoID: "v").map(\.stamp)
+        #expect(stamps[0] == Copy.chatStamp(now - 3 * 3600, now: now))
+        #expect(stamps[1] == nil)                      // 20초 뒤 답 — 줄 없음
+        #expect(stamps[2] != nil)                      // 3시간 쉼
+        #expect(Copy.chatStamp(now, now: now).hasPrefix(Copy.Gallery.Group.today + " "))
+    }
+
+    @Test("결과물 묶음 — 같은 제목의 촬영본 둘은 따로 묶인다 (겹쳐서 한쪽 줄이 사라지지 않는다)")
+    func sameTitleGroups() throws {
+        let s = LibrarySnapshot(
+            videos: [video("v", at: now), video("w", at: now - 60)],
+            compositions: [try comp("d", video: "v", at: now - 50), try comp("e", video: "w", at: now - 40)],
+            outputs: [output("o1", comp: "d", verdict: .shown, at: now - 30), output("o2", comp: "e", verdict: .shown, at: now - 20)],
+            now: now
+        )
+        guard case .loaded(let groups) = ViewDataMapper.results(s) else { Issue.record("비었다"); return }
+        #expect(groups.count == 2)
+        #expect(Set(groups.map(\.id)).count == 2)
+        #expect(groups.flatMap(\.items).count == 2)
+    }
+
+    @Test("결과물을 다 휴지통으로 보낸 판 — '준비 중' 에 갇히지 않고 그 판을 보여 준다")
+    func trashedResultsShowPlan() throws {
+        // 휴지통 결과물은 스냅숏에서 빠진다 → 판은 있고 결과물 · 도는 작업은 없다
+        let s = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)], now: now)
+        guard case .ready(let plan) = try #require(ViewDataMapper.plan(s, videoID: "v", ai: .claude)) else {
+            Issue.record("준비 중에 갇혔다"); return
+        }
+        #expect(plan.id == "d" && plan.previewURL == nil)
+    }
+
+    @Test("촬영본 출처 — 폴더로 들어온 것은 사진 앱에 없다 (우클릭 'Finder에서 보기')")
+    func shotSource() {
+        let photos = video("p", at: now)
+        let folder = VideoRecord(id: "f", source: .folder, sourceRef: "/tmp/f.mov", durationSec: 60, capturedAt: now, status: .ready)
+        let s = LibrarySnapshot(videos: [photos, folder], now: now)
+        #expect(ViewDataMapper.shot(photos, s).isFromPhotos)
+        #expect(!ViewDataMapper.shot(folder, s).isFromPhotos)
+    }
+
+    @Test("만드는 중 — 오늘 다 만든 것에 결과물 그림을 넘긴다")
+    func doneThumbnail() throws {
+        var s = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)],
+                                outputs: [output("o", comp: "d", verdict: .shown, at: now - 10)], now: now)
+        let dir = FileManager.default.temporaryDirectory.appending(path: "thumbs-\(UUID().uuidString)")
+        let store = Thumbnails(root: dir)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data([0xFF]).write(to: store.output("o"))
+        s.attach(thumbnails: store, progress: [:])
+        guard case .loaded(_, let done) = ViewDataMapper.making(s) else { Issue.record(""); return }
+        #expect(done.first?.thumbnail.fileURL == store.output("o"))
+        try? FileManager.default.removeItem(at: dir)
+    }
+
     @Test("만드는 중 — 도는 것 먼저, 기다리는 것은 메모, 오늘 보여 준 결과물")
     func making() throws {
         let s = LibrarySnapshot(
@@ -226,6 +309,14 @@ struct ViewDataMapperTests {
         let ref = try #require(ViewDataMapper.results(of: "v", s2).first)
         #expect(ref.isNew == false)
         #expect(ref.exportedNote == Copy.Results.Export.historyLine(target: Copy.Results.Export.photos, when: Copy.time(now)))
+
+        // Mac 에 저장한 것도 줄에 남는다 — 저장한 폴더 이름으로 (전에는 아무 표시가 없었다)
+        let folder = FileManager.default.temporaryDirectory.appending(path: "올릴 영상", directoryHint: .isDirectory)
+        let s3 = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)], outputs: [o], now: now,
+                                 exports: [ExportRecord(outputId: "o", target: .photos, location: "x", createdAt: now - 60),
+                                           ExportRecord(outputId: "o", target: .folder, location: folder.appending(path: "a.mp4").path, createdAt: now)])
+        let saved = try #require(ViewDataMapper.results(of: "v", s3).first)
+        #expect(saved.exportedNote == Copy.Results.Export.historyLine(target: "올릴 영상", when: Copy.time(now)))
     }
 
     @Test("멈춘 편집안 — 짜다 실패(편집안 없음) · 로그인 필요 · 두 번 다듬어도 안 됨(isFinal)")
@@ -250,6 +341,28 @@ struct ViewDataMapperTests {
         #expect(final && plan?.id == "d")
     }
 
+    @Test("사람이 멈췄다(■) — 빈 '준비 중' 이 아니라 '멈췄어요 · 다시 해 보기'. 초안 전이든 영상 만들다든")
+    func stoppedByYou() throws {
+        var stopped = job(.agent, "v", .failed)
+        stopped.error = "멈춤"
+        stopped.finishedAt = now
+        let s1 = LibrarySnapshot(videos: [video("v", at: now)], jobs: [stopped], now: now)
+        guard case .stopped(let p1, let r1, let a1, _) = try #require(ViewDataMapper.plan(s1, videoID: "v", ai: .claude)) else {
+            Issue.record("준비 중으로 남았다"); return
+        }
+        #expect(p1 == nil && r1 == Copy.AI.stoppedByYou && a1.first?.title == Copy.Plan.Stopped.tryAgain)
+
+        // 초안은 나왔는데 영상 만들기(렌더)를 멈췄다 — 보여 준 결과물이 아직 없다
+        var render = job(.render, "d", .failed)
+        render.error = "멈춤"
+        render.finishedAt = now
+        let s2 = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)], jobs: [render], now: now)
+        guard case .stopped(let p2, let r2, _, _) = try #require(ViewDataMapper.plan(s2, videoID: "v", ai: .claude)) else {
+            Issue.record("멈춘 렌더가 멈췄다고 안 나온다"); return
+        }
+        #expect(p2?.id == "d" && r2 == Copy.AI.stoppedByYou)
+    }
+
     @Test("고른 판을 보여 준다 — 사람이 직접 고친 판(결과물 없음)도 ready")
     func viewing() throws {
         let s = LibrarySnapshot(videos: [video("v", at: now)],
@@ -259,6 +372,20 @@ struct ViewDataMapperTests {
         #expect(def.id == "d")
         guard case .ready(let edited) = try #require(ViewDataMapper.plan(s, videoID: "v", ai: .claude, viewing: "e")) else { Issue.record(""); return }
         #expect(edited.id == "e" && edited.versionLabel == Copy.Plan.version(2))
+    }
+
+    @Test("결과 길이는 장면 길이의 합 — AI 가 적은 목표 길이가 아니다. 장면을 빼면 줄어든다")
+    func lengthIsActual() throws {
+        // 목표 6초 · 장면 3초 + 2.5초 = 5.5초, 사람이 한 장면을 뺀 판은 3초
+        let s = LibrarySnapshot(videos: [video("v", at: now)],
+                                compositions: [try comp("d", at: now - 60),
+                                               try comp("e", scenes: [(0, 3)], origin: .chat, revisionOf: "d", at: now - 10)],
+                                outputs: [output("o", comp: "d", verdict: .shown, at: now - 50)], now: now)
+        guard case .ready(let draft) = try #require(ViewDataMapper.plan(s, videoID: "v", ai: .claude)) else { Issue.record(""); return }
+        #expect(draft.targetDuration == 5.5)
+        guard case .ready(let edited) = try #require(ViewDataMapper.plan(s, videoID: "v", ai: .claude, viewing: "e")) else { Issue.record(""); return }
+        #expect(edited.targetDuration == 3)
+        #expect(edited.versions.map(\.duration) == [5.5, 3])   // 판 목록과 같은 값
     }
 
     @Test("채팅 '앞으로도?' — 규칙 문장은 버튼 설명에, 답하면 사라진다 · 받기 실패 · 원본 한계 안내")
@@ -375,5 +502,30 @@ struct ViewDataMapperTests {
         let s = LibrarySnapshot(videos: [video("v", at: now)],
                                 compositions: [try comp("c1", title: "", at: now)], now: now)
         #expect(ViewDataMapper.title(of: "v", s) == "첫 덩어리0 둘째0 첫 덩어리1 둘째1")
+    }
+
+    @Test("내보내기 실패 안내 — 버튼이 할 일로 이어진다. Mac 저장이 막히면 'Mac에 저장' 을 또 권하지 않는다")
+    func exportFailedNotice() {
+        let photos = ExportTarget(title: Copy.Results.Export.photos, detail: "", symbol: "")
+        let files = ExportTarget(title: Copy.Results.Export.files, detail: "", symbol: "")
+        let targets = [photos, files]
+
+        let p = ViewDataMapper.exportFailed(photos)
+        #expect(p.actions.map(\.title) == [Copy.Results.Export.retry, Copy.Results.Export.saveToMac])
+        #expect(ViewDataMapper.exportRetry(p.actions[0], failed: photos, targets: targets) == photos)
+        #expect(ViewDataMapper.exportRetry(p.actions[1], failed: photos, targets: targets) == files)
+
+        let f = ViewDataMapper.exportFailed(files)
+        #expect(f.actions.map(\.title) == [Copy.Results.Export.retry])
+        #expect(f.message.hasPrefix("Mac에 저장하지 못했어요."))
+        #expect(!f.message.contains("Mac에 저장에"))
+        #expect(ViewDataMapper.exportRetry(f.actions[0], failed: files, targets: targets) == files)
+    }
+
+    @Test("사진 권한을 상태줄에 넘긴다 — 권한이 없는데 'iCloud 사진과 맞춰져 있음' 이라고 하지 않게")
+    func studioCarriesPhotoAccess() {
+        let s = LibrarySnapshot(now: now)
+        #expect(ViewDataMapper.studio(s, studioName: "", ai: .none, photos: .notAsked).photos == .notAsked)
+        #expect(ViewDataMapper.studio(s, studioName: "", ai: .none, photos: .granted).photos == .granted)
     }
 }

@@ -104,14 +104,18 @@ public struct ShotItem: Identifiable, Hashable, Sendable {
     public var problem: String?
     /// 원본 영상 (앱 사본). 있으면 정보 칸에서 **그 자리에서 재생**한다 (개발이 넣음, viewdata-map ⑫).
     public var videoURL: URL?
+    /// 사진 보관함에서 들어왔는지. 아니면 폴더(Mac 에 있는 영상 넣기)로 들어온 것이라 사진 앱에 없다 —
+    /// 우클릭 메뉴가 "사진 앱에서 보기" 대신 "Finder에서 보기" 다 (viewdata-map ⑲).
+    public var isFromPhotos: Bool
 
     public init(
         id: String, title: String, shotAt: Date, duration: Double,
         speech: SpeechLevel = .clear, isMaking: Bool = false,
         thumbnail: Thumbnail = .none, results: [ResultRef] = [],
-        fetchProgress: Double? = nil, problem: String? = nil, videoURL: URL? = nil
+        fetchProgress: Double? = nil, problem: String? = nil, videoURL: URL? = nil, isFromPhotos: Bool = true
     ) {
         self.videoURL = videoURL
+        self.isFromPhotos = isFromPhotos
         self.id = id; self.title = title; self.shotAt = shotAt; self.duration = duration
         self.speech = speech; self.isMaking = isMaking
         self.thumbnail = thumbnail; self.results = results
@@ -240,15 +244,18 @@ public struct StudioStatus: Hashable, Sendable {
     public var makingCount: Int
     /// 편집 준비가 안 끝났으면 사이드바 아래에 한 줄. 끝났으면 `nil` (viewdata-map 3절 ①).
     public var preparing: EnginePrep?
+    /// 사진 보관함 권한 — 갤러리 상태줄이 "iCloud 사진과 맞춰져 있음" 을 말해도 되는가 (viewdata-map ㉓).
+    public var photos: PhotoAccess
 
     public init(
         studioName: String, ai: AIConnection,
         shotCount: Int, resultCount: Int, makingCount: Int,
-        preparing: EnginePrep? = nil
+        preparing: EnginePrep? = nil, photos: PhotoAccess = .granted
     ) {
         self.studioName = studioName; self.ai = ai
         self.shotCount = shotCount; self.resultCount = resultCount
         self.makingCount = makingCount; self.preparing = preparing
+        self.photos = photos
     }
 
     public func count(for section: LibrarySection) -> Int {
@@ -557,12 +564,15 @@ public struct ChatChoice: Identifiable, Hashable, Sendable {
 
 /// 촬영본 한 편에서 나온 결과물 묶음. 같은 영상에서 여러 편집안 · 여러 규격이 나온다.
 public struct ResultGroup: Identifiable, Hashable, Sendable {
-    public var id: String { shotTitle }
+    /// 촬영본 id. 제목으로 가르면 **같은 제목의 촬영본 둘**(같은 영상을 두 번 넣음)이 한 칸으로 겹쳐
+    /// 한쪽 결과물 줄이 전부 사라졌다 (2026-09-30 — 결과물 8개 중 3개만 보임). 없으면 제목.
+    public var id: String { shotID ?? shotTitle }
+    public var shotID: String?
     public var shotTitle: String
     public var items: [ResultRef]
 
-    public init(shotTitle: String, items: [ResultRef]) {
-        self.shotTitle = shotTitle; self.items = items
+    public init(shotTitle: String, items: [ResultRef], shotID: String? = nil) {
+        self.shotTitle = shotTitle; self.items = items; self.shotID = shotID
     }
 }
 

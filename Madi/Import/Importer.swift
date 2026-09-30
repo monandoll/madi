@@ -53,15 +53,18 @@ public struct Importer: Sendable {
     /// - Returns: 새로 들였거나 이어 받은 영상. 이미 준비된 영상이면 nil.
     @discardableResult
     public func receive(_ item: IncomingVideo, progress: (@Sendable (Double) -> Void)? = nil) async throws -> VideoRecord? {
-        var video: VideoRecord = try await db.writer.write { db in
+        let seen: VideoRecord? = try await db.writer.write { db in
             if let known = try VideoRecord.filter(Column("sourceRef") == item.sourceRef).fetchOne(db) {
                 return known
             }
+            // 앱이 내보낸 결과물은 촬영본이 아니다 — 사진 앱 · 입구 폴더로 보낸 것이 다시 들어와 분석 · AI 초안까지 돌았다
+            if try Exporter.isOwnExport(item.sourceRef, db) { return nil }
             let fresh = VideoRecord(source: item.source, sourceRef: item.sourceRef,
                                     capturedAt: item.capturedAt, status: .importing)
             try fresh.insert(db)
             return fresh
         }
+        guard var video = seen else { return nil }
         if video.status == .ready || video.deletedAt != nil { return nil }   // 지운 영상은 다시 들이지 않는다
         try db.log("import.seen", subject: video.id, payload: ["source": .string(item.source.rawValue)])
 

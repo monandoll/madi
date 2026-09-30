@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import Observation
 import Photos
+import UniformTypeIdentifiers
 import MadiKit
 
 /// 화면과 엔진 사이 (docs/stage-6.spec.md · `docs/design/viewdata-map.md` 5절).
@@ -25,6 +26,8 @@ final class AppController {
     var results: ResultsState = .loading
     var making: MakingState = .empty
     var resultsNotice: ScreenNotice?
+    /// 갤러리 상태줄 한 줄 — 숨긴 뒤 "목록에서 숨겼어요 · 되돌리기". 전에는 앱이 채우지 않아 숨긴 촬영본을 되살릴 길이 없었다
+    var galleryNotice: String?
     /// ⑧ 결과물 칸에서 고른 것을 이전 판과 나란히
     var resultDetail: ResultDetail?
     private var selectedResultID: String?
@@ -43,7 +46,9 @@ final class AppController {
     static let onboardedKey = "madi.onboarded"
 
     // MARK: 엔진 쪽 상태
-    private var snapshot: LibrarySnapshot?
+    /// 가장 최근 스냅숏 — 새 스냅숏과 진행률 칠하기가 서로 덮지 않게 상자 하나로만 바꾼다 (`SnapshotBox`).
+    @ObservationIgnored private let box = SnapshotBox()
+    private var snapshot: LibrarySnapshot? { box.current }
     private var openShotID: String?
     private var viewingVersionID: String?
     private var ai: AIConnection = .none
@@ -77,36 +82,30 @@ final class AppController {
 
     private func receive(_ snap: LibrarySnapshot) async {
         var s = snap
-        s.attach(thumbnails: thumbnails, progress: await pipeline.progress.snapshot(),
-                 importProgress: await pipeline.importProgress.snapshot())
-        s.analysisProgress = await pipeline.analysisProgress.snapshot()
-        s.cooling = LoadGovernor.shared.isCooling
-        snapshot = s
+        s.attach(thumbnails: thumbnails, progress: [:])
+        await box.receive(s) { await self.readProgress() }
         recompute()
         startProgressTicker()
     }
 
+    /// 메모리 게시판의 진행률 — 만드는 중 · 원본 받기 · 분석 · 맥 식히는 중.
+    private func readProgress() async -> ProgressReading {
+        ProgressReading(render: await pipeline.progress.snapshot(), imports: await pipeline.importProgress.snapshot(),
+                        analysis: await pipeline.analysisProgress.snapshot(), cooling: LoadGovernor.shared.isCooling)
+    }
+
     /// 진행률은 DB 가 아니라 메모리 게시판에 있어서, DB 가 안 바뀌면 화면이 따라오지 않는다 (퍼센트가 멈춰 보였다).
-    /// 작업이 도는 동안만 0.5초마다 게시판을 다시 읽는다. 작업이 끝나면 멈춘다.
+    /// 작업이 도는 동안만 0.5초마다 게시판을 다시 읽는다. 작업이 끝나면 멈춘다 — 끝났는지는 **가장 최근** 스냅숏으로 본다.
     @ObservationIgnored private var progressTicker: Task<Void, Never>?
 
     private func startProgressTicker() {
-        guard progressTicker == nil, let s = snapshot,
-              s.jobs.contains(where: { $0.state == .queued || $0.state == .running }) || !s.importProgress.isEmpty
-        else { return }
+        guard progressTicker == nil, box.isBusy else { return }
         progressTicker = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(500))
-                guard let self, var s = self.snapshot else { return }
-                let busy = s.jobs.contains { $0.state == .queued || $0.state == .running }
-                s.setProgress(render: await self.pipeline.progress.snapshot(),
-                              import: await self.pipeline.importProgress.snapshot(),
-                              analysis: await self.pipeline.analysisProgress.snapshot())
-                s.now = Date()
-                s.cooling = LoadGovernor.shared.isCooling
-                self.snapshot = s
+                guard let self, await self.box.refresh(reading: { await self.readProgress() }) else { return }
                 self.recompute()
-                if !busy && s.importProgress.isEmpty { self.progressTicker = nil; return }
+                if !self.box.isBusy { self.progressTicker = nil; return }
             }
         }
     }
@@ -157,7 +156,8 @@ final class AppController {
 
     private func recompute() {
         let appSettings = AppSettings()
-        studio = ViewDataMapper.studio(snapshot ?? LibrarySnapshot(), studioName: appSettings.studioName, ai: ai, preparing: prep)
+        studio = ViewDataMapper.studio(snapshot ?? LibrarySnapshot(), studioName: appSettings.studioName, ai: ai, preparing: prep,
+                                       photos: photos)
         settings = SettingsValues(
             ai: setup(for: ai), activeAI: ai, studioName: appSettings.studioName, keepDays: appSettings.keepDays,
             albumName: UserDefaults.standard.string(forKey: PhotoLibraryWatcher.albumNameKey),
@@ -228,8 +228,17 @@ final class AppController {
             // 정보 칸에서 그 자리에서 튼다 (QuickTime 을 열지 않는다)
             NotificationCenter.default.post(name: .madiShotPlay, object: nil, userInfo: ["id": id])
         case .revealInPhotos(let id):
-            if let path = snapshot?.videos.first(where: { $0.id == id })?.localPath {
-                NSWorkspace.shared.open(URL(fileURLWithPath: path))
+            // 전에는 앱 사본 파일을 기본 앱으로 열어 사진 앱 대신 QuickTime 이 떴다 (2026-09-30 실제 앱).
+            // 폴더로 들어온 것은 사진 앱에 없다 — 원본 파일을 Finder 에서 고른 채로 보여 준다 (메뉴도 "Finder에서 보기").
+            // 사진 보관함에서 온 것은 사진 앱을 앞으로 (그 항목을 골라 여는 공개 방법은 없다)
+            guard let video = snapshot?.videos.first(where: { $0.id == id }) else { return }
+            if video.source == .folder {
+                let original = URL(fileURLWithPath: video.sourceRef)
+                if FileManager.default.fileExists(atPath: original.path) {
+                    NSWorkspace.shared.activateFileViewerSelecting([original])
+                } else {
+                    NSWorkspace.shared.open(MadiPipeline.inbox)
+                }
             } else {
                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Photos.app"))
             }
@@ -246,13 +255,23 @@ final class AppController {
             for url in panel.urls { try? FileManager.default.copyItem(at: url, to: MadiPipeline.inbox.appending(path: url.lastPathComponent)) }
         case .openSystemSettings:
             Self.openPhotosPrivacy()
+        case .allowPhotos:
+            await allowPhotos()
         case .hide(let id):
             try await db.writer.write { db in
                 try db.execute(sql: "UPDATE video SET hiddenAt = ? WHERE id = ?", arguments: [Date(), id])
             }
+            galleryNotice = Copy.Gallery.Hidden.notice
         case .delete(let id):
-            // 마디에서 삭제 — DB 부터 지우고(편집안 · 결과물 · 분석 · 채팅), 파일은 그다음. 사진 앱 원본은 그대로다.
+            // 마디에서 삭제 — 도는 작업부터 멈추고(분석 · AI 턴 — 전에는 지운 영상의 AI 턴이 끝까지 돌았다),
+            // DB 를 지우고(편집안 · 결과물 · 분석 · 채팅), 파일은 그다음. 사진 앱 원본은 그대로다.
             let video = snapshot?.videos.first { $0.id == id }
+            if let s = snapshot {
+                var targets: Set<String> = [id]
+                targets.formUnion(s.compositions(of: id).map(\.id))
+                targets.formUnion(s.chats.filter { $0.videoId == id }.map(\.id))
+                try await queue.cancel(targetIds: targets)
+            }
             let files = try db.deleteVideo(id, analysisRoot: AnalyzeJob.defaultRoot)
             for url in files { try? FileManager.default.removeItem(at: url) }
             // 폴더로 들어온 영상은 입구 폴더의 파일을 휴지통으로 (되살릴 수 있게). 입구 밖 파일은 건드리지 않는다
@@ -265,6 +284,7 @@ final class AppController {
             if openShotID == id { openShotID = nil; viewingVersionID = nil }
             try? db.log("video.deleted", subject: id, payload: ["files": .number(Double(files.count))])
         case .undoHide:
+            galleryNotice = nil
             // 가장 최근에 숨긴 것을 되살린다
             try await db.writer.write { db in
                 try db.execute(sql: """
@@ -281,8 +301,9 @@ final class AppController {
         guard let s = snapshot, s.liveJobs(of: videoID).isEmpty else { return }
         let versions = s.visibleVersions(of: videoID)
         if let newest = versions.last {
-            let hasOutput = s.outputs.contains { s.versionRoot(of: $0.compositionId)?.id != nil && s.compositions(of: videoID).map(\.id).contains($0.compositionId) }
-            if !hasOutput { try await queue.enqueue(.render, targetId: newest.id) }
+            // 휴지통으로 보낸 결과물도 "있었던 것" 이다 — 사람이 버린 것을 열자마자 몰래 다시 만들지 않는다
+            // (2026-09-30 실제 앱: 결과물을 다 버린 촬영본을 열자 렌더가 걸려 버린 결과물이 되살아났다)
+            if try !db.hasEverMadeOutput(videoID: videoID) { try await queue.enqueue(.render, targetId: newest.id) }
             return
         }
         let hasDigest = try await db.writer.read { try DigestRecord.fetchOne($0, key: videoID) } != nil
@@ -364,6 +385,11 @@ final class AppController {
         let style = try StyleStore.load(comp.style).values.caption
         let edited = try SceneEdits.apply(e, to: comp, newID: "edit_\(rec.videoId)_\(UUID().uuidString.prefix(8))",
                                           words: words, style: style, sourceDuration: duration)
+        // 장면 그림은 렌더할 때만 뽑아서, 사람이 고친 판(아직 안 만든 판)은 카드 · 미리보기가 전부 빈 칸이었다 (2026-09-30).
+        // 저장 **전에** 원본에서 뽑는다 — 저장이 화면을 다시 그릴 때 그림 파일이 이미 있어야 한다
+        if let path = snapshot?.videos.first(where: { $0.id == rec.videoId })?.localPath {
+            try? await thumbnails.makeScenes(edited, sources: [rec.videoId: URL(fileURLWithPath: path)])
+        }
         try db.saveComposition(edited, origin: .chat)
         viewingVersionID = edited.id
     }
@@ -436,27 +462,7 @@ final class AppController {
     private func results(_ a: UIAction.Results, _ db: AppDatabase) async throws {
         switch a {
         case .export(let id, let target):
-            do {
-                if target.title == Copy.Results.Export.photos {
-                    try await Exporter.toPhotos(db, outputID: id)
-                } else if target.title == Copy.Results.Export.files {
-                    let panel = NSOpenPanel()
-                    panel.canChooseDirectories = true
-                    panel.canChooseFiles = false
-                    guard panel.runModal() == .OK, let folder = panel.url else { return }
-                    let name = snapshot.flatMap { s in s.outputs.first { $0.id == id }.flatMap { o in
-                        s.compositions.first { $0.id == o.compositionId }.flatMap { try? $0.composition().meta.title } } } ?? ""
-                    try await Exporter.toFolder(db, outputID: id, folder: folder, name: name)
-                } else if let path = snapshot?.outputs.first(where: { $0.id == id })?.path {
-                    NSSharingService(named: .sendViaAirDrop)?.perform(withItems: [URL(fileURLWithPath: path)])
-                }
-                resultsNotice = nil
-            } catch {
-                resultsNotice = ScreenNotice(
-                    message: Copy.Results.Export.failed(target.title) + " " + Copy.Results.Export.failedReason,
-                    actions: [ChatChoice(title: Copy.Results.Export.retry, isPrimary: true), ChatChoice(title: Copy.Results.Export.saveToMac)]
-                )
-            }
+            await export(id, to: target, db)
         case .trash(let id):
             try await Exporter.trash(db, outputID: id)
         case .openPlan(let id):
@@ -465,14 +471,55 @@ final class AppController {
             openShotID = rec.videoId
             viewingVersionID = s.versionRoot(of: rec.id)?.id
             try await Exporter.markSeen(db, outputID: id)
-        case .dismissNotice, .noticeChoice:
+        case .noticeChoice(let choice):
+            // 실패 안내의 버튼 — 누르면 그 일을 한다 (전에는 안내만 닫았다)
             resultsNotice = nil
+            guard let failed = failedExport else { return }
+            failedExport = nil
+            if let target = ViewDataMapper.exportRetry(choice, failed: failed.target, targets: exportTargets) {
+                await export(failed.id, to: target, db)
+            }
+        case .dismissNotice:
+            resultsNotice = nil
+            failedExport = nil
         case .showShots:
             break
         case .select(let id):
             // ⑧ 고른 결과물 — 이전 판과 나란히 (resultDetail). 고른 것은 "봤다"
             selectedResultID = id
             if let id { try await Exporter.markSeen(db, outputID: id) }
+        }
+    }
+
+    /// 막힌 내보내기 — 실패 안내의 "다시 내보내기" · "Mac에 저장" 이 이어서 한다.
+    private var failedExport: (id: String, target: ExportTarget)?
+
+    private func export(_ id: String, to target: ExportTarget, _ db: AppDatabase) async {
+        do {
+            // 결과물 이름 — "스튜디오 · 제목" (첫 실행 · 설정이 이렇게 저장된다고 말한다)
+            let title = snapshot.flatMap { s in s.outputs.first { $0.id == id }.flatMap { o in
+                s.compositions.first { $0.id == o.compositionId }.flatMap { try? $0.composition().meta.title } } } ?? ""
+            let studio = AppSettings().studioName
+            let name = Exporter.fileName(studio: studio.isEmpty ? Copy.Onboarding.Studio.defaultName : studio, title: title)
+            if target.title == Copy.Results.Export.photos {
+                try await Exporter.toPhotos(db, outputID: id, name: name)
+            } else if target.title == Copy.Results.Export.files {
+                // macOS 의 저장 창 — 이름과 자리를 고르고 "저장". 전에는 폴더 고르는 "열기" 창이라 무엇을 하는지 알 수 없었다
+                let panel = NSSavePanel()
+                panel.nameFieldStringValue = "\(name).mp4"
+                panel.allowedContentTypes = [.mpeg4Movie]
+                panel.canCreateDirectories = true
+                panel.message = Copy.Results.Export.saveMessage
+                guard panel.runModal() == .OK, let url = panel.url else { return }
+                try await Exporter.toFile(db, outputID: id, url: url)
+            } else if let path = snapshot?.outputs.first(where: { $0.id == id })?.path {
+                NSSharingService(named: .sendViaAirDrop)?.perform(withItems: [URL(fileURLWithPath: path)])
+            }
+            resultsNotice = nil
+            failedExport = nil
+        } catch {
+            failedExport = (id, target)
+            resultsNotice = ViewDataMapper.exportFailed(target)
         }
     }
 
@@ -577,6 +624,7 @@ final class AppController {
         case .studioName(let name): AppSettings().studioName = name
         case .keepDays(let days): AppSettings().keepDays = days
         case .openSystemSettings: Self.openPhotosPrivacy()
+        case .allowPhotos: await allowPhotos()
         case .pickAlbum:
             pickAlbum()
         case .look(let change):
@@ -776,6 +824,12 @@ final class AppController {
             // 설치 안 된 글꼴 등 — 저장하지 않는다 (조용히 대체하지 않는다, §9)
             MadiPipeline.log.error("자막 모양 저장 실패: \(String(describing: error), privacy: .public)")
         }
+    }
+
+    /// 사진 접근 켜기 — 아직 안 물었으면 권한 창, 거절했으면 시스템 설정 (묻지 않은 앱은 시스템 설정 목록에 없다).
+    private func allowPhotos() async {
+        if Self.photoAccess() == .notAsked { _ = await pipeline.startPhotos() } else { Self.openPhotosPrivacy() }
+        photos = Self.photoAccess()
     }
 
     static func openPhotosPrivacy() {

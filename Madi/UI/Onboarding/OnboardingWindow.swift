@@ -18,7 +18,7 @@ struct OnboardingWindow: View {
     var body: some View {
         VStack(spacing: 0) {
             if state.step == .ready {
-                ReadyStep(isSlowMac: state.isSlowMac) { onAction(.start) }
+                ReadyStep(photos: state.photos, isSlowMac: state.isSlowMac) { onAction(.start) }
             } else {
                 header
                 Divider().opacity(0)
@@ -355,6 +355,8 @@ private struct StudioStep: View {
 // MARK: - 준비됐어요
 
 private struct ReadyStep: View {
+    /// 사진 접근을 건너뛰었으면 "저절로 들어와요" 라고 약속하지 않는다.
+    var photos: PhotoAccess = .granted
     /// Intel Mac 이면 한 줄 더. 조용히 느려지게 두지 않는다 (`§17`).
     var isSlowMac: Bool = false
     var onStart: () -> Void
@@ -367,14 +369,16 @@ private struct ReadyStep: View {
                 .foregroundStyle(Tokens.Palette.ok)
             Text(Copy.Onboarding.Ready.title)
                 .font(.title.weight(.semibold))
-            Text(Copy.Onboarding.Ready.message)
+            Text(photos == .granted ? Copy.Onboarding.Ready.message : Copy.Onboarding.Ready.messageNoPhotos)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
-            // 예전 영상은 안 들어온다. 첫 화면이 비어 있을 때 "왜 없지" 가 되지 않게 먼저 말한다.
-            Text(Copy.Photos.importFromPhotosSince)
-                .font(.callout)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+            if photos == .granted {
+                // 예전 영상은 안 들어온다. 첫 화면이 비어 있을 때 "왜 없지" 가 되지 않게 먼저 말한다.
+                Text(Copy.Photos.importFromPhotosSince)
+                    .font(.callout)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+            }
             if isSlowMac {
                 // 솔직하게. 결과물은 같고 시간만 더 걸린다 (§17).
                 Label {

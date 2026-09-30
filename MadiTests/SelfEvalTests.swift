@@ -66,7 +66,8 @@ struct SelfEvalTests {
 
         let box = Box()
         let counter = Counter()
-        // 가짜 AI: 첫 초안은 첫 말이 0.9초(G8 실패), 되먹임 턴은 0.1초로 고친다.
+        // 가짜 AI: 첫 초안은 첫 장면이 훅이 아니다(G8 실패), 되먹임 턴은 훅으로 고친다.
+        // (전에는 첫 말 0.9초로 실패시켰는데, G8 이 크리에이터 실측 2.0초로 바뀌어 통과한다 — 2초짜리 시험 영상에서는 2초 넘게 늦출 수 없다)
         let turn: AgentJob.Turn = { _, request in
             AsyncThrowingStream { c in
                 let args = request.mcp.arguments
@@ -75,7 +76,7 @@ struct SelfEvalTests {
                 box.prompts.append(request.prompt)
                 if let i = args.firstIndex(of: "--feedback-sheet") { box.sheets.append(args[i + 1]) }
                 do {
-                    try db.saveComposition(self.comp(id, captionAt: rev == nil ? 0.9 : 0.1, revisionOf: rev),
+                    try db.saveComposition(self.comp(id, firstScene: rev == nil ? .demo : .hook, captionAt: 0.1, revisionOf: rev),
                                            origin: rev == nil ? .draft : .selfEval)
                 } catch { c.finish(throwing: error); return }
                 c.yield(.finished(AgentOutcome(isError: false)))

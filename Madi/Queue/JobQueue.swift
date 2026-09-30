@@ -13,6 +13,8 @@ public actor JobQueue {
     private let db: AppDatabase
     private let handlers: [JobRecord.Kind: Handler]
     private var busy: Set<JobRecord.Kind> = []
+    /// 도는 작업 — 멈추기(■) · 촬영본 삭제가 대상 id 로 찾아 취소한다.
+    private var running: [Int64: (targetId: String, task: Task<Void, Never>)] = [:]
     private var idleWaiters: [CheckedContinuation<Void, Never>] = []
     /// 이 Mac 이 지금 무거운 일을 얼마나 받을 수 있나 (`LoadGovernor`). 없으면 언제나 `full` — 테스트 기본값.
     private let loadLevel: @Sendable () -> LoadLevel
@@ -59,10 +61,16 @@ public actor JobQueue {
         return job
     }
 
-    /// 줄 선 작업을 멈춘다 ("멈추기"). **이미 도는 작업은 끝까지 간다** — 도중에 끊는 길은 아직 없다.
-    /// 멈춘 작업은 `failed` + 이유 "멈춤" 으로 남는다 (자동으로 다시 하지 않는다).
+    /// 대상의 작업을 멈춘다 ("멈추기" · 촬영본 삭제). 줄 선 작업은 바로, **도는 작업은 취소를 보내** 끊는다 —
+    /// 분석은 프레임마다, AI 턴은 CLI 를 바로 끝내서 멈춘다 (전에는 도는 작업이 끝까지 갔다 — 2026-09-30 실제 앱에서
+    /// ■ 를 눌러도 codex 가 끝까지 돌았다). 멈춘 작업은 `failed` + 이유 "멈춤" 으로 남는다 (자동으로 다시 하지 않는다).
     @discardableResult
     public func cancel(targetIds: Set<String>) throws -> Int {
+        var stopping = 0
+        for (_, r) in running where targetIds.contains(r.targetId) {
+            r.task.cancel()
+            stopping += 1
+        }
         guard !targetIds.isEmpty else { return 0 }
         let ids = Array(targetIds)
         let n = try db.writer.write { db -> Int in
@@ -72,9 +80,9 @@ public actor JobQueue {
                 """, arguments: StatementArguments([Date()] + ids)!)
             return db.changesCount
         }
-        if n > 0 { try? db.log("job.cancelled", payload: ["count": .number(Double(n))]) }
+        if n + stopping > 0 { try? db.log("job.cancelled", payload: ["count": .number(Double(n + stopping))]) }
         pump()
-        return n
+        return n + stopping
     }
 
     /// 실패한 작업을 다시 줄 세운다.
@@ -115,7 +123,8 @@ public actor JobQueue {
             busy.insert(kind)
             // 사람이 기다리는 일이다 — 우선순위를 명시한다. 물려받으면 부른 쪽(폴더 · 사진 감시)의 낮은 우선순위로
             // 효율 코어에 밀릴 수 있다
-            Task(priority: .userInitiated) { await self.run(job) }
+            let task = Task(priority: .userInitiated) { await self.run(job) }
+            if let id = job.id { running[id] = (job.targetId, task) }
         }
         // 미뤄 둔 무거운 일 — 식었는지 조금 뒤에 다시 본다 (끝난 일이 없어도)
         if heldBack, !recheckScheduled {
@@ -162,24 +171,31 @@ public actor JobQueue {
         let started = Date()
         var failure: String?
         if let handler = handlers[job.kind] {
-            do { try await handler(job) } catch { failure = "\(error)" }
+            // 멈춰서 끝난 것은 이유를 "멈춤" 으로 — 화면은 이걸 실패가 아니라 사람이 멈춘 것으로 본다
+            do { try await handler(job) } catch { failure = Task.isCancelled ? "멈춤" : "\(error)" }
         } else {
             failure = "\(job.kind.rawValue) 작업을 처리할 곳이 없다"
         }
         let seconds = Date().timeIntervalSince(started)
-        let failed = failure
-        try? await db.writer.write { db in
-            var done = job
-            done.state = failed == nil ? .done : .failed
-            done.error = failed
-            done.finishedAt = Date()
-            try done.update(db)
-        }
+        record(job, failure: failure)
         try? db.log(
             failure == nil ? "job.done" : "job.failed", subject: job.targetId,
             payload: ["kind": .string(job.kind.rawValue), "seconds": .number(seconds)]
         )
+        if let id = job.id { running[id] = nil }
         busy.remove(job.kind)
         pump()
+    }
+
+    /// 끝난 작업을 적는다 — **동기 쓰기.** 멈춘(취소된) 작업 안에서 `await` 쓰기는 GRDB 가 CancellationError 로
+    /// 거절해, 작업이 DB 에 영영 `running` 으로 남았다.
+    private func record(_ job: JobRecord, failure: String?) {
+        try? db.writer.write { db in
+            var done = job
+            done.state = failure == nil ? .done : .failed
+            done.error = failure
+            done.finishedAt = Date()
+            try done.update(db)
+        }
     }
 }

@@ -100,7 +100,8 @@ private struct GeneralSettings: View {
                         }
                     } label: {
                         Text(name(ai))
-                        Text(account)
+                        // 계정을 모르면 줄을 두지 않는다 — 빈 둘째 줄 때문에 이 줄만 키가 커져 글이 위로 붙었다
+                        if !account.isEmpty { Text(account) }
                     }
                 case .notLoggedIn(let product):
                     // 설치는 돼 있다. 연결하기가 아니라 로그인하기다.
@@ -176,7 +177,17 @@ private struct GeneralSettings: View {
                         .foregroundStyle(Tokens.Palette.ok)
                         .labelStyle(.titleAndIcon)
                         .font(.callout)
-                default:
+                case .notAsked:
+                    // 아직 묻지 않았다 — 여기서 권한 창을 띄운다. 묻지 않은 앱은 시스템 설정 목록에 없어서
+                    // 전에 있던 "시스템 설정 열기" 로는 켤 곳이 없었다 (2026-09-30)
+                    HStack(spacing: Tokens.Space.inner) {
+                        Text(Copy.Settings.Shots.photoAccessNotAsked)
+                            .foregroundStyle(.secondary)
+                        Button(Copy.Onboarding.Photos.allow) {
+                            onAction(.allowPhotos)
+                        }
+                    }
+                case .denied:
                     HStack(spacing: Tokens.Space.inner) {
                         Text(Copy.Settings.Shots.photoAccessOff)
                             .foregroundStyle(.secondary)

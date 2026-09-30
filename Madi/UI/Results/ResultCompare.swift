@@ -65,7 +65,7 @@ struct ResultCompare: View {
 
                 Button(showsPrevious ? Copy.Results.Compare.playBoth : Copy.Results.Compare.play,
                        systemImage: "play.fill",
-                       action: { players.playAllFromStart(); onPlay() })
+                       action: { players.playFromStart(visibleURLs, soundFrom: detail.current.fileURL); onPlay() })
                 .controlSize(.small)
 
                 changes
@@ -75,6 +75,11 @@ struct ResultCompare: View {
     }
 
     private var showsPrevious: Bool { mode == .sideBySide && detail.previous != nil }
+
+    /// 지금 화면에 있는 영상 — "하나만" 이면 지금 판만. 재생 버튼은 이것만 튼다.
+    private var visibleURLs: [URL] {
+        [showsPrevious ? detail.previous?.fileURL : nil, detail.current.fileURL].compactMap { $0 }
+    }
 
     private func pane(
         _ result: ResultRef, label: String, isCurrent: Bool, height: CGFloat

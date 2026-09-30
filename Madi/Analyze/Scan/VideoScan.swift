@@ -106,6 +106,8 @@ public enum VideoScan {
                 }
                 // 맥이 뜨거우면 쉬어 가고, 위험하면 식을 때까지 기다린다 (LoadGovernor). 보통이면 바로 돌아온다
                 await pace(Date().timeIntervalSince(started))
+                // 멈추기(■) · 촬영본 삭제 — 프레임마다 본다. 안 보면 긴 영상은 몇 분을 더 읽고서야 멈췄다
+                try Task.checkCancellation()
             }
             guard reader.status == .failed else { break }
             restarts += 1

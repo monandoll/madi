@@ -62,7 +62,8 @@ private struct MainWindow: View {
             exportTargets: controller.exportTargets,
             resultsNotice: controller.resultsNotice,
             making: controller.making,
-            onAction: controller.handle
+            onAction: controller.handle,
+            galleryNotice: controller.galleryNotice
         )
         .task {
             if controller.showsOnboarding { openWindow(id: "onboarding") }

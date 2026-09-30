@@ -190,6 +190,22 @@ struct AgentTests {
         #expect(outcome.message?.contains("끝나지 않아") == true)
     }
 
+    @Test("취소하면 말없이 생각 중인 CLI 도 바로 끝낸다 — 멈추기(■) · 촬영본 삭제")
+    func cancelKillsSilentCLI() async throws {
+        let dir = try tempDir()
+        let url = dir.appending(path: "thinking-cli")
+        try "#!/bin/sh\ncat > /dev/null\nexec sleep 30\n".write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+        let runner = AgentRunner(executable: url, provider: ClaudeAgent())
+        let req = request(dir.appending(path: "work"))
+        let started = Date()
+        let task = Task { try? await collect(runner, req) }
+        try await Task.sleep(for: .milliseconds(400))
+        task.cancel()
+        _ = await task.value
+        #expect(Date().timeIntervalSince(started) < 5)     // 30초를 다 기다리지 않는다
+    }
+
     @Test("Claude 로그인 상태 JSON")
     func claudeLogin() {
         #expect(CLILocator.claudeLoggedIn(#"{"loggedIn": true, "authMethod": "claude.ai"}"#))
