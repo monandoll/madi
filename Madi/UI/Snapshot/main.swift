@@ -75,6 +75,10 @@ let shots: [Shot] = [
     Shot("gallery-no-access") {
         RootView(studio: SampleData.studioEmpty, gallery: .noPhotoAccess)
     },
+    // 사진 앱을 아직 연결하지 않았다 — 연결이 먼저 (viewdata-map ㉘)
+    Shot("gallery-connect-photos") {
+        RootView(studio: SampleData.studioEmpty, gallery: .connectPhotos)
+    },
     Shot("gallery-no-results") {
         RootView(
             studio: SampleData.studio,

@@ -33,7 +33,14 @@ enum ViewDataMapper {
         // 숨긴 촬영본은 목록에서만 뺀다 (사진 앱 원본 · 결과물은 그대로)
         var s = s
         s.videos = s.videos.filter { $0.hiddenAt == nil && $0.deletedAt == nil }
-        if s.videos.isEmpty { return photos == .denied ? .noPhotoAccess : .empty }
+        // 비었을 때 — 사진 앱 연결에 따라 말이 다르다. 연결 전에는 "자동으로 들어와요" 라고 하지 않는다 (㉘)
+        if s.videos.isEmpty {
+            switch photos {
+            case .granted: return .empty
+            case .denied: return .noPhotoAccess
+            case .notAsked: return .connectPhotos
+            }
+        }
         let groups = shotGroups(s)
         let importing = s.videos.filter { $0.status == .importing }.count
         if importing > 0 {

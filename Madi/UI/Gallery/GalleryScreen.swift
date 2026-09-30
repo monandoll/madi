@@ -89,6 +89,17 @@ struct GalleryScreen: View {
             } actions: {
                 Button(Copy.Gallery.Empty.addFromMac) { onAction(.addFromMac) }
             }
+        case .connectPhotos:
+            // 아직 연결 전 — 연결이 먼저다. 연결하기(권한 창)가 주 버튼, Mac 영상 넣기는 다른 길
+            ContentUnavailableView {
+                Label(Copy.Gallery.Connect.title, systemImage: "iphone.gen3")
+            } description: {
+                Text(Copy.Gallery.Connect.message)
+            } actions: {
+                Button(Copy.Gallery.Connect.action) { onAction(.allowPhotos) }
+                    .buttonStyle(.borderedProminent)
+                Button(Copy.Gallery.Empty.addFromMac) { onAction(.addFromMac) }
+            }
         case .noPhotoAccess:
             ContentUnavailableView {
                 Label(Copy.Gallery.NoAccess.title, systemImage: "photo.on.rectangle")

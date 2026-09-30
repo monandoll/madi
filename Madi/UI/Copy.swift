@@ -97,6 +97,15 @@ public enum Copy {
             public static let addFromMac = "Mac에 있는 영상 넣기…"
         }
 
+        /// 사진 앱을 아직 연결하지 않았을 때의 빈 화면 (㉘). 연결이 먼저다 — 연결되면 그때부터 저절로 들어온다.
+        public enum Connect {
+            public static let title = "사진 앱을 연결하면 아이폰 영상이 저절로 들어와요"
+            public static let message =
+                "아이폰과 이 Mac에서 iCloud 사진이 켜져 있으면, 찍은 영상이 1~2분 안에 여기 나타나요.\n"
+                + "영상만 읽고, 이 Mac 밖으로 보내지 않아요."
+            public static let action = "사진 앱 연결하기"
+        }
+
         public enum Importing {
             public static let title = "가져오는 중…"
             public static func progress(done: Int, total: Int) -> String {

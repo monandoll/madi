@@ -151,6 +151,9 @@ public enum GalleryState: Hashable, Sendable {
     case loaded([ShotGroup])
     /// 사진 보관함을 못 읽는 상태. 오류창을 띄우지 않고 화면 안에서 다음 행동을 준다.
     case noPhotoAccess
+    /// 사진 앱을 **아직 연결하지 않았다** (권한을 묻지 않음). 먼저 연결하라고 말한다 — 연결 전에는
+    /// "찍으면 자동으로 들어와요" 라고 약속하지 않는다 (2026-10-01 사용자 지적, viewdata-map ㉘).
+    case connectPhotos
 
     public var groups: [ShotGroup] {
         switch self {

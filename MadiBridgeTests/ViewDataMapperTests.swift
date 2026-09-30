@@ -45,6 +45,8 @@ struct ViewDataMapperTests {
     func galleryStates() {
         #expect(ViewDataMapper.gallery(LibrarySnapshot(now: now), photos: .granted) == .empty)
         #expect(ViewDataMapper.gallery(LibrarySnapshot(now: now), photos: .denied) == .noPhotoAccess)
+        // 아직 연결 전이면 "찍으면 자동으로 들어와요" 가 아니라 먼저 연결하라고 한다
+        #expect(ViewDataMapper.gallery(LibrarySnapshot(now: now), photos: .notAsked) == .connectPhotos)
         let s = LibrarySnapshot(videos: [video("a", at: now), video("b", at: now, status: .importing)], now: now)
         guard case .importing(let done, let total, _) = ViewDataMapper.gallery(s, photos: .granted) else { Issue.record("importing 아님"); return }
         #expect(done == 1 && total == 2)
