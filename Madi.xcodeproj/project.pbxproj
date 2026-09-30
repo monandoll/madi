@@ -315,6 +315,7 @@
 		409E7371C9108F4322587DF0 /* MadiKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MadiKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4128CE6E4AFED6AD5491C264 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		4181A1F305068579BF9A5C22 /* CaptionGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionGateTests.swift; sourceTree = "<group>"; };
+		4282B1CE570F3E82FA923EC9 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		444F3E850EBEC7F3B7079326 /* JobQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobQueue.swift; sourceTree = "<group>"; };
 		445E24C845CB9F13A235589E /* Composition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composition.swift; sourceTree = "<group>"; };
 		447D4CB078F15F112C14D69A /* StoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreTests.swift; sourceTree = "<group>"; };
@@ -510,6 +511,7 @@
 				C16C3D47D05461E4318E33B0 /* Madi.entitlements */,
 				1E9DC392FB5C0C3CFF7817F9 /* MadiApp.swift */,
 				7F15A9316F358BEB41DF37AF /* Pipeline.swift */,
+				4282B1CE570F3E82FA923EC9 /* Signing.xcconfig */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -1476,6 +1478,7 @@
 		};
 		1539EED331AC8D1284CDB14C /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4282B1CE570F3E82FA923EC9 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

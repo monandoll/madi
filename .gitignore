@@ -45,3 +45,6 @@ Madi.xcodeproj/project.xcworkspace/xcuserdata/
 
 # 세션 기록. 레포에 둘 이유가 없다
 .claude/prompt-log/
+
+# 이 맥 전용 개발 서명 (Madi/App/Signing.xcconfig 설명)
+Signing.local.xcconfig

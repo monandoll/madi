@@ -129,8 +129,15 @@ targets:
         # 앱 언어는 한국어 하나다. 없으면 macOS 가 기본 메뉴(정보 · 설정… · 가리기 · 종료 · 편집)와 툴바 설명을
         # 영어로 붙인다 (2026-09-30 실제 앱 메뉴 "About Madi · Settings… · Quit Madi")
         CFBundleLocalizations: [ko]
+    # 개발(Debug) 빌드 서명 — 기본은 임시 서명(ad hoc)이다 (CI · 인증서 없는 맥에서도 빌드된다).
+    # 임시 서명은 빌드할 때마다 macOS 가 다른 앱으로 봐서 **사진 권한이 매번 풀렸다** (2026-10-01).
+    # 개발 인증서가 있는 맥은 `Madi/App/Signing.local.xcconfig`(커밋하지 않는다)에 인증서를 적으면 권한이 유지된다 — 쓰는 법은 Signing.xcconfig.
+    configFiles:
+      Debug: Madi/App/Signing.xcconfig
     sources:
       - path: Madi/App
+        excludes:
+          - "*.xcconfig"
       # 디자인 AI 가 만드는 화면 (docs/prompts/design-ai.md). 아직 앱 창에 붙지 않았고
       # `#Preview` 로만 본다. 붙이는 것은 6단계다.
       # `UI/Snapshot` 은 스크린샷 CLI 의 `main.swift` 라 앱 타깃에 들어가면 안 된다.

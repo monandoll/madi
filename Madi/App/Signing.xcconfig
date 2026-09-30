@@ -1,0 +1,18 @@
+// 개발(Debug) 빌드 서명 — 앱 타깃에만 걸린다 (project.yml `configFiles`).
+//
+// 기본은 프로젝트 설정 그대로 임시 서명(ad hoc, CODE_SIGN_IDENTITY = -)이다. CI 와 인증서 없는 맥은 이대로 빌드된다.
+// 임시 서명은 빌드할 때마다 서명이 달라져 macOS 가 **다른 앱으로 보고 사진 권한을 매번 새로 묻는다** —
+// 개발 맥에서 다시 빌드할 때마다 "사진 앱과 연결 안 됨" 이 됐다 (2026-10-01).
+//
+// 개발 인증서가 있는 맥에서는 이 파일 옆에 `Signing.local.xcconfig` 를 만들어 적는다 (.gitignore — 커밋하지 않는다):
+//
+//     CODE_SIGN_IDENTITY = Apple Development
+//     DEVELOPMENT_TEAM = <팀 ID>
+//     CODE_SIGN_STYLE = Manual
+//     CODE_SIGNING_REQUIRED = YES
+//     CODE_SIGNING_ALLOWED = YES
+//
+// 그러면 서명이 "같은 팀의 같은 앱" 으로 고정돼 다시 빌드해도 권한이 유지된다.
+// 배포 빌드는 상관없다 — scripts/release.sh 가 Developer ID 로 다시 서명한다.
+
+#include? "Signing.local.xcconfig"
