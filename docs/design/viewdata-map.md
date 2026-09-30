@@ -462,3 +462,11 @@ case .openSettings
 - **첫 실행 마지막 화면** — 사진 접근을 건너뛰어도 "아이폰으로 찍은 촬영본이 자동으로 들어와요" 라고 약속했다.
   이제 허용하지 않았으면 `Copy.Onboarding.Ready.messageNoPhotos` ("…저절로 들어오지는 않아요. ‘Mac에 있는 영상 넣기’로 넣거나…")
 - 새 문구 키: `Gallery.Status.photosOff` · `connectPhotos`, `Settings.Shots.photoAccessNotAsked`, `Onboarding.Ready.messageNoPhotos`
+
+## ㉔ 대화 — AI 가 고치는 동안 멈추기 · 막히면 다시 보내기 (2026-09-30 버그 잡기 두 번째 훑기 · 개발이 고침)
+
+- AI 가 채팅 요청을 고치는 동안 입력칸이 열려 있고 **멈추기(■)가 없었다** — `PlanScreen.isBusy` 가 판 상태(짜는 중 · 만드는 중)만 봤다.
+  채팅 턴 동안 판은 "준비됨" 이다. 이제 대화에 `typing` 이 있으면 바쁨 — 입력칸 자리에 "답변이 끝나면 이어서 요청할 수 있어요" + ■
+  (■ 는 `.plan(.stop)`, 그 촬영본의 채팅 작업까지 멈춘다)
+- 수정 턴이 막히거나 멈추면 쓴 말이 "보내지 못했어요 · 다시 보내기" 로 남는다 (바꾸는 층 `Chat.chatFailed`).
+  전에는 AI 알림이 "다시 보내 주세요" 라면서 누를 곳이 없었다

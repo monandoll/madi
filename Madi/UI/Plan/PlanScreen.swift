@@ -308,11 +308,12 @@ struct PlanScreen: View {
         }
     }
 
-    /// 짜는 중 · 만드는 중에는 요청을 받지 않는다.
+    /// 짜는 중 · 만드는 중 · **AI 가 채팅 요청을 고치는 중**에는 요청을 받지 않고 멈추기(■)를 준다.
+    /// 전에는 채팅 턴 동안 입력칸이 열려 있고 멈출 길이 없었다 — 판 상태는 "준비됨" 이라서 (2026-09-30).
     private var isBusy: Bool {
         switch state {
-        case .preparing, .making: true
-        default: false
+        case .preparing, .making: return true
+        default: return messages.contains { if case .typing = $0.kind { true } else { false } }
         }
     }
 
