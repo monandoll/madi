@@ -847,11 +847,16 @@ public enum Copy {
 
     // MARK: - 상태 문구
 
-    /// 촬영본에서 말소리가 얼마나 잡혔는지. "오디오 SNR" 같은 말을 쓰지 않는다.
+    /// 촬영본에서 말소리가 잡혔는지 — 정보 칸 "말소리" 줄의 값. "오디오 SNR" 같은 말을 쓰지 않는다.
+    ///
+    /// **아는 만큼만 말한다** (2026-10-01 사용자: "말소리가 잘 안들리는것도 잘 들린다 써있네"). 앱이 재는 것은 받아적은 말이
+    /// **있다 · 없다**뿐이다 — 얼마나 또렷한지는 재지 않는다. 그래서 "잘 들려요" 가 아니라 "있어요" 이고,
+    /// 살펴보기 전(분석 전)에는 모른다고 한다. 또렷함을 재게 되면 `noisy` 를 쓴다.
     public enum Speech {
-        public static let clear = "잘 들려요"
+        public static let clear = "있어요"
         public static let noisy = "조금 시끄러워요"
-        public static let silent = "소리가 없어요"
+        public static let silent = "없어요"
+        public static let unknown = "살펴보기 전이에요"
     }
 
     /// 장면 역할. 색과 함께 **항상 글자로도** 말한다.

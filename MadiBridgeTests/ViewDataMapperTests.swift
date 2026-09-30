@@ -611,6 +611,8 @@ struct ViewDataMapperTests {
         guard case .loaded(let groups) = ViewDataMapper.gallery(s, photos: .granted) else { Issue.record("loaded 가 아니다"); return }
         let cell = try #require(groups.first?.shots.first)
         #expect(cell.duration == 42 && cell.fetchProgress == nil && cell.videoURL == nil && !cell.isMaking && !cell.isPreparing)
+        // 살펴보기 전이라 말소리는 모른다 — "있다"(전에는 "잘 들려요")고 하지 않는다
+        #expect(cell.speech == .unknown && cell.speech.label == Copy.Speech.unknown)
         // 앱 사본이 없으니 미리보기는 사진 보관함에서 바로 튼다 — 재생 버튼이 사라지지 않게
         #expect(cell.photoAssetID == "old")
         var ready = video("r", at: now); ready.localPath = "/o/r.mov"
@@ -627,5 +629,18 @@ struct ViewDataMapperTests {
             Issue.record("멈춤이 아니다"); return
         }
         #expect(plan == nil && reason == Copy.Photos.importFailedShort && actions.first?.title == Copy.Plan.Stopped.tryAgain)
+    }
+
+    @Test("말소리 — 분석한 영상만 말한다: 받아적은 말이 있으면 '있어요', 0개면 '없어요', 분석 전이면 '살펴보기 전'")
+    func speechSaysOnlyWhatWeKnow() {
+        let v = video("v", at: now)
+        func speech(_ counts: [String: Int]) -> SpeechLevel {
+            ViewDataMapper.shot(v, LibrarySnapshot(videos: [v], wordCounts: counts, now: now)).speech
+        }
+        #expect(speech([:]) == .unknown)          // 분석 전 — 전에는 "잘 들려요" 였다
+        #expect(speech(["v": 0]) == .silent)      // 분석했는데 받아적은 말이 없다
+        #expect(speech(["v": 41]) == .clear)
+        // 또렷함은 재지 않는다 — "잘 들려요" 라고 하지 않는다
+        #expect(Copy.Speech.clear == "있어요" && Copy.Speech.silent == "없어요")
     }
 }

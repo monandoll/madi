@@ -26,12 +26,15 @@ public struct Thumbnail: Hashable, Sendable {
 
 public enum SpeechLevel: Hashable, Sendable {
     case clear, noisy, silent
+    /// **아직 살펴보지 않았다** (분석 전) — 말이 있는지 모른다. 전에는 이것도 `clear`("잘 들려요")로 나왔다 (㉛).
+    case unknown
 
     public var label: String {
         switch self {
         case .clear: Copy.Speech.clear
         case .noisy: Copy.Speech.noisy
         case .silent: Copy.Speech.silent
+        case .unknown: Copy.Speech.unknown
         }
     }
 }

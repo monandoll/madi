@@ -88,7 +88,8 @@ enum ViewDataMapper {
             shotAt: shotAt(v),
             duration: v.durationSec ?? 0,
             // 소리 측정이 "말이 있다 · 없다" 뿐이다 — noisy 는 가를 기준이 없어 내지 않는다 (viewdata-map 요청 ⑥)
-            speech: s.wordCounts[v.id] == 0 ? .silent : .clear,
+            // 분석한 영상만 안다 — 분석 전(값 없음)을 "있다" 로 치지 않는다. 전에는 목록에만 있는 영상도 "잘 들려요" 였다 (㉛)
+            speech: s.wordCounts[v.id].map { $0 == 0 ? .silent : .clear } ?? .unknown,
             // 넣자마자 도는 분석은 편집 준비다 — "만드는 중" 으로 세지 않는다 (요청이 아직 없다, ㉗)
             isMaking: s.isMaking(v.id),
             thumbnail: thumb(s.thumbnailStore.video(v.id), s),
