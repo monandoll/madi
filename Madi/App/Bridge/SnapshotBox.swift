@@ -54,7 +54,10 @@ final class SnapshotBox {
     /// 작업이 줄 서 있거나 돌거나, 원본을 받는 중 — 진행률 타이머를 돌릴 때다.
     var isBusy: Bool {
         guard let s = current else { return false }
+        // 원본을 받는 중인 촬영본이 있으면 바쁘다 — 받는 동안에는 DB 가 안 바뀌고 도는 작업도 없어서, 이걸 안 보면 진행률을
+        // 처음 한 번(0%)만 읽고 멈췄다 (2026-10-01 실제 앱: iCloud 원본을 4분 반 받는 내내 "0%")
         return s.jobs.contains { $0.state == .queued || $0.state == .running } || !s.importProgress.isEmpty
+            || s.videos.contains { $0.status == .importing && $0.deletedAt == nil }
     }
 }
 

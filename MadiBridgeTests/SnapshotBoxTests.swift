@@ -74,4 +74,16 @@ struct SnapshotBoxTests {
         box.reattachThumbnails(Thumbnails(root: FileManager.default.temporaryDirectory.appending(path: "none-\(UUID().uuidString)")))
         #expect(box.current?.progress["c"] == 0.4 && box.current?.importProgress["a"] == 0.7)
     }
+
+    @Test("원본을 받는 중인 촬영본이 있으면 진행률 타이머가 돈다 — 작업도 없고 아직 읽은 진행률도 없을 때 (0% 에 멈춰 있던 것)")
+    func busyWhileFetchingOriginal() async {
+        let box = SnapshotBox()
+        await box.receive(LibrarySnapshot(videos: [VideoRecord(id: "a", source: .photos, sourceRef: "ph:a", status: .listed)])) { ProgressReading() }
+        #expect(!box.isBusy)                                                  // 목록에만 있다 — 할 일 없음
+        await box.receive(LibrarySnapshot(videos: [VideoRecord(id: "a", source: .photos, sourceRef: "ph:a", status: .importing)])) { ProgressReading() }
+        #expect(box.isBusy)                                                   // 받는 중 — 진행률을 계속 읽는다
+        // 타이머가 읽으면 진행률이 화면 값에 들어간다
+        await box.refresh { ProgressReading(imports: ["a": 0.4]) }
+        #expect(box.current?.importProgress["a"] == 0.4)
+    }
 }
