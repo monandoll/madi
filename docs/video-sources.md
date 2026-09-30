@@ -193,6 +193,7 @@ yt-dlp -f "bv*[vcodec^=avc1]+ba[ext=m4a]" --merge-output-format mp4 -o "spike/so
 |---|---|---|
 | `10분-uw1aUHnMfo8.mp4` (1080p) | Ram PT (@pt3885) | https://www.youtube.com/watch?v=uw1aUHnMfo8 |
 | `30분-yh6hNVlbUbU.mp4` (1080p · 24fps · 31:05) | MAKEDANDAN 메이크단단 (@MAKEDANDAN) | https://www.youtube.com/watch?v=yh6hNVlbUbU |
+| `23분-E1drR37ASec.mp4` (1080p · 22:48, 원본은 4K · 2026-10-01 사용자 요청으로 받음) | 킹유진 — 물리치료사가 나오는 운동 전 준비 영상 | https://www.youtube.com/watch?v=E1drR37ASec |
 | `1분-stage4-standin.mov` | 위 `uw1aUHnMfo8` 앞 60초 | — |
 | `2분30초-<id>.mp4` ×6 | 2-1 과 같은 파일 | — |
 
