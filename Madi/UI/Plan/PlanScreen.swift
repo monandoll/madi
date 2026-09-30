@@ -50,6 +50,8 @@ struct PlanScreen: View {
                     ideal: Tokens.Size.chatIdeal,
                     max: 420
                 )
+                // 불투명 바탕 — 인스펙터 기본 재질은 반투명이라 가로 장면 띠의 카드가 대화 패널 아래로 흐리게 비쳤다 (2026-09-30)
+                .background(Color(nsColor: .windowBackgroundColor))
             }
             .onAppear {
                 if selectedID == nil { selectedID = initialSceneID }
