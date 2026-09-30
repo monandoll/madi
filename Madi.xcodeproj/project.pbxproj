@@ -157,6 +157,7 @@
 		C86D655D7BBAA6D494891BCB /* PlanVersionList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5170EB1C03FE043B10815DE1 /* PlanVersionList.swift */; };
 		C8B61DEDF14AD95B4CDD3FD9 /* MakingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4858B61215897A37099D0CF /* MakingScreen.swift */; };
 		CC86AF959B9705EC491D0637 /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F09B5CE975F12C72180877E /* JSONValue.swift */; };
+		CCF079DD3F25B473ED765B91 /* AudioContinuityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 587823838084BDC0FE057C78 /* AudioContinuityTests.swift */; };
 		D0EEACB252B6F1F127A60173 /* PlanScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAABD8A5FF82020B90D7687A /* PlanScreen.swift */; };
 		D10203FAB9F6AF59412F2EB8 /* SubjectTrack.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACC2DA0E608DE6F2C2FD7C62 /* SubjectTrack.swift */; };
 		D17C7DB4308BAEEFBAEE8773 /* FontLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4681562F04878CEC2D88BB3 /* FontLibrary.swift */; };
@@ -332,6 +333,7 @@
 		561BB4F10E5D25D2D79B6FAC /* RenderJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderJob.swift; sourceTree = "<group>"; };
 		57238E9396123FB6046C5696 /* AgentRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRunner.swift; sourceTree = "<group>"; };
 		580EB71084CE728DC82BA5F1 /* LoadGovernor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadGovernor.swift; sourceTree = "<group>"; };
+		587823838084BDC0FE057C78 /* AudioContinuityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioContinuityTests.swift; sourceTree = "<group>"; };
 		58B6C32DC1255DE343A5F4B1 /* ChatPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatPanel.swift; sourceTree = "<group>"; };
 		5AAB938E5C34F7D8ACF83F31 /* SceneEdits.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneEdits.swift; sourceTree = "<group>"; };
 		62AEF9EC7C2DE464565CB5B3 /* DeleteVideoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteVideoTests.swift; sourceTree = "<group>"; };
@@ -620,6 +622,7 @@
 			children = (
 				460759C148526B8AAAC3520E /* AgentJobTests.swift */,
 				76604ED8D37963A2E28DF6C4 /* AgentTests.swift */,
+				587823838084BDC0FE057C78 /* AudioContinuityTests.swift */,
 				B84516A32EC9A9582A4C6CF3 /* CaptionFillerTests.swift */,
 				4181A1F305068579BF9A5C22 /* CaptionGateTests.swift */,
 				9081079FE5F71F486BCE652A /* ChatTests.swift */,
@@ -1235,6 +1238,7 @@
 			files = (
 				BAE5D4500020FEDD0DFAFA49 /* AgentJobTests.swift in Sources */,
 				0CA1FDF0CE2208FD1D90E5F6 /* AgentTests.swift in Sources */,
+				CCF079DD3F25B473ED765B91 /* AudioContinuityTests.swift in Sources */,
 				1CB3F49938E57D92DD04E882 /* CLIInstallerTests.swift in Sources */,
 				F69D98B4ADB5BA43F1F93077 /* CaptionFillerTests.swift in Sources */,
 				7CB49E7614D6007C3C11FAAE /* CaptionGateTests.swift in Sources */,

@@ -94,6 +94,7 @@ public struct Renderer {
             asset: composition, presetName: AVAssetExportPresetHighestQuality
         ) else { throw Failure.cannotCreateExporter }
         export.videoComposition = videoComposition
+        export.audioMix = Self.continuousAudio(composition)
         export.outputURL = outputURL
         export.outputFileType = .mp4
         export.shouldOptimizeForNetworkUse = true
@@ -119,6 +120,24 @@ public struct Renderer {
         default:
             throw Failure.exportFailed(export.error?.localizedDescription ?? "알 수 없는 이유")
         }
+    }
+
+    /// 소리를 **한 번 풀어 이어진 한 트랙으로** 다시 인코딩하게 한다 (오디오 믹스가 있으면 통과 복사를 못 한다).
+    ///
+    /// 믹스가 없으면 원본이 AAC 일 때 내보내기가 소리를 다시 인코딩하지 않고 장면마다 **조각째** 붙인다 — 오디오 트랙이
+    /// 장면 수만큼의 편집 목록(edit list)이 되고, 조각 사이 0.02~0.05초씩 건너뛴다. QuickTime · AVPlayer 는 목록을 따라 틀지만
+    /// CoreAudio 파일 읽기(`AVAudioFile`)는 **첫 장면 소리만** 읽었다 (2026-09-30: 19.1초 결과물이 1.90초 — 받아적기도 첫 장면 뒤로 비었다).
+    /// 올리는 곳(인스타 · 유튜브 변환)에서 어떻게 읽을지 모르는 파일을 내보내지 않는다. 나중에 배경음악 덕킹도 여기에 붙는다.
+    static func continuousAudio(_ composition: AVComposition) -> AVAudioMix? {
+        let tracks = composition.tracks(withMediaType: .audio)
+        guard !tracks.isEmpty else { return nil }
+        let mix = AVMutableAudioMix()
+        mix.inputParameters = tracks.map { track in
+            let p = AVMutableAudioMixInputParameters(track: track)
+            p.setVolume(1, at: .zero)
+            return p
+        }
+        return mix
     }
 
     // MARK: - 1. plan
