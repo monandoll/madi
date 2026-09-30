@@ -422,3 +422,12 @@ case .openSettings
   우클릭 메뉴가 **"Finder에서 보기"** (`Copy.Action.showInFinder`)이고 원본 파일을 Finder 에서 고른 채로 보여 준다
 - 사진 보관함에서 온 것은 사진 앱을 앞으로 가져온다 (그 항목을 골라 여는 공개 방법이 없다 — Photos AppleScript `spotlight` 은
   "사진 앱 제어" 허락이 따로 필요해 넣지 않았다)
+
+## ⑳ 결과물 재생 — 보이는 것만 · 소리는 하나 (2026-09-30 버그 잡기 두 번째 훑기 · 개발이 고침)
+
+- **"하나만" 에서 "처음부터 재생"** 을 누르면 숨긴 이전 판도 안 보이는 채로 같이 돌아 소리가 겹쳤다 (눌러서 확인 — 이전 판 막대가 4.0초).
+  이 화면에서 한 번이라도 만든 재생기(전에 골랐던 다른 결과물까지)를 **전부** 틀었기 때문이다
+- 지금: 재생 버튼은 **화면에 있는 영상만** 튼다 (`MediaPlayers.playFromStart(visible, soundFrom:)`). 나머지는 멈춘다
+- **"둘 다 처음부터 재생"** 은 두 말소리가 겹쳐 어느 쪽도 못 알아들었다 — 소리는 **지금 판만**, 이전 판은 소리를 끈다
+  (막대의 소리 버튼이 🔇 로 바뀐다. 각자 다시 켤 수 있다)
+- `MediaPlayers` 를 `Madi/UI/Common/MediaPlayers.swift` 로 떼어 냈다 — 화면 없이 테스트하려고 (`MadiBridgeTests/MediaPlayersTests`)

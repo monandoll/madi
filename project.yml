@@ -226,6 +226,7 @@ targets:
       - path: Madi/UI/UIAction.swift
       - path: Madi/UI/Copy.swift
       - path: Madi/UI/Tokens.swift
+      - path: Madi/UI/Common/MediaPlayers.swift
     dependencies:
       - target: MadiKit
         embed: false

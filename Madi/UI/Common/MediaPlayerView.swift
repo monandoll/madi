@@ -6,32 +6,6 @@ import SwiftUI
 // 디자인은 이 파일을 다시 그려도 된다. 지키는 것: 내보낸 mp4 를 재생한다 — 자막이 이미 그려져 있다 (§7 내보낸 파일).
 // MadiKit 에 의존하지 않는다 (스크린샷 도구 `MadiUIShots` 가 Madi/UI 만 컴파일한다).
 
-/// 재생기 하나. 주소가 같으면 같은 `AVPlayer` 를 쓴다 — 화면이 다시 그려져도 재생이 끊기지 않게.
-@MainActor
-final class MediaPlayers: ObservableObject {
-    private var players: [URL: AVPlayer] = [:]
-
-    func player(for url: URL) -> AVPlayer {
-        if let p = players[url] { return p }
-        let p = AVPlayer(url: url)
-        players[url] = p
-        return p
-    }
-
-    /// 전부 멈춘다 — 다른 결과물로 옮기거나 화면을 떠날 때. 안 멈추면 안 보이는 영상 소리가 계속 난다.
-    func pauseAll() {
-        for p in players.values { p.pause() }
-    }
-
-    /// 전부 처음부터 같이 튼다 (결과물 "둘 다 처음부터 재생").
-    func playAllFromStart() {
-        for p in players.values {
-            p.seek(to: .zero)
-            p.play()
-        }
-    }
-}
-
 /// 영상 그림만. 재생 막대는 그리지 않는다 — 막대는 화면마다 디자인 문법으로 따로 둔다
 /// (`AVPlayerView` 의 막대는 좁은 칸에서 버튼이 겹치고, 가장자리에 조각이 비어져 나온다).
 struct MediaPlayerView: NSViewRepresentable {
@@ -96,6 +70,11 @@ final class PlayerClock: ObservableObject {
         player.publisher(for: \.timeControlStatus)
             .receive(on: RunLoop.main)
             .sink { [weak self] status in self?.isPlaying = status != .paused }
+            .store(in: &bag)
+        // 소리 켜짐 — 막대 밖에서도 바뀐다 ("둘 다 처음부터 재생" 은 이전 판 소리를 끈다). 버튼 그림이 따라가게.
+        player.publisher(for: \.isMuted)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] muted in self?.isMuted = muted }
             .store(in: &bag)
     }
 
