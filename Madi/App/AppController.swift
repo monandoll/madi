@@ -53,6 +53,8 @@ final class AppController {
     private var viewingVersionID: String?
     private var ai: AIConnection = .none
     private var photos: PhotoAccess = .notAsked
+    /// 사진 보관함과 맞추는 중이면 그 진행 — 갤러리 아랫줄 "맞추는 중 · 237개 중 120개". 다 맞췄으면 nil.
+    private var librarySync: LibrarySync?
     private var prep: EnginePrep?
     private var modelReady = false
     private let thumbnails = Thumbnails()
@@ -65,10 +67,13 @@ final class AppController {
     func start() async {
         photos = Self.photoAccess()
         // 보관함 목록 · 미리보기 그림이 늘면 다시 그린다 (그림 파일은 DB 관측에 안 잡힌다)
-        pipeline.onLibraryChange = { [weak self] in
+        pipeline.onLibrarySync = { [weak self] sync in
             Task { @MainActor in
-                guard let self, let s = self.snapshot else { return }
-                await self.receive(s)
+                guard let self else { return }
+                self.librarySync = sync
+                // 스냅숏을 다시 넣지 않는다 — 지금 것의 그림만 다시 고른다 (새 스냅숏을 옛 것으로 덮지 않게)
+                self.box.reattachThumbnails(self.thumbnails)
+                self.recompute()
             }
         }
         await pipeline.start()
@@ -164,7 +169,7 @@ final class AppController {
     private func recompute() {
         let appSettings = AppSettings()
         studio = ViewDataMapper.studio(snapshot ?? LibrarySnapshot(), studioName: appSettings.studioName, ai: ai, preparing: prep,
-                                       photos: photos)
+                                       photos: photos, syncing: librarySync.map { PhotoSync(done: $0.done, total: $0.total) })
         settings = SettingsValues(
             ai: setup(for: ai), activeAI: ai, studioName: appSettings.studioName, keepDays: appSettings.keepDays,
             albumName: UserDefaults.standard.string(forKey: PhotoLibraryWatcher.albumNameKey),
@@ -351,7 +356,9 @@ final class AppController {
         for o in outputs where o.trashedAt == nil && !FileManager.default.fileExists(atPath: thumbnails.output(o.id).path) {
             try? await thumbnails.makeOutput(o.id, from: URL(fileURLWithPath: o.path))
         }
-        if let s = snapshot { await receive(s) }
+        // 그림만 다시 고른다 — 스냅숏을 다시 넣으면 그사이 들어온 새 스냅숏을 옛 것으로 덮는다
+        box.reattachThumbnails(thumbnails)
+        recompute()
     }
 
     // MARK: 편집안

@@ -274,7 +274,17 @@ struct GalleryScreen: View {
                         selected: selectedID == nil ? 0 : 1
                     ))
                     Text("·")
-                    if studio.photos == .granted {
+                    if studio.photos == .granted, let sync = studio.syncing {
+                        // 맞추는 중 — 얼마나 왔는지. 끝나면 "맞춰져 있음" 으로 돌아간다
+                        if sync.total > 0 {
+                            ProgressView(value: Double(sync.done), total: Double(sync.total))
+                                .progressViewStyle(.linear)
+                                .frame(width: 90)
+                        } else {
+                            ProgressView().controlSize(.small)
+                        }
+                        Text(Copy.Gallery.Status.syncing(done: sync.done, total: sync.total))
+                    } else if studio.photos == .granted {
                         Text(Copy.Gallery.Status.syncedWithICloud)
                     } else {
                         // 권한이 없으면 맞춰져 있다고 하지 않는다 — 켜는 길을 준다

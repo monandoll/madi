@@ -152,6 +152,10 @@ public enum Copy {
 
         public enum Status {
             public static let syncedWithICloud = "iCloud 사진과 맞춰져 있음"
+            /// 사진 보관함과 맞추는 중 — 목록을 올리고 미리보기 그림을 만드는 동안 (㉙). 아직 세는 중이면 개수 없이.
+            public static func syncing(done: Int, total: Int) -> String {
+                total == 0 ? "사진 보관함과 맞추는 중…" : "사진 보관함과 맞추는 중 · \(total)개 중 \(done)개"
+            }
             /// 사진 권한이 없을 때 — 전에는 권한과 상관없이 "맞춰져 있음" 이라고 했다 (2026-09-30).
             public static let photosOff = "사진 앱과 연결 안 됨"
             public static let connectPhotos = "연결하기"

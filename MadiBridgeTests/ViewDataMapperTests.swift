@@ -566,6 +566,12 @@ struct ViewDataMapperTests {
         let s = LibrarySnapshot(now: now)
         #expect(ViewDataMapper.studio(s, studioName: "", ai: .none, photos: .notAsked).photos == .notAsked)
         #expect(ViewDataMapper.studio(s, studioName: "", ai: .none, photos: .granted).photos == .granted)
+        // 맞추는 중의 진행도 넘긴다 — 아랫줄 "사진 보관함과 맞추는 중 · 237개 중 120개". 다 맞췄으면 nil
+        let syncing = ViewDataMapper.studio(s, studioName: "", ai: .none, photos: .granted, syncing: PhotoSync(done: 120, total: 237))
+        #expect(syncing.syncing == PhotoSync(done: 120, total: 237))
+        #expect(ViewDataMapper.studio(s, studioName: "", ai: .none, photos: .granted).syncing == nil)
+        #expect(Copy.Gallery.Status.syncing(done: 120, total: 237) == "사진 보관함과 맞추는 중 · 237개 중 120개")
+        #expect(Copy.Gallery.Status.syncing(done: 0, total: 0) == "사진 보관함과 맞추는 중…")
     }
 
     @Test("편집안이 없으면 AI 가 먼저 묻는다 — 요구 없이 만들지 않는다. 말하면 답하는 중, 초안이 나오면 AI 말 밑에 결과")

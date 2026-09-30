@@ -55,4 +55,23 @@ struct SnapshotBoxTests {
         await box.refresh { ProgressReading() }
         #expect(!box.isBusy)
     }
+
+    @Test("그림이 늘었다는 알림은 들어오는 중인 새 스냅숏을 밀어내지 않는다 — 보관함 목록이 0개로 남던 것")
+    func rethumbDoesNotDropIncomingSnapshot() async {
+        let box = SnapshotBox()
+        await box.receive(LibrarySnapshot()) { ProgressReading() }          // 옛 것 — 촬영본 0개
+        let listed = LibrarySnapshot(videos: [VideoRecord(id: "a", source: .photos, sourceRef: "ph:a", status: .listed)])
+        // 새 스냅숏이 진행률을 읽는 사이(await)에 그림 알림이 온다
+        await box.receive(listed) {
+            box.reattachThumbnails(Thumbnails(root: FileManager.default.temporaryDirectory.appending(path: "none-\(UUID().uuidString)")))
+            return ProgressReading()
+        }
+        #expect(box.current?.videos.count == 1)
+        // 그림만 다시 골라도 진행률은 그대로다
+        var busy = listed
+        busy.setProgress(render: ["c": 0.4], import: ["a": 0.7], analysis: [:])
+        await box.receive(busy) { ProgressReading(render: ["c": 0.4], imports: ["a": 0.7]) }
+        box.reattachThumbnails(Thumbnails(root: FileManager.default.temporaryDirectory.appending(path: "none-\(UUID().uuidString)")))
+        #expect(box.current?.progress["c"] == 0.4 && box.current?.importProgress["a"] == 0.7)
+    }
 }

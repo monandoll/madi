@@ -242,6 +242,13 @@ public enum EnginePrep: Hashable, Sendable {
     case diskFull
 }
 
+/// 사진 보관함과 맞추는 진행. `total == 0` 이면 아직 세는 중이다.
+public struct PhotoSync: Hashable, Sendable {
+    public var done: Int
+    public var total: Int
+    public init(done: Int, total: Int) { self.done = done; self.total = total }
+}
+
 public struct StudioStatus: Hashable, Sendable {
     /// 설정값이다. 코드에 박지 않는다 (AGENTS.md §1-7).
     public var studioName: String
@@ -253,12 +260,15 @@ public struct StudioStatus: Hashable, Sendable {
     public var preparing: EnginePrep?
     /// 사진 보관함 권한 — 갤러리 상태줄이 "iCloud 사진과 맞춰져 있음" 을 말해도 되는가 (viewdata-map ㉓).
     public var photos: PhotoAccess
+    /// 사진 보관함과 **맞추는 중**이면 그 진행 (목록을 올리고 미리보기 그림을 만드는 동안). 다 맞췄으면 nil (㉙).
+    public var syncing: PhotoSync?
 
     public init(
         studioName: String, ai: AIConnection,
         shotCount: Int, resultCount: Int, makingCount: Int,
-        preparing: EnginePrep? = nil, photos: PhotoAccess = .granted
+        preparing: EnginePrep? = nil, photos: PhotoAccess = .granted, syncing: PhotoSync? = nil
     ) {
+        self.syncing = syncing
         self.studioName = studioName; self.ai = ai
         self.shotCount = shotCount; self.resultCount = resultCount
         self.makingCount = makingCount; self.preparing = preparing

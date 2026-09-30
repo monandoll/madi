@@ -157,6 +157,20 @@ struct ImportTests {
         #expect(try await db.writer.read { try JobRecord.fetchAll($0) }.map(\.kind) == [.analyze])
     }
 
+    @Test("받으려던 목록 영상을 보관함에서 못 찾으면 '못 받음' — 0% 에 멈춰 있지 않는다. 이미 받은 영상은 그대로")
+    func marksMissingListedAsFailed() async throws {
+        let db = try AppDatabase.inMemory()
+        let importer = Importer(db: db, queue: nil, originals: FileManager.default.temporaryDirectory)
+        _ = try await importer.list([Importer.Listed(sourceRef: "ph:OLD", capturedAt: nil, durationSec: 9, width: 10, height: 10)])
+        try await db.writer.write { try VideoRecord(id: "ok", source: .photos, sourceRef: "ph:READY", status: .ready).insert($0) }
+        try await importer.markFailed(sourceRef: "ph:OLD", error: "못 찾음")
+        try await importer.markFailed(sourceRef: "ph:READY", error: "못 찾음")
+        let rows = try await db.writer.read { try VideoRecord.fetchAll($0) }
+        #expect(rows.first { $0.sourceRef == "ph:OLD" }?.status == .failed)
+        #expect(rows.first { $0.sourceRef == "ph:READY" }?.status == .ready)
+        #expect(try await importer.listedRows().isEmpty)
+    }
+
     @Test("원본 받기에 실패하면 남기고, 다시 보이면 이어 받는다")
     func retriesFailedFetch() async throws {
         let dir = try tempDir(); defer { try? FileManager.default.removeItem(at: dir) }

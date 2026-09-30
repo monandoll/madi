@@ -87,6 +87,23 @@ public struct Importer: Sendable {
         return fresh
     }
 
+    /// 목록에만 있는(아직 받지 않은) 사진 보관함 영상 — 미리보기 그림을 채울 대상. 숨긴 것 · 지운 것은 뺀다.
+    public func listedRows() async throws -> [VideoRecord] {
+        try await db.writer.read { db in
+            try VideoRecord.filter(Column("status") == VideoRecord.Status.listed.rawValue)
+                .filter(Column("deletedAt") == nil && Column("hiddenAt") == nil).fetchAll(db)
+        }
+    }
+
+    /// 받으려던 영상을 찾지 못했다 (사진 앱 연결이 풀림 · 사진 앱에서 지움) — "못 받음" 으로 적는다. 이미 받은 영상은 건드리지 않는다.
+    public func markFailed(sourceRef: String, error: String) async throws {
+        try await db.writer.write { db in
+            try db.execute(sql: "UPDATE video SET status = 'failed', error = ? WHERE sourceRef = ? AND status != 'ready'",
+                           arguments: [error, sourceRef])
+        }
+        try? db.log("import.failed", payload: ["error": .string(error)])
+    }
+
     /// - Returns: 새로 들였거나 이어 받은 영상. 이미 준비된 영상이면 nil.
     @discardableResult
     public func receive(_ item: IncomingVideo, progress: (@Sendable (Double) -> Void)? = nil) async throws -> VideoRecord? {

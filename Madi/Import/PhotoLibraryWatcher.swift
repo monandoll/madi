@@ -17,6 +17,13 @@ import os
 /// - "저장 공간 최적화" 면 Mac 에 저화질만 있다 — **원본을 iCloud 에서 받는다**
 ///   (`isNetworkAccessAllowed`, §2 주의할 것)
 /// - 한 번에 하나씩 처리한다. 변경 알림이 겹쳐 와도 같은 영상을 두 번 받지 않는다
+/// 사진 보관함과 맞추는 중 — 목록을 올리고 미리보기 그림을 만드는 동안. `total == 0` 이면 아직 세는 중이다.
+public struct LibrarySync: Sendable, Equatable {
+    public var done: Int
+    public var total: Int
+    public init(done: Int, total: Int) { self.done = done; self.total = total }
+}
+
 public final class PhotoLibraryWatcher: NSObject, PHPhotoLibraryChangeObserver, @unchecked Sendable {
 
     private static let log = Logger(subsystem: "app.madi", category: "import")
@@ -24,17 +31,19 @@ public final class PhotoLibraryWatcher: NSObject, PHPhotoLibraryChangeObserver, 
     private let importer: Importer
     private let since: Date
     private let thumbnails: Thumbnails
-    /// 목록 · 미리보기 그림이 늘었다 — 화면을 다시 그리라고 알린다 (그림 파일은 DB 가 아니라 관측에 안 잡힌다).
-    private let onChange: (@Sendable () -> Void)?
+    /// 맞추는 중의 진행(목록 · 미리보기 그림이 늘 때마다) — 화면이 다시 그리고 아랫줄에 "맞추는 중" 을 보인다.
+    /// 끝나면 nil. 그림 파일은 DB 가 아니라 관측에 안 잡혀서 이 알림으로 다시 그린다.
+    private let onSync: (@Sendable (LibrarySync?) -> Void)?
     private let lock = NSLock()
     private var scanning = false
     private var rescanRequested = false
 
-    public init(importer: Importer, since: Date, thumbnails: Thumbnails = Thumbnails(), onChange: (@Sendable () -> Void)? = nil) {
+    public init(importer: Importer, since: Date, thumbnails: Thumbnails = Thumbnails(),
+                onSync: (@Sendable (LibrarySync?) -> Void)? = nil) {
         self.importer = importer
         self.since = since
         self.thumbnails = thumbnails
-        self.onChange = onChange
+        self.onSync = onSync
     }
 
     /// 감시를 시작한다. 권한이 없으면 false — 폴더 감시만 쓴다.
@@ -84,18 +93,27 @@ public final class PhotoLibraryWatcher: NSObject, PHPhotoLibraryChangeObserver, 
         Task {
             repeat {
                 lock.withLock { rescanRequested = false }
+                onSync?(LibrarySync(done: 0, total: 0))      // 세는 중
                 let (older, newer) = assets()
                 // 1. 전부터 있던 영상 — 목록에만 (빠르다). 미리보기 그림은 뒤에서 채운다
+                var thumbnailing = false
                 do {
-                    let listed = try await importer.list(older.map(Self.listed))
-                    if !listed.isEmpty {
-                        onChange?()
-                        let thumbnails = self.thumbnails, onChange = self.onChange
-                        Task.detached(priority: .utility) { Self.makeThumbnails(for: listed, into: thumbnails, onChange: onChange) }
+                    try await importer.list(older.map(Self.listed))
+                    // 그림이 아직 없는 목록 영상 전부 — 방금 올린 것뿐 아니라, 그림을 만들다 앱이 꺼졌던 것도 이어서 만든다
+                    let thumbnails = self.thumbnails
+                    let missing = try await importer.listedRows().filter {
+                        !FileManager.default.fileExists(atPath: thumbnails.video($0.id).path)
+                    }
+                    if !missing.isEmpty {
+                        thumbnailing = true
+                        onSync?(LibrarySync(done: 0, total: missing.count))
+                        let onSync = self.onSync
+                        Task.detached(priority: .utility) { Self.makeThumbnails(for: missing, into: thumbnails, onSync: onSync) }
                     }
                 } catch {
                     Self.log.error("보관함 목록 실패: \(String(describing: error), privacy: .public)")
                 }
+                if !thumbnailing { onSync?(nil) }            // 새로 올릴 게 없다 — 맞춰져 있다
                 // 2. 새로 찍은 영상 — 원본을 받아 분석까지
                 for item in newer.compactMap(Self.incoming) {
                     do { try await importer.receive(item) } catch {
@@ -111,7 +129,9 @@ public final class PhotoLibraryWatcher: NSObject, PHPhotoLibraryChangeObserver, 
     public func fetch(localIdentifier: String) async {
         guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject,
               let item = Self.incoming(asset) else {
+            // 사진 앱 연결이 풀렸거나 사진 앱에서 지운 영상 — 조용히 0% 에 멈추지 않게 "못 받음" 으로 적는다 (다시 해 보기가 뜬다)
             Self.log.error("사진 보관함에서 못 찾았다: \(localIdentifier, privacy: .public)")
+            try? await importer.markFailed(sourceRef: localIdentifier, error: "사진 보관함에서 찾지 못했다 (연결이 풀렸거나 지워졌다)")
             return
         }
         do { try await importer.receive(item) } catch {
@@ -165,7 +185,7 @@ public final class PhotoLibraryWatcher: NSObject, PHPhotoLibraryChangeObserver, 
 
     /// 목록에만 있는 영상의 미리보기 그림 — 사진 앱이 가진 것을 받아 앱의 그림 자리에 둔다 (원본을 받지 않고도 갤러리에 보인다).
     /// 최근 것부터. 몇 천 개면 1분쯤 걸려서 뒤에서 돌고, 묶음마다 화면을 다시 그리게 알린다.
-    static func makeThumbnails(for rows: [VideoRecord], into thumbnails: Thumbnails, onChange: (@Sendable () -> Void)?) {
+    static func makeThumbnails(for rows: [VideoRecord], into thumbnails: Thumbnails, onSync: (@Sendable (LibrarySync?) -> Void)?) {
         try? FileManager.default.createDirectory(at: thumbnails.root, withIntermediateDirectories: true)
         let options = PHImageRequestOptions()
         options.isSynchronous = true               // 뒤 스레드에서 하나씩 — 돌아오기 전에 그림이 온다
@@ -191,7 +211,8 @@ public final class PhotoLibraryWatcher: NSObject, PHPhotoLibraryChangeObserver, 
                     }
                 }
             }
-            onChange?()
+            onSync?(LibrarySync(done: min(start + size, newestFirst.count), total: newestFirst.count))
         }
+        onSync?(nil)   // 다 맞췄다
     }
 }

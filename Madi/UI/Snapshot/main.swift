@@ -75,6 +75,13 @@ let shots: [Shot] = [
     Shot("gallery-no-access") {
         RootView(studio: SampleData.studioEmpty, gallery: .noPhotoAccess)
     },
+    // 사진 보관함과 맞추는 중 — 아랫줄에 진행 (viewdata-map ㉙)
+    Shot("gallery-syncing") {
+        RootView(
+            studio: { var s = SampleData.studio; s.syncing = PhotoSync(done: 120, total: 237); return s }(),
+            gallery: .loaded(SampleData.groups)
+        )
+    },
     // 사진 앱을 아직 연결하지 않았다 — 연결이 먼저 (viewdata-map ㉘)
     Shot("gallery-connect-photos") {
         RootView(studio: SampleData.studioEmpty, gallery: .connectPhotos)

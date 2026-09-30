@@ -31,8 +31,8 @@ final class MadiPipeline {
     private var photos: PhotoLibraryWatcher?
     private var folder: FolderWatcher?
 
-    /// 보관함 목록 · 미리보기 그림이 늘었을 때 부른다 — 화면이 다시 그린다 (바꾸는 층이 건다).
-    var onLibraryChange: (@Sendable () -> Void)?
+    /// 사진 보관함과 맞추는 진행 (목록 · 미리보기 그림이 늘 때마다, 끝나면 nil) — 화면이 다시 그리고 아랫줄에 보인다 (바꾸는 층이 건다).
+    var onLibrarySync: (@Sendable (LibrarySync?) -> Void)?
 
     /// 목록에만 있던 사진 보관함 영상의 원본을 받는다 (`숏폼 만들기` 를 눌렀을 때). 받으면 분석이 걸린다.
     func fetchOriginal(sourceRef: String) {
@@ -113,7 +113,7 @@ final class MadiPipeline {
             let folder = FolderWatcher(importer: importer, folder: Self.inbox)
             try folder.start()
             let photos = PhotoLibraryWatcher(importer: importer, since: Self.importSince, thumbnails: thumbnails,
-                                             onChange: onLibraryChange)
+                                             onSync: onLibrarySync)
 
             self.db = db; self.queue = queue; self.preparer = preparer
             self.folder = folder; self.photos = photos
