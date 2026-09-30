@@ -611,6 +611,10 @@ struct ViewDataMapperTests {
         guard case .loaded(let groups) = ViewDataMapper.gallery(s, photos: .granted) else { Issue.record("loaded 가 아니다"); return }
         let cell = try #require(groups.first?.shots.first)
         #expect(cell.duration == 42 && cell.fetchProgress == nil && cell.videoURL == nil && !cell.isMaking && !cell.isPreparing)
+        // 앱 사본이 없으니 미리보기는 사진 보관함에서 바로 튼다 — 재생 버튼이 사라지지 않게
+        #expect(cell.photoAssetID == "old")
+        var ready = video("r", at: now); ready.localPath = "/o/r.mov"
+        #expect(ViewDataMapper.shot(ready, LibrarySnapshot(videos: [ready], now: now)).photoAssetID == nil)   // 사본이 있으면 그걸 튼다
         // 열었다 — 원본을 받기 시작한다 (묻는 화면, 준비 0%)
         #expect(ViewDataMapper.plan(s, videoID: "old", ai: .claude) == .asking(preparing: 0))
         // 받는 중 — 받은 만큼이 준비의 앞 3할

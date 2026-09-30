@@ -99,7 +99,9 @@ enum ViewDataMapper {
             // 정보 칸에서 그 자리에서 튼다 — 다 받은 앱 사본만
             videoURL: v.status == .ready ? v.localPath.map { URL(fileURLWithPath: $0) } : nil,
             isFromPhotos: v.source == .photos,
-            isPreparing: s.isOnlyPreparing(v.id)
+            isPreparing: s.isOnlyPreparing(v.id),
+            // 앱 사본이 없는 사진 보관함 영상(목록에만 · 받는 중) — 미리보기는 사진 보관함에서 바로 튼다
+            photoAssetID: v.source == .photos && v.status != .ready ? v.sourceRef : nil
         )
     }
 

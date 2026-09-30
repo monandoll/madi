@@ -31,11 +31,17 @@ struct ShotInspector: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Tokens.Space.section) {
-                    // 원본이 있으면 그 자리에서 재생한다 (개발이 넣음, viewdata-map ⑫). 받는 중이면 그림만.
+                    // 원본이 있으면 그 자리에서 재생한다 (개발이 넣음, viewdata-map ⑫). 사본이 없는 사진 보관함 영상은
+                    // 사진 보관함에서 바로 튼다 (㉚). 둘 다 아니면 그림만.
                     Group {
                         if let url = shot.videoURL {
                             InlineVideo(url: url, id: shot.id)
                                 .id(url)   // 다른 촬영본을 고르면 옛 재생기를 멈추고 새로 만든다
+                                .frame(maxHeight: 320)
+                        } else if let asset = shot.photoAssetID {
+                            // 앱 사본이 아직 없는 사진 보관함 영상 — 사진 보관함에서 바로 틀어 미리 본다
+                            InlinePhotoVideo(assetID: asset, id: shot.id, poster: shot.thumbnail)
+                                .id(asset)
                                 .frame(maxHeight: 320)
                         } else {
                             ThumbnailView(thumbnail: shot.thumbnail)

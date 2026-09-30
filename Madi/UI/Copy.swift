@@ -367,6 +367,10 @@ public enum Copy {
     /// 재생 막대 버튼 — 도움말(마우스를 올리면)과 VoiceOver 가 읽는 이름. QuickTime 과 같은 말.
     /// 전에는 "처음으로" 버튼을 시스템이 그림 이름대로 "끝으로 이동" 으로 읽었고, 도움말은 "여기서부터 재생" 이었다.
     public enum Player {
+        /// 사진 보관함에서 바로 트는 미리보기 (㉚) — 원본이 iCloud 에만 있으면 받아 오느라 잠깐 걸린다.
+        public static let loadingFromPhotos = "사진 보관함에서 불러오는 중…"
+        /// 사진 앱 연결이 풀렸거나 사진 앱에서 지운 영상.
+        public static let cantPreview = "사진 앱과 연결돼 있어야 미리 볼 수 있어요"
         public static let toStart = "처음으로"
         public static let back10 = "10초 뒤로"
         public static let forward10 = "10초 앞으로"

@@ -106,6 +106,9 @@ public struct ShotItem: Identifiable, Hashable, Sendable {
     public var problem: String?
     /// 원본 영상 (앱 사본). 있으면 정보 칸에서 **그 자리에서 재생**한다 (개발이 넣음, viewdata-map ⑫).
     public var videoURL: URL?
+    /// 앱 사본이 아직 없는 **사진 보관함 영상**의 식별자 — 정보 칸이 사진 보관함에서 바로 틀어 미리 보게 한다 (㉚).
+    /// 목록에만 있는 예전 영상에 재생 버튼이 없던 것 (2026-10-01 사용자: "프리뷰에 재생버튼은 다 어디갔어?").
+    public var photoAssetID: String?
     /// 사진 보관함에서 들어왔는지. 아니면 폴더(Mac 에 있는 영상 넣기)로 들어온 것이라 사진 앱에 없다 —
     /// 우클릭 메뉴가 "사진 앱에서 보기" 대신 "Finder에서 보기" 다 (viewdata-map ⑲).
     public var isFromPhotos: Bool
@@ -115,9 +118,10 @@ public struct ShotItem: Identifiable, Hashable, Sendable {
         speech: SpeechLevel = .clear, isMaking: Bool = false,
         thumbnail: Thumbnail = .none, results: [ResultRef] = [],
         fetchProgress: Double? = nil, problem: String? = nil, videoURL: URL? = nil, isFromPhotos: Bool = true,
-        isPreparing: Bool = false
+        isPreparing: Bool = false, photoAssetID: String? = nil
     ) {
         self.videoURL = videoURL
+        self.photoAssetID = photoAssetID
         self.isFromPhotos = isFromPhotos
         self.isPreparing = isPreparing
         self.id = id; self.title = title; self.shotAt = shotAt; self.duration = duration
