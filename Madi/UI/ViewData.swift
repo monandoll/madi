@@ -96,6 +96,8 @@ public struct ShotItem: Identifiable, Hashable, Sendable {
     public var speech: SpeechLevel
     /// 지금 이 촬영본으로 영상을 만들고 있는 중인지.
     public var isMaking: Bool
+    /// 넣자마자 도는 **편집 준비**(받아적기 · 사람 찾기) 중인지. 만드는 중이 아니다 — 아직 아무도 만들어 달라고 하지 않았다 (㉗).
+    public var isPreparing: Bool
     public var thumbnail: Thumbnail
     public var results: [ResultRef]
     /// iCloud 에서 원본을 받는 중이면 0...1. "저장 공간 최적화" 면 오래 걸린다.
@@ -112,10 +114,12 @@ public struct ShotItem: Identifiable, Hashable, Sendable {
         id: String, title: String, shotAt: Date, duration: Double,
         speech: SpeechLevel = .clear, isMaking: Bool = false,
         thumbnail: Thumbnail = .none, results: [ResultRef] = [],
-        fetchProgress: Double? = nil, problem: String? = nil, videoURL: URL? = nil, isFromPhotos: Bool = true
+        fetchProgress: Double? = nil, problem: String? = nil, videoURL: URL? = nil, isFromPhotos: Bool = true,
+        isPreparing: Bool = false
     ) {
         self.videoURL = videoURL
         self.isFromPhotos = isFromPhotos
+        self.isPreparing = isPreparing
         self.id = id; self.title = title; self.shotAt = shotAt; self.duration = duration
         self.speech = speech; self.isMaking = isMaking
         self.thumbnail = thumbnail; self.results = results
@@ -468,6 +472,10 @@ public struct ScreenNotice: Hashable, Sendable {
 
 /// 편집안 화면이 지금 무엇을 보여줄 상태인지.
 public enum PlanState: Hashable, Sendable {
+    /// **무엇을 만들지 묻는 중** — 편집안이 아직 없고, 크리에이터가 아직 말하지 않았다. AI 는 말(또는 칩)이 와야 시작한다
+    /// (2026-10-01 결정 — 요구도 없이 멋대로 숏폼을 만들지 않는다, viewdata-map ㉗).
+    /// `preparing` 은 넣자마자 도는 편집 준비(분석)가 아직 안 끝났으면 0...1, 끝났으면 nil.
+    case asking(preparing: Double?)
     /// AI 가 살펴보고 장면을 나누는 중.
     case preparing([PrepareStep])
     case ready(PlanView)

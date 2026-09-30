@@ -119,6 +119,8 @@ public enum Copy {
 
         public enum Cell {
             public static let making = "만드는 중"
+            /// 넣자마자 도는 받아적기 · 사람 찾기. 만드는 중이 아니다 (㉗).
+            public static let preparing = "편집 준비 중"
             public static func results(_ n: Int) -> String { "결과물 \(n)" }
         }
 
@@ -330,6 +332,16 @@ public enum Copy {
             public static let action = "로그인하기"
         }
 
+        /// 편집안이 아직 없다 — 무엇을 만들지 묻는 중 (㉗). 가운데 자리에 한 줄, 말은 오른쪽 대화에서 한다.
+        public enum Ask {
+            public static let title = "어떤 영상으로 만들까요?"
+            public static let message = "오른쪽 대화에 원하는 걸 말하거나 아래 칩을 눌러 주세요.\n말씀하시면 그때부터 만들기 시작해요."
+            /// 넣자마자 도는 편집 준비가 아직 안 끝났을 때 덧붙인다. 요청은 지금 해도 된다.
+            public static func preparing(_ fraction: Double) -> String {
+                "영상을 미리 살펴보는 중이에요 · \(Int((fraction * 100).rounded()))%\n지금 말씀해 두시면 다 살펴본 뒤 바로 시작해요."
+            }
+        }
+
         /// AI 가 연결돼 있지 않을 때. **오류가 아니다** (AGENTS.md §10).
         public enum NoAI {
             public static let title = "AI를 연결하면 편집안을 만들어요"
@@ -380,6 +392,16 @@ public enum Copy {
             public static let reels = "인스타 규격으로"
             public static let shorts = "유튜브 쇼츠로"
             public static let hookFirst = "앞에 훅 넣어줘"
+            /// **첫 요청** 칩 — 편집안이 아직 없을 때 (㉗). 누르면 그 말로 AI 가 시작한다.
+            public static let auto = "알아서 만들어줘"
+            public static let coreOnly = "핵심만 20초로"
+            public static let demoFirst = "동작 시범 위주로"
+        }
+
+        /// 편집안이 아직 없을 때 AI 가 먼저 묻는다 — 요구 없이 만들지 않는다 (2026-10-01 결정, ㉗).
+        public enum Ask {
+            public static let greeting =
+                "어떤 영상으로 만들까요? 어느 부분을 쓸지, 길이나 분위기를 말해 주세요. 잘 모르겠으면 ‘알아서 만들어줘’를 눌러도 돼요."
         }
 
         /// 말을 못 보낸 경우. AI 가 끊겼거나 답이 없을 때.
@@ -661,6 +683,8 @@ public enum Copy {
         /// 이유 문장(`reason…`)을 **뒤에 붙인다.** "다시 해 볼게요" 는 이유마다 때가 달라서 여기 넣지 않는다
         /// (한도면 "조금 뒤에", 모르면 "한 번 더").
         public static let aiDraftFailed = "이번엔 편집안을 못 만들었어요."
+        /// 첫 요청이 막혔을 때 대화에 남는 말 — 쓴 말 밑에 "다시 보내기" 가 붙는다 (㉗).
+        public static let aiFirstFailed = "이번엔 편집안을 못 만들었어요. 쓰신 말은 그대로 있으니 다시 보내 주세요."
         /// 채팅 — 채팅 수정을 못 했다 (같은 키, 수정 턴).
         public static let aiEditFailed = "이번엔 못 고쳤어요. 쓰신 말은 그대로 있으니 다시 보내 주세요."
         /// `aiDraftFailed` 의 이유 한 줄 — 구독 한도 · 로그인 만료.

@@ -99,6 +99,13 @@ struct PlanScreen: View {
                     }
                 }
             }
+        case .asking(let preparing):
+            // 아직 아무것도 만들지 않았다 — 무엇을 만들지 말해야 AI 가 시작한다. 말은 오른쪽 대화에서.
+            ContentUnavailableView {
+                Label(Copy.Plan.Ask.title, systemImage: "text.bubble")
+            } description: {
+                Text(preparing.map { Copy.Plan.Ask.message + "\n\n" + Copy.Plan.Ask.preparing($0) } ?? Copy.Plan.Ask.message)
+            }
         case .preparing(let steps):
             PlanPreparingView(steps: steps) { onAction(.plan(.stop)) }
         case .notYet(_, let reason):
@@ -286,7 +293,7 @@ struct PlanScreen: View {
         case .ready(let plan), .making(let plan, _): plan.shotTitle
         case .stopped(let plan, _, _, _): plan?.shotTitle ?? fallbackTitle
         case .notYet(let title, _): title
-        case .preparing, .noAI, .notLoggedIn: fallbackTitle
+        case .asking, .preparing, .noAI, .notLoggedIn: fallbackTitle
         }
     }
 
@@ -303,7 +310,7 @@ struct PlanScreen: View {
             Copy.Plan.Preparing.title
         case .stopped:
             Copy.Plan.Stopped.title
-        case .noAI, .notYet, .notLoggedIn:
+        case .asking, .noAI, .notYet, .notLoggedIn:
             ""
         }
     }

@@ -63,7 +63,7 @@ final class MadiPipeline {
                                      progressBoard: analysisProgress)
             let thumbnails = Thumbnails()
             let render = RenderJob(db: db, progress: progress, thumbnails: thumbnails)
-            // 분석 → AI 초안 → 렌더 → 검사 → (되먹임 → 렌더 → 검사)… → 검사한 결과만 보여 준다
+            // 분석(넣자마자) · 요청이 오면 → AI 초안 → 렌더 → 검사 → (되먹임 → 렌더 → 검사)… → 검사한 결과만 보여 준다
             // (§10 · §7-6 · §8, 5단계 결정 ①).
             guard let mcp = Bundle.main.url(forAuxiliaryExecutable: "madi-mcp") else {
                 throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: "Contents/MacOS/madi-mcp"])
@@ -82,7 +82,11 @@ final class MadiPipeline {
                 if let path = try? await db.writer.read({ try VideoRecord.fetchOne($0, key: job.targetId)?.localPath }) ?? nil {
                     try? await thumbnails.makeVideo(job.targetId, from: URL(fileURLWithPath: path))
                 }
-                try await queueBox.queue?.enqueue(.agent, targetId: job.targetId)
+                // 분석은 **편집 준비**다 — 넣자마자 해 두지만 AI 초안은 크리에이터가 요청했을 때만 건다
+                // (2026-10-01 결정. 전에는 분석이 끝나면 늘 초안 → 영상 만들기까지 저절로 돌았다).
+                if try !db.pendingDraftRequest(videoID: job.targetId).isEmpty {
+                    try await queueBox.queue?.enqueue(.agent, targetId: job.targetId)
+                }
             }
             let renderThenReview: JobQueue.Handler = { job in
                 try await review.afterRender(try await render.run(compositionId: job.targetId))

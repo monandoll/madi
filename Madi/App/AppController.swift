@@ -172,9 +172,14 @@ final class AppController {
         making = ViewDataMapper.making(s)
         if let id = openShotID {
             plan = ViewDataMapper.plan(s, videoID: id, ai: ai, viewing: viewingVersionID, modelReady: modelReady)
-            planMessages = ViewDataMapper.chat(s, videoID: id)
+            planMessages = ViewDataMapper.chat(s, videoID: id, ai: ai)
             planTitle = s.videos.first { $0.id == id }.map { ViewDataMapper.shotTitle($0, s) } ?? ""
-            planChips = [Copy.Chat.Chips.cutGaps, Copy.Chat.Chips.shorter, Copy.Chat.Chips.hookFirst]
+            // 편집안이 아직 없으면 첫 요청 칩 — 누르면 그 말로 AI 가 시작한다 (㉗). 있으면 고치는 칩
+            if case .asking? = plan {
+                planChips = [Copy.Chat.Chips.auto, Copy.Chat.Chips.coreOnly, Copy.Chat.Chips.demoFirst]
+            } else {
+                planChips = [Copy.Chat.Chips.cutGaps, Copy.Chat.Chips.shorter, Copy.Chat.Chips.hookFirst]
+            }
         } else {
             plan = nil
             planMessages = []
@@ -295,8 +300,11 @@ final class AppController {
         }
     }
 
-    /// 편집안이 없고 짜는 작업도 없으면 건다 — 분석이 안 됐으면 분석부터 (분석 뒤에는 파이프라인이 초안을 건다).
-    /// 판은 있는데 결과물도 도는 작업도 없으면(자동 렌더 전에 만든 판) 가장 최근 판을 렌더에 건다 — 검사한 결과만 보여 준다.
+    /// 촬영본을 열 때 · 다시 해 보기 · AI 가 연결됐을 때 — **이어서 할 일이 있으면** 건다.
+    /// - 편집안이 없으면: 크리에이터가 남긴 첫 요청이 있을 때만 AI 초안을 건다 (분석이 안 됐으면 분석부터 — 끝나면 파이프라인이 초안을 건다).
+    ///   요청이 없으면 **AI 는 걸지 않는다** — 화면이 무엇을 만들지 묻는다 (2026-10-01 결정: 요구도 없이 멋대로 만들지 않는다).
+    ///   분석(편집 준비)만 안 돼 있으면 그것만 건다 — 구독을 쓰지 않는다.
+    /// - 판은 있는데 결과물도 도는 작업도 없으면(자동 렌더 전에 만든 판) 가장 최근 판을 렌더에 건다 — 검사한 결과만 보여 준다.
     private func ensureDraft(videoID: String, _ db: AppDatabase, _ queue: JobQueue) async throws {
         guard let s = snapshot, s.liveJobs(of: videoID).isEmpty else { return }
         let versions = s.visibleVersions(of: videoID)
@@ -307,7 +315,11 @@ final class AppController {
             return
         }
         let hasDigest = try await db.writer.read { try DigestRecord.fetchOne($0, key: videoID) } != nil
-        try await queue.enqueue(hasDigest ? .agent : .analyze, targetId: videoID)
+        if !hasDigest {
+            try await queue.enqueue(.analyze, targetId: videoID)
+        } else if try !db.pendingDraftRequest(videoID: videoID).isEmpty {
+            try await queue.enqueue(.agent, targetId: videoID)
+        }
     }
 
     /// 그림이 생기기 전에 들어온 촬영본 · 결과물의 그림을 채운다 (캐시 — 못 만들어도 괜찮다).
@@ -451,8 +463,15 @@ final class AppController {
     }
 
     private func send(_ text: String, videoID: String, _ db: AppDatabase, _ queue: JobQueue) async throws {
-        _ = try? await Chat.send(db: db, videoID: videoID, text: text, viewing: currentVersionID()) { id in
-            try await queue.enqueue(.chat, targetId: id)
+        if snapshot?.compositions(of: videoID).isEmpty ?? false {
+            // 첫 요청 — 편집안이 아직 없다. 이 말로 AI 가 초안을 짠다 (분석이 덜 끝났으면 끝난 뒤에)
+            _ = try? await Chat.sendFirstRequest(db: db, videoID: videoID, text: text) { kind, id in
+                try await queue.enqueue(kind, targetId: id)
+            }
+        } else {
+            _ = try? await Chat.send(db: db, videoID: videoID, text: text, viewing: currentVersionID()) { id in
+                try await queue.enqueue(.chat, targetId: id)
+            }
         }
         viewingVersionID = nil   // 고친 판이 나오면 그걸 보여 준다
     }

@@ -12,7 +12,7 @@ struct GalleryScreen: View {
     var studio: StudioStatus
 
     /// 사람이 한 일은 전부 여기로 나간다 (viewdata-map 3절 ⑦).
-    /// 촬영본에서 나가는 길은 `.makeShort` 하나다 — 편집안이 열리고 AI 가 초안을 짠다.
+    /// 촬영본에서 나가는 길은 `.makeShort` 하나다 — 편집안이 열리고 AI 가 무엇을 만들지 **먼저 묻는다** (말해야 초안을 짠다, ㉗).
     var onAction: (UIAction.Gallery) -> Void = { _ in }
     /// 화면을 열 때 이미 고를 촬영본. 프리뷰 · 스크린샷에서 정보 패널이 채워진 모습을 보려고 둔다.
     var initialSelection: ShotItem.ID?

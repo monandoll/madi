@@ -110,6 +110,24 @@ public struct LibrarySnapshot: Sendable {
         outputs.last { $0.verdict == .shown && versionRoot(of: $0.compositionId)?.id == versionID }
     }
 
+    /// **첫 요청** — 편집안이 아직 없는 촬영본에 크리에이터가 남긴, AI 가 아직 답하지 않은 말.
+    /// AI 초안은 이게 있어야 시작한다 (2026-10-01 결정 — 넣자마자 요구도 없이 멋대로 숏폼을 만들지 않는다).
+    public func draftRequest(of videoID: String) -> [ChatRecord] {
+        guard compositions(of: videoID).isEmpty else { return [] }
+        return Chat.pendingRequest(chats.filter { $0.videoId == videoID })
+    }
+
+    /// 넣자마자 도는 분석만 있는가 — **편집 준비**이지 "만드는 중" 이 아니다 (요청이 아직 없다).
+    public func isOnlyPreparing(_ videoID: String) -> Bool {
+        let live = liveJobs(of: videoID)
+        return !live.isEmpty && live.allSatisfy { $0.kind == .analyze } && draftRequest(of: videoID).isEmpty
+    }
+
+    /// 이 영상으로 무언가 **만드는 중**인가 — 편집 준비(분석만)는 세지 않는다.
+    public func isMaking(_ videoID: String) -> Bool {
+        !liveJobs(of: videoID).isEmpty && !isOnlyPreparing(videoID)
+    }
+
     /// 이 영상에 걸린 살아 있는 작업.
     public func liveJobs(of videoID: String) -> [JobRecord] {
         let comps = Set(compositions(of: videoID).map(\.id))
