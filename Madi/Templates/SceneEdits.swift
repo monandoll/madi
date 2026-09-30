@@ -60,7 +60,12 @@ public enum SceneEdits {
             c.scenes.remove(at: try index(id))
         case .extend(let id, let sec):
             let i = try index(id)
-            let limit = sourceDuration ?? .infinity
+            // 다른 장면이 쓰는 원본 구간에서 멈춘다 — 넘으면 같은 말이 두 장면에 두 번 나온다 (2026-09-30 실제 앱:
+            // 첫 장면을 늘리자 다음 장면의 "두 날개뼈" 가 겹쳤다. 크리에이터 30편은 같은 말을 두 번 쓴 편이 0편)
+            let me = c.scenes[i].source
+            let nextStart = c.scenes.filter { $0.id != id && $0.source.videoID == me.videoID && $0.source.start >= me.end - 0.001 }
+                .map(\.source.start).min() ?? .infinity
+            let limit = min(sourceDuration ?? .infinity, nextStart)
             // 이미 원본 끝에 닿은 장면은 늘릴 수 없다. 끝이 원본보다 조금 넘어 있어도(60.08 / 60.00) 줄이지 않는다
             let end = min(c.scenes[i].source.end + sec, limit)
             guard end > c.scenes[i].source.end + 0.001 else { throw Failure.noChange }

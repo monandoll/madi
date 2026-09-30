@@ -56,6 +56,20 @@ struct SceneEditsTests {
         #expect(c.scenes[0].captions.first?.secondary == "one two")
     }
 
+    @Test("늘리기는 다른 장면이 쓰는 원본에서 멈춘다 — 같은 말이 두 장면에 두 번 나오지 않는다")
+    func extendStopsAtNextScene() throws {
+        let c = try apply(.extend(sceneID: "s1", seconds: 5))     // 1.0 + 5 → 뒤 장면(3.0~)에서 멈춘다
+        #expect(c.scenes[0].source.end <= 3.0)
+        #expect(!c.scenes[0].captions.map(\.text).joined().contains("셋"))
+        // 이미 붙어 있으면 늘릴 것이 없다
+        var touching = comp()
+        touching.scenes[0].source.end = 3.0
+        #expect(throws: SceneEdits.Failure.noChange) {
+            try SceneEdits.apply(.extend(sceneID: "s1", seconds: 1), to: touching, newID: "n", words: words,
+                                 style: try StyleStore.load().values.caption, sourceDuration: 10)
+        }
+    }
+
     @Test("줄이기 — 너무 짧아지면 거절")
     func shorten() throws {
         #expect(throws: SceneEdits.Failure.tooShort) { try apply(.shorten(sceneID: "s1", seconds: 0.8)) }
