@@ -131,6 +131,35 @@ struct ChatTests {
         await #expect(throws: (any Error).self) { try await agent(db, Box(), fail: true).chat(messageID: sent.id) }
         let notice = try #require(try await db.writer.read { try ChatRecord.filter(Column("kind") == "notice").fetchOne($0) })
         #expect(notice.payloadValues["key"] == .string(Chat.Key.aiDraftFailed))
+        // 쓴 말은 "보내지 못함" — 화면에 "다시 보내기" 가 붙는다 (알림이 다시 보내 달라고 한다)
+        let mine = try #require(try await db.writer.read { try ChatRecord.fetchOne($0, key: sent.id) })
+        #expect(mine.kind == .creatorNotSent && mine.text == "줄여 줘")
+    }
+
+    @Test("멈추기로 끊긴 수정 턴도 알림을 남기고 쓴 말은 '보내지 못함' — 취소된 작업 안에서도 적힌다")
+    func cancelledTurnLeavesRetry() async throws {
+        let db = try setup()
+        let sent = try await Chat.send(db: db, videoID: "v1", text: "끝에 한 문장", viewing: "d") { _ in }
+        let job = AgentJob(
+            db: db, mcpExecutable: URL(fileURLWithPath: "/x/madi-mcp"),
+            choose: { .init(kind: .claude, executable: URL(fileURLWithPath: "/x/claude"), version: nil) },
+            userRules: { [] },
+            workRoot: FileManager.default.temporaryDirectory.appending(path: "chat-\(UUID().uuidString)"),
+            turn: { _, _ in
+                AsyncThrowingStream { c in
+                    Task { try? await Task.sleep(for: .seconds(30)); c.finish() }   // 끝나지 않는 턴
+                }
+            },
+            makeCompositionID: { _ in "cX" },
+            onDraft: { _ in }
+        )
+        let task = Task { try await job.chat(messageID: sent.id) }
+        try await Task.sleep(for: .milliseconds(200))
+        task.cancel()
+        _ = await task.result
+        let rows = try await db.writer.read { try ChatRecord.fetchAll($0) }
+        #expect(rows.contains { $0.kind == .notice && $0.payloadValues["key"] == .string(Chat.Key.aiDraftFailed) })
+        #expect(rows.first { $0.id == sent.id }?.kind == .creatorNotSent)
     }
 
     @Test("보내지 못하면 쓴 말을 지우지 않고 creatorNotSent 로 남긴다")
