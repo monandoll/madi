@@ -91,9 +91,14 @@ public final class WhisperKitProvider: TranscriptionProvider, @unchecked Sendabl
             //   문장 단위만 오고 분절도 G6 도 불가능해진다.
             wordTimestamps: true
         )
-        let results = try await pipe.transcribe(
-            audioPath: url.path(percentEncoded: false), decodeOptions: options
-        )
+        // 소리는 **우리가 읽어서** 넘긴다 (AVAssetReader → 16kHz 모노, whisper.cpp 와 같은 길).
+        // WhisperKit 의 파일 읽기(AVAudioFile)는 22분 48초 유튜브 mp4 의 소리를 **393.7초**로 읽었다 — 소리 트랙은 1367.6초인데.
+        // 그래서 6분 33초 뒤의 말이 전부 빠졌고, AI 가 "전사가 6분 33초까지만 있다" 고 답했다 (2026-10-01 실제 앱).
+        let samples = try await AudioAnalyzer.mono16k(url)
+        guard !samples.isEmpty else {
+            return Transcript(videoID: url.deletingPathExtension().lastPathComponent, words: [])
+        }
+        let results: [TranscriptionResult] = try await pipe.transcribe(audioArray: samples, decodeOptions: options)
 
         var words: [Word] = []
         var segments = 0

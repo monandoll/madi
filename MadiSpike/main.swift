@@ -402,14 +402,21 @@ case "crop916":
     } catch { fail("\(error)") }
 
 case "transcribe":
-    guard args.count > 1 else { fail("사용법: madi-spike transcribe <영상> [--model base]") }
+    // --app: 앱이 받아 둔 모델로 (앱과 같은 전사). --json <파일>: 걸러 내기 **전** 낱말을 전부 남긴다
+    guard args.count > 1 else { fail("사용법: madi-spike transcribe <영상> [--model base | --app] [--json <파일>]") }
     do {
         let video = URL(fileURLWithPath: args[1])
-        let provider = WhisperKitProvider(model: option("model") ?? "base")
+        let provider: any TranscriptionProvider = args.contains("--app")
+            ? TranscriptionEngine.forThisMachine.makeProvider(root: Downloads.defaultRoot)
+            : WhisperKitProvider(model: option("model") ?? "base")
         let started = Date()
         let transcript = try await provider.transcribe(video, languageCode: option("lang") ?? "ko")
-        print(String(format: "  낱말 %d개 · %.1f초 걸림",
-                     transcript.words.count, Date().timeIntervalSince(started)))
+        print(String(format: "  낱말 %d개 · %.1f초 걸림 · 마지막 낱말 끝 %.2f초",
+                     transcript.words.count, Date().timeIntervalSince(started), transcript.words.last?.end ?? 0))
+        if let out = option("json") {
+            let enc = JSONEncoder(); enc.outputFormatting = [.prettyPrinted]
+            try enc.encode(transcript.words).write(to: URL(fileURLWithPath: out))
+        }
         for w in transcript.words.prefix(24) {
             print(String(format: "  %6.2f-%6.2f  %@", w.start, w.end, w.text as NSString))
         }
