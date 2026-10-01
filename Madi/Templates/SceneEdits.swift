@@ -2,7 +2,7 @@ import Foundation
 
 /// 사람이 장면 카드에서 직접 고친 것 (ViewData `UIAction.scene` · `.plan(.moveScenes)`, docs/stage-6.spec.md).
 ///
-/// - 고친 편집안은 **항상 새 편집안**이다 (`revisionOf`, §5 · §10). 출처는 `chat`(사람이 고친 판)
+/// - 고친 편집안은 새 편집안이다 (`revisionOf`, §5 · §10). 출처는 `chat`(사람이 고친 판). 예외는 아래 "한 판"
 /// - 원본 구간이 바뀐 장면은 자막을 전사에서 **다시 채운다** (분절은 템플릿 값, `CaptionFiller`). 글자가 그대로인 덩어리는
 ///   영문도 그대로 둔다 — 새로 들어온 말의 덩어리만 영문이 빈다 (다음 채팅 수정에서 AI 가 채운다).
 ///   전에는 1초만 늘려도 그 장면의 영문이 **전부** 지워졌다 (2026-09-30 실제 앱)
@@ -11,6 +11,8 @@ import Foundation
 /// - 사람이 고친 자막 글자는 그대로 둔다 (전사 오타 고치기)
 /// - **바뀌는 것이 없으면 새 편집안을 만들지 않는다** (`Failure.noChange`) — 영상 끝에 붙은 장면을 "늘리기" 할 때마다
 ///   똑같은 "편집안 N" 이 쌓였다 (2026-09-30 실제 앱 DB: 내용이 같은 판 28개)
+/// - **만들기 전까지 손으로 고친 것은 한 판이다** (2026-10-02 사용자 결정) — 손으로 고친 판을 또 고치면 같은 id 로 제자리에서 고친다
+///   (`newID == comp.id`, 언제 되는지는 `AppDatabase.canEditInPlace`). 전에는 "+ 늘리기" 를 연달아 누르자 9초에 편집안이 7개 생겼다
 public enum SceneEdit: Hashable, Sendable {
     case remove(sceneID: String)
     case extend(sceneID: String, seconds: Double)
@@ -41,14 +43,18 @@ public enum SceneEdits {
     /// 장면 최소 길이 (초). 이보다 짧아지는 줄이기는 거절한다.
     public static let minSceneSec = 0.5
 
-    /// 고친 새 편집안. `newID` 로 저장한다 — 저장은 부르는 쪽이 한다 (`origin: .chat`).
+    /// 사람이 고친 판의 id. 손으로 고친 판인지는 이 앞머리로 가린다 — AI 판(`draft_` …)과 출처(`chat`)가 같다.
+    public static func newID(videoID: String) -> String { "edit_\(videoID)_\(UUID().uuidString.prefix(8))" }
+    public static func isHandEdit(_ compositionID: String) -> Bool { compositionID.hasPrefix("edit_") }
+
+    /// 고친 편집안. `newID` 로 저장한다 — 저장은 부르는 쪽이 한다 (`origin: .chat`).
+    /// `newID` 가 `comp.id` 와 같으면 제자리 고치기다 — 이전 판(`revisionOf`) · 만든 때를 그대로 둔다 (판 번호가 바뀌지 않게).
     public static func apply(
         _ edit: SceneEdit, to comp: Composition, newID: String, words: [Word],
         style: StyleValues.CaptionValues, sourceDuration: Double?
     ) throws -> Composition {
         var c = comp
-        c.revisionOf = comp.id
-        c.createdAt = Date()
+        let inPlace = newID == comp.id
         func index(_ id: String) throws -> Int {
             guard let i = c.scenes.firstIndex(where: { $0.id == id }) else { throw Failure.noScene(id) }
             return i
@@ -99,7 +105,8 @@ public enum SceneEdits {
         c = Composition(
             id: newID, videoID: c.videoID, templateID: c.templateID, templateVersion: c.templateVersion,
             style: c.style, size: c.size, fps: c.fps, meta: c.meta, captionSlot: c.captionSlot,
-            scenes: c.scenes, audio: c.audio, revisionOf: comp.id, createdAt: Date()
+            scenes: c.scenes, audio: c.audio,
+            revisionOf: inPlace ? comp.revisionOf : comp.id, createdAt: inPlace ? comp.createdAt : Date()
         )
         if !refill.isEmpty {
             // 바뀐 장면만 다시 채운다. 다른 장면의 자막 · 영문은 그대로

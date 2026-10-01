@@ -422,8 +422,9 @@ final class AppController {
             (try LibrarySnapshot.words(db, videoID: rec.videoId), try VideoRecord.fetchOne(db, key: rec.videoId)?.durationSec)
         }
         let style = try StyleStore.load(comp.style).values.caption
-        let edited = try SceneEdits.apply(e, to: comp, newID: "edit_\(rec.videoId)_\(UUID().uuidString.prefix(8))",
-                                          words: words, style: style, sourceDuration: duration)
+        // 만들기 전까지 손으로 고친 것은 한 판 — 손으로 고친 판을 또 고치면 제자리에서 (2026-10-02 사용자 결정)
+        let newID = try db.canEditInPlace(compositionID: rec.id) ? rec.id : SceneEdits.newID(videoID: rec.videoId)
+        let edited = try SceneEdits.apply(e, to: comp, newID: newID, words: words, style: style, sourceDuration: duration)
         // 장면 그림은 렌더할 때만 뽑아서, 사람이 고친 판(아직 안 만든 판)은 카드 · 미리보기가 전부 빈 칸이었다 (2026-09-30).
         // 저장 **전에** 원본에서 뽑는다 — 저장이 화면을 다시 그릴 때 그림 파일이 이미 있어야 한다
         if let path = snapshot?.videos.first(where: { $0.id == rec.videoId })?.localPath {

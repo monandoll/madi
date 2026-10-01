@@ -110,6 +110,48 @@ struct SceneEditsTests {
         #expect(throws: SceneEdits.Failure.noChange) { try apply(.restoreGap(sceneID: "s2")) }   // 마지막 장면 — 뒤에 틈이 없다
     }
 
+    @Test("제자리 고치기 — 같은 id 면 이전 판 · 만든 때를 그대로 둔다 (판 번호가 바뀌지 않게)")
+    func inPlace() throws {
+        var hand = comp()
+        hand.id = "edit_v_1"; hand.revisionOf = "d"; hand.createdAt = Date(timeIntervalSince1970: 100)
+        let c = try SceneEdits.apply(.extend(sceneID: "s1", seconds: 1), to: hand, newID: hand.id, words: words,
+                                     style: try StyleStore.load().values.caption, sourceDuration: 10)
+        #expect(c.id == "edit_v_1" && c.revisionOf == "d" && c.createdAt == hand.createdAt)
+        #expect(c.scenes[0].source.end > 1.0)
+    }
+
+    @Test("만들기 전까지 손으로 고친 것은 한 판 — 결과물 · 다음 판 · 도는 렌더가 없는 손 판만 제자리에서 고친다")
+    func canEditInPlace() throws {
+        let db = try AppDatabase.inMemory()
+        try db.writer.write { try VideoRecord(id: "v", source: .photos, sourceRef: "ph:v", status: .ready).insert($0) }
+        func save(_ id: String, revisionOf: String?, origin: CompositionRecord.Origin) throws {
+            var c = comp()
+            c.id = id; c.revisionOf = revisionOf
+            try db.saveComposition(c, origin: origin)
+        }
+        try save("draft_v_1", revisionOf: nil, origin: .draft)
+        try save("edit_v_a", revisionOf: "draft_v_1", origin: .chat)
+        #expect(try !db.canEditInPlace(compositionID: "draft_v_1"))   // AI 판은 손으로 고치면 늘 새 판
+        #expect(try db.canEditInPlace(compositionID: "edit_v_a"))
+
+        // 만들기를 눌러 렌더가 줄 서 있으면 — 렌더가 읽을 판을 바꾸지 않는다
+        try db.writer.write { var j = JobRecord(kind: .render, targetId: "edit_v_a"); try j.insert($0) }
+        #expect(try !db.canEditInPlace(compositionID: "edit_v_a"))
+        try db.writer.write { try $0.execute(sql: "UPDATE job SET state = 'failed'") }   // 멈춤
+        #expect(try db.canEditInPlace(compositionID: "edit_v_a"))
+
+        // 결과물이 생기면 새 판 (§5 — DB 트리거도 막는다)
+        try db.writer.write {
+            try OutputRecord(id: "o", compositionId: "edit_v_a", path: "/tmp/o.mp4", reviewReport: nil, arch: "arm64", createdAt: Date()).insert($0)
+        }
+        #expect(try !db.canEditInPlace(compositionID: "edit_v_a"))
+
+        // 이 판에서 나온 판(채팅 수정)이 있으면 새 판 — 그 판의 "이전 판" 이 몰래 바뀌지 않게
+        try save("edit_v_b", revisionOf: "draft_v_1", origin: .chat)
+        try save("chat_v_c", revisionOf: "edit_v_b", origin: .chat)
+        #expect(try !db.canEditInPlace(compositionID: "edit_v_b"))
+    }
+
     @Test("멈추기 — 줄 선 작업만 멈춘다")
     func cancelQueued() async throws {
         let db = try AppDatabase.inMemory()
