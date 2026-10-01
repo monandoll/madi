@@ -430,7 +430,8 @@ final class AppController {
         if let path = snapshot?.videos.first(where: { $0.id == rec.videoId })?.localPath {
             try? await thumbnails.makeScenes(edited, sources: [rec.videoId: URL(fileURLWithPath: path)])
         }
-        try db.saveComposition(edited, origin: .chat)
+        // 제자리 고치기는 만든 때를 그대로 — 판 번호는 만든 때 순서다
+        try db.saveComposition(edited, createdAt: edited.id == rec.id ? rec.createdAt : Date(), origin: .chat)
         viewingVersionID = edited.id
     }
 
