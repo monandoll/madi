@@ -273,4 +273,22 @@ struct ChatTests {
         let row = try #require(try await db.writer.read { try ChatRecord.fetchOne($0) })
         #expect(row.kind == .creatorNotSent && row.text == "남아야 한다")
     }
+
+    @Test("다시 분석하는 중이면 채팅 턴은 분석이 끝날 때까지 기다린다 — 옛 다이제스트로 고치지 않는다")
+    func chatWaitsForAnalysis() async throws {
+        let db = try setup()
+        try await db.writer.write { var j = JobRecord(kind: .analyze, targetId: "v1"); j.state = .running; try j.insert($0) }
+        let job = agent(db, Box())
+        final class Flag: @unchecked Sendable { var done = false }
+        let flag = Flag()
+        let waiting = Task { try await job.waitForAnalysis("v1", every: .milliseconds(20)); flag.done = true }
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(!flag.done)                // 분석이 도는 동안은 기다린다
+        try await db.writer.write { try $0.execute(sql: "UPDATE job SET state = 'done' WHERE kind = 'analyze'") }
+        try await waiting.value      // 분석이 끝나면 돌아온다
+        // 다른 영상의 분석은 기다리지 않는다
+        try await db.writer.write { var j = JobRecord(kind: .analyze, targetId: "v2"); try j.insert($0) }
+        try await job.waitForAnalysis("v1", every: .milliseconds(20))
+    }
+
 }

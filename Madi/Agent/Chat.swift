@@ -154,6 +154,9 @@ extension AgentJob {
         guard let message = try await db.writer.read({ try ChatRecord.fetchOne($0, key: messageID) }),
               let text = message.text else { throw Failure(description: "채팅 줄이 없다: \(messageID)") }
         let videoID = message.videoId
+        // 이 영상을 다시 분석하는 중이면(옛 다이제스트 — 촬영본을 열 때 건다) 끝날 때까지 기다린다. 옛 다이제스트로 고치지 않는다
+        // (2026-10-02: 6분 33초에서 끊긴 전사를 읽은 AI 가 "뒤의 설명을 이어 붙이지 못했다" 고 답했다)
+        try await waitForAnalysis(videoID)
         // 보고 있던 편집안. 없으면 이 영상의 가장 최근 사람이 본 판(초안 · 채팅).
         let viewing: String? = { if case .string(let s)? = message.payloadValues["viewing"] { s } else { nil } }()
         let (current, rows) = try await db.writer.read { db -> (CompositionRecord?, [ChatRecord]) in
@@ -220,6 +223,18 @@ extension AgentJob {
             sent.kind = .creatorNotSent
             try sent.update(db)
         }
+    }
+
+    /// 이 영상의 분석(편집 준비)이 줄 서 있거나 도는 동안 기다린다. 멈추기(■)로 작업이 취소되면 바로 빠진다.
+    func waitForAnalysis(_ videoID: String, every: Duration = .seconds(1)) async throws {
+        func analyzing() async throws -> Bool {
+            try await db.writer.read { db in
+                try JobRecord.filter(Column("kind") == JobRecord.Kind.analyze.rawValue && Column("targetId") == videoID
+                                     && [JobRecord.State.queued.rawValue, JobRecord.State.running.rawValue].contains(Column("state")))
+                    .fetchCount(db) > 0
+            }
+        }
+        while try await analyzing() { try await Task.sleep(for: every) }
     }
 
     public var chatHandler: JobQueue.Handler {
