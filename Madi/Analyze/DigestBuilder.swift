@@ -17,7 +17,7 @@ import CoreGraphics
 public enum DigestBuilder {
 
     /// 형식 버전. 텍스트 형식이 바뀌면 올린다 — 옛 버전 다이제스트는 다시 만든다.
-    public static let version = 3   // 2: 말이 아닌 전사를 걷는다 · 3: 사람 위치 줄을 구간으로 묶는다
+    public static let version = 4   // 2: 말이 아닌 전사를 걷는다 · 3: 사람 위치 줄을 구간으로 묶는다 · 4: 영상 끝에서 잘린 말 표시
 
     public struct Digest: Sendable {
         public var text: String
@@ -194,7 +194,11 @@ public enum DigestBuilder {
         out.append("\n## TRANSCRIPT")
         let sentences = self.sentences(transcript.words)
         if sentences.isEmpty { out.append("(말 없음)") }
-        for s in sentences { out.append("[\(t2(s.start))-\(t2(s.end))] \(s.text)") }
+        // 영상이 말 도중에 끝났으면 마지막 문장에 표시한다 — 그 문장으로 장면을 끝내면 숨 없이 뚝 끊긴다 (`write_composition` 이 거절한다)
+        let clipped = transcript.clippedAtEnd(duration: info.duration) != nil
+        for (i, s) in sentences.enumerated() {
+            out.append("[\(t2(s.start))-\(t2(s.end))] \(s.text)" + (clipped && i == sentences.count - 1 ? "  \(clippedMark)" : ""))
+        }
 
         out.append("\n## SUBJECT  (0.5s 표본 · 비슷하면 `시작-끝` 한 줄로 묶음, 정규화 x y w h — y 는 아래에서, 사람 분할 마스크)")
         out.append(contentsOf: subjectLines(subject.samples))
@@ -234,6 +238,9 @@ public enum DigestBuilder {
 
     /// 낱말을 문장으로 묶는다. **표기용**이다 — 자막 분절(`CaptionSplitter`)과 다르다.
     /// 끝 문장부호에서, 또는 0.5초 넘게 쉬면 끊는다.
+    /// TRANSCRIPT 마지막 줄에 붙는 표시. 제작 지침(playbook)이 이 글자를 가리킨다.
+    public static let clippedMark = "(영상 끝에서 말이 잘림)"
+
     static func sentences(_ words: [Word]) -> [(start: Double, end: Double, text: String)] {
         var out: [(Double, Double, String)] = []
         var cur: [Word] = []

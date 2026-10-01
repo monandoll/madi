@@ -47,11 +47,39 @@ struct DigestTests {
         #expect(s.map(\.text) == ["오늘은 스트레칭.", "먼저", "앉아요"])
     }
 
+    @Test("영상이 말 도중에 끝났나 — 마지막 낱말 뒤에 숨 쉴 틈(0.15초)도 없으면 잘린 말이다")
+    func clippedAtEnd() {
+        let t = Transcript(videoID: "v", words: [Word(text: "주시고", start: 58.4, end: 59.06), Word(text: "올릴게요.", start: 59.06, end: 60.0)])
+        #expect(t.clippedAtEnd(duration: 60)?.text == "올릴게요.")      // 실측 — 긴 영상의 앞 60초를 자른 대용 (틈 0.00초, 마침표까지 붙었다)
+        #expect(t.clippedAtEnd(duration: 60.1)?.text == "올릴게요.")
+        #expect(t.clippedAtEnd(duration: 61.93) == nil)                   // 끝인사 뒤 1.93초 (30분 영상 실측)
+        #expect(Transcript(videoID: "v", words: []).clippedAtEnd(duration: 60) == nil)
+    }
+
     /// 모델 없이 도는 가짜 전사기.
     struct FakeTranscriber: TranscriptionProvider {
+        var words = [Word(text: "안녕하세요.", start: 0.1, end: 0.6)]
         func transcribe(_ url: URL, languageCode: String) async throws -> Transcript {
-            Transcript(videoID: "v", words: [Word(text: "안녕하세요.", start: 0.1, end: 0.6)])
+            Transcript(videoID: "v", words: words)
         }
+    }
+
+    @Test("다이제스트 — 영상 끝에서 잘린 말은 마지막 문장에만 표시한다")
+    func digestMarksClippedEnd() async throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "madi-clipped-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let source = dir.appending(path: "v.mp4")
+        try await TestVideo.makeTwoTone(at: source, seconds: 2, switchAt: 1)
+        func digest(_ words: [Word]) async throws -> String {
+            try await DigestBuilder.build(videoID: "v", url: source, transcriber: FakeTranscriber(words: words),
+                                          workDir: dir.appending(path: "d-\(UUID().uuidString)")).text
+        }
+        let cut = try await digest([Word(text: "하나.", start: 0.1, end: 0.5), Word(text: "올릴게요", start: 1.2, end: 2.0)])
+        #expect(cut.contains("] 올릴게요  \(DigestBuilder.clippedMark)"))
+        #expect(!cut.contains("하나.  \(DigestBuilder.clippedMark)"))
+        let whole = try await digest([Word(text: "하나.", start: 0.1, end: 0.5), Word(text: "끝.", start: 1.0, end: 1.4)])
+        #expect(!whole.contains(DigestBuilder.clippedMark))
     }
 
     @Test("분석 작업은 다이제스트를 저장하고, 원본이 그대로면 다시 만들지 않는다")

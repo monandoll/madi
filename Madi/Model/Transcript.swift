@@ -52,6 +52,15 @@ public struct Transcript: Codable, Hashable, Sendable {
         return Transcript(videoID: videoID, words: kept)
     }
 
+    /// 영상이 말 도중에 끝났으면 그 마지막 낱말. 마지막 낱말 끝 뒤로 **숨 쉴 틈**(`breath` — 말 끝 뒤 0.15초, 크리에이터 완성본 실측)도
+    /// 안 남았으면 말이 파일 끝에서 잘린 것으로 본다. 그 말로 장면을 끝내면 숨 없이 뚝 끊긴다 — 앱은 파일 밖으로 여유를 붙일 수 없다.
+    /// 실측 (2026-10-02, `docs/findings/2026-10-01-practical-readiness.md` 1-4): 긴 영상의 앞 60초를 자른 대용 2편은 마지막 낱말이
+    /// 파일 끝에 닿거나 넘었다 (남은 틈 0.00 · −0.08초 — 전사가 낱말을 파일 끝까지 늘리고 마침표도 붙인다). 끝인사로 끝난 30분 영상은 1.93초.
+    public func clippedAtEnd(duration: Double, breath: Double = 0.15) -> Word? {
+        guard let last = words.last, duration - last.end < breath else { return nil }
+        return last
+    }
+
     public func words(in range: ClosedRange<Double>) -> [Word] {
         words.filter { $0.start >= range.lowerBound - 1e-9 && $0.start <= range.upperBound + 1e-9 }
     }
