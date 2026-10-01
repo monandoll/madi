@@ -50,6 +50,60 @@ public struct Importer: Sendable {
             .appending(path: "madi/originals", directoryHint: .isDirectory)
     }
 
+    /// 사진 보관함에 **이미 있던** 영상 하나 — 목록에 올릴 만큼만 안다 (원본은 아직 안 받는다).
+    public struct Listed: Sendable {
+        public var sourceRef: String
+        public var capturedAt: Date?
+        public var durationSec: Double
+        public var width: Int
+        public var height: Int
+        public init(sourceRef: String, capturedAt: Date?, durationSec: Double, width: Int, height: Int) {
+            self.sourceRef = sourceRef; self.capturedAt = capturedAt
+            self.durationSec = durationSec; self.width = width; self.height = height
+        }
+    }
+
+    /// 보관함에 이미 있던 영상들을 **목록에만** 올린다 (`status: .listed`) — 복사도 분석도 하지 않는다.
+    /// 몇 천 개가 와도 한 번에 적는다. 이미 아는 영상 · 지운 영상 · 앱이 내보낸 결과물은 건너뛴다.
+    /// - Returns: 새로 올린 행 (미리보기 그림을 만들 대상).
+    @discardableResult
+    public func list(_ items: [Listed]) async throws -> [VideoRecord] {
+        guard !items.isEmpty else { return [] }
+        let fresh: [VideoRecord] = try await db.writer.write { db in
+            let known = Set(try String.fetchAll(db, sql: "SELECT sourceRef FROM video"))
+            let exported = Set(try String.fetchAll(db, sql: "SELECT location FROM export WHERE location IS NOT NULL"))
+            var out: [VideoRecord] = []
+            for item in items where !known.contains(item.sourceRef) && !exported.contains(item.sourceRef)
+                && !Exporter.sent.contains(item.sourceRef) {
+                let row = VideoRecord(source: .photos, sourceRef: item.sourceRef,
+                                      durationSec: item.durationSec, width: item.width, height: item.height,
+                                      capturedAt: item.capturedAt, status: .listed)
+                try row.insert(db)
+                out.append(row)
+            }
+            return out
+        }
+        if !fresh.isEmpty { try? db.log("import.listed", payload: ["count": .number(Double(fresh.count))]) }
+        return fresh
+    }
+
+    /// 목록에만 있는(아직 받지 않은) 사진 보관함 영상 — 미리보기 그림을 채울 대상. 숨긴 것 · 지운 것은 뺀다.
+    public func listedRows() async throws -> [VideoRecord] {
+        try await db.writer.read { db in
+            try VideoRecord.filter(Column("status") == VideoRecord.Status.listed.rawValue)
+                .filter(Column("deletedAt") == nil && Column("hiddenAt") == nil).fetchAll(db)
+        }
+    }
+
+    /// 받으려던 영상을 찾지 못했다 (사진 앱 연결이 풀림 · 사진 앱에서 지움) — "못 받음" 으로 적는다. 이미 받은 영상은 건드리지 않는다.
+    public func markFailed(sourceRef: String, error: String) async throws {
+        try await db.writer.write { db in
+            try db.execute(sql: "UPDATE video SET status = 'failed', error = ? WHERE sourceRef = ? AND status != 'ready'",
+                           arguments: [error, sourceRef])
+        }
+        try? db.log("import.failed", payload: ["error": .string(error)])
+    }
+
     /// - Returns: 새로 들였거나 이어 받은 영상. 이미 준비된 영상이면 nil.
     @discardableResult
     public func receive(_ item: IncomingVideo, progress: (@Sendable (Double) -> Void)? = nil) async throws -> VideoRecord? {
@@ -67,6 +121,12 @@ public struct Importer: Sendable {
         guard var video = seen else { return nil }
         if video.status == .ready || video.deletedAt != nil { return nil }   // 지운 영상은 다시 들이지 않는다
         try db.log("import.seen", subject: video.id, payload: ["source": .string(item.source.rawValue)])
+        // 목록에만 있던 영상을 이제 받는다 — 받는 동안은 "받는 중" 으로 보인다 (진행률)
+        if video.status == .listed {
+            video.status = .importing
+            let starting = video
+            try await db.writer.write { try starting.update($0) }
+        }
 
         try FileManager.default.createDirectory(at: originals, withIntermediateDirectories: true)
         let destination = originals.appending(path: "\(video.id).\(item.fileExtension.lowercased())")

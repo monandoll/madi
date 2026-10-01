@@ -43,6 +43,58 @@ public enum Chat {
         return row
     }
 
+    /// 아직 AI 가 답하지 않은 크리에이터 말 — 마지막 AI 말 · 알림 **뒤에** 온 것 (한 영상의 줄, 시간 순).
+    /// 보내지 못한 말(`creatorNotSent`)은 세지 않는다 — 다시 보내기를 눌러야 요청이다.
+    public static func pendingRequest(_ rows: [ChatRecord]) -> [ChatRecord] {
+        var pending: [ChatRecord] = []
+        for r in rows {
+            switch r.kind {
+            case .creator: pending.append(r)
+            case .assistant, .notice: pending.removeAll()
+            default: break
+            }
+        }
+        return pending
+    }
+
+    /// **첫 요청** — 편집안이 아직 없을 때 크리에이터가 한 말. 줄을 남기고 초안을 건다: 분석이 끝났으면 AI 초안,
+    /// 아니면 분석부터 (끝나면 파이프라인이 이 줄을 보고 초안을 건다). AI 는 이 말이 있어야 시작한다 (2026-10-01 결정).
+    @discardableResult
+    public static func sendFirstRequest(
+        db: AppDatabase, videoID: String, text: String,
+        enqueue: @Sendable (JobRecord.Kind, String) async throws -> Void
+    ) async throws -> ChatRecord {
+        var row = ChatRecord(videoId: videoID, kind: .creator, text: text)
+        try await db.writer.write { [row] in try row.insert($0) }
+        do {
+            let (ready, hasDigest) = try await db.writer.read { db in
+                (try VideoRecord.fetchOne(db, key: videoID)?.status == .ready, try DigestRecord.fetchOne(db, key: videoID) != nil)
+            }
+            // 원본을 아직 받는 중이면(사진 보관함에 있던 영상) 여기서 걸지 않는다 — 다 받으면 가져오기가 분석을 걸고,
+            // 분석이 끝나면 파이프라인이 이 말을 보고 초안을 건다
+            if ready { try await enqueue(hasDigest ? .agent : .analyze, videoID) }
+        } catch {
+            row.kind = .creatorNotSent
+            try await db.writer.write { [row] in try row.update($0) }
+            throw error
+        }
+        try? db.log("chat.sent", subject: videoID, payload: ["first": .bool(true)])
+        return row
+    }
+
+    /// 첫 초안 턴의 요청 칸 (§10 6번) — 크리에이터가 한 말 그대로 + 앱이 붙이는 말.
+    static func firstRequest(text: String) -> String {
+        [
+            text,
+            "",
+            "(앱이 붙임) 아직 편집안이 없다. 이 영상으로 **편집안 초안**을 `write_composition` 으로 보낸다.",
+            "크리에이터가 말한 것(어느 부분 · 길이 · 무엇을 보여 줄지)을 따르고, 말하지 않은 것은 제작 지침대로 한다. \"알아서\" 라고 하면 전부 제작 지침대로.",
+            "저장되면 무엇을 만들었는지 한두 문장으로 말한다 — 편집 용어 없이.",
+            "**질문이면**(무슨 영상인지 등) 편집안을 보내지 않고 답만 한다. 새 영상이 만들어지지 않는다.",
+            "답은 **세 문장 이내의 평범한 말**로 쓴다. 마크다운(`**` · `-` 목록 · `#` 제목)을 쓰지 않는다 — 채팅 말풍선에 기호가 그대로 보인다.",
+        ].joined(separator: "\n")
+    }
+
     /// "앞으로도 이렇게 할까요?" 에 답한다. 예일 때만 사용자 규칙에 적는다 (§10).
     /// 규칙 문장은 크리에이터 말 그대로가 아니라 **AI 가 다듬은 일반 문장**이다 (6단계 결정 ③).
     public static func answerRemember(db: AppDatabase, choicesID: String, yes: Bool) async throws {
@@ -79,7 +131,7 @@ public enum Chat {
     /// 수정 턴의 요청 칸 (§10 6번). 크리에이터 말 + 보고 있는 편집안.
     static func request(text: String, current: Composition) -> String {
         [
-            "크리에이터: \(text)",
+            text,   // "크리에이터: " 는 프롬프트 조립이 붙인다 (전에는 두 번 들어갔다)
             "",
             "(앱이 붙임) 크리에이터가 지금 보고 있는 편집안이다.",
             "**고쳐 달라는 요청이면** 고친 편집안을 `write_composition` 으로 **새로** 보낸다. 요청과 상관없는 장면은 그대로 둔다. 영문(`secondary`)도 쓴 문장마다 다시 보낸다.",
@@ -160,7 +212,7 @@ extension AgentJob {
     ///
     /// **동기 쓰기** (async 가 아닌 함수라 동기 쓰기가 골라진다) — 멈추기(■)로 끊긴 작업 안에서 비동기 쓰기는 GRDB 가
     /// CancellationError 로 거절해, 알림도 못 남기고 말풍선이 그대로였다 (눌러서 찾음).
-    private func chatFailed(_ message: ChatRecord, error: Error) {
+    func chatFailed(_ message: ChatRecord, error: Error) {
         try? db.writer.write { db in
             try ChatRecord(videoId: message.videoId, kind: .notice,
                            payload: ["key": .string(Chat.Key.aiDraftFailed), "detail": .string("\(error)")]).insert(db)

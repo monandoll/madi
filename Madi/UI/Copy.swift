@@ -97,6 +97,15 @@ public enum Copy {
             public static let addFromMac = "Mac에 있는 영상 넣기…"
         }
 
+        /// 사진 앱을 아직 연결하지 않았을 때의 빈 화면 (㉘). 연결이 먼저다 — 연결되면 그때부터 저절로 들어온다.
+        public enum Connect {
+            public static let title = "사진 앱을 연결하면 아이폰 영상이 저절로 들어와요"
+            public static let message =
+                "연결하면 사진 보관함에 있는 영상이 바로 보이고, 새로 찍은 영상은 1~2분 안에 나타나요.\n"
+                + "아이폰과 이 Mac에서 iCloud 사진이 켜져 있어야 해요. 영상만 읽고, 이 Mac 밖으로 보내지 않아요."
+            public static let action = "사진 앱 연결하기"
+        }
+
         public enum Importing {
             public static let title = "가져오는 중…"
             public static func progress(done: Int, total: Int) -> String {
@@ -119,6 +128,8 @@ public enum Copy {
 
         public enum Cell {
             public static let making = "만드는 중"
+            /// 넣자마자 도는 받아적기 · 사람 찾기. 만드는 중이 아니다 (㉗).
+            public static let preparing = "편집 준비 중"
             public static func results(_ n: Int) -> String { "결과물 \(n)" }
         }
 
@@ -141,6 +152,10 @@ public enum Copy {
 
         public enum Status {
             public static let syncedWithICloud = "iCloud 사진과 맞춰져 있음"
+            /// 사진 보관함과 맞추는 중 — 목록을 올리고 미리보기 그림을 만드는 동안 (㉙). 아직 세는 중이면 개수 없이.
+            public static func syncing(done: Int, total: Int) -> String {
+                total == 0 ? "사진 보관함과 맞추는 중…" : "사진 보관함과 맞추는 중 · \(total)개 중 \(done)개"
+            }
             /// 사진 권한이 없을 때 — 전에는 권한과 상관없이 "맞춰져 있음" 이라고 했다 (2026-09-30).
             public static let photosOff = "사진 앱과 연결 안 됨"
             public static let connectPhotos = "연결하기"
@@ -330,6 +345,16 @@ public enum Copy {
             public static let action = "로그인하기"
         }
 
+        /// 편집안이 아직 없다 — 무엇을 만들지 묻는 중 (㉗). 가운데 자리에 한 줄, 말은 오른쪽 대화에서 한다.
+        public enum Ask {
+            public static let title = "어떤 영상으로 만들까요?"
+            public static let message = "오른쪽 대화에 원하는 걸 말하거나 아래 칩을 눌러 주세요.\n말씀하시면 그때부터 만들기 시작해요."
+            /// 넣자마자 도는 편집 준비가 아직 안 끝났을 때 덧붙인다. 요청은 지금 해도 된다.
+            public static func preparing(_ fraction: Double) -> String {
+                "영상을 미리 살펴보는 중이에요 · \(Int((fraction * 100).rounded()))%\n지금 말씀해 두시면 다 살펴본 뒤 바로 시작해요."
+            }
+        }
+
         /// AI 가 연결돼 있지 않을 때. **오류가 아니다** (AGENTS.md §10).
         public enum NoAI {
             public static let title = "AI를 연결하면 편집안을 만들어요"
@@ -342,6 +367,10 @@ public enum Copy {
     /// 재생 막대 버튼 — 도움말(마우스를 올리면)과 VoiceOver 가 읽는 이름. QuickTime 과 같은 말.
     /// 전에는 "처음으로" 버튼을 시스템이 그림 이름대로 "끝으로 이동" 으로 읽었고, 도움말은 "여기서부터 재생" 이었다.
     public enum Player {
+        /// 사진 보관함에서 바로 트는 미리보기 (㉚) — 원본이 iCloud 에만 있으면 받아 오느라 잠깐 걸린다.
+        public static let loadingFromPhotos = "사진 보관함에서 불러오는 중…"
+        /// 사진 앱 연결이 풀렸거나 사진 앱에서 지운 영상.
+        public static let cantPreview = "사진 앱과 연결돼 있어야 미리 볼 수 있어요"
         public static let toStart = "처음으로"
         public static let back10 = "10초 뒤로"
         public static let forward10 = "10초 앞으로"
@@ -380,6 +409,16 @@ public enum Copy {
             public static let reels = "인스타 규격으로"
             public static let shorts = "유튜브 쇼츠로"
             public static let hookFirst = "앞에 훅 넣어줘"
+            /// **첫 요청** 칩 — 편집안이 아직 없을 때 (㉗). 누르면 그 말로 AI 가 시작한다.
+            public static let auto = "알아서 만들어줘"
+            public static let coreOnly = "핵심만 20초로"
+            public static let demoFirst = "동작 시범 위주로"
+        }
+
+        /// 편집안이 아직 없을 때 AI 가 먼저 묻는다 — 요구 없이 만들지 않는다 (2026-10-01 결정, ㉗).
+        public enum Ask {
+            public static let greeting =
+                "어떤 영상으로 만들까요? 어느 부분을 쓸지, 길이나 분위기를 말해 주세요. 잘 모르겠으면 ‘알아서 만들어줘’를 눌러도 돼요."
         }
 
         /// 말을 못 보낸 경우. AI 가 끊겼거나 답이 없을 때.
@@ -661,6 +700,8 @@ public enum Copy {
         /// 이유 문장(`reason…`)을 **뒤에 붙인다.** "다시 해 볼게요" 는 이유마다 때가 달라서 여기 넣지 않는다
         /// (한도면 "조금 뒤에", 모르면 "한 번 더").
         public static let aiDraftFailed = "이번엔 편집안을 못 만들었어요."
+        /// 첫 요청이 막혔을 때 대화에 남는 말 — 쓴 말 밑에 "다시 보내기" 가 붙는다 (㉗).
+        public static let aiFirstFailed = "이번엔 편집안을 못 만들었어요. 쓰신 말은 그대로 있으니 다시 보내 주세요."
         /// 채팅 — 채팅 수정을 못 했다 (같은 키, 수정 턴).
         public static let aiEditFailed = "이번엔 못 고쳤어요. 쓰신 말은 그대로 있으니 다시 보내 주세요."
         /// `aiDraftFailed` 의 이유 한 줄 — 구독 한도 · 로그인 만료.
@@ -723,8 +764,9 @@ public enum Copy {
         public static func photoLibraryDenied(folder: String) -> String {
             "사진 보관함을 못 봐도 괜찮아요. ‘\(folder)’ 폴더에 영상을 넣어 주시면 바로 가져와요. 나중에 설정에서 다시 켤 수 있어요."
         }
-        /// 첫 실행 뒤 조용한 안내 — **앞으로 찍는 영상부터** 들어온다.
-        public static let importFromPhotosSince = "지금부터 찍는 영상이 들어와요. 예전 영상은 가져오지 않아요."
+        /// 첫 실행 뒤 · 빈 갤러리의 조용한 안내 — 보관함에 있던 영상도 **전부 보인다** (2026-10-01, 전에는 "예전 영상은 가져오지 않아요").
+        /// 예전 영상은 목록에만 있고 `숏폼 만들기` 를 누를 때 원본을 받는다.
+        public static let importFromPhotosSince = "사진 보관함에 있던 영상도 모두 보여요. 예전 영상은 고를 때 원본을 받아 와요."
         /// 갤러리 칸 · 정보 패널 — iCloud 에서 원본을 받는 중.
         public static func importFetchingOriginal(_ fraction: Double) -> String {
             "원본 가져오는 중 · \(Int((fraction * 100).rounded()))%"
@@ -805,11 +847,16 @@ public enum Copy {
 
     // MARK: - 상태 문구
 
-    /// 촬영본에서 말소리가 얼마나 잡혔는지. "오디오 SNR" 같은 말을 쓰지 않는다.
+    /// 촬영본에서 말소리가 잡혔는지 — 정보 칸 "말소리" 줄의 값. "오디오 SNR" 같은 말을 쓰지 않는다.
+    ///
+    /// **아는 만큼만 말한다** (2026-10-01 사용자: "말소리가 잘 안들리는것도 잘 들린다 써있네"). 앱이 재는 것은 받아적은 말이
+    /// **있다 · 없다**뿐이다 — 얼마나 또렷한지는 재지 않는다. 그래서 "잘 들려요" 가 아니라 "있어요" 이고,
+    /// 살펴보기 전(분석 전)에는 모른다고 한다. 또렷함을 재게 되면 `noisy` 를 쓴다.
     public enum Speech {
-        public static let clear = "잘 들려요"
+        public static let clear = "있어요"
         public static let noisy = "조금 시끄러워요"
-        public static let silent = "소리가 없어요"
+        public static let silent = "없어요"
+        public static let unknown = "살펴보기 전이에요"
     }
 
     /// 장면 역할. 색과 함께 **항상 글자로도** 말한다.

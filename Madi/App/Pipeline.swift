@@ -31,7 +31,17 @@ final class MadiPipeline {
     private var photos: PhotoLibraryWatcher?
     private var folder: FolderWatcher?
 
-    /// 사진 보관함에서 들일 영상의 시작 시각 = 앱을 처음 켠 시각. 보관함 전체를 들이지 않는다.
+    /// 사진 보관함과 맞추는 진행 (목록 · 미리보기 그림이 늘 때마다, 끝나면 nil) — 화면이 다시 그리고 아랫줄에 보인다 (바꾸는 층이 건다).
+    var onLibrarySync: (@Sendable (LibrarySync?) -> Void)?
+
+    /// 목록에만 있던 사진 보관함 영상의 원본을 받는다 (`숏폼 만들기` 를 눌렀을 때). 받으면 분석이 걸린다.
+    func fetchOriginal(sourceRef: String) {
+        guard let photos else { return }
+        Task.detached(priority: .userInitiated) { await photos.fetch(localIdentifier: sourceRef) }
+    }
+
+    /// 이 시각(앱을 처음 켠 시각) **이후에 찍은** 영상은 바로 받아 분석해 둔다. 그 전부터 보관함에 있던 영상은
+    /// 목록에만 올리고 고를 때 받는다 (`PhotoLibraryWatcher`).
     static var importSince: Date {
         let key = "madi.import.since"
         if let d = UserDefaults.standard.object(forKey: key) as? Date { return d }
@@ -63,7 +73,7 @@ final class MadiPipeline {
                                      progressBoard: analysisProgress)
             let thumbnails = Thumbnails()
             let render = RenderJob(db: db, progress: progress, thumbnails: thumbnails)
-            // 분석 → AI 초안 → 렌더 → 검사 → (되먹임 → 렌더 → 검사)… → 검사한 결과만 보여 준다
+            // 분석(넣자마자) · 요청이 오면 → AI 초안 → 렌더 → 검사 → (되먹임 → 렌더 → 검사)… → 검사한 결과만 보여 준다
             // (§10 · §7-6 · §8, 5단계 결정 ①).
             guard let mcp = Bundle.main.url(forAuxiliaryExecutable: "madi-mcp") else {
                 throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: "Contents/MacOS/madi-mcp"])
@@ -82,7 +92,11 @@ final class MadiPipeline {
                 if let path = try? await db.writer.read({ try VideoRecord.fetchOne($0, key: job.targetId)?.localPath }) ?? nil {
                     try? await thumbnails.makeVideo(job.targetId, from: URL(fileURLWithPath: path))
                 }
-                try await queueBox.queue?.enqueue(.agent, targetId: job.targetId)
+                // 분석은 **편집 준비**다 — 넣자마자 해 두지만 AI 초안은 크리에이터가 요청했을 때만 건다
+                // (2026-10-01 결정. 전에는 분석이 끝나면 늘 초안 → 영상 만들기까지 저절로 돌았다).
+                if try !db.pendingDraftRequest(videoID: job.targetId).isEmpty {
+                    try await queueBox.queue?.enqueue(.agent, targetId: job.targetId)
+                }
             }
             let renderThenReview: JobQueue.Handler = { job in
                 try await review.afterRender(try await render.run(compositionId: job.targetId))
@@ -98,7 +112,8 @@ final class MadiPipeline {
             let importer = Importer(db: db, queue: queue, progressBoard: importProgress)
             let folder = FolderWatcher(importer: importer, folder: Self.inbox)
             try folder.start()
-            let photos = PhotoLibraryWatcher(importer: importer, since: Self.importSince)
+            let photos = PhotoLibraryWatcher(importer: importer, since: Self.importSince, thumbnails: thumbnails,
+                                             onSync: onLibrarySync)
 
             self.db = db; self.queue = queue; self.preparer = preparer
             self.folder = folder; self.photos = photos

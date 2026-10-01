@@ -17,13 +17,13 @@ enum ViewDataMapper {
     // MARK: - 사이드바
 
     static func studio(_ s: LibrarySnapshot, studioName: String, ai: AIConnection, preparing: EnginePrep? = nil,
-                       photos: PhotoAccess = .granted) -> StudioStatus {
+                       photos: PhotoAccess = .granted, syncing: PhotoSync? = nil) -> StudioStatus {
         StudioStatus(
             studioName: studioName, ai: ai,
             shotCount: s.videos.filter { $0.hiddenAt == nil && $0.deletedAt == nil }.count,
             resultCount: s.outputs.filter { $0.verdict == .shown }.count,
-            makingCount: s.videos.filter { !s.liveJobs(of: $0.id).isEmpty }.count,
-            preparing: preparing, photos: photos
+            makingCount: s.videos.filter { s.isMaking($0.id) }.count,
+            preparing: preparing, photos: photos, syncing: syncing
         )
     }
 
@@ -33,7 +33,14 @@ enum ViewDataMapper {
         // 숨긴 촬영본은 목록에서만 뺀다 (사진 앱 원본 · 결과물은 그대로)
         var s = s
         s.videos = s.videos.filter { $0.hiddenAt == nil && $0.deletedAt == nil }
-        if s.videos.isEmpty { return photos == .denied ? .noPhotoAccess : .empty }
+        // 비었을 때 — 사진 앱 연결에 따라 말이 다르다. 연결 전에는 "자동으로 들어와요" 라고 하지 않는다 (㉘)
+        if s.videos.isEmpty {
+            switch photos {
+            case .granted: return .empty
+            case .denied: return .noPhotoAccess
+            case .notAsked: return .connectPhotos
+            }
+        }
         let groups = shotGroups(s)
         let importing = s.videos.filter { $0.status == .importing }.count
         if importing > 0 {
@@ -81,8 +88,10 @@ enum ViewDataMapper {
             shotAt: shotAt(v),
             duration: v.durationSec ?? 0,
             // 소리 측정이 "말이 있다 · 없다" 뿐이다 — noisy 는 가를 기준이 없어 내지 않는다 (viewdata-map 요청 ⑥)
-            speech: s.wordCounts[v.id] == 0 ? .silent : .clear,
-            isMaking: !s.liveJobs(of: v.id).isEmpty,
+            // 분석한 영상만 안다 — 분석 전(값 없음)을 "있다" 로 치지 않는다. 전에는 목록에만 있는 영상도 "잘 들려요" 였다 (㉛)
+            speech: s.wordCounts[v.id].map { $0 == 0 ? .silent : .clear } ?? .unknown,
+            // 넣자마자 도는 분석은 편집 준비다 — "만드는 중" 으로 세지 않는다 (요청이 아직 없다, ㉗)
+            isMaking: s.isMaking(v.id),
             thumbnail: thumb(s.thumbnailStore.video(v.id), s),
             results: results(of: v.id, s),
             // iCloud 원본 받는 중 — 받는 동안만 (§2 "저장 공간 최적화")
@@ -90,7 +99,10 @@ enum ViewDataMapper {
             problem: v.status == .failed ? Copy.Photos.importFailedShort : nil,
             // 정보 칸에서 그 자리에서 튼다 — 다 받은 앱 사본만
             videoURL: v.status == .ready ? v.localPath.map { URL(fileURLWithPath: $0) } : nil,
-            isFromPhotos: v.source == .photos
+            isFromPhotos: v.source == .photos,
+            isPreparing: s.isOnlyPreparing(v.id),
+            // 앱 사본이 없는 사진 보관함 영상(목록에만 · 받는 중) — 미리보기는 사진 보관함에서 바로 튼다
+            photoAssetID: v.source == .photos && v.status != .ready ? v.sourceRef : nil
         )
     }
 
@@ -320,6 +332,21 @@ enum ViewDataMapper {
             return .ready(view)
         }
 
+        // 편집안이 없고 크리에이터가 아직 말하지 않았다 — **묻는다.** AI 는 말(또는 칩)이 와야 시작한다 (2026-10-01 결정, ㉗).
+        // 넣자마자 도는 분석(편집 준비)은 그대로 돌고, 멈췄거나 죽은 옛 작업이 있어도 여기서는 묻는다 — 요청이 오면 다시 건다.
+        if versions.isEmpty, s.draftRequest(of: videoID).isEmpty, !live.contains(where: { $0.kind == .agent }) {
+            switch ai {
+            case .none: return .noAI
+            case .notLoggedIn(let product): return .notLoggedIn(product)
+            default: break
+            }
+            // 원본을 못 받았다 (사진 보관함에 있던 영상을 받다가) — 멈췄다고 말하고 다시 해 보기를 준다
+            if video.status == .failed {
+                return .stopped(plan: nil, reason: Copy.Photos.importFailedShort, actions: stoppedActions, isFinal: false)
+            }
+            return .asking(preparing: preparingFraction(video, live: live, s))
+        }
+
         if versions.isEmpty && live.isEmpty {
             // 짜다가 멈췄다 — 오늘 실패한 작업 (viewdata-map 3절 ②)
             let failed = s.jobs.filter { $0.state == .failed && $0.targetId == videoID }.last
@@ -364,6 +391,18 @@ enum ViewDataMapper {
                                        fetchProgress: s.importProgress[video.id],
                                        analysis: live.contains { $0.kind == .analyze } ? s.analysisProgress[video.id] : nil,
                                        now: s.now, cooling: s.cooling))
+    }
+
+    /// 편집 준비가 얼마나 됐나 (묻는 화면의 한 줄) — 원본 받기(사진 보관함에 있던 영상) → 분석. 다 됐으면 nil.
+    /// 받아적기 · 사람 찾기가 같이 돌고 오래 걸리는 사람 찾기가 9할이다 (만드는 중 막대와 같은 어림).
+    static func preparingFraction(_ video: VideoRecord, live: [JobRecord], _ s: LibrarySnapshot) -> Double? {
+        let fetched = video.source == .photos ? 0.3 : 0      // 사진 보관함 영상은 받기가 앞 3할
+        if video.status == .listed || video.status == .importing {
+            return 0.3 * (s.importProgress[video.id] ?? 0)
+        }
+        guard live.contains(where: { $0.kind == .analyze }) else { return nil }
+        let a = s.analysisProgress[video.id]
+        return fetched + (1 - fetched) * (0.1 * (a?.transcribe ?? 0) + 0.9 * (a?.findPerson ?? 0))
     }
 
     static var stoppedActions: [ChatChoice] {
@@ -519,7 +558,7 @@ enum ViewDataMapper {
         return nil
     }
 
-    static func chat(_ s: LibrarySnapshot, videoID: String) -> [ChatMessage] {
+    static func chat(_ s: LibrarySnapshot, videoID: String, ai: AIConnection = .none) -> [ChatMessage] {
         var out: [ChatMessage] = []
         // 날짜 줄은 메시지 앱처럼 **대화가 끊겼다 이어질 때만** — 첫 말 · 날이 바뀜 · 30분 넘게 쉼.
         // 전에는 말풍선마다 붙어 "9월 29일" 이 네 번 이어졌다 (2026-09-30 실제 앱)
@@ -534,7 +573,14 @@ enum ViewDataMapper {
            let o = s.shownOutput(forVersion: draft.id), let note = softNote(o) {
             out.append(ChatMessage(id: o.id + ".soft", kind: .assistant(note), stamp: stamp(o.createdAt)))
         }
-        for row in s.chats where row.videoId == videoID {
+        // 편집안이 없으면(또는 대화가 첫 요청으로 시작했으면) AI 가 먼저 묻는다 — 요구 없이 만들지 않는다 (㉗).
+        // 요청 없이 초안이 만들어진 옛 촬영본에는 붙이지 않는다.
+        let mine = s.chats.filter { $0.videoId == videoID }
+        let firstComp = s.compositions(of: videoID).map(\.createdAt).min()
+        if firstComp.map({ c in mine.first.map { $0.createdAt < c } ?? false }) ?? true {
+            out.append(ChatMessage(id: "ask", kind: .assistant(Copy.Chat.Ask.greeting)))
+        }
+        for row in mine {
             let stamp = stamp(row.createdAt)
             switch row.kind {
             case .creator: out.append(ChatMessage(id: row.id, kind: .user(row.text ?? ""), stamp: stamp))
@@ -561,12 +607,21 @@ enum ViewDataMapper {
                 ])))
             case .notice:
                 if case .string(let key)? = row.payloadValues["key"], key == Chat.Key.aiDraftFailed {
-                    out.append(ChatMessage(id: row.id, kind: .assistant(Copy.AI.aiEditFailed), stamp: stamp))
+                    // 첫 요청(편집안이 아직 없다)이 막힌 것이면 "못 고쳤어요" 가 아니라 "못 만들었어요"
+                    let first = firstComp.map { row.createdAt < $0 } ?? true
+                    // 한도 · 로그인처럼 까닭을 알면 그 까닭을 말한다 (다시 보내도 바로는 안 된다)
+                    let detail: String? = { if case .string(let d)? = row.payloadValues["detail"] { d } else { nil } }()
+                    let reason = failureReason(detail, ai: ai)
+                    let text = !first ? Copy.AI.aiEditFailed
+                        : reason == Copy.AI.reasonUnknown ? Copy.AI.aiFirstFailed : Copy.AI.aiDraftFailed + " " + reason
+                    out.append(ChatMessage(id: row.id, kind: .assistant(text), stamp: stamp))
                 }
             }
         }
-        let myChats = Set(s.chats.filter { $0.videoId == videoID }.map(\.id))
-        if s.jobs.contains(where: { job in job.kind == .chat && job.state != .failed && myChats.contains(job.targetId) }) {
+        let myChats = Set(mine.map(\.id))
+        // AI 가 답하는 중 — 채팅 수정 턴, 또는 첫 요청으로 초안을 짜는 중 (분석을 기다리는 동안도)
+        let drafting = !s.draftRequest(of: videoID).isEmpty && !s.liveJobs(of: videoID).isEmpty
+        if drafting || s.jobs.contains(where: { job in job.kind == .chat && job.state != .failed && myChats.contains(job.targetId) }) {
             out.append(ChatMessage(id: "typing", kind: .typing))
         }
         return out
@@ -591,6 +646,8 @@ enum ViewDataMapper {
 
         let rows: [(running: Bool, at: Date, job: MakingJob)] = byVideo.compactMap { vid, jobs in
             guard let video = s.videos.first(where: { $0.id == vid }), video.deletedAt == nil else { return nil }
+            // 넣자마자 도는 분석은 편집 준비다 — 만드는 중 목록에 올리지 않는다 (아직 아무도 만들어 달라고 하지 않았다, ㉗)
+            if s.isOnlyPreparing(vid) { return nil }
             // 가장 뒤 단계의 작업이 이 줄을 대표한다
             func rank(_ k: JobRecord.Kind) -> Int {
                 switch k { case .analyze: 0; case .agent, .chat: 1; case .render: 2; case .selfEval: 3 }

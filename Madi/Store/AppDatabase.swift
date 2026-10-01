@@ -282,11 +282,47 @@ public struct AppDatabase: Sendable {
         m.registerMigration("v7-delete") { db in
             try db.alter(table: "video") { t in t.add(column: "deletedAt", .datetime) }
         }
+        // 사진 보관함에 이미 있던 영상 — 목록에만 올리고 고를 때 받는다 (`VideoRecord.Status.listed`).
+        // 상태 검사(CHECK)에 'listed' 를 더하려면 표를 다시 만들어야 한다 (SQLite 권장 절차: 새 표 → 복사 → 옛 표 지움 → 이름 바꿈.
+        // 이동 중에는 외래 키 검사가 꺼져 있고, 다른 표의 `REFERENCES "video"` 는 이름으로 새 표를 가리킨다).
+        m.registerMigration("v8-listed") { db in
+            try db.create(table: "video_new") { t in
+                t.primaryKey("id", .text)
+                t.column("source", .text).notNull().check(sql: "source IN ('photos','folder')")
+                t.column("sourceRef", .text).notNull().unique()
+                t.column("localPath", .text)
+                t.column("durationSec", .double)
+                t.column("width", .integer)
+                t.column("height", .integer)
+                t.column("capturedAt", .datetime)
+                t.column("importedAt", .datetime).notNull()
+                t.column("status", .text).notNull()
+                    .check(sql: "status IN ('importing','ready','failed','listed')")
+                t.column("error", .text)
+                t.column("hiddenAt", .datetime)
+                t.column("deletedAt", .datetime)
+            }
+            try db.execute(sql: """
+                INSERT INTO video_new (id, source, sourceRef, localPath, durationSec, width, height, capturedAt, importedAt, status, error, hiddenAt, deletedAt)
+                SELECT id, source, sourceRef, localPath, durationSec, width, height, capturedAt, importedAt, status, error, hiddenAt, deletedAt FROM video
+                """)
+            try db.drop(table: "video")
+            try db.rename(table: "video_new", to: "video")
+        }
         return m
     }
 }
 
 extension AppDatabase {
+
+    /// 첫 요청 — 편집안이 없는 촬영본에 남은, AI 가 아직 답하지 않은 크리에이터 말 (`LibrarySnapshot.draftRequest` 와 같은 뜻).
+    /// 분석이 끝난 뒤 초안을 걸지(파이프라인), 초안 턴이 무엇을 요청으로 읽을지(`AgentJob.run`)가 이걸 본다.
+    public func pendingDraftRequest(videoID: String) throws -> [ChatRecord] {
+        try writer.read { db in
+            guard try CompositionRecord.filter(Column("videoId") == videoID).fetchCount(db) == 0 else { return [] }
+            return Chat.pendingRequest(try ChatRecord.filter(Column("videoId") == videoID).order(Column("createdAt")).fetchAll(db))
+        }
+    }
 
     /// 이 촬영본으로 결과물을 한 번이라도 만들었는가 — **휴지통으로 보낸 것도 센다** (스냅숏은 휴지통 결과물을 거른다).
     /// 사람이 버린 결과물을 편집안을 열 때 몰래 다시 만들지 않으려고 본다.

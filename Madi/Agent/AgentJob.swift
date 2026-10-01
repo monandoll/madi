@@ -89,13 +89,44 @@ public struct AgentJob: Sendable {
         }
         let compositionID = makeCompositionID(videoID)
         let workDir = workRoot.appending(path: compositionID, directoryHint: .isDirectory)
+        // 첫 요청 — 크리에이터가 대화에 남긴 말이 있으면 그 말로 초안을 짠다 (2026-10-01 결정: 요구 없이 만들지 않는다).
+        // 없으면(판정 도구 · 다시 해 보기) 전처럼 "이 영상으로 초안".
+        let asked = (try? db.pendingDraftRequest(videoID: videoID)) ?? []
+        let rows = asked.isEmpty ? [] : try await db.writer.read {
+            try ChatRecord.filter(Column("videoId") == videoID).order(Column("createdAt")).fetchAll($0)
+        }
+        let prompt: String
+        if let first = asked.first {
+            prompt = try PromptAssembler.assemble(
+                videoID: videoID, userRules: userRules(), history: Chat.history(rows, before: first.id),
+                request: Chat.firstRequest(text: asked.compactMap(\.text).joined(separator: "\n"))
+            )
+        } else {
+            prompt = try PromptAssembler.assemble(videoID: videoID, userRules: userRules())
+        }
         let request = AgentRequest(
-            prompt: try PromptAssembler.assemble(videoID: videoID, userRules: userRules()),
+            prompt: prompt,
             mcp: .madi(executable: mcpExecutable, videoID: videoID, compositionID: compositionID,
                        dbPath: db.filePath),
             workDir: workDir
         )
-        try await turnAndCheck(choice, request, videoID: videoID, compositionID: compositionID, kind: "firstDraft")
+        guard let last = asked.last else {
+            try await turnAndCheck(choice, request, videoID: videoID, compositionID: compositionID, kind: "firstDraft")
+            return
+        }
+        do {
+            // 질문이면 편집안 없이 답만 한다 — 그러면 다시 묻는 상태로 돌아간다
+            let said = try await turnAndCheck(choice, request, videoID: videoID, compositionID: compositionID,
+                                              kind: "firstDraft", answerOnly: true)
+            let wrote = try await db.writer.read { try CompositionRecord.fetchOne($0, key: compositionID) } != nil
+            try await db.writer.write { db in
+                try ChatRecord(videoId: videoID, kind: .assistant, text: said,
+                               compositionId: wrote ? compositionID : nil).insert(db)
+            }
+        } catch {
+            chatFailed(last, error: error)
+            throw error
+        }
     }
 
     /// 되먹임 턴 (§7-6 · docs/stage-5.spec.md 4번). **사용자에게 보이지 않는다** (§10).

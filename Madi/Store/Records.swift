@@ -12,6 +12,10 @@ public struct VideoRecord: Codable, Hashable, Sendable, FetchableRecord, Persist
         case importing
         case ready
         case failed
+        /// **사진 보관함에 있고 아직 받지 않았다** — 갤러리에는 보이지만(미리보기 그림 · 길이 · 찍은 날) 앱 사본은 없다.
+        /// 사진 앱을 연결했을 때 보관함에 이미 있던 영상이 이렇게 들어온다 (2026-10-01 사용자: "기존 영상도 다 불러와야지").
+        /// 몇 년 치를 전부 복사 · 분석하지 않는다 — `숏폼 만들기` 를 누르면 그때 원본을 받고 분석한다.
+        case listed
     }
 
     public var id: String

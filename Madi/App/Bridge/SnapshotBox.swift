@@ -42,10 +42,22 @@ final class SnapshotBox {
         return true
     }
 
+    /// 그림 파일이 늘었다 — **지금의** 스냅숏에서 있는 그림을 다시 고른다. 기다림(await)이 없어서, 들어오는 중인 새 스냅숏을
+    /// 밀어내지 않는다. 전에는 "그림이 늘었다" 알림이 그때의 스냅숏을 `receive` 로 다시 넣어, 막 들어오던 새 스냅숏(보관함 237개)이
+    /// 버려지고 화면이 0개로 남았다 (2026-10-01 실제 앱 — DB 에는 237개가 있었다).
+    func reattachThumbnails(_ store: Thumbnails) {
+        guard var s = current else { return }
+        s.attach(thumbnails: store, progress: s.progress, importProgress: s.importProgress)
+        current = s
+    }
+
     /// 작업이 줄 서 있거나 돌거나, 원본을 받는 중 — 진행률 타이머를 돌릴 때다.
     var isBusy: Bool {
         guard let s = current else { return false }
+        // 원본을 받는 중인 촬영본이 있으면 바쁘다 — 받는 동안에는 DB 가 안 바뀌고 도는 작업도 없어서, 이걸 안 보면 진행률을
+        // 처음 한 번(0%)만 읽고 멈췄다 (2026-10-01 실제 앱: iCloud 원본을 4분 반 받는 내내 "0%")
         return s.jobs.contains { $0.state == .queued || $0.state == .running } || !s.importProgress.isEmpty
+            || s.videos.contains { $0.status == .importing && $0.deletedAt == nil }
     }
 }
 

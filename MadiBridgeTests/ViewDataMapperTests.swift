@@ -45,6 +45,8 @@ struct ViewDataMapperTests {
     func galleryStates() {
         #expect(ViewDataMapper.gallery(LibrarySnapshot(now: now), photos: .granted) == .empty)
         #expect(ViewDataMapper.gallery(LibrarySnapshot(now: now), photos: .denied) == .noPhotoAccess)
+        // 아직 연결 전이면 "찍으면 자동으로 들어와요" 가 아니라 먼저 연결하라고 한다
+        #expect(ViewDataMapper.gallery(LibrarySnapshot(now: now), photos: .notAsked) == .connectPhotos)
         let s = LibrarySnapshot(videos: [video("a", at: now), video("b", at: now, status: .importing)], now: now)
         guard case .importing(let done, let total, _) = ViewDataMapper.gallery(s, photos: .granted) else { Issue.record("importing 아님"); return }
         #expect(done == 1 && total == 2)
@@ -106,7 +108,12 @@ struct ViewDataMapperTests {
         #expect(steps.map(\.title) == [Copy.Plan.Preparing.transcribe, Copy.Plan.Preparing.findPerson, Copy.Plan.Preparing.split])
         #expect(steps.map(\.state) == [.done, .done, .running])
 
-        let analyzing = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], now: now)
+        // 넣자마자 도는 분석만 있고 요청이 없으면 — 묻는다 (짜는 중이 아니다). 요청이 오면 그때부터 짜는 중
+        let prepOnly = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], now: now)
+        // (사진 보관함 영상은 원본 받기가 앞 3할 — 분석이 막 시작했으면 0.3)
+        #expect(ViewDataMapper.plan(prepOnly, videoID: "v", ai: .claude) == .asking(preparing: 0.3))
+        let asked = ChatRecord(id: "q", videoId: "v", kind: .creator, text: "알아서 만들어줘", createdAt: now)
+        let analyzing = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], chats: [asked], now: now)
         guard case .preparing(let a) = try #require(ViewDataMapper.plan(analyzing, videoID: "v", ai: .claude)) else { Issue.record(""); return }
         // 받아적기 · 사람 찾기는 같이 돈다
         #expect(a.map(\.state) == [.running, .running, .waiting])
@@ -182,7 +189,7 @@ struct ViewDataMapperTests {
             ChatRecord(id: "b", videoId: "v", kind: .assistant, text: "둘", createdAt: now - 3 * 3600 + 20),
             ChatRecord(id: "c", videoId: "v", kind: .creator, text: "셋", createdAt: now - 60),
         ]
-        let s = LibrarySnapshot(videos: [video("v", at: now)], chats: rows, now: now)
+        let s = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 4 * 3600)], chats: rows, now: now)
         let stamps = ViewDataMapper.chat(s, videoID: "v").map(\.stamp)
         #expect(stamps[0] == Copy.chatStamp(now - 3 * 3600, now: now))
         #expect(stamps[1] == nil)                      // 20초 뒤 답 — 줄 없음
@@ -265,8 +272,18 @@ struct ViewDataMapperTests {
 
     @Test("만드는 중 — 숏폼 만들기를 누른 순간(분석 · AI 초안)부터 촬영본이 목록에 뜬다. 분석 진행률이 전체 퍼센트에 들어간다")
     func makingFromTheStart() throws {
-        var s = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], now: now)
+        // 넣자마자 도는 분석은 편집 준비다 — 만드는 중 목록 · 개수에 안 든다. 칸에는 "편집 준비 중"
+        let prep = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], now: now)
+        #expect(ViewDataMapper.making(prep) == .empty)
+        #expect(ViewDataMapper.studio(prep, studioName: "", ai: .claude).makingCount == 0)
+        let cell = ViewDataMapper.shot(prep.videos[0], prep)
+        #expect(cell.isPreparing && !cell.isMaking)
+
+        // 크리에이터가 요청하면 그때부터 만드는 중
+        let asked = ChatRecord(id: "q", videoId: "v", kind: .creator, text: "알아서 만들어줘", createdAt: now)
+        var s = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.analyze, "v", .running)], chats: [asked], now: now)
         s.analysisProgress["v"] = AnalysisProgress(transcribe: 1, findPerson: 0.5)
+        #expect(ViewDataMapper.shot(s.videos[0], s).isMaking)
         guard case .loaded(let jobs, _) = ViewDataMapper.making(s), case .running(let p) = jobs.first?.state else {
             Issue.record("분석 중인 촬영본이 목록에 없다"); return
         }
@@ -321,14 +338,31 @@ struct ViewDataMapperTests {
 
     @Test("멈춘 편집안 — 짜다 실패(편집안 없음) · 로그인 필요 · 두 번 다듬어도 안 됨(isFinal)")
     func stoppedStates() throws {
-        var failed = job(.agent, "v", .failed)
-        failed.error = "AI 턴 실패: You've hit your usage limit."
+        // 요청은 받았는데 분석이 죽었다 — 멈췄다고 말하고 다시 해 보기를 준다
+        let asked = ChatRecord(id: "q", videoId: "v", kind: .creator, text: "알아서 만들어줘", createdAt: now - 60)
+        var failed = job(.analyze, "v", .failed)
+        failed.error = "읽지 못했다"
         failed.finishedAt = now
-        let s1 = LibrarySnapshot(videos: [video("v", at: now)], jobs: [failed], now: now)
+        let s1 = LibrarySnapshot(videos: [video("v", at: now)], jobs: [failed], chats: [asked], now: now)
         guard case .stopped(let p, let reason, let actions, let isFinal) = try #require(ViewDataMapper.plan(s1, videoID: "v", ai: .claude)) else { Issue.record(""); return }
         #expect(p == nil && !isFinal)
-        #expect(reason.contains(Copy.AI.reasonLimit))
+        #expect(reason == Copy.AI.analyzeFailed)
         #expect(actions.first?.title == Copy.Plan.Stopped.tryAgain)
+
+        // AI 초안이 막혔다 — 쓴 말은 "보내지 못함", 까닭은 대화에. 화면은 다시 묻는다 (다시 보내기)
+        var limit = job(.agent, "v", .failed)
+        limit.error = "AI 턴 실패: You've hit your usage limit."
+        limit.finishedAt = now
+        let rows = [
+            ChatRecord(id: "q", videoId: "v", kind: .creatorNotSent, text: "알아서 만들어줘", createdAt: now - 60),
+            ChatRecord(id: "n", videoId: "v", kind: .notice,
+                       payload: ["key": .string(Chat.Key.aiDraftFailed), "detail": .string("AI 턴 실패: You've hit your usage limit.")], createdAt: now - 30),
+        ]
+        let s1b = LibrarySnapshot(videos: [video("v", at: now)], jobs: [limit], chats: rows, now: now)
+        #expect(ViewDataMapper.plan(s1b, videoID: "v", ai: .claude) == .asking(preparing: nil))
+        let said = ViewDataMapper.chat(s1b, videoID: "v", ai: .claude).map(\.kind)
+        #expect(said.contains(.userNotSent("알아서 만들어줘")))
+        #expect(said.last == .assistant(Copy.AI.aiDraftFailed + " " + Copy.AI.reasonLimit))
 
         let s2 = LibrarySnapshot(videos: [video("v", at: now)], now: now)
         #expect(ViewDataMapper.plan(s2, videoID: "v", ai: .notLoggedIn(.codex)) == .notLoggedIn(.codex))
@@ -343,10 +377,14 @@ struct ViewDataMapperTests {
 
     @Test("사람이 멈췄다(■) — 빈 '준비 중' 이 아니라 '멈췄어요 · 다시 해 보기'. 초안 전이든 영상 만들다든")
     func stoppedByYou() throws {
-        var stopped = job(.agent, "v", .failed)
+        var stopped = job(.analyze, "v", .failed)
         stopped.error = "멈춤"
         stopped.finishedAt = now
-        let s1 = LibrarySnapshot(videos: [video("v", at: now)], jobs: [stopped], now: now)
+        // 요청 없이 넣자마자 돌던 분석을 멈췄다 — 멈춘 화면이 아니라 그냥 묻는다
+        let s0 = LibrarySnapshot(videos: [video("v", at: now)], jobs: [stopped], now: now)
+        #expect(ViewDataMapper.plan(s0, videoID: "v", ai: .claude) == .asking(preparing: nil))
+        let asked = ChatRecord(id: "q", videoId: "v", kind: .creator, text: "알아서 만들어줘", createdAt: now - 60)
+        let s1 = LibrarySnapshot(videos: [video("v", at: now)], jobs: [stopped], chats: [asked], now: now)
         guard case .stopped(let p1, let r1, let a1, _) = try #require(ViewDataMapper.plan(s1, videoID: "v", ai: .claude)) else {
             Issue.record("준비 중으로 남았다"); return
         }
@@ -391,14 +429,15 @@ struct ViewDataMapperTests {
     @Test("채팅 '앞으로도?' — 규칙 문장은 버튼 설명에, 답하면 사라진다 · 받기 실패 · 원본 한계 안내")
     func remembersAndNotices() throws {
         let ask = ChatRecord(id: "q", videoId: "v", kind: .choices, payload: ["ask": .string("askRemember"), "rule": .string("영상은 15초 안팎으로")], createdAt: now)
-        let s = LibrarySnapshot(videos: [video("v", at: now, status: .failed)], chats: [ask], now: now)
+        let s = LibrarySnapshot(videos: [video("v", at: now, status: .failed)], compositions: [try comp("d", at: now - 60)], chats: [ask], now: now)
         let msgs = ViewDataMapper.chat(s, videoID: "v").map(\.kind)
         #expect(msgs.first == .assistant(Copy.Remember.askRemember))
         guard case .choices(let c) = msgs.last else { Issue.record(""); return }
         #expect(c.first?.title == Copy.Remember.rememberYes && c.first?.detail == "영상은 15초 안팎으로")
         var answered = ask
         answered.payload = #"{"ask":"askRemember","rule":"x","answered":true}"#
-        #expect(ViewDataMapper.chat(LibrarySnapshot(videos: [video("v", at: now)], chats: [answered], now: now), videoID: "v").isEmpty)
+        #expect(ViewDataMapper.chat(LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 60)],
+                                                    chats: [answered], now: now), videoID: "v").isEmpty)
 
         #expect(ViewDataMapper.shot(s.videos[0], s).problem == Copy.Photos.importFailedShort)
 
@@ -527,5 +566,81 @@ struct ViewDataMapperTests {
         let s = LibrarySnapshot(now: now)
         #expect(ViewDataMapper.studio(s, studioName: "", ai: .none, photos: .notAsked).photos == .notAsked)
         #expect(ViewDataMapper.studio(s, studioName: "", ai: .none, photos: .granted).photos == .granted)
+        // 맞추는 중의 진행도 넘긴다 — 아랫줄 "사진 보관함과 맞추는 중 · 237개 중 120개". 다 맞췄으면 nil
+        let syncing = ViewDataMapper.studio(s, studioName: "", ai: .none, photos: .granted, syncing: PhotoSync(done: 120, total: 237))
+        #expect(syncing.syncing == PhotoSync(done: 120, total: 237))
+        #expect(ViewDataMapper.studio(s, studioName: "", ai: .none, photos: .granted).syncing == nil)
+        #expect(Copy.Gallery.Status.syncing(done: 120, total: 237) == "사진 보관함과 맞추는 중 · 237개 중 120개")
+        #expect(Copy.Gallery.Status.syncing(done: 0, total: 0) == "사진 보관함과 맞추는 중…")
+    }
+
+    @Test("편집안이 없으면 AI 가 먼저 묻는다 — 요구 없이 만들지 않는다. 말하면 답하는 중, 초안이 나오면 AI 말 밑에 결과")
+    func asksBeforeMaking() throws {
+        // 넣기만 했다 (분석도 끝남) — 묻는 화면, 대화 첫 줄은 AI 의 물음
+        let fresh = LibrarySnapshot(videos: [video("v", at: now)], now: now)
+        #expect(ViewDataMapper.plan(fresh, videoID: "v", ai: .claude) == .asking(preparing: nil))
+        #expect(ViewDataMapper.chat(fresh, videoID: "v").map(\.kind) == [.assistant(Copy.Chat.Ask.greeting)])
+
+        // 말했다 — AI 초안이 도는 중: 짜는 중 화면 + 답하는 중
+        let asked = ChatRecord(id: "q", videoId: "v", kind: .creator, text: "어깨 부분만 20초로", createdAt: now - 60)
+        let drafting = LibrarySnapshot(videos: [video("v", at: now)], jobs: [job(.agent, "v", .running)], chats: [asked], now: now)
+        guard case .preparing = try #require(ViewDataMapper.plan(drafting, videoID: "v", ai: .claude)) else { Issue.record("짜는 중이 아니다"); return }
+        #expect(ViewDataMapper.chat(drafting, videoID: "v").map(\.kind) == [.assistant(Copy.Chat.Ask.greeting), .user("어깨 부분만 20초로"), .typing])
+
+        // 질문에 답만 했다 (편집안 없음) — 다시 묻는 상태
+        let answer = ChatRecord(id: "a", videoId: "v", kind: .assistant, text: "어깨 스트레칭 영상이에요.", createdAt: now - 30)
+        let answered = LibrarySnapshot(videos: [video("v", at: now)], chats: [asked, answer], now: now)
+        #expect(ViewDataMapper.plan(answered, videoID: "v", ai: .claude) == .asking(preparing: nil))
+        #expect(answered.draftRequest(of: "v").isEmpty)
+
+        // 초안이 나왔다 — 물음은 대화 첫 줄로 남고, 요청 · AI 말이 이어진다
+        let made = ChatRecord(id: "a", videoId: "v", kind: .assistant, text: "어깨 부분으로 만들었어요.", compositionId: "d", createdAt: now - 30)
+        let done = LibrarySnapshot(videos: [video("v", at: now)], compositions: [try comp("d", at: now - 30)],
+                                   outputs: [output("o", comp: "d", verdict: .shown, at: now - 10)], chats: [asked, made], now: now)
+        let kinds = ViewDataMapper.chat(done, videoID: "v").map(\.kind)
+        #expect(kinds.prefix(3) == [.assistant(Copy.Chat.Ask.greeting), .user("어깨 부분만 20초로"), .assistant("어깨 부분으로 만들었어요.")])
+        guard case .result = kinds.last else { Issue.record("결과물 카드가 없다"); return }
+    }
+
+    @Test("사진 보관함에 있던 영상(목록에만) — 갤러리에 그냥 보이고 '가져오는 중' 이 아니다. 열면 받기부터, 못 받으면 멈춤")
+    func listedLibraryShots() throws {
+        var old = video("old", at: now - 400 * 86400, status: .listed)
+        old.durationSec = 42
+        let s = LibrarySnapshot(videos: [old], now: now)
+        // 갤러리 — 받는 중 막대가 아니라 목록
+        guard case .loaded(let groups) = ViewDataMapper.gallery(s, photos: .granted) else { Issue.record("loaded 가 아니다"); return }
+        let cell = try #require(groups.first?.shots.first)
+        #expect(cell.duration == 42 && cell.fetchProgress == nil && cell.videoURL == nil && !cell.isMaking && !cell.isPreparing)
+        // 살펴보기 전이라 말소리는 모른다 — "있다"(전에는 "잘 들려요")고 하지 않는다
+        #expect(cell.speech == .unknown && cell.speech.label == Copy.Speech.unknown)
+        // 앱 사본이 없으니 미리보기는 사진 보관함에서 바로 튼다 — 재생 버튼이 사라지지 않게
+        #expect(cell.photoAssetID == "old")
+        var ready = video("r", at: now); ready.localPath = "/o/r.mov"
+        #expect(ViewDataMapper.shot(ready, LibrarySnapshot(videos: [ready], now: now)).photoAssetID == nil)   // 사본이 있으면 그걸 튼다
+        // 열었다 — 원본을 받기 시작한다 (묻는 화면, 준비 0%)
+        #expect(ViewDataMapper.plan(s, videoID: "old", ai: .claude) == .asking(preparing: 0))
+        // 받는 중 — 받은 만큼이 준비의 앞 3할
+        var fetching = LibrarySnapshot(videos: [video("old", at: now, status: .importing)], now: now)
+        fetching.importProgress["old"] = 0.5
+        #expect(ViewDataMapper.plan(fetching, videoID: "old", ai: .claude) == .asking(preparing: 0.15))
+        // 못 받았다 — 멈췄다고 말하고 다시 해 보기
+        let failed = LibrarySnapshot(videos: [video("old", at: now, status: .failed)], now: now)
+        guard case .stopped(let plan, let reason, let actions, _) = try #require(ViewDataMapper.plan(failed, videoID: "old", ai: .claude)) else {
+            Issue.record("멈춤이 아니다"); return
+        }
+        #expect(plan == nil && reason == Copy.Photos.importFailedShort && actions.first?.title == Copy.Plan.Stopped.tryAgain)
+    }
+
+    @Test("말소리 — 분석한 영상만 말한다: 받아적은 말이 있으면 '있어요', 0개면 '없어요', 분석 전이면 '살펴보기 전'")
+    func speechSaysOnlyWhatWeKnow() {
+        let v = video("v", at: now)
+        func speech(_ counts: [String: Int]) -> SpeechLevel {
+            ViewDataMapper.shot(v, LibrarySnapshot(videos: [v], wordCounts: counts, now: now)).speech
+        }
+        #expect(speech([:]) == .unknown)          // 분석 전 — 전에는 "잘 들려요" 였다
+        #expect(speech(["v": 0]) == .silent)      // 분석했는데 받아적은 말이 없다
+        #expect(speech(["v": 41]) == .clear)
+        // 또렷함은 재지 않는다 — "잘 들려요" 라고 하지 않는다
+        #expect(Copy.Speech.clear == "있어요" && Copy.Speech.silent == "없어요")
     }
 }

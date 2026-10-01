@@ -53,6 +53,8 @@ final class AppController {
     private var viewingVersionID: String?
     private var ai: AIConnection = .none
     private var photos: PhotoAccess = .notAsked
+    /// 사진 보관함과 맞추는 중이면 그 진행 — 갤러리 아랫줄 "맞추는 중 · 237개 중 120개". 다 맞췄으면 nil.
+    private var librarySync: LibrarySync?
     private var prep: EnginePrep?
     private var modelReady = false
     private let thumbnails = Thumbnails()
@@ -64,6 +66,16 @@ final class AppController {
 
     func start() async {
         photos = Self.photoAccess()
+        // 보관함 목록 · 미리보기 그림이 늘면 다시 그린다 (그림 파일은 DB 관측에 안 잡힌다)
+        pipeline.onLibrarySync = { [weak self] sync in
+            Task { @MainActor in
+                guard let self else { return }
+                self.librarySync = sync
+                // 스냅숏을 다시 넣지 않는다 — 지금 것의 그림만 다시 고른다 (새 스냅숏을 옛 것으로 덮지 않게)
+                self.box.reattachThumbnails(self.thumbnails)
+                self.recompute()
+            }
+        }
         await pipeline.start()
         Task { await refreshAI() }
         guard let db = pipeline.db else { return }
@@ -157,7 +169,7 @@ final class AppController {
     private func recompute() {
         let appSettings = AppSettings()
         studio = ViewDataMapper.studio(snapshot ?? LibrarySnapshot(), studioName: appSettings.studioName, ai: ai, preparing: prep,
-                                       photos: photos)
+                                       photos: photos, syncing: librarySync.map { PhotoSync(done: $0.done, total: $0.total) })
         settings = SettingsValues(
             ai: setup(for: ai), activeAI: ai, studioName: appSettings.studioName, keepDays: appSettings.keepDays,
             albumName: UserDefaults.standard.string(forKey: PhotoLibraryWatcher.albumNameKey),
@@ -172,9 +184,14 @@ final class AppController {
         making = ViewDataMapper.making(s)
         if let id = openShotID {
             plan = ViewDataMapper.plan(s, videoID: id, ai: ai, viewing: viewingVersionID, modelReady: modelReady)
-            planMessages = ViewDataMapper.chat(s, videoID: id)
+            planMessages = ViewDataMapper.chat(s, videoID: id, ai: ai)
             planTitle = s.videos.first { $0.id == id }.map { ViewDataMapper.shotTitle($0, s) } ?? ""
-            planChips = [Copy.Chat.Chips.cutGaps, Copy.Chat.Chips.shorter, Copy.Chat.Chips.hookFirst]
+            // 편집안이 아직 없으면 첫 요청 칩 — 누르면 그 말로 AI 가 시작한다 (㉗). 있으면 고치는 칩
+            if case .asking? = plan {
+                planChips = [Copy.Chat.Chips.auto, Copy.Chat.Chips.coreOnly, Copy.Chat.Chips.demoFirst]
+            } else {
+                planChips = [Copy.Chat.Chips.cutGaps, Copy.Chat.Chips.shorter, Copy.Chat.Chips.hookFirst]
+            }
         } else {
             plan = nil
             planMessages = []
@@ -242,9 +259,14 @@ final class AppController {
             } else {
                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Photos.app"))
             }
-        case .retryImport:
-            // 받기에 실패한 영상은 다시 훑으면 다시 받는다 (Importer 는 준비 안 된 영상을 건너뛰지 않는다)
-            pipeline.rescan()
+        case .retryImport(let id):
+            // 받기에 실패한 영상은 다시 훑으면 다시 받는다 (Importer 는 준비 안 된 영상을 건너뛰지 않는다).
+            // 사진 보관함에 전부터 있던 영상은 훑기가 목록만 올리므로 그 영상을 짚어서 받는다
+            if let v = snapshot?.videos.first(where: { $0.id == id }), v.source == .photos {
+                pipeline.fetchOriginal(sourceRef: v.sourceRef)
+            } else {
+                pipeline.rescan()
+            }
         case .addFromMac:
             let panel = NSOpenPanel()
             panel.allowsMultipleSelection = true
@@ -295,10 +317,21 @@ final class AppController {
         }
     }
 
-    /// 편집안이 없고 짜는 작업도 없으면 건다 — 분석이 안 됐으면 분석부터 (분석 뒤에는 파이프라인이 초안을 건다).
-    /// 판은 있는데 결과물도 도는 작업도 없으면(자동 렌더 전에 만든 판) 가장 최근 판을 렌더에 건다 — 검사한 결과만 보여 준다.
+    /// 촬영본을 열 때 · 다시 해 보기 · AI 가 연결됐을 때 — **이어서 할 일이 있으면** 건다.
+    /// - 편집안이 없으면: 크리에이터가 남긴 첫 요청이 있을 때만 AI 초안을 건다 (분석이 안 됐으면 분석부터 — 끝나면 파이프라인이 초안을 건다).
+    ///   요청이 없으면 **AI 는 걸지 않는다** — 화면이 무엇을 만들지 묻는다 (2026-10-01 결정: 요구도 없이 멋대로 만들지 않는다).
+    ///   분석(편집 준비)만 안 돼 있으면 그것만 건다 — 구독을 쓰지 않는다.
+    /// - 판은 있는데 결과물도 도는 작업도 없으면(자동 렌더 전에 만든 판) 가장 최근 판을 렌더에 건다 — 검사한 결과만 보여 준다.
     private func ensureDraft(videoID: String, _ db: AppDatabase, _ queue: JobQueue) async throws {
         guard let s = snapshot, s.liveJobs(of: videoID).isEmpty else { return }
+        // 사진 보관함에 있던 영상 — 아직 원본을 안 받았다. 지금 받는다 (받으면 가져오기가 분석을 건다)
+        if let video = s.videos.first(where: { $0.id == videoID }), video.status != .ready {
+            // 목록에만 있거나, 받다가 실패했으면 (다시 해 보기) 받는다. 받는 중이면 기다린다
+            if video.source == .photos, video.status == .listed || video.status == .failed {
+                pipeline.fetchOriginal(sourceRef: video.sourceRef)
+            }
+            return   // 분석 · 초안은 원본이 온 뒤에
+        }
         let versions = s.visibleVersions(of: videoID)
         if let newest = versions.last {
             // 휴지통으로 보낸 결과물도 "있었던 것" 이다 — 사람이 버린 것을 열자마자 몰래 다시 만들지 않는다
@@ -307,7 +340,11 @@ final class AppController {
             return
         }
         let hasDigest = try await db.writer.read { try DigestRecord.fetchOne($0, key: videoID) } != nil
-        try await queue.enqueue(hasDigest ? .agent : .analyze, targetId: videoID)
+        if !hasDigest {
+            try await queue.enqueue(.analyze, targetId: videoID)
+        } else if try !db.pendingDraftRequest(videoID: videoID).isEmpty {
+            try await queue.enqueue(.agent, targetId: videoID)
+        }
     }
 
     /// 그림이 생기기 전에 들어온 촬영본 · 결과물의 그림을 채운다 (캐시 — 못 만들어도 괜찮다).
@@ -319,7 +356,9 @@ final class AppController {
         for o in outputs where o.trashedAt == nil && !FileManager.default.fileExists(atPath: thumbnails.output(o.id).path) {
             try? await thumbnails.makeOutput(o.id, from: URL(fileURLWithPath: o.path))
         }
-        if let s = snapshot { await receive(s) }
+        // 그림만 다시 고른다 — 스냅숏을 다시 넣으면 그사이 들어온 새 스냅숏을 옛 것으로 덮는다
+        box.reattachThumbnails(thumbnails)
+        recompute()
     }
 
     // MARK: 편집안
@@ -451,8 +490,15 @@ final class AppController {
     }
 
     private func send(_ text: String, videoID: String, _ db: AppDatabase, _ queue: JobQueue) async throws {
-        _ = try? await Chat.send(db: db, videoID: videoID, text: text, viewing: currentVersionID()) { id in
-            try await queue.enqueue(.chat, targetId: id)
+        if snapshot?.compositions(of: videoID).isEmpty ?? false {
+            // 첫 요청 — 편집안이 아직 없다. 이 말로 AI 가 초안을 짠다 (분석이 덜 끝났으면 끝난 뒤에)
+            _ = try? await Chat.sendFirstRequest(db: db, videoID: videoID, text: text) { kind, id in
+                try await queue.enqueue(kind, targetId: id)
+            }
+        } else {
+            _ = try? await Chat.send(db: db, videoID: videoID, text: text, viewing: currentVersionID()) { id in
+                try await queue.enqueue(.chat, targetId: id)
+            }
         }
         viewingVersionID = nil   // 고친 판이 나오면 그걸 보여 준다
     }

@@ -22,7 +22,7 @@ struct ShotCell: View {
                             .progressViewStyle(.circular)
                             .controlSize(.small)
                             .padding(Tokens.Space.tight + 1)
-                    } else if shot.isMaking {
+                    } else if shot.isMaking || shot.isPreparing {
                         ProgressView()
                             .controlSize(.small)
                             .padding(Tokens.Space.tight + 1)
@@ -80,6 +80,10 @@ struct ShotCell: View {
         if shot.isMaking {
                 Text("·")
                 Text(Copy.Gallery.Cell.making)
+            } else if shot.isPreparing {
+                // 넣자마자 도는 받아적기 · 사람 찾기 — 만드는 중이 아니다
+                Text("·")
+                Text(Copy.Gallery.Cell.preparing)
             } else if shot.hasResult {
                 Text("·")
                 Label(

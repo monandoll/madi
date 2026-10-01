@@ -26,12 +26,15 @@ public struct Thumbnail: Hashable, Sendable {
 
 public enum SpeechLevel: Hashable, Sendable {
     case clear, noisy, silent
+    /// **아직 살펴보지 않았다** (분석 전) — 말이 있는지 모른다. 전에는 이것도 `clear`("잘 들려요")로 나왔다 (㉛).
+    case unknown
 
     public var label: String {
         switch self {
         case .clear: Copy.Speech.clear
         case .noisy: Copy.Speech.noisy
         case .silent: Copy.Speech.silent
+        case .unknown: Copy.Speech.unknown
         }
     }
 }
@@ -96,6 +99,8 @@ public struct ShotItem: Identifiable, Hashable, Sendable {
     public var speech: SpeechLevel
     /// 지금 이 촬영본으로 영상을 만들고 있는 중인지.
     public var isMaking: Bool
+    /// 넣자마자 도는 **편집 준비**(받아적기 · 사람 찾기) 중인지. 만드는 중이 아니다 — 아직 아무도 만들어 달라고 하지 않았다 (㉗).
+    public var isPreparing: Bool
     public var thumbnail: Thumbnail
     public var results: [ResultRef]
     /// iCloud 에서 원본을 받는 중이면 0...1. "저장 공간 최적화" 면 오래 걸린다.
@@ -104,6 +109,9 @@ public struct ShotItem: Identifiable, Hashable, Sendable {
     public var problem: String?
     /// 원본 영상 (앱 사본). 있으면 정보 칸에서 **그 자리에서 재생**한다 (개발이 넣음, viewdata-map ⑫).
     public var videoURL: URL?
+    /// 앱 사본이 아직 없는 **사진 보관함 영상**의 식별자 — 정보 칸이 사진 보관함에서 바로 틀어 미리 보게 한다 (㉚).
+    /// 목록에만 있는 예전 영상에 재생 버튼이 없던 것 (2026-10-01 사용자: "프리뷰에 재생버튼은 다 어디갔어?").
+    public var photoAssetID: String?
     /// 사진 보관함에서 들어왔는지. 아니면 폴더(Mac 에 있는 영상 넣기)로 들어온 것이라 사진 앱에 없다 —
     /// 우클릭 메뉴가 "사진 앱에서 보기" 대신 "Finder에서 보기" 다 (viewdata-map ⑲).
     public var isFromPhotos: Bool
@@ -112,10 +120,13 @@ public struct ShotItem: Identifiable, Hashable, Sendable {
         id: String, title: String, shotAt: Date, duration: Double,
         speech: SpeechLevel = .clear, isMaking: Bool = false,
         thumbnail: Thumbnail = .none, results: [ResultRef] = [],
-        fetchProgress: Double? = nil, problem: String? = nil, videoURL: URL? = nil, isFromPhotos: Bool = true
+        fetchProgress: Double? = nil, problem: String? = nil, videoURL: URL? = nil, isFromPhotos: Bool = true,
+        isPreparing: Bool = false, photoAssetID: String? = nil
     ) {
         self.videoURL = videoURL
+        self.photoAssetID = photoAssetID
         self.isFromPhotos = isFromPhotos
+        self.isPreparing = isPreparing
         self.id = id; self.title = title; self.shotAt = shotAt; self.duration = duration
         self.speech = speech; self.isMaking = isMaking
         self.thumbnail = thumbnail; self.results = results
@@ -147,6 +158,9 @@ public enum GalleryState: Hashable, Sendable {
     case loaded([ShotGroup])
     /// 사진 보관함을 못 읽는 상태. 오류창을 띄우지 않고 화면 안에서 다음 행동을 준다.
     case noPhotoAccess
+    /// 사진 앱을 **아직 연결하지 않았다** (권한을 묻지 않음). 먼저 연결하라고 말한다 — 연결 전에는
+    /// "찍으면 자동으로 들어와요" 라고 약속하지 않는다 (2026-10-01 사용자 지적, viewdata-map ㉘).
+    case connectPhotos
 
     public var groups: [ShotGroup] {
         switch self {
@@ -235,6 +249,13 @@ public enum EnginePrep: Hashable, Sendable {
     case diskFull
 }
 
+/// 사진 보관함과 맞추는 진행. `total == 0` 이면 아직 세는 중이다.
+public struct PhotoSync: Hashable, Sendable {
+    public var done: Int
+    public var total: Int
+    public init(done: Int, total: Int) { self.done = done; self.total = total }
+}
+
 public struct StudioStatus: Hashable, Sendable {
     /// 설정값이다. 코드에 박지 않는다 (AGENTS.md §1-7).
     public var studioName: String
@@ -246,12 +267,15 @@ public struct StudioStatus: Hashable, Sendable {
     public var preparing: EnginePrep?
     /// 사진 보관함 권한 — 갤러리 상태줄이 "iCloud 사진과 맞춰져 있음" 을 말해도 되는가 (viewdata-map ㉓).
     public var photos: PhotoAccess
+    /// 사진 보관함과 **맞추는 중**이면 그 진행 (목록을 올리고 미리보기 그림을 만드는 동안). 다 맞췄으면 nil (㉙).
+    public var syncing: PhotoSync?
 
     public init(
         studioName: String, ai: AIConnection,
         shotCount: Int, resultCount: Int, makingCount: Int,
-        preparing: EnginePrep? = nil, photos: PhotoAccess = .granted
+        preparing: EnginePrep? = nil, photos: PhotoAccess = .granted, syncing: PhotoSync? = nil
     ) {
+        self.syncing = syncing
         self.studioName = studioName; self.ai = ai
         self.shotCount = shotCount; self.resultCount = resultCount
         self.makingCount = makingCount; self.preparing = preparing
@@ -468,6 +492,10 @@ public struct ScreenNotice: Hashable, Sendable {
 
 /// 편집안 화면이 지금 무엇을 보여줄 상태인지.
 public enum PlanState: Hashable, Sendable {
+    /// **무엇을 만들지 묻는 중** — 편집안이 아직 없고, 크리에이터가 아직 말하지 않았다. AI 는 말(또는 칩)이 와야 시작한다
+    /// (2026-10-01 결정 — 요구도 없이 멋대로 숏폼을 만들지 않는다, viewdata-map ㉗).
+    /// `preparing` 은 넣자마자 도는 편집 준비(분석)가 아직 안 끝났으면 0...1, 끝났으면 nil.
+    case asking(preparing: Double?)
     /// AI 가 살펴보고 장면을 나누는 중.
     case preparing([PrepareStep])
     case ready(PlanView)

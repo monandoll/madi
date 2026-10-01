@@ -162,6 +162,107 @@ struct ChatTests {
         #expect(rows.first { $0.id == sent.id }?.kind == .creatorNotSent)
     }
 
+    // MARK: 첫 요청 — 편집안이 아직 없을 때 (2026-10-01: 요구 없이 만들지 않는다)
+
+    private func emptyShot() throws -> AppDatabase {
+        let db = try AppDatabase.inMemory()
+        try db.writer.write { try VideoRecord(id: "v1", source: .folder, sourceRef: "/tmp/v1", durationSec: 60, status: .ready).insert($0) }
+        return db
+    }
+
+    /// 첫 초안 턴의 가짜 AI — 편집안을 저장하고 한마디 한다. `question` 이면 답만 한다.
+    private func drafter(_ db: AppDatabase, _ box: Box, fail: Bool = false, question: Bool = false) -> AgentJob {
+        AgentJob(
+            db: db, mcpExecutable: URL(fileURLWithPath: "/x/madi-mcp"),
+            choose: { .init(kind: .claude, executable: URL(fileURLWithPath: "/x/claude"), version: nil) },
+            userRules: { [] },
+            workRoot: FileManager.default.temporaryDirectory.appending(path: "chat-\(UUID().uuidString)"),
+            turn: { _, request in
+                AsyncThrowingStream { c in
+                    box.prompts.append(request.prompt)
+                    if fail { c.yield(.finished(AgentOutcome(isError: true, message: "한도"))); c.finish(); return }
+                    if question { c.yield(.text("어깨 스트레칭 영상이에요.")); c.yield(.finished(AgentOutcome(isError: false))); c.finish(); return }
+                    let a = request.mcp.arguments
+                    do { try db.saveComposition(self.comp(a[a.firstIndex(of: "--composition")! + 1])) } catch { c.finish(throwing: error); return }
+                    c.yield(.text("어깨 부분으로 만들었어요."))
+                    c.yield(.finished(AgentOutcome(isError: false)))
+                    c.finish()
+                }
+            },
+            makeCompositionID: { _ in "draft1" },
+            onDraft: { box.renders.append($0) }
+        )
+    }
+
+    @Test("첫 요청 — 분석이 끝났으면 AI 초안, 아니면 분석부터 건다. 남은 말이 '아직 답하지 않은 요청' 이다")
+    func firstRequestEnqueues() async throws {
+        let db = try emptyShot()
+        final class Kinds: @unchecked Sendable { var v: [JobRecord.Kind] = [] }
+        let kinds = Kinds()
+        #expect(try db.pendingDraftRequest(videoID: "v1").isEmpty)          // 넣기만 했다 — 요청 없음
+        try await Chat.sendFirstRequest(db: db, videoID: "v1", text: "어깨 부분만 20초로") { k, _ in kinds.v.append(k) }
+        #expect(kinds.v == [.analyze])                                       // 분석 전 — 분석부터
+        #expect(try db.pendingDraftRequest(videoID: "v1").map(\.text) == ["어깨 부분만 20초로"])
+
+        // AI 가 답한 뒤(질문에 답만)에는 기다리는 요청이 없다
+        try await db.writer.write { try ChatRecord(videoId: "v1", kind: .assistant, text: "답").insert($0) }
+        #expect(try db.pendingDraftRequest(videoID: "v1").isEmpty)
+    }
+
+    @Test("원본을 아직 안 받은 영상(사진 보관함에 있던 것)에 요청하면 말만 남긴다 — 분석은 원본이 온 뒤 가져오기가 건다")
+    func firstRequestWaitsForOriginal() async throws {
+        let db = try AppDatabase.inMemory()
+        try await db.writer.write { try VideoRecord(id: "v1", source: .photos, sourceRef: "ph:OLD", status: .importing).insert($0) }
+        final class Kinds: @unchecked Sendable { var v: [JobRecord.Kind] = [] }
+        let kinds = Kinds()
+        try await Chat.sendFirstRequest(db: db, videoID: "v1", text: "알아서 만들어줘") { k, _ in kinds.v.append(k) }
+        #expect(kinds.v.isEmpty)
+        #expect(try db.pendingDraftRequest(videoID: "v1").count == 1)
+    }
+
+    @Test("첫 초안 턴 — 크리에이터 말이 요청 칸에 들어가고, AI 말이 그 편집안과 함께 대화에 남는다")
+    func firstDraftUsesRequest() async throws {
+        let db = try emptyShot()
+        let box = Box()
+        try await Chat.sendFirstRequest(db: db, videoID: "v1", text: "어깨 부분만 20초로") { _, _ in }
+        try await drafter(db, box).run(videoID: "v1")
+        #expect(box.prompts.first?.contains("크리에이터: 어깨 부분만 20초로") == true)
+        #expect(box.prompts.first?.contains("크리에이터: 크리에이터:") == false)
+        let rows = try await db.writer.read { try ChatRecord.order(Column("createdAt")).fetchAll($0) }
+        #expect(rows.map(\.kind) == [.creator, .assistant])
+        #expect(rows.last?.compositionId == "draft1" && rows.last?.text == "어깨 부분으로 만들었어요.")
+        #expect(box.renders == ["draft1"])                                   // 초안이 나오면 렌더가 걸린다
+    }
+
+    @Test("첫 요청이 질문이면 답만 한다 — 편집안 없음 · 다시 묻는 상태")
+    func firstQuestionAnswersOnly() async throws {
+        let db = try emptyShot()
+        try await Chat.sendFirstRequest(db: db, videoID: "v1", text: "이거 무슨 영상이야?") { _, _ in }
+        try await drafter(db, Box(), question: true).run(videoID: "v1")
+        #expect(try await db.writer.read { try CompositionRecord.fetchCount($0) } == 0)
+        #expect(try db.pendingDraftRequest(videoID: "v1").isEmpty)
+        let last = try #require(try await db.writer.read { try ChatRecord.order(Column("createdAt").desc).fetchOne($0) })
+        #expect(last.kind == .assistant && last.compositionId == nil)
+    }
+
+    @Test("첫 초안이 막히면 쓴 말은 '보내지 못함' + 알림 — 요청은 더 기다리지 않는다 (다시 보내기를 눌러야 다시 한다)")
+    func firstDraftFailure() async throws {
+        let db = try emptyShot()
+        let sent = try await Chat.sendFirstRequest(db: db, videoID: "v1", text: "알아서 만들어줘") { _, _ in }
+        await #expect(throws: (any Error).self) { try await drafter(db, Box(), fail: true).run(videoID: "v1") }
+        #expect(try await db.writer.read { try ChatRecord.fetchOne($0, key: sent.id) }?.kind == .creatorNotSent)
+        #expect(try db.pendingDraftRequest(videoID: "v1").isEmpty)
+    }
+
+    @Test("요청이 없으면 전처럼 '이 영상으로 초안' (판정 도구 · 다시 해 보기) — 대화에 아무것도 안 남긴다")
+    func draftWithoutRequest() async throws {
+        let db = try emptyShot()
+        let box = Box()
+        try await drafter(db, box).run(videoID: "v1")
+        #expect(box.prompts.first?.contains("크리에이터: \(PromptAssembler.firstDraftRequest)") == true)
+        #expect(try await db.writer.read { try ChatRecord.fetchCount($0) } == 0)
+    }
+
     @Test("보내지 못하면 쓴 말을 지우지 않고 creatorNotSent 로 남긴다")
     func notSent() async throws {
         let db = try setup()
