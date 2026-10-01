@@ -22,6 +22,16 @@ struct TranscriptNonSpeechTests {
         #expect(got.words.map(\.text) == ["안녕하세요", "끝"])
     }
 
+    @Test("닫히지 않은 괄호는 여는 낱말만 빠진다 — 뒤 전사를 통째로 버리지 않는다")
+    func unclosedBracketDropsOnlyItself() {
+        var words: [(String, Double)] = [("(댓글", 29.3)]
+        for k in 0..<20 { words.append(("말\(k)", 30.0 + Double(k))) }
+        let got = t(words).droppingNonSpeech(duration: 60)
+        #expect(got.words.count == 20 && got.words.first?.text == "말0")
+        // 가까이서 닫히면 그 사이는 통째로 (22분 영상 실측 "(댓글 읽음)")
+        #expect(t([("(댓글", 29.3), ("읽음)", 29.8), ("네", 30.5)]).droppingNonSpeech(duration: 60).words.map(\.text) == ["네"])
+    }
+
     @Test("보통 말은 그대로다")
     func keepsSpeech() {
         let words = [("골반이", 0.0), ("틀어지신", 0.4), ("분들은", 0.9)]
