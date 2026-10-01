@@ -401,6 +401,59 @@ case "crop916":
                      made.size.width, made.size.height, made.duration))
     } catch { fail("\(error)") }
 
+case "coverage":
+    // 받아 적기가 영상 끝까지 갔나 — 앱이 스스로 확인할 기준을 재는 도구 (2026-10-02, 22분 영상 전사 잘림 뒤)
+    // 영상마다: 소리 트랙 · 읽은 소리 길이 · 마지막 낱말 끝 · 그 뒤 소리가 있는 초 · 말 사이 가장 긴 "소리 있는데 낱말 없는" 구간
+    guard args.count > 1 else { fail("사용법: madi-spike coverage <영상>...") }
+    let provider = TranscriptionEngine.forThisMachine.makeProvider(root: Downloads.defaultRoot)
+    print("영상\t트랙\t읽음\t마지막낱말\t뒤소리\t긴틈(소리)\t낱말")
+    for path in args.dropFirst() where !path.hasPrefix("--") {
+        let url = URL(fileURLWithPath: path)
+        do {
+            let asset = AVURLAsset(url: url)
+            guard let track = try await asset.loadTracks(withMediaType: .audio).first else { print("\(url.lastPathComponent)\t소리 없음"); continue }
+            let trackSec = try await track.load(.timeRange).duration.seconds
+            let readSec = Double(try await AudioAnalyzer.mono16k(url).count) / 16_000
+            let audio = try await AudioAnalyzer.analyze(url)
+            let words = try await provider.transcribe(url, languageCode: "ko").droppingNonSpeech(duration: trackSec).words
+            func sound(_ a: Double, _ b: Double) -> Double {
+                let w = audio.windowSec
+                let lo = max(0, Int(a / w)), hi = min(audio.rmsDB.count, Int(b / w))
+                return lo < hi ? Double(audio.rmsDB[lo..<hi].filter { $0 >= AudioAnalyzer.silenceDB }.count) * w : 0
+            }
+            let last = words.last?.end ?? 0
+            var gap = (sec: 0.0, at: 0.0)
+            for (a, b) in zip(words, words.dropFirst()) where b.start - a.end > 5 {
+                let s = sound(a.end, b.start)
+                if s > gap.sec { gap = (s, a.end) }
+            }
+            print(String(format: "%@\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f@%.0f\t%d", url.lastPathComponent as NSString,
+                         trackSec, readSec, last, sound(last, trackSec), gap.sec, gap.at, words.count))
+        } catch { print("\(url.lastPathComponent)\t실패 \(error)") }
+    }
+
+case "continue":
+    // 이어 받아 적기를 진짜 엔진으로 — 잘린 전사(JSON 낱말 배열)에서 시작해 TranscriptCoverage 가 끝까지 채우는지
+    guard args.count > 2 else { fail("사용법: madi-spike continue <영상> <낱말.json>") }
+    do {
+        let url = URL(fileURLWithPath: args[1])
+        let words = try JSONDecoder().decode([Word].self, from: Data(contentsOf: URL(fileURLWithPath: args[2])))
+        let duration = try await AVURLAsset(url: url).load(.duration).seconds
+        let audio = try await AudioAnalyzer.analyze(url)
+        let start = Transcript(videoID: "v", words: words).droppingNonSpeech(duration: duration)
+        let started = Date()
+        let r = try await TranscriptCoverage.complete(
+            start, duration: duration, audio: audio,
+            provider: TranscriptionEngine.forThisMachine.makeProvider(root: Downloads.defaultRoot),
+            samples: { try await AudioAnalyzer.mono16k(url) })
+        print(String(format: "  시작 낱말 %d개 · 마지막 %.1f초 → 이어 받아 적기 %d번 · +%d개 · 마지막 %.1f초 (영상 %.1f초) · %.1f초 걸림",
+                     start.words.count, start.words.last?.end ?? 0, r.rounds, r.added,
+                     r.transcript.words.last?.end ?? 0, duration, Date().timeIntervalSince(started)))
+        for w in r.transcript.words.dropFirst(start.words.count).prefix(8) {
+            print(String(format: "  %7.2f-%7.2f  %@", w.start, w.end, w.text as NSString))
+        }
+    } catch { fail("\(error)") }
+
 case "transcribe":
     // --app: 앱이 받아 둔 모델로 (앱과 같은 전사). --json <파일>: 걸러 내기 **전** 낱말을 전부 남긴다
     guard args.count > 1 else { fail("사용법: madi-spike transcribe <영상> [--model base | --app] [--json <파일>]") }

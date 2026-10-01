@@ -72,6 +72,23 @@ public final class WhisperKitProvider: TranscriptionProvider, @unchecked Sendabl
 
     public func transcribe(_ url: URL, languageCode: String,
                            progress report: (@Sendable (Double) -> Void)?) async throws -> Transcript {
+        // 소리는 **우리가 읽어서** 넘긴다 (AVAssetReader → 16kHz 모노, whisper.cpp 와 같은 길).
+        // WhisperKit 의 파일 읽기(AVAudioFile)는 22분 48초 유튜브 mp4 의 소리를 **393.7초**로 읽었다 — 소리 트랙은 1367.6초인데.
+        // 그래서 6분 33초 뒤의 말이 전부 빠졌고, AI 가 "전사가 6분 33초까지만 있다" 고 답했다 (2026-10-01 실제 앱).
+        let samples = try await AudioAnalyzer.mono16k(url)
+        let words = try await transcribe(samples: samples, languageCode: languageCode, progress: report)
+        let id = url.deletingPathExtension().lastPathComponent
+        Self.log.info("전사 \(id, privacy: .public): 낱말 \(words.count)개")
+        return Transcript(videoID: id, words: words)
+    }
+
+    public func transcribe(samples: [Float], languageCode: String) async throws -> [Word]? {
+        try await transcribe(samples: samples, languageCode: languageCode, progress: nil)
+    }
+
+    private func transcribe(samples: [Float], languageCode: String,
+                            progress report: (@Sendable (Double) -> Void)?) async throws -> [Word] {
+        guard !samples.isEmpty else { return [] }
         let pipe = try await pipeline()
         // 진행률 — WhisperKit 의 `progress`(창마다 자식, 창 안에서는 찾아 들어간 만큼)를 0.5초마다 읽는다.
         // `Progress` 는 스레드 안전하다. 끝나면 WhisperKit 이 새것으로 바꾸므로 시작 전에 잡아 둔다.
@@ -91,13 +108,6 @@ public final class WhisperKitProvider: TranscriptionProvider, @unchecked Sendabl
             //   문장 단위만 오고 분절도 G6 도 불가능해진다.
             wordTimestamps: true
         )
-        // 소리는 **우리가 읽어서** 넘긴다 (AVAssetReader → 16kHz 모노, whisper.cpp 와 같은 길).
-        // WhisperKit 의 파일 읽기(AVAudioFile)는 22분 48초 유튜브 mp4 의 소리를 **393.7초**로 읽었다 — 소리 트랙은 1367.6초인데.
-        // 그래서 6분 33초 뒤의 말이 전부 빠졌고, AI 가 "전사가 6분 33초까지만 있다" 고 답했다 (2026-10-01 실제 앱).
-        let samples = try await AudioAnalyzer.mono16k(url)
-        guard !samples.isEmpty else {
-            return Transcript(videoID: url.deletingPathExtension().lastPathComponent, words: [])
-        }
         let results: [TranscriptionResult] = try await pipe.transcribe(audioArray: samples, decodeOptions: options)
 
         var words: [Word] = []
@@ -118,9 +128,6 @@ public final class WhisperKitProvider: TranscriptionProvider, @unchecked Sendabl
         // 말이 있었는데(구간이 있는데) 낱말 시각이 없으면 wordTimestamps 가 안 켜진 것이다.
         // 말이 아예 없는 영상(음악 · 효과음만)은 빈 전사가 맞다 — 분석을 실패시키지 않는다.
         guard segments == 0 || !words.isEmpty else { throw TranscriptionFailure.noWordTimestamps }
-
-        let id = url.deletingPathExtension().lastPathComponent
-        Self.log.info("전사 \(id, privacy: .public): 낱말 \(words.count)개")
-        return Transcript(videoID: id, words: words.sorted { $0.start < $1.start })
+        return words.sorted { $0.start < $1.start }
     }
 }

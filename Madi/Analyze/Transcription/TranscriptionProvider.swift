@@ -15,10 +15,16 @@ public protocol TranscriptionProvider: Sendable {
 
     /// 모델을 올리고 한 번 데운다. 첫 영상이 이 비용을 치르지 않게 미리 부른다.
     func warmUp() async throws
+
+    /// 16kHz 모노 소리 조각을 받아 적는다 — 시각은 **조각 시작 기준**. 받아 적기가 영상 끝 전에 멈췄을 때
+    /// 남은 부분만 이어 받아 적는 데 쓴다 (`TranscriptCoverage`). 조각을 못 받는 엔진(테스트용 가짜)은 nil.
+    func transcribe(samples: [Float], languageCode: String) async throws -> [Word]?
 }
 
 public extension TranscriptionProvider {
     func warmUp() async throws {}
+
+    func transcribe(samples: [Float], languageCode: String) async throws -> [Word]? { nil }
 
     func transcribe(_ url: URL, languageCode: String,
                     progress: (@Sendable (Double) -> Void)?) async throws -> Transcript {
