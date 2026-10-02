@@ -27,6 +27,12 @@ public enum SampleData {
     }
 
     private static func file(_ path: String) -> Thumbnail {
+        // 화면 사진을 밖에 보여 줄 때는 크리에이터 영상이 아닌 그림으로 바꿔 끼운다 (`MADI_SAMPLE_FRAMES=<폴더>`, 같은 상대 경로).
+        // 저장소 그림은 크리에이터 공개본 프레임이다 — 허락 없이 밖에 보이면 안 된다 (2026-10-02 사용자)
+        if let swap = ProcessInfo.processInfo.environment["MADI_SAMPLE_FRAMES"] {
+            let alt = URL(fileURLWithPath: swap).appending(path: path)
+            if FileManager.default.fileExists(atPath: alt.path) { return Thumbnail(fileURL: alt) }
+        }
         let url = repoRoot.appending(path: path)
         return FileManager.default.fileExists(atPath: url.path)
             ? Thumbnail(fileURL: url) : .none

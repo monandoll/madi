@@ -5,6 +5,7 @@ import AVFoundation
 import Vision
 import Photos
 import MadiKit
+import UniformTypeIdentifiers
 
 /// 0단계 측정 루프용 도구. **제품 기능이 아니다.**
 ///
@@ -465,6 +466,46 @@ case "lookpreview":
         guard let band = StillRenderer.captionBand(image, height: 360) else { fail("띠를 못 잘랐다") }
         try StillRenderer.writePNG(band, to: URL(fileURLWithPath: args[1]))
         print(args[1])
+    } catch { fail("\(error)") }
+
+case "samplestills":
+    // 화면 사진용 예시 그림 — 스톡 프레임(1920x1080)을 9:16 으로 잘라, 결과물은 앱과 같은 자막을 얹는다.
+    // 명세 TSV: 프레임 경로 \t 가운데 x(0~1) \t 출력(상대 경로) \t 종류(shot|result) \t 본문 \t 영문
+    guard args.count > 2 else { fail("사용법: madi-spike samplestills <명세.tsv> <출력 루트>") }
+    do {
+        let root = URL(fileURLWithPath: args[2])
+        let values = try StyleStore.load().values
+        func writeImage(_ image: CGImage, _ url: URL) throws {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let type = url.pathExtension.lowercased() == "png" ? UTType.png : UTType.jpeg
+            guard let d = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil) else { fail("못 씀 \(url.path)") }
+            CGImageDestinationAddImage(d, image, [kCGImageDestinationLossyCompressionQuality: 0.9] as CFDictionary)
+            guard CGImageDestinationFinalize(d) else { fail("못 씀 \(url.path)") }
+        }
+        for line in try String(contentsOfFile: args[1], encoding: .utf8).split(separator: "\n") where !line.hasPrefix("#") {
+            let f = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+            guard f.count >= 4, let cx = Double(f[1]) else { continue }
+            let frame = try StillRenderer.loadImage(URL(fileURLWithPath: f[0]))
+            let w = (Double(frame.height) * 9 / 16) / Double(frame.width)
+            let x = min(max(cx - w / 2, 0), 1 - w)
+            let base = try StillRenderer.crop(frame, rect: NormRect(x: x, y: 0, w: w, h: 1), to: CGSize(width: 720, height: 1280))
+            let out = root.appending(path: f[2])
+            if f[3] == "shot" {
+                // 촬영본 칸 그림은 위 70% (디자인 샘플과 같은 720x896)
+                guard let top = base.cropping(to: CGRect(x: 0, y: 0, width: 720, height: 896)) else { fail("자르기 실패") }
+                try writeImage(top, out)
+            } else {
+                let tmp = FileManager.default.temporaryDirectory.appending(path: "still-\(UUID().uuidString).png")
+                try StillRenderer.writePNG(base, to: tmp)
+                defer { try? FileManager.default.removeItem(at: tmp) }
+                let caption = Caption(id: "c", start: 0, end: 2, text: f.count > 4 ? f[4] : "",
+                                      secondary: f.count > 5 && !f[5].isEmpty ? f[5] : nil)
+                let drawn = try StillRenderer.renderCaption(caption, size: CGSize(width: 720, height: 1280), style: values,
+                                                            slot: .upperBody, backdrop: .image(tmp))
+                try writeImage(drawn, out)
+            }
+            print(out.path)
+        }
     } catch { fail("\(error)") }
 
 case "transcribe":
