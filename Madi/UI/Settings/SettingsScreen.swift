@@ -48,6 +48,9 @@ private struct GeneralSettings: View {
     @State private var studioName: String = ""
     @State private var keepDays: Int = 90
     @State private var activeAI: AIConnection = .claude
+    /// 창을 열면 macOS 가 첫 글자 칸(스튜디오 이름)에 포커스를 준다 — 강조 테두리가 먼저 떠서 고치라는 칸처럼 보였다
+    /// (2026-10-01 실제 앱). 설정 창은 아무 칸도 먼저 잡지 않는다. 사람이 누르면 그대로 잡는다.
+    @FocusState private var nameFocused: Bool
 
     var body: some View {
         Form {
@@ -75,6 +78,11 @@ private struct GeneralSettings: View {
             studioName = values.studioName
             keepDays = values.keepDays
             activeAI = values.activeAI
+        }
+        .task {
+            // 창이 키 창이 된 **뒤에** macOS 가 포커스를 준다 — 그다음에 놓는다
+            try? await Task.sleep(for: .milliseconds(150))
+            nameFocused = false
         }
     }
 
@@ -139,6 +147,7 @@ private struct GeneralSettings: View {
         Section(Copy.Settings.Studio.header) {
             LabeledContent(Copy.Settings.Studio.name) {
                 TextField("", text: $studioName)
+                    .focused($nameFocused)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 200)
                     .onChange(of: studioName) { _, new in onAction(.studioName(new)) }
@@ -218,6 +227,8 @@ private struct LookSettings: View {
     /// 미리보기 문장 칸 — 치는 대로 미리보기가 바뀐다 (개발이 넣음, viewdata-map ⑬).
     @State private var previewText = ""
     @State private var previewSecondaryText = ""
+    /// 이 탭을 열면 macOS 가 미리보기 문장 칸에 포커스를 줘서 글자가 선택된 채로 떴다 — 일반 탭 스튜디오 이름 칸과 같은 일 (㉜)
+    @FocusState private var previewFocused: Bool
 
     var body: some View {
         if let look {
@@ -234,6 +245,7 @@ private struct LookSettings: View {
             Section {
                 preview(look)
                 TextField(Copy.Look.previewTextField, text: $previewText)
+                    .focused($previewFocused)
                     .onChange(of: previewText) { _, t in onAction(.previewText(t)) }
                 TextField(Copy.Look.previewSecondaryField, text: $previewSecondaryText)
                     .onChange(of: previewSecondaryText) { _, t in onAction(.previewSecondaryText(t)) }
@@ -282,6 +294,10 @@ private struct LookSettings: View {
         .onAppear {
             previewText = look.previewText
             previewSecondaryText = look.previewSecondaryText
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(150))
+            previewFocused = false
         }
     }
 

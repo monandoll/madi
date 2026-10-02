@@ -335,6 +335,20 @@ extension AppDatabase {
         } > 0
     }
 
+    /// 사람이 고친 판을 **제자리에서** 더 고쳐도 되는가 (2026-10-02 사용자 결정 — 만들기 전까지 손으로 고친 것은 한 판).
+    /// 손으로 고친 판이고, 결과물이 없고(휴지통 것도 센다), 이 판에서 나온 판이 없고, 이 판을 렌더 · 되먹임하는 작업이 없을 때.
+    /// 결과물이 있는 판은 DB 트리거가 어차피 막는다(§5) — 렌더 중인 판을 바꾸면 결과물이 편집안과 어긋나므로 그것도 막는다.
+    public func canEditInPlace(compositionID id: String) throws -> Bool {
+        guard SceneEdits.isHandEdit(id) else { return false }
+        return try writer.read { db in
+            try Int.fetchOne(db, sql: """
+                SELECT (SELECT COUNT(*) FROM output WHERE compositionId = ?1)
+                     + (SELECT COUNT(*) FROM composition WHERE revisionOf = ?1)
+                     + (SELECT COUNT(*) FROM job WHERE targetId = ?1 AND state IN ('queued', 'running'))
+                """, arguments: [id]) ?? 1
+        } == 0
+    }
+
     /// 촬영본을 마디에서 지운다 — 편집안 · 결과물 · 분석 · 채팅 · 줄 선 작업까지. **사진 앱 원본은 건드리지 않는다.**
     /// 영상 행은 `deletedAt` 표시로 남는다 (같은 영상이 사진 보관함 · 폴더에서 다시 들어오지 않게).
     /// - Returns: 지울 파일들 (앱 사본 · 결과물 mp4 · 분석 폴더). 디스크 지우기는 부르는 쪽이 DB 를 닫은 뒤 한다.

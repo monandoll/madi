@@ -17,7 +17,8 @@ import CoreGraphics
 public enum DigestBuilder {
 
     /// 형식 버전. 텍스트 형식이 바뀌면 올린다 — 옛 버전 다이제스트는 다시 만든다.
-    public static let version = 3   // 2: 말이 아닌 전사를 걷는다 · 3: 사람 위치 줄을 구간으로 묶는다
+    public static let version = 4   // 2: 말이 아닌 전사를 걷는다 · 3: 사람 위치 줄을 구간으로 묶는다 · 4: 영상 끝에서 잘린 말 표시
+                                    //   · 이어 받아 적기 · 소리를 덜 읽었으면 표시 (정상 영상은 결과가 같아 4 그대로)
 
     public struct Digest: Sendable {
         public var text: String
@@ -99,7 +100,14 @@ public enum DigestBuilder {
             lap("scan")
         }
         // 말이 아닌 것(괄호로 싼 소리 설명 · 영상 길이를 넘는 낱말)은 여기서 걷는다 — 두 전사 엔진이 다 지나는 한 곳.
-        let transcript = rawTranscript.droppingNonSpeech(duration: info.duration)
+        // 받아 적기가 영상 끝 전에 멈췄으면 남은 부분을 이어 받아 적는다 — 앱이 스스로 확인한다 (`TranscriptCoverage`)
+        let covered = try await TranscriptCoverage.complete(
+            rawTranscript.droppingNonSpeech(duration: info.duration), duration: info.duration, audio: audio,
+            provider: transcriber, samples: { try await AudioAnalyzer.mono16k(url) }
+        )
+        let transcript = covered.transcript
+        timings["transcriptContinued"] = Double(covered.rounds)
+        lap("transcriptCoverage")
         progress?(.transcribe, 1)
 
         // 시작 + 컷 직후(0.3초 뒤 — 전환 효과를 피한다). 1초 안에 몰린 건 하나로. 최대 8장.
@@ -194,7 +202,11 @@ public enum DigestBuilder {
         out.append("\n## TRANSCRIPT")
         let sentences = self.sentences(transcript.words)
         if sentences.isEmpty { out.append("(말 없음)") }
-        for s in sentences { out.append("[\(t2(s.start))-\(t2(s.end))] \(s.text)") }
+        // 영상이 말 도중에 끝났으면 마지막 문장에 표시한다 — 그 문장으로 장면을 끝내면 숨 없이 뚝 끊긴다 (`write_composition` 이 거절한다)
+        let clipped = transcript.clippedAtEnd(duration: info.duration) != nil
+        for (i, s) in sentences.enumerated() {
+            out.append("[\(t2(s.start))-\(t2(s.end))] \(s.text)" + (clipped && i == sentences.count - 1 ? "  \(clippedMark)" : ""))
+        }
 
         out.append("\n## SUBJECT  (0.5s 표본 · 비슷하면 `시작-끝` 한 줄로 묶음, 정규화 x y w h — y 는 아래에서, 사람 분할 마스크)")
         out.append(contentsOf: subjectLines(subject.samples))
@@ -211,6 +223,12 @@ public enum DigestBuilder {
         }
 
         out.append("\n## AUDIO")
+        // 소리를 영상보다 짧게 읽었으면 그 뒤 말은 받아 적지 못했다 — AI 가 모르는 채 "뒤에 말이 없다" 고 보지 않게 적는다
+        // (2026-10-02: 22분 영상의 소리를 6분 33초까지만 읽어 전사가 거기서 끝났다. 읽는 길은 고쳤고, 이건 다시 생기면 보이게)
+        let heardSec = Double(audio.rmsDB.count) * audio.windowSec
+        if !audio.noAudioTrack, heardSec < info.duration - 1 {
+            out.append(String(format: "(소리를 %@ 까지만 읽었다 — 그 뒤 말은 받아 적지 못했다)", t3(heardSec)))
+        }
         if audio.noAudioTrack {
             out.append("(오디오 트랙 없음)")
         } else if audio.silences.isEmpty {
@@ -234,6 +252,9 @@ public enum DigestBuilder {
 
     /// 낱말을 문장으로 묶는다. **표기용**이다 — 자막 분절(`CaptionSplitter`)과 다르다.
     /// 끝 문장부호에서, 또는 0.5초 넘게 쉬면 끊는다.
+    /// TRANSCRIPT 마지막 줄에 붙는 표시. 제작 지침(playbook)이 이 글자를 가리킨다.
+    public static let clippedMark = "(영상 끝에서 말이 잘림)"
+
     static func sentences(_ words: [Word]) -> [(start: Double, end: Double, text: String)] {
         var out: [(Double, Double, String)] = []
         var cur: [Word] = []

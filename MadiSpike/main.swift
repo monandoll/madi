@@ -5,6 +5,7 @@ import AVFoundation
 import Vision
 import Photos
 import MadiKit
+import UniformTypeIdentifiers
 
 /// 0단계 측정 루프용 도구. **제품 기능이 아니다.**
 ///
@@ -401,15 +402,128 @@ case "crop916":
                      made.size.width, made.size.height, made.duration))
     } catch { fail("\(error)") }
 
+case "coverage":
+    // 받아 적기가 영상 끝까지 갔나 — 앱이 스스로 확인할 기준을 재는 도구 (2026-10-02, 22분 영상 전사 잘림 뒤)
+    // 영상마다: 소리 트랙 · 읽은 소리 길이 · 마지막 낱말 끝 · 그 뒤 소리가 있는 초 · 말 사이 가장 긴 "소리 있는데 낱말 없는" 구간
+    guard args.count > 1 else { fail("사용법: madi-spike coverage <영상>...") }
+    let provider = TranscriptionEngine.forThisMachine.makeProvider(root: Downloads.defaultRoot)
+    print("영상\t트랙\t읽음\t마지막낱말\t뒤소리\t긴틈(소리)\t낱말")
+    for path in args.dropFirst() where !path.hasPrefix("--") {
+        let url = URL(fileURLWithPath: path)
+        do {
+            let asset = AVURLAsset(url: url)
+            guard let track = try await asset.loadTracks(withMediaType: .audio).first else { print("\(url.lastPathComponent)\t소리 없음"); continue }
+            let trackSec = try await track.load(.timeRange).duration.seconds
+            let readSec = Double(try await AudioAnalyzer.mono16k(url).count) / 16_000
+            let audio = try await AudioAnalyzer.analyze(url)
+            let words = try await provider.transcribe(url, languageCode: "ko").droppingNonSpeech(duration: trackSec).words
+            func sound(_ a: Double, _ b: Double) -> Double {
+                let w = audio.windowSec
+                let lo = max(0, Int(a / w)), hi = min(audio.rmsDB.count, Int(b / w))
+                return lo < hi ? Double(audio.rmsDB[lo..<hi].filter { $0 >= AudioAnalyzer.silenceDB }.count) * w : 0
+            }
+            let last = words.last?.end ?? 0
+            var gap = (sec: 0.0, at: 0.0)
+            for (a, b) in zip(words, words.dropFirst()) where b.start - a.end > 5 {
+                let s = sound(a.end, b.start)
+                if s > gap.sec { gap = (s, a.end) }
+            }
+            print(String(format: "%@\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f@%.0f\t%d", url.lastPathComponent as NSString,
+                         trackSec, readSec, last, sound(last, trackSec), gap.sec, gap.at, words.count))
+        } catch { print("\(url.lastPathComponent)\t실패 \(error)") }
+    }
+
+case "continue":
+    // 이어 받아 적기를 진짜 엔진으로 — 잘린 전사(JSON 낱말 배열)에서 시작해 TranscriptCoverage 가 끝까지 채우는지
+    guard args.count > 2 else { fail("사용법: madi-spike continue <영상> <낱말.json>") }
+    do {
+        let url = URL(fileURLWithPath: args[1])
+        let words = try JSONDecoder().decode([Word].self, from: Data(contentsOf: URL(fileURLWithPath: args[2])))
+        let duration = try await AVURLAsset(url: url).load(.duration).seconds
+        let audio = try await AudioAnalyzer.analyze(url)
+        let start = Transcript(videoID: "v", words: words).droppingNonSpeech(duration: duration)
+        let started = Date()
+        let r = try await TranscriptCoverage.complete(
+            start, duration: duration, audio: audio,
+            provider: TranscriptionEngine.forThisMachine.makeProvider(root: Downloads.defaultRoot),
+            samples: { try await AudioAnalyzer.mono16k(url) })
+        print(String(format: "  시작 낱말 %d개 · 마지막 %.1f초 → 이어 받아 적기 %d번 · +%d개 · 마지막 %.1f초 (영상 %.1f초) · %.1f초 걸림",
+                     start.words.count, start.words.last?.end ?? 0, r.rounds, r.added,
+                     r.transcript.words.last?.end ?? 0, duration, Date().timeIntervalSince(started)))
+        for w in r.transcript.words.dropFirst(start.words.count).prefix(8) {
+            print(String(format: "  %7.2f-%7.2f  %@", w.start, w.end, w.text as NSString))
+        }
+    } catch { fail("\(error)") }
+
+case "lookpreview":
+    // 설정 "자막 모양" 미리보기를 앱과 같은 그리기로 (번들 기본 스타일 — 글꼴 기본 · 흰 글씨). 화면 사진용
+    guard args.count > 1 else { fail("사용법: madi-spike lookpreview <출력.png> [본문] [영문]") }
+    do {
+        let values = try StyleStore.load().values
+        let caption = Caption(id: "look", start: 0, end: 2, text: args.count > 2 ? args[2] : "반대쪽도 똑같이 진행해주세요",
+                              secondary: args.count > 3 ? args[3] : "Repeat on the other side.")
+        let image = try StillRenderer.renderCaption(caption, size: CGSize(width: 1080, height: 1920), style: values, slot: .fullBody)
+        guard let band = StillRenderer.captionBand(image, height: 360) else { fail("띠를 못 잘랐다") }
+        try StillRenderer.writePNG(band, to: URL(fileURLWithPath: args[1]))
+        print(args[1])
+    } catch { fail("\(error)") }
+
+case "samplestills":
+    // 화면 사진용 예시 그림 — 스톡 프레임(1920x1080)을 9:16 으로 잘라, 결과물은 앱과 같은 자막을 얹는다.
+    // 명세 TSV: 프레임 경로 \t 가운데 x(0~1) \t 출력(상대 경로) \t 종류(shot|result) \t 본문 \t 영문
+    guard args.count > 2 else { fail("사용법: madi-spike samplestills <명세.tsv> <출력 루트>") }
+    do {
+        let root = URL(fileURLWithPath: args[2])
+        let values = try StyleStore.load().values
+        func writeImage(_ image: CGImage, _ url: URL) throws {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let type = url.pathExtension.lowercased() == "png" ? UTType.png : UTType.jpeg
+            guard let d = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil) else { fail("못 씀 \(url.path)") }
+            CGImageDestinationAddImage(d, image, [kCGImageDestinationLossyCompressionQuality: 0.9] as CFDictionary)
+            guard CGImageDestinationFinalize(d) else { fail("못 씀 \(url.path)") }
+        }
+        for line in try String(contentsOfFile: args[1], encoding: .utf8).split(separator: "\n") where !line.hasPrefix("#") {
+            let f = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+            guard f.count >= 4, let cx = Double(f[1]) else { continue }
+            let frame = try StillRenderer.loadImage(URL(fileURLWithPath: f[0]))
+            let w = (Double(frame.height) * 9 / 16) / Double(frame.width)
+            let x = min(max(cx - w / 2, 0), 1 - w)
+            let base = try StillRenderer.crop(frame, rect: NormRect(x: x, y: 0, w: w, h: 1), to: CGSize(width: 720, height: 1280))
+            let out = root.appending(path: f[2])
+            if f[3] == "shot" {
+                // 촬영본 칸 그림은 위 70% (디자인 샘플과 같은 720x896)
+                guard let top = base.cropping(to: CGRect(x: 0, y: 0, width: 720, height: 896)) else { fail("자르기 실패") }
+                try writeImage(top, out)
+            } else {
+                let tmp = FileManager.default.temporaryDirectory.appending(path: "still-\(UUID().uuidString).png")
+                try StillRenderer.writePNG(base, to: tmp)
+                defer { try? FileManager.default.removeItem(at: tmp) }
+                let caption = Caption(id: "c", start: 0, end: 2, text: f.count > 4 ? f[4] : "",
+                                      secondary: f.count > 5 && !f[5].isEmpty ? f[5] : nil)
+                let drawn = try StillRenderer.renderCaption(caption, size: CGSize(width: 720, height: 1280), style: values,
+                                                            slot: .upperBody, backdrop: .image(tmp))
+                try writeImage(drawn, out)
+            }
+            print(out.path)
+        }
+    } catch { fail("\(error)") }
+
 case "transcribe":
-    guard args.count > 1 else { fail("사용법: madi-spike transcribe <영상> [--model base]") }
+    // --app: 앱이 받아 둔 모델로 (앱과 같은 전사). --json <파일>: 걸러 내기 **전** 낱말을 전부 남긴다
+    guard args.count > 1 else { fail("사용법: madi-spike transcribe <영상> [--model base | --app] [--json <파일>]") }
     do {
         let video = URL(fileURLWithPath: args[1])
-        let provider = WhisperKitProvider(model: option("model") ?? "base")
+        let provider: any TranscriptionProvider = args.contains("--app")
+            ? TranscriptionEngine.forThisMachine.makeProvider(root: Downloads.defaultRoot)
+            : WhisperKitProvider(model: option("model") ?? "base")
         let started = Date()
         let transcript = try await provider.transcribe(video, languageCode: option("lang") ?? "ko")
-        print(String(format: "  낱말 %d개 · %.1f초 걸림",
-                     transcript.words.count, Date().timeIntervalSince(started)))
+        print(String(format: "  낱말 %d개 · %.1f초 걸림 · 마지막 낱말 끝 %.2f초",
+                     transcript.words.count, Date().timeIntervalSince(started), transcript.words.last?.end ?? 0))
+        if let out = option("json") {
+            let enc = JSONEncoder(); enc.outputFormatting = [.prettyPrinted]
+            try enc.encode(transcript.words).write(to: URL(fileURLWithPath: out))
+        }
         for w in transcript.words.prefix(24) {
             print(String(format: "  %6.2f-%6.2f  %@", w.start, w.end, w.text as NSString))
         }

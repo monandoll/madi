@@ -216,16 +216,30 @@ public struct MadiTools: Sendable {
         }
         if !problems.isEmpty { return reject(problems) }
 
-        let words: [Word]
+        let transcript: Transcript
         do {
             guard let digest = try db.writer.read({ try DigestRecord.fetchOne($0, key: videoID) }) else {
                 return .text("영상 \(videoID) 의 다이제스트가 없어 자막을 채우지 못했다.", error: true)
             }
-            words = digest.transcript.words
+            transcript = digest.transcript
         } catch {
             return .text("전사를 읽지 못했다 (앱 문제): \(error)", error: true)
         }
+        let words = transcript.words
         let snapped = CaptionFiller.snapToWords(&comp, words: words, limit: duration ?? nil)
+        // 영상이 말 도중에 끝났으면 그 말은 쓰지 않는다 — 파일 밖으로 여유를 붙일 수 없어 숨 없이 뚝 끊긴다
+        // (2026-10-01 사용자 "말이 끊기는 구간이 있어" — 훅으로 고른 문장이 1분 대용 영상 끝 60.00초에서 끝났다)
+        if let d = duration ?? nil, let cut = transcript.clippedAtEnd(duration: d) {
+            let using = comp.scenes.indices.filter {
+                comp.scenes[$0].source.start < cut.end && comp.scenes[$0].source.end > cut.start + 0.01
+            }
+            if !using.isEmpty {
+                return reject(using.map {
+                    "scenes[\($0)] 가 영상 끝에서 잘린 말(\(String(format: "%.2f", cut.start))초 \"\(cut.text)\" — TRANSCRIPT 의 "
+                        + "\(DigestBuilder.clippedMark))을 쓴다. 원본이 말 도중에 끝나 숨 없이 뚝 끊긴다 — 그 문장은 빼고 다시 보낸다"
+                })
+            }
+        }
         // 말 앞뒤 숨 쉴 틈 (크리에이터 완성본 실측 — 앞 0.10초 · 뒤 0.15초). 자막을 채우기 **전에** — 자막 시각은 장면 시작 기준이다
         CaptionFiller.breathe(&comp, words: words, limit: duration ?? nil)
         problems = CaptionFiller.fill(&comp, words: words, style: styleValue.values.caption, translations: translations)

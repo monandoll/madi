@@ -332,6 +332,12 @@ final class AppController {
             }
             return   // 분석 · 초안은 원본이 온 뒤에
         }
+        // 옛 다이제스트(형식 · 전사기가 바뀌기 전)는 다시 만든다 — 편집 준비라 구독을 쓰지 않고, 판 · 결과물은 그대로 보인다.
+        // 다음 AI 턴부터 새 다이제스트를 읽는다. 2026-10-02: 22분 48초 영상의 전사가 6분 33초에서 끊겨(WhisperKit 소리 읽기)
+        // AI 가 뒤의 설명을 못 봤다 — 고친 뒤에도 분석은 캐시라 그대로 남아 있었다
+        let digestVersion = try await db.writer.read { try DigestRecord.fetchOne($0, key: videoID)?.version }
+        let staleDigest = digestVersion.map { $0 < DigestBuilder.version } ?? false
+        if staleDigest { try await queue.enqueue(.analyze, targetId: videoID) }
         let versions = s.visibleVersions(of: videoID)
         if let newest = versions.last {
             // 휴지통으로 보낸 결과물도 "있었던 것" 이다 — 사람이 버린 것을 열자마자 몰래 다시 만들지 않는다
@@ -339,10 +345,10 @@ final class AppController {
             if try !db.hasEverMadeOutput(videoID: videoID) { try await queue.enqueue(.render, targetId: newest.id) }
             return
         }
-        let hasDigest = try await db.writer.read { try DigestRecord.fetchOne($0, key: videoID) } != nil
-        if !hasDigest {
+        if digestVersion == nil {
             try await queue.enqueue(.analyze, targetId: videoID)
-        } else if try !db.pendingDraftRequest(videoID: videoID).isEmpty {
+        } else if !staleDigest, try !db.pendingDraftRequest(videoID: videoID).isEmpty {
+            // 다시 분석 중이면 초안은 분석이 끝난 뒤 파이프라인이 건다 — 옛 다이제스트로 만들지 않는다
             try await queue.enqueue(.agent, targetId: videoID)
         }
     }
@@ -422,14 +428,16 @@ final class AppController {
             (try LibrarySnapshot.words(db, videoID: rec.videoId), try VideoRecord.fetchOne(db, key: rec.videoId)?.durationSec)
         }
         let style = try StyleStore.load(comp.style).values.caption
-        let edited = try SceneEdits.apply(e, to: comp, newID: "edit_\(rec.videoId)_\(UUID().uuidString.prefix(8))",
-                                          words: words, style: style, sourceDuration: duration)
+        // 만들기 전까지 손으로 고친 것은 한 판 — 손으로 고친 판을 또 고치면 제자리에서 (2026-10-02 사용자 결정)
+        let newID = try db.canEditInPlace(compositionID: rec.id) ? rec.id : SceneEdits.newID(videoID: rec.videoId)
+        let edited = try SceneEdits.apply(e, to: comp, newID: newID, words: words, style: style, sourceDuration: duration)
         // 장면 그림은 렌더할 때만 뽑아서, 사람이 고친 판(아직 안 만든 판)은 카드 · 미리보기가 전부 빈 칸이었다 (2026-09-30).
         // 저장 **전에** 원본에서 뽑는다 — 저장이 화면을 다시 그릴 때 그림 파일이 이미 있어야 한다
         if let path = snapshot?.videos.first(where: { $0.id == rec.videoId })?.localPath {
             try? await thumbnails.makeScenes(edited, sources: [rec.videoId: URL(fileURLWithPath: path)])
         }
-        try db.saveComposition(edited, origin: .chat)
+        // 제자리 고치기는 만든 때를 그대로 — 판 번호는 만든 때 순서다
+        try db.saveComposition(edited, createdAt: edited.id == rec.id ? rec.createdAt : Date(), origin: .chat)
         viewingVersionID = edited.id
     }
 

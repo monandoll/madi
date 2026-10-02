@@ -42,15 +42,16 @@ public final class WhisperCppProvider: TranscriptionProvider, @unchecked Sendabl
     }
 
     public func transcribe(_ url: URL, languageCode: String) async throws -> Transcript {
-        let ctx = try loadContext()
         let samples = try await AudioAnalyzer.mono16k(url)
         let id = url.deletingPathExtension().lastPathComponent
-        guard !samples.isEmpty else { return Transcript(videoID: id, words: []) }
-
-        let tokens = try decode(ctx, samples: samples, languageCode: languageCode)
-        let words = Self.words(from: tokens)
+        let words = try await transcribe(samples: samples, languageCode: languageCode) ?? []
         Self.log.info("전사(whisper.cpp) \(id, privacy: .public): 낱말 \(words.count)개")
         return Transcript(videoID: id, words: words)
+    }
+
+    public func transcribe(samples: [Float], languageCode: String) async throws -> [Word]? {
+        guard !samples.isEmpty else { return [] }
+        return Self.words(from: try decode(try loadContext(), samples: samples, languageCode: languageCode))
     }
 
     /// whisper.cpp 호출 — 동기 · 잠금 안에서. `whisper_context` 는 스레드 안전하지 않다.

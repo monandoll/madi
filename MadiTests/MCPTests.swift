@@ -212,6 +212,19 @@ struct MCPTests {
         #expect(out.text.contains("영상 길이"))
     }
 
+    @Test("영상 끝에서 잘린 말을 쓰면 거절한다 — 숨 없이 뚝 끊긴다. 그 문장을 빼면 저장한다")
+    func rejectsClippedEnd() throws {
+        let f = try fixture(duration: 5.2)    // 마지막 낱말 "숙여주세요." 가 5.20초 — 파일 끝에 닿았다
+        func comp(_ scenes: [(Double, Double)]) -> [String: Any] {
+            ["meta": ["title": "골반", "targetDurationSec": 4], "captionSlot": "fullBody",
+             "scenes": scenes.map { ["role": "demo", "source": ["in": $0.0, "out": $0.1]] }]
+        }
+        let out = try tool(f.server, "write_composition", ["composition": comp([(0.1, 2.3), (3.0, 5.2)])])
+        #expect(out.isError)
+        #expect(out.text.contains("scenes[1]") && out.text.contains("숙여주세요.") && !out.text.contains("scenes[0]"))
+        #expect(!(try tool(f.server, "write_composition", ["composition": comp([(0.1, 2.3), (3.0, 4.5)])]).isError))
+    }
+
     @Test("여러 번 써도 같은 편집안 id 를 덮어쓴다")
     func overwritesSameID() throws {
         let f = try fixture()
