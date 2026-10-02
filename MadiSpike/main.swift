@@ -454,6 +454,19 @@ case "continue":
         }
     } catch { fail("\(error)") }
 
+case "lookpreview":
+    // 설정 "자막 모양" 미리보기를 앱과 같은 그리기로 (번들 기본 스타일 — 글꼴 기본 · 흰 글씨). 화면 사진용
+    guard args.count > 1 else { fail("사용법: madi-spike lookpreview <출력.png> [본문] [영문]") }
+    do {
+        let values = try StyleStore.load().values
+        let caption = Caption(id: "look", start: 0, end: 2, text: args.count > 2 ? args[2] : "반대쪽도 똑같이 진행해주세요",
+                              secondary: args.count > 3 ? args[3] : "Repeat on the other side.")
+        let image = try StillRenderer.renderCaption(caption, size: CGSize(width: 1080, height: 1920), style: values, slot: .fullBody)
+        guard let band = StillRenderer.captionBand(image, height: 360) else { fail("띠를 못 잘랐다") }
+        try StillRenderer.writePNG(band, to: URL(fileURLWithPath: args[1]))
+        print(args[1])
+    } catch { fail("\(error)") }
+
 case "transcribe":
     // --app: 앱이 받아 둔 모델로 (앱과 같은 전사). --json <파일>: 걸러 내기 **전** 낱말을 전부 남긴다
     guard args.count > 1 else { fail("사용법: madi-spike transcribe <영상> [--model base | --app] [--json <파일>]") }

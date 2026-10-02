@@ -227,6 +227,8 @@ private struct LookSettings: View {
     /// 미리보기 문장 칸 — 치는 대로 미리보기가 바뀐다 (개발이 넣음, viewdata-map ⑬).
     @State private var previewText = ""
     @State private var previewSecondaryText = ""
+    /// 이 탭을 열면 macOS 가 미리보기 문장 칸에 포커스를 줘서 글자가 선택된 채로 떴다 — 일반 탭 스튜디오 이름 칸과 같은 일 (㉜)
+    @FocusState private var previewFocused: Bool
 
     var body: some View {
         if let look {
@@ -243,6 +245,7 @@ private struct LookSettings: View {
             Section {
                 preview(look)
                 TextField(Copy.Look.previewTextField, text: $previewText)
+                    .focused($previewFocused)
                     .onChange(of: previewText) { _, t in onAction(.previewText(t)) }
                 TextField(Copy.Look.previewSecondaryField, text: $previewSecondaryText)
                     .onChange(of: previewSecondaryText) { _, t in onAction(.previewSecondaryText(t)) }
@@ -291,6 +294,10 @@ private struct LookSettings: View {
         .onAppear {
             previewText = look.previewText
             previewSecondaryText = look.previewSecondaryText
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(150))
+            previewFocused = false
         }
     }
 

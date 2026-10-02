@@ -112,6 +112,18 @@ let shots: [Shot] = [
             selectedSceneID: "s4"
         )
     },
+    // 숏폼 만들기를 눌렀다 — 편집안이 아직 없고 AI 가 먼저 묻는다 (㉗). 말하거나 칩을 눌러야 시작한다
+    Shot("plan-asking") {
+        RootView(
+            studio: SampleData.studio,
+            gallery: .loaded(SampleData.groups),
+            plan: .asking(preparing: nil),
+            planMessages: [ChatMessage(id: "ask", kind: .assistant(Copy.Chat.Ask.greeting))],
+            planChips: [Copy.Chat.Chips.auto, Copy.Chat.Chips.coreOnly, Copy.Chat.Chips.demoFirst],
+            planTitle: SampleData.shotsToday[0].title,
+            opensPlan: true
+        )
+    },
     Shot("plan-editing-caption") {
         RootView(
             studio: SampleData.studio,
